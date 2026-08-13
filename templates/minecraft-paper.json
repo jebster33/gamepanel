@@ -6,26 +6,86 @@
   "description": "High-performance Minecraft Java server with full Bukkit/Spigot plugin support. The best default for most Minecraft servers.",
   "defaultMemory": 4096,
   "variables": [
-    { "name": "MC_VERSION", "label": "Minecraft version", "default": "latest", "description": "A version PaperMC builds for, e.g. 1.21.4 — or 'latest'." },
-    { "name": "MAX_PLAYERS", "label": "Max players", "type": "number", "default": 20 },
-    { "name": "MOTD", "label": "Server MOTD", "default": "A GamePanel server" },
-    { "name": "DIFFICULTY", "label": "Difficulty", "default": "normal", "options": ["peaceful", "easy", "normal", "hard"] },
-    { "name": "GAMEMODE", "label": "Game mode", "default": "survival", "options": ["survival", "creative", "adventure", "spectator"] },
-    { "name": "JAVA_ARGS", "label": "Extra JVM flags", "default": "-XX:+UseG1GC -XX:+ParallelRefProcEnabled -XX:MaxGCPauseMillis=200" },
-    { "name": "RCON_PASSWORD", "label": "RCON password", "generate": "password", "default": "" }
+    {
+      "name": "MC_VERSION",
+      "label": "Minecraft version",
+      "default": "latest",
+      "description": "A version PaperMC builds for, e.g. 1.21.4 — or 'latest'."
+    },
+    {
+      "name": "MAX_PLAYERS",
+      "label": "Max players",
+      "type": "number",
+      "default": 20
+    },
+    {
+      "name": "MOTD",
+      "label": "Server MOTD",
+      "default": "A GamePanel server"
+    },
+    {
+      "name": "DIFFICULTY",
+      "label": "Difficulty",
+      "default": "normal",
+      "options": [
+        "peaceful",
+        "easy",
+        "normal",
+        "hard"
+      ]
+    },
+    {
+      "name": "GAMEMODE",
+      "label": "Game mode",
+      "default": "survival",
+      "options": [
+        "survival",
+        "creative",
+        "adventure",
+        "spectator"
+      ]
+    },
+    {
+      "name": "JAVA_ARGS",
+      "label": "Extra JVM flags",
+      "default": "-XX:+UseG1GC -XX:+ParallelRefProcEnabled -XX:MaxGCPauseMillis=200"
+    },
+    {
+      "name": "RCON_PASSWORD",
+      "label": "RCON password",
+      "generate": "password",
+      "default": ""
+    }
   ],
   "ports": [
-    { "name": "game", "default": 25565, "protocol": "tcp" },
-    { "name": "rcon", "default": 25575, "protocol": "tcp", "offset": 10 }
+    {
+      "name": "game",
+      "default": 25565,
+      "protocol": "tcp"
+    },
+    {
+      "name": "rcon",
+      "default": 25575,
+      "protocol": "tcp",
+      "offset": 10
+    }
   ],
   "install": [
-    { "type": "java", "version": "21", "label": "Install Java 21" },
+    {
+      "type": "java",
+      "version": "21",
+      "label": "Install Java 21"
+    },
     {
       "type": "script",
       "label": "Download the latest Paper build",
       "run": "VER=\"{{MC_VERSION}}\"\nif [ \"$VER\" = \"latest\" ] || [ -z \"$VER\" ]; then\n  VER=$(curl -sf https://api.papermc.io/v2/projects/paper | node -e 'let d=\"\";process.stdin.on(\"data\",c=>d+=c).on(\"end\",()=>{const j=JSON.parse(d);console.log(j.versions[j.versions.length-1]);})')\nfi\n[ -n \"$VER\" ] || gp_die \"Could not resolve a Paper version\"\ngp_log \"Using Minecraft $VER\"\nBUILD=$(curl -sf \"https://api.papermc.io/v2/projects/paper/versions/$VER/builds\" | node -e 'let d=\"\";process.stdin.on(\"data\",c=>d+=c).on(\"end\",()=>{const j=JSON.parse(d);const b=j.builds.filter(x=>x.channel===\"default\");console.log((b.length?b:j.builds).pop().build);})')\n[ -n \"$BUILD\" ] || gp_die \"Could not resolve a Paper build for $VER\"\ngp_log \"Using Paper build $BUILD\"\ngp_fetch \"https://api.papermc.io/v2/projects/paper/versions/$VER/builds/$BUILD/downloads/paper-$VER-$BUILD.jar\" server.jar"
     },
-    { "type": "writeFile", "path": "eula.txt", "content": "# Accepted through GamePanel on install\neula=true\n" }
+    {
+      "type": "writeFile",
+      "path": "eula.txt",
+      "content": "# Accepted through GamePanel on install\neula=true\n"
+    }
   ],
   "configFiles": [
     {
@@ -52,11 +112,28 @@
   "startCommand": "java -Xms{{MEMORY}}M -Xmx{{MEMORY}}M {{JAVA_ARGS}} -jar server.jar nogui",
   "stopCommand": "stop",
   "stopTimeout": 60,
-  "query": { "type": "minecraft", "port": "game" },
-  "rcon": { "type": "source", "port": "rcon" },
+  "query": {
+    "type": "minecraft",
+    "port": "game"
+  },
+  "rcon": {
+    "type": "source",
+    "port": "rcon"
+  },
   "logPatterns": {
     "ready": "Done \\([0-9.]+s\\)!",
     "join": "([A-Za-z0-9_]{3,16}) joined the game",
     "leave": "([A-Za-z0-9_]{3,16}) left the game"
+  },
+  "image": "eclipse-temurin:21-jre",
+  "mods": {
+    "providers": [
+      "modrinth",
+      "curseforge"
+    ],
+    "dir": "plugins",
+    "loader": "paper",
+    "projectType": "plugin",
+    "gameVersionVar": "MC_VERSION"
   }
 }

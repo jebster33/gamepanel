@@ -6,18 +6,64 @@
   "description": "Core Keeper dedicated server. Prints a game ID on first start — share it with your players.",
   "defaultMemory": 4096,
   "variables": [
-    { "name": "MAX_PLAYERS", "label": "Max players", "type": "number", "default": 8 },
-    { "name": "WORLD_INDEX", "label": "World slot", "type": "number", "default": 0 },
-    { "name": "WORLD_SEED", "label": "World seed (0 = random)", "type": "number", "default": 0 }
+    {
+      "name": "MAX_PLAYERS",
+      "label": "Max players",
+      "type": "number",
+      "default": 8
+    },
+    {
+      "name": "WORLD_INDEX",
+      "label": "World slot",
+      "type": "number",
+      "default": 0
+    },
+    {
+      "name": "WORLD_SEED",
+      "label": "World seed (0 = random)",
+      "type": "number",
+      "default": 0
+    }
   ],
-  "ports": [{ "name": "game", "default": 27015, "protocol": "udp" }],
+  "ports": [
+    {
+      "name": "game",
+      "default": 27015,
+      "protocol": "udp"
+    }
+  ],
   "install": [
-    { "type": "apt", "packages": ["xvfb", "libxi6"], "label": "Install headless display dependencies" },
-    { "type": "steamcmd", "appid": "1963720", "label": "Install Core Keeper dedicated server" },
-    { "type": "chmod", "path": "_launch.sh", "mode": "+x" }
+    {
+      "type": "apt",
+      "packages": [
+        "xvfb",
+        "libxi6"
+      ],
+      "label": "Install headless display dependencies"
+    },
+    {
+      "type": "steamcmd",
+      "appid": "1963720",
+      "label": "Install Core Keeper dedicated server"
+    },
+    {
+      "type": "chmod",
+      "path": "_launch.sh",
+      "mode": "+x"
+    }
   ],
   "startCommand": "xvfb-run -a ./CoreKeeperServer -batchmode -nographics -logfile /dev/stdout -world {{WORLD_INDEX}} -worldseed {{WORLD_SEED}} -maxplayers {{MAX_PLAYERS}} -servername \"{{SERVER_NAME}}\"",
   "stopTimeout": 45,
-  "query": { "type": "udp", "port": "game" },
-  "logPatterns": { "ready": "Game ID:|Server started" }
+  "query": {
+    "type": "udp",
+    "port": "game"
+  },
+  "logPatterns": {
+    "ready": "Game ID:|Server started"
+  },
+  "image": "cm2network/steamcmd:root",
+  "packages": [
+    "xvfb",
+    "libxi6"
+  ]
 }

@@ -4,10 +4,12 @@
 
 const fs = require('fs');
 const path = require('path');
-const { json, readJson, readBody, fail, HttpError, logger, clamp } = require('./util');
+const { json, readJson, readBody, fail, HttpError, logger, clamp, interpolate } = require('./util');
 const { config } = require('./config');
 const files = require('./files');
 const backups = require('./backups');
+const mods = require('./mods');
+const updater = require('./updater');
 const { rconCommand } = require('./rcon');
 const { query } = require('./query');
 
@@ -290,6 +292,14 @@ function createApi(ctx) {
     files.remove(rootOf(user, params.id), url.searchParams.get('path') || '')
   );
 
+  router.post('/api/servers/:id/files/extract', async ({ user, params, body }) =>
+    files.extract(rootOf(user, params.id), body.path)
+  );
+
+  router.post('/api/servers/:id/files/compress', async ({ user, params, body }) =>
+    files.compress(rootOf(user, params.id), body.paths, body.name)
+  );
+
   router.get('/api/servers/:id/files/download', async ({ user, params, url, res }) => {
     const { file, size, name } = files.resolveDownload(rootOf(user, params.id), url.searchParams.get('path') || '');
     res.writeHead(200, {
@@ -312,6 +322,149 @@ function createApi(ctx) {
     fs.writeFileSync(target, buf);
     return { ok: true, path: rel, size: buf.length };
   }, { rawBody: true });
+
+  /* --------------------------------------------------------------- mods -- */
+
+  /** Loader / game-version context a template wants applied to mod searches. */
+  const modContext = (server, template) => {
+    const spec = template?.mods || {};
+    const vars = server.vars || {};
+    const resolve = (value) => (value ? interpolate(String(value), vars) : undefined);
+    let gameVersion = spec.gameVersionVar ? vars[spec.gameVersionVar] : resolve(spec.gameVersion);
+    if (!gameVersion || String(gameVersion).toLowerCase() === 'latest') gameVersion = undefined;
+    let loader = spec.loaderVar ? vars[spec.loaderVar] : resolve(spec.loader);
+    if (loader) loader = String(loader).toLowerCase();
+    return {
+      loader,
+      gameVersion,
+      appId: spec.appId,
+      projectType: spec.projectType,
+      game: spec.game,
+      dir: mods.modDir(server, template),
+    };
+  };
+
+  const integration = (name) => store.state.settings.integrations?.[name];
+
+  const providerCredentials = (providerId) => {
+    switch (providerId) {
+      case 'curseforge':
+        return { apiKey: integration('curseforgeKey') };
+      case 'workshop':
+        return { apiKey: integration('steamApiKey') };
+      case 'factorio':
+        return { credentials: integration('factorio') || {} };
+      default:
+        return {};
+    }
+  };
+
+  router.get('/api/servers/:id/mods', async ({ user, params }) => {
+    const server = serverFor(user, params.id);
+    const template = manager.template(server);
+    if (!template?.mods) return { supported: false, providers: [] };
+    return {
+      supported: true,
+      providers: mods.providersFor(template),
+      context: modContext(server, template),
+      installed: await mods.listInstalled(server, template),
+      keys: {
+        curseforge: Boolean(integration('curseforgeKey')),
+        workshop: Boolean(integration('steamApiKey')),
+        factorio: Boolean(integration('factorio')?.token),
+      },
+    };
+  });
+
+  router.get('/api/servers/:id/mods/search', async ({ user, params, url }) => {
+    const server = serverFor(user, params.id);
+    const template = manager.template(server);
+    if (!template?.mods) fail(400, 'This game has no mod support configured');
+    const providerId = url.searchParams.get('provider') || template.mods.providers[0];
+    const provider = mods.requireProvider(providerId);
+    if (!provider.search) fail(400, `${provider.label} cannot be searched from the panel`);
+
+    const context = modContext(server, template);
+    return provider.search({
+      query: url.searchParams.get('query') || '',
+      page: clamp(url.searchParams.get('page') || 0, 0, 200),
+      limit: 24,
+      loader: url.searchParams.get('loader') || context.loader,
+      gameVersion: url.searchParams.get('gameVersion') || context.gameVersion,
+      projectType: context.projectType,
+      game: context.game,
+      appId: context.appId,
+      ...providerCredentials(providerId),
+    });
+  });
+
+  router.get('/api/servers/:id/mods/versions', async ({ user, params, url }) => {
+    const server = serverFor(user, params.id);
+    const template = manager.template(server);
+    const providerId = url.searchParams.get('provider');
+    const provider = mods.requireProvider(providerId);
+    const context = modContext(server, template);
+    return {
+      versions: await provider.versions({
+        projectId: url.searchParams.get('projectId'),
+        loader: context.loader,
+        gameVersion: context.gameVersion,
+        ...providerCredentials(providerId),
+      }),
+    };
+  });
+
+  router.post('/api/servers/:id/mods/install', async ({ user, params, body }) => {
+    const server = serverFor(user, params.id);
+    const template = manager.template(server);
+    if (!template?.mods) fail(400, 'This game has no mod support configured');
+    const providerId = String(body.provider || '');
+    const provider = mods.requireProvider(providerId);
+    const context = modContext(server, template);
+
+    // Workshop content is fetched by SteamCMD inside the server's own runtime.
+    if (providerId === 'workshop') {
+      const itemId = mods.parseWorkshopId(body.projectId || body.input);
+      const appId = template.mods.appId;
+      if (!appId) fail(400, 'This template does not declare a Steam Workshop app id');
+      const targetDir = context.dir;
+      const script = [
+        `gp_ensure_steamcmd`,
+        `"$GP_STEAMCMD/steamcmd.sh" +login anonymous +workshop_download_item ${appId} ${itemId} +quit`,
+        `SRC="$GP_STEAMCMD/steamapps/workshop/content/${appId}/${itemId}"`,
+        `[ -d "$SRC" ] || gp_die "SteamCMD did not download item ${itemId} (is it for app ${appId}?)"`,
+        `mkdir -p "$GP_SERVER_DIR/${targetDir}"`,
+        `cp -rf "$SRC/." "$GP_SERVER_DIR/${targetDir}/${itemId}/" 2>/dev/null || { mkdir -p "$GP_SERVER_DIR/${targetDir}/${itemId}"; cp -rf "$SRC/." "$GP_SERVER_DIR/${targetDir}/${itemId}/"; }`,
+        `gp_log "Workshop item ${itemId} installed into ${targetDir}"`,
+      ].join('\n');
+
+      manager
+        .runTask(server, { script, label: `Downloading Workshop item ${itemId}` })
+        .catch((err) => logger.error('workshop install failed:', err.message));
+      return { ok: true, queued: true, itemId, message: 'SteamCMD is downloading the item — watch the console.' };
+    }
+
+    const download = await provider.resolveDownload({
+      projectId: body.projectId,
+      versionId: body.versionId,
+      loader: context.loader,
+      gameVersion: context.gameVersion,
+      ...providerCredentials(providerId),
+    });
+    const installed = await mods.installFile(server, template, download);
+    store.addEvent('mod.installed', `${installed.name} installed on ${server.name}`, { serverId: server.id });
+    return { ok: true, mod: installed, version: download.version };
+  });
+
+  router.delete('/api/servers/:id/mods/:name', async ({ user, params }) => {
+    const server = serverFor(user, params.id);
+    return mods.removeInstalled(server, manager.template(server), params.name);
+  });
+
+  router.post('/api/servers/:id/mods/:name/toggle', async ({ user, params }) => {
+    const server = serverFor(user, params.id);
+    return mods.toggleInstalled(server, manager.template(server), params.name);
+  });
 
   /* ------------------------------------------------------------ backups -- */
 
@@ -386,6 +539,38 @@ function createApi(ctx) {
     return { ok: true };
   });
 
+  /* ------------------------------------------------------------ updates -- */
+
+  router.get('/api/system/update', async ({ user }) => {
+    requireAdmin(user);
+    return updater.checkForUpdate();
+  });
+
+  router.post('/api/system/update', async ({ user, res }) => {
+    requireAdmin(user);
+    const lines = [];
+    const result = await updater.applyUpdate({ onLog: (line) => lines.push(line) });
+    store.addEvent('panel.updated', `Panel updated ${result.from} → ${result.to} by ${user.username}`);
+    // Reply first, then restart: containerised game servers keep running and
+    // the panel re-attaches to them once it is back.
+    json(res, 200, { ok: true, ...result, log: lines, restarting: true });
+    updater.scheduleRestart();
+    return undefined;
+  }, { raw: true });
+
+  router.get('/api/system/runtime', async ({ user }) => {
+    requireAdmin(user);
+    return {
+      docker: {
+        available: manager.dockerAvailable,
+        info: manager.dockerInfo,
+        socket: require('./docker').docker.socketPath,
+      },
+      containerize: store.state.settings.containerize !== false,
+      servers: manager.servers.map((s) => ({ id: s.id, name: s.name, runtime: manager.runtimeFor(s) })),
+    };
+  });
+
   /* ----------------------------------------------------------- settings -- */
 
   router.get('/api/settings', ({ user }) => {
@@ -401,6 +586,19 @@ function createApi(ctx) {
     if (body.portRangeEnd) s.portRangeEnd = clamp(body.portRangeEnd, 1024, 65535);
     if (body.autoRestart !== undefined) s.autoRestart = Boolean(body.autoRestart);
     if (body.maxCrashRestarts !== undefined) s.maxCrashRestarts = clamp(body.maxCrashRestarts, 0, 100);
+    if (body.containerize !== undefined) s.containerize = Boolean(body.containerize);
+    if (body.integrations) {
+      s.integrations = { ...(s.integrations || {}) };
+      const { curseforgeKey, steamApiKey, factorio } = body.integrations;
+      if (curseforgeKey !== undefined) s.integrations.curseforgeKey = String(curseforgeKey).trim();
+      if (steamApiKey !== undefined) s.integrations.steamApiKey = String(steamApiKey).trim();
+      if (factorio !== undefined) {
+        s.integrations.factorio = {
+          username: String(factorio.username || '').trim(),
+          token: String(factorio.token || '').trim(),
+        };
+      }
+    }
     store.save();
     return { settings: s };
   });

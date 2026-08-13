@@ -82,6 +82,12 @@ gp_ensure_java() {
 }
 
 gp_ensure_steamcmd() {
+  # Container images often ship SteamCMD already; reuse it when present.
+  if [ ! -x "$GP_STEAMCMD/steamcmd.sh" ]; then
+    for candidate in /home/steam/steamcmd /usr/games/steamcmd /opt/steamcmd; do
+      if [ -x "$candidate/steamcmd.sh" ]; then GP_STEAMCMD="$candidate"; break; fi
+    done
+  fi
   if [ ! -x "$GP_STEAMCMD/steamcmd.sh" ]; then
     gp_log "Bootstrapping SteamCMD"
     # 32-bit runtime libs are required by steamcmd itself on 64-bit Ubuntu
@@ -168,7 +174,7 @@ function stepToShell(step, vars) {
  * @param {Record<string,string|number>} vars fully-resolved template variables
  * @returns {{script:string, env:Record<string,string>}}
  */
-function buildInstallScript(template, serverDir, vars) {
+function buildInstallScript(template, serverDir, vars, options = {}) {
   const steps = (template.install || []).map((step, i) => {
     const label = step.label || `${step.type} step ${i + 1}`;
     return `gp_log ${shellQuote(label)}\n${stepToShell(step, vars)}`;
@@ -177,13 +183,16 @@ function buildInstallScript(template, serverDir, vars) {
   const script = [
     PREAMBLE,
     ...steps,
+    options.postScript || '',
     `gp_log "Install complete"`,
     `exit 0`,
-  ].join('\n\n');
+  ]
+    .filter(Boolean)
+    .join('\n\n');
 
   const env = {
     GP_SERVER_DIR: serverDir,
-    GP_STEAMCMD: config.steamcmdDir,
+    GP_STEAMCMD: options.steamcmdDir || config.steamcmdDir,
   };
   for (const [k, v] of Object.entries(vars)) {
     if (/^[A-Z][A-Z0-9_]*$/.test(k)) env[k] = String(v);

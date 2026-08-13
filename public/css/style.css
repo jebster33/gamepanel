@@ -612,6 +612,52 @@ tbody tr:hover { background: rgba(255, 255, 255, 0.02); }
 }
 .badge.admin { background: rgba(167, 139, 250, 0.16); color: var(--purple); }
 
+/* -------------------------------------------------------------- dropzone */
+
+.dropzone { position: relative; transition: outline-color 0.15s; outline: 2px dashed transparent; outline-offset: -6px; }
+.dropzone.dragging { outline-color: var(--accent); background: rgba(74, 222, 128, 0.05); }
+.dropzone-hint {
+  display: none;
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  place-items: center;
+  background: rgba(11, 15, 22, 0.85);
+  border-radius: var(--radius);
+  font-size: 14px;
+  color: var(--accent);
+  pointer-events: none;
+}
+.dropzone.dragging .dropzone-hint { display: grid; }
+.file-check { width: auto; }
+
+/* ---------------------------------------------------------------- wizard */
+
+.wizard-progress { display: flex; gap: 6px; margin-bottom: 20px; }
+.wizard-progress i {
+  flex: 1;
+  height: 4px;
+  border-radius: 99px;
+  background: var(--surface-3);
+  transition: background 0.25s;
+}
+.wizard-progress i.active { background: linear-gradient(90deg, var(--accent-dim), var(--accent)); }
+
+.wizard-head { margin-bottom: 18px; }
+.wizard-count {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--accent);
+  font-weight: 600;
+}
+.wizard-head h3 { margin: 6px 0 6px; font-size: 19px; letter-spacing: -0.3px; }
+.wizard-head p { margin: 0; line-height: 1.55; }
+
+/* ------------------------------------------------------------------ mods */
+
+.template-card img { flex: 0 0 auto; background: var(--surface-3); }
+
 /* ------------------------------------------------------------ responsive */
 
 @media (max-width: 900px) {

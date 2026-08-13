@@ -6,26 +6,72 @@
   "description": "Valheim dedicated server. Remember that the join password must be at least 5 characters and cannot appear in the server name.",
   "defaultMemory": 4096,
   "variables": [
-    { "name": "WORLD_NAME", "label": "World name", "default": "Dedicated" },
-    { "name": "SERVER_PASSWORD", "label": "Join password", "default": "valheim123", "description": "Minimum 5 characters." },
-    { "name": "PUBLIC", "label": "List publicly", "default": "1", "options": ["0", "1"] },
-    { "name": "CROSSPLAY", "label": "Enable crossplay", "default": "0", "options": ["0", "1"] }
+    {
+      "name": "WORLD_NAME",
+      "label": "World name",
+      "default": "Dedicated"
+    },
+    {
+      "name": "SERVER_PASSWORD",
+      "label": "Join password",
+      "default": "valheim123",
+      "description": "Minimum 5 characters."
+    },
+    {
+      "name": "PUBLIC",
+      "label": "List publicly",
+      "default": "1",
+      "options": [
+        "0",
+        "1"
+      ]
+    },
+    {
+      "name": "CROSSPLAY",
+      "label": "Enable crossplay",
+      "default": "0",
+      "options": [
+        "0",
+        "1"
+      ]
+    }
   ],
   "ports": [
-    { "name": "game", "default": 2456, "protocol": "udp" },
-    { "name": "query", "default": 2457, "protocol": "udp", "offset": 1 }
+    {
+      "name": "game",
+      "default": 2456,
+      "protocol": "udp"
+    },
+    {
+      "name": "query",
+      "default": 2457,
+      "protocol": "udp",
+      "offset": 1
+    }
   ],
   "install": [
-    { "type": "steamcmd", "appid": "896660", "label": "Install Valheim dedicated server" },
-    { "type": "chmod", "path": "valheim_server.x86_64", "mode": "+x" }
+    {
+      "type": "steamcmd",
+      "appid": "896660",
+      "label": "Install Valheim dedicated server"
+    },
+    {
+      "type": "chmod",
+      "path": "valheim_server.x86_64",
+      "mode": "+x"
+    }
   ],
   "startCommand": "SteamAppId=892970 LD_LIBRARY_PATH=./linux64:$LD_LIBRARY_PATH ./valheim_server.x86_64 -nographics -batchmode -name \"{{SERVER_NAME}}\" -port {{PORT}} -world \"{{WORLD_NAME}}\" -password \"{{SERVER_PASSWORD}}\" -public {{PUBLIC}} -savedir ./savedir",
   "stopSignal": "SIGINT",
   "stopTimeout": 60,
-  "query": { "type": "a2s", "port": "query" },
+  "query": {
+    "type": "a2s",
+    "port": "query"
+  },
   "logPatterns": {
     "ready": "Game server connected",
     "join": "Got connection SteamID ([0-9]+)",
     "leave": "Closing socket ([0-9]+)"
-  }
+  },
+  "image": "cm2network/steamcmd:root"
 }

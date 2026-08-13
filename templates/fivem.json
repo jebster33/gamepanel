@@ -1,0 +1,178 @@
+{
+  "id": "fivem",
+  "name": "FiveM (GTA V roleplay)",
+  "category": "Roleplay",
+  "icon": "🚔",
+  "description": "FiveM / Cfx.re server with txAdmin built in. The wizard walks you through your license key, framework and database — a full ESX or QBox roleplay server is a few clicks after the first boot.",
+  "defaultMemory": 8192,
+  "image": "debian:bookworm-slim",
+  "packages": [
+    "curl",
+    "ca-certificates",
+    "xz-utils",
+    "libatomic1",
+    "libc6",
+    "procps",
+    "git"
+  ],
+  "wizard": [
+    {
+      "title": "Server basics",
+      "description": "The name players see in the server browser, and how many of them can join.",
+      "fields": [
+        "SERVER_HOSTNAME",
+        "MAX_PLAYERS",
+        "SERVER_TAGS"
+      ]
+    },
+    {
+      "title": "Cfx.re license key",
+      "description": "Every FiveM server needs a free license key. Open keymaster.fivem.net, sign in with your Cfx.re (Rockstar/Discord) account, click 'Generate a new key', choose 'Other' and any IP, then paste the key below. It looks like cfxk_xxxxxxxxxxxxxxx_xxxxx.",
+      "fields": [
+        "LICENSE_KEY"
+      ]
+    },
+    {
+      "title": "Framework",
+      "description": "txAdmin's recipe deployer installs ESX or QBox for you on first boot — including the database tables. Pick 'txAdmin' unless you know you want a bare server.",
+      "fields": [
+        "FRAMEWORK",
+        "RCON_PASSWORD"
+      ]
+    },
+    {
+      "title": "Database",
+      "description": "ESX and QBox need MySQL. GamePanel can run a private MariaDB container alongside this server — nothing to install, and it is only reachable by this one server. Use host 'db', port 3306 when txAdmin asks.",
+      "fields": [
+        "INSTALL_DATABASE",
+        "DB_PASSWORD"
+      ]
+    }
+  ],
+  "variables": [
+    {
+      "name": "SERVER_HOSTNAME",
+      "label": "Server name",
+      "default": "A GamePanel FiveM server"
+    },
+    {
+      "name": "MAX_PLAYERS",
+      "label": "Max players",
+      "type": "number",
+      "default": 32
+    },
+    {
+      "name": "SERVER_TAGS",
+      "label": "Server tags",
+      "default": "roleplay, gamepanel",
+      "description": "Comma separated, shown in the server browser."
+    },
+    {
+      "name": "LICENSE_KEY",
+      "label": "Cfx.re license key",
+      "default": "",
+      "description": "From keymaster.fivem.net — required before the server will accept players."
+    },
+    {
+      "name": "FRAMEWORK",
+      "label": "Framework",
+      "default": "txadmin",
+      "options": [
+        "txadmin",
+        "vanilla"
+      ],
+      "description": "txadmin = guided ESX / QBox / vMenu deployment in the txAdmin web UI. vanilla = plain cfx-server-data, no framework."
+    },
+    {
+      "name": "RCON_PASSWORD",
+      "label": "RCON password",
+      "generate": "password",
+      "default": ""
+    },
+    {
+      "name": "INSTALL_DATABASE",
+      "label": "Run a MariaDB container for this server",
+      "default": "true",
+      "options": [
+        "true",
+        "false"
+      ],
+      "description": "Needed for ESX/QBox. Ignored when Docker is unavailable."
+    },
+    {
+      "name": "DB_PASSWORD",
+      "label": "Database password",
+      "generate": "password",
+      "default": ""
+    },
+    {
+      "name": "FIVEM_BUILD",
+      "label": "Artifact build",
+      "default": "recommended",
+      "options": [
+        "recommended",
+        "latest"
+      ],
+      "description": "'recommended' is the stable build Cfx.re advises for production."
+    }
+  ],
+  "ports": [
+    {
+      "name": "game",
+      "default": 30120,
+      "protocol": "both"
+    },
+    {
+      "name": "txadmin",
+      "default": 40120,
+      "protocol": "tcp"
+    }
+  ],
+  "sidecars": [
+    {
+      "name": "db",
+      "image": "mariadb:11",
+      "enabledVar": "INSTALL_DATABASE",
+      "volume": "/var/lib/mysql",
+      "memory": 1024,
+      "env": {
+        "MARIADB_ROOT_PASSWORD": "{{DB_PASSWORD}}",
+        "MARIADB_DATABASE": "fivem",
+        "MARIADB_USER": "fivem",
+        "MARIADB_PASSWORD": "{{DB_PASSWORD}}"
+      }
+    }
+  ],
+  "install": [
+    {
+      "type": "script",
+      "label": "Download the FiveM server artifacts",
+      "run": "CHANNEL=\"{{FIVEM_BUILD}}\"\nURL=$(curl -sf https://changelogs-live.fivem.net/api/changelog/versions/linux/server | node -e 'let d=\"\";const want=process.argv[1];process.stdin.on(\"data\",c=>d+=c).on(\"end\",()=>{const j=JSON.parse(d);console.log(want===\"latest\"?j.latest_download:j.recommended_download);})' \"$CHANNEL\")\n[ -n \"$URL\" ] || gp_die \"Could not resolve the FiveM artifact download\"\ngp_log \"Artifact: $URL\"\nmkdir -p artifacts\ngp_fetch \"$URL\" fx.tar.xz\ntar -xJf fx.tar.xz -C artifacts || gp_die \"Could not unpack the artifacts\"\nrm -f fx.tar.xz\nchmod +x artifacts/run.sh artifacts/FXServer 2>/dev/null || true"
+    },
+    {
+      "type": "script",
+      "label": "Fetch the base resources (cfx-server-data)",
+      "run": "if [ ! -d server-data/resources ]; then\n  git clone --quiet --depth 1 https://github.com/citizenfx/cfx-server-data.git server-data || gp_die \"Could not clone cfx-server-data\"\n  rm -rf server-data/.git\nfi\nmkdir -p server-data/resources/[local]\ngp_log \"Drop your own resources into server-data/resources — the file manager can upload and unzip them.\""
+    },
+    {
+      "type": "script",
+      "label": "Write the server configuration",
+      "run": "if [ ! -f server-data/server.cfg ]; then\n  cat > server-data/server.cfg <<'CFGEOF'\n# Generated by GamePanel. Edit freely — it is never overwritten.\nendpoint_add_tcp \"0.0.0.0:{{PORT}}\"\nendpoint_add_udp \"0.0.0.0:{{PORT}}\"\n\nensure mapmanager\nensure chat\nensure spawnmanager\nensure sessionmanager\nensure basic-gamemode\nensure hardcap\nensure rconlog\n\nsv_scriptHookAllowed 0\nrcon_password \"{{RCON_PASSWORD}}\"\nsv_hostname \"{{SERVER_HOSTNAME}}\"\nsets tags \"{{SERVER_TAGS}}\"\nsets locale \"en-GB\"\nsv_maxclients {{MAX_PLAYERS}}\nsv_licenseKey \"{{LICENSE_KEY}}\"\n\n# MariaDB companion container (host 'db'), when enabled:\nset mysql_connection_string \"mysql://fivem:{{DB_PASSWORD}}@db/fivem?charset=utf8mb4\"\n\nadd_ace group.admin command allow\nadd_ace group.admin command.quit deny\nadd_principal identifier.fivem:1 group.admin\nCFGEOF\n  gp_log \"server-data/server.cfg written\"\nfi\nif [ -z \"{{LICENSE_KEY}}\" ]; then\n  gp_warn \"No license key set yet — add it in Settings (LICENSE_KEY) or through txAdmin before going public.\"\nfi"
+    }
+  ],
+  "startCommand": "if [ \"{{FRAMEWORK}}\" = \"vanilla\" ]; then cd server-data && exec ../artifacts/run.sh +exec server.cfg; else exec ./artifacts/run.sh +set txAdminPort {{PORT_TXADMIN}} +set serverProfile gamepanel; fi",
+  "stopTimeout": 45,
+  "query": {
+    "type": "tcp",
+    "port": "game"
+  },
+  "mods": {
+    "providers": [],
+    "dir": "server-data/resources"
+  },
+  "logPatterns": {
+    "ready": "Server started|Started resource|txAdmin is now",
+    "join": "Player \\[([^\\]]+)\\] joined",
+    "leave": "Dropping client ([^ ]+)"
+  }
+}

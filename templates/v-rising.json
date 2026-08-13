@@ -6,18 +6,54 @@
   "description": "V Rising dedicated server, run through Wine as Stunlock only ships a Windows build.",
   "defaultMemory": 8192,
   "variables": [
-    { "name": "MAX_PLAYERS", "label": "Max players", "type": "number", "default": 20 },
-    { "name": "SERVER_PASSWORD", "label": "Join password", "default": "" },
-    { "name": "SAVE_NAME", "label": "World name", "default": "world1" }
+    {
+      "name": "MAX_PLAYERS",
+      "label": "Max players",
+      "type": "number",
+      "default": 20
+    },
+    {
+      "name": "SERVER_PASSWORD",
+      "label": "Join password",
+      "default": ""
+    },
+    {
+      "name": "SAVE_NAME",
+      "label": "World name",
+      "default": "world1"
+    }
   ],
   "ports": [
-    { "name": "game", "default": 9876, "protocol": "udp" },
-    { "name": "query", "default": 9877, "protocol": "udp", "offset": 1 }
+    {
+      "name": "game",
+      "default": 9876,
+      "protocol": "udp"
+    },
+    {
+      "name": "query",
+      "default": 9877,
+      "protocol": "udp",
+      "offset": 1
+    }
   ],
   "install": [
-    { "type": "apt", "packages": ["wine64", "xvfb"], "label": "Install Wine" },
-    { "type": "steamcmd", "appid": "1829350", "label": "Install V Rising dedicated server" },
-    { "type": "mkdir", "path": "save-data/Settings" }
+    {
+      "type": "apt",
+      "packages": [
+        "wine64",
+        "xvfb"
+      ],
+      "label": "Install Wine"
+    },
+    {
+      "type": "steamcmd",
+      "appid": "1829350",
+      "label": "Install V Rising dedicated server"
+    },
+    {
+      "type": "mkdir",
+      "path": "save-data/Settings"
+    }
   ],
   "configFiles": [
     {
@@ -31,13 +67,26 @@
       "path": "save-data/Settings/ServerHostSettings.json",
       "format": "json",
       "createIfMissing": true,
-      "set": { "Port": "{{PORT}}", "QueryPort": "{{PORT_QUERY}}", "MaxConnectedUsers": "{{MAX_PLAYERS}}" }
+      "set": {
+        "Port": "{{PORT}}",
+        "QueryPort": "{{PORT_QUERY}}",
+        "MaxConnectedUsers": "{{MAX_PLAYERS}}"
+      }
     }
   ],
   "startCommand": "WINEDEBUG=-all WINEPREFIX={{SERVER_DIR}}/.wine xvfb-run -a wine64 VRisingServer.exe -persistentDataPath ./save-data -serverName \"{{SERVER_NAME}}\" -saveName \"{{SAVE_NAME}}\" -logFile ./logs/VRisingServer.log",
   "stopTimeout": 60,
-  "query": { "type": "a2s", "port": "query" },
+  "query": {
+    "type": "a2s",
+    "port": "query"
+  },
   "logPatterns": {
     "ready": "Server Setup Complete|HostGame"
-  }
+  },
+  "image": "cm2network/steamcmd:root",
+  "packages": [
+    "wine",
+    "wine64",
+    "xvfb"
+  ]
 }

@@ -6,20 +6,62 @@
   "description": "Insurgency: Sandstorm dedicated server. A GSLT token is required for internet play.",
   "defaultMemory": 8192,
   "variables": [
-    { "name": "MAP", "label": "Starting map", "default": "Farmhouse" },
-    { "name": "SCENARIO", "label": "Scenario", "default": "Scenario_Farmhouse_Checkpoint_Security" },
-    { "name": "MAX_PLAYERS", "label": "Max players", "type": "number", "default": 16 },
-    { "name": "GSLT", "label": "Steam game server token (GSLT)", "default": "" },
-    { "name": "RCON_PASSWORD", "label": "RCON password", "generate": "password", "default": "" }
+    {
+      "name": "MAP",
+      "label": "Starting map",
+      "default": "Farmhouse"
+    },
+    {
+      "name": "SCENARIO",
+      "label": "Scenario",
+      "default": "Scenario_Farmhouse_Checkpoint_Security"
+    },
+    {
+      "name": "MAX_PLAYERS",
+      "label": "Max players",
+      "type": "number",
+      "default": 16
+    },
+    {
+      "name": "GSLT",
+      "label": "Steam game server token (GSLT)",
+      "default": ""
+    },
+    {
+      "name": "RCON_PASSWORD",
+      "label": "RCON password",
+      "generate": "password",
+      "default": ""
+    }
   ],
   "ports": [
-    { "name": "game", "default": 27102, "protocol": "udp" },
-    { "name": "query", "default": 27131, "protocol": "udp" },
-    { "name": "rcon", "default": 27015, "protocol": "tcp" }
+    {
+      "name": "game",
+      "default": 27102,
+      "protocol": "udp"
+    },
+    {
+      "name": "query",
+      "default": 27131,
+      "protocol": "udp"
+    },
+    {
+      "name": "rcon",
+      "default": 27015,
+      "protocol": "tcp"
+    }
   ],
   "install": [
-    { "type": "steamcmd", "appid": "581330", "label": "Install Insurgency: Sandstorm dedicated server" },
-    { "type": "chmod", "path": "Insurgency/Binaries/Linux/InsurgencyServer-Linux-Shipping", "mode": "+x" }
+    {
+      "type": "steamcmd",
+      "appid": "581330",
+      "label": "Install Insurgency: Sandstorm dedicated server"
+    },
+    {
+      "type": "chmod",
+      "path": "Insurgency/Binaries/Linux/InsurgencyServer-Linux-Shipping",
+      "mode": "+x"
+    }
   ],
   "configFiles": [
     {
@@ -35,7 +77,16 @@
   ],
   "startCommand": "./Insurgency/Binaries/Linux/InsurgencyServer-Linux-Shipping {{MAP}}?Scenario={{SCENARIO}}?MaxPlayers={{MAX_PLAYERS}} -Port={{PORT}} -QueryPort={{PORT_QUERY}} -GameStats -GSLTToken={{GSLT}} -log",
   "stopTimeout": 60,
-  "query": { "type": "a2s", "port": "query" },
-  "rcon": { "type": "source", "port": "rcon" },
-  "logPatterns": { "ready": "Game server registered|LogGameMode" }
+  "query": {
+    "type": "a2s",
+    "port": "query"
+  },
+  "rcon": {
+    "type": "source",
+    "port": "rcon"
+  },
+  "logPatterns": {
+    "ready": "Game server registered|LogGameMode"
+  },
+  "image": "cm2network/steamcmd:root"
 }

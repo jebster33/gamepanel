@@ -6,17 +6,69 @@
   "description": "The escape hatch: run any install script and any start command. Use it for games without a template, custom modpacks, bots, or anything else that needs supervising.",
   "defaultMemory": 2048,
   "variables": [
-    { "name": "INSTALL_SCRIPT", "label": "Install script (bash)", "default": "echo 'Nothing to install — upload your files with the file manager.'", "description": "Runs once in the server directory. Helpers available: gp_fetch URL DEST, gp_extract FILE, gp_apt PKG, gp_ensure_java 21, gp_steam_app APPID." },
-    { "name": "LAUNCH_COMMAND", "label": "Start command", "default": "./start.sh", "description": "Runs in the server directory. Use {{PORT}} for the allocated port." },
-    { "name": "STOP_COMMAND", "label": "Stop command (optional)", "default": "", "description": "Written to the process stdin on stop. Leave empty to use SIGTERM." },
-    { "name": "QUERY_TYPE", "label": "Query protocol", "default": "none", "options": ["none", "a2s", "minecraft", "bedrock", "tcp", "udp"] }
+    {
+      "name": "INSTALL_SCRIPT",
+      "label": "Install script (bash)",
+      "default": "echo 'Nothing to install — upload your files with the file manager.'",
+      "description": "Runs once in the server directory. Helpers available: gp_fetch URL DEST, gp_extract FILE, gp_apt PKG, gp_ensure_java 21, gp_steam_app APPID."
+    },
+    {
+      "name": "LAUNCH_COMMAND",
+      "label": "Start command",
+      "default": "./start.sh",
+      "description": "Runs in the server directory. Use {{PORT}} for the allocated port."
+    },
+    {
+      "name": "STOP_COMMAND",
+      "label": "Stop command (optional)",
+      "default": "",
+      "description": "Written to the process stdin on stop. Leave empty to use SIGTERM."
+    },
+    {
+      "name": "QUERY_TYPE",
+      "label": "Query protocol",
+      "default": "none",
+      "options": [
+        "none",
+        "a2s",
+        "minecraft",
+        "bedrock",
+        "tcp",
+        "udp"
+      ]
+    }
   ],
   "ports": [
-    { "name": "game", "default": 27015, "protocol": "tcp" },
-    { "name": "extra", "default": 27016, "protocol": "udp", "offset": 1 }
+    {
+      "name": "game",
+      "default": 27015,
+      "protocol": "tcp"
+    },
+    {
+      "name": "extra",
+      "default": 27016,
+      "protocol": "udp",
+      "offset": 1
+    }
   ],
-  "install": [{ "type": "script", "label": "Run the custom install script", "run": "{{INSTALL_SCRIPT}}" }],
+  "install": [
+    {
+      "type": "script",
+      "label": "Run the custom install script",
+      "run": "{{INSTALL_SCRIPT}}"
+    }
+  ],
   "startCommand": "{{LAUNCH_COMMAND}}",
   "stopTimeout": 45,
-  "query": { "type": "tcp", "port": "game" }
+  "query": {
+    "type": "tcp",
+    "port": "game"
+  },
+  "image": "debian:bookworm-slim",
+  "packages": [
+    "curl",
+    "ca-certificates",
+    "unzip",
+    "xz-utils"
+  ]
 }

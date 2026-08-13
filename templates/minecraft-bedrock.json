@@ -6,18 +6,68 @@
   "description": "Official Bedrock Edition dedicated server for console, mobile and Windows 10 players.",
   "defaultMemory": 2048,
   "variables": [
-    { "name": "BEDROCK_VERSION", "label": "Bedrock server version", "default": "1.21.62.01", "description": "Version string from minecraft.net/download/server/bedrock." },
-    { "name": "MAX_PLAYERS", "label": "Max players", "type": "number", "default": 10 },
-    { "name": "MOTD", "label": "Server name", "default": "GamePanel Bedrock" },
-    { "name": "GAMEMODE", "label": "Game mode", "default": "survival", "options": ["survival", "creative", "adventure"] },
-    { "name": "DIFFICULTY", "label": "Difficulty", "default": "easy", "options": ["peaceful", "easy", "normal", "hard"] }
+    {
+      "name": "BEDROCK_VERSION",
+      "label": "Bedrock server version",
+      "default": "1.21.62.01",
+      "description": "Version string from minecraft.net/download/server/bedrock."
+    },
+    {
+      "name": "MAX_PLAYERS",
+      "label": "Max players",
+      "type": "number",
+      "default": 10
+    },
+    {
+      "name": "MOTD",
+      "label": "Server name",
+      "default": "GamePanel Bedrock"
+    },
+    {
+      "name": "GAMEMODE",
+      "label": "Game mode",
+      "default": "survival",
+      "options": [
+        "survival",
+        "creative",
+        "adventure"
+      ]
+    },
+    {
+      "name": "DIFFICULTY",
+      "label": "Difficulty",
+      "default": "easy",
+      "options": [
+        "peaceful",
+        "easy",
+        "normal",
+        "hard"
+      ]
+    }
   ],
   "ports": [
-    { "name": "game", "default": 19132, "protocol": "udp" },
-    { "name": "game6", "default": 19133, "protocol": "udp", "offset": 1 }
+    {
+      "name": "game",
+      "default": 19132,
+      "protocol": "udp"
+    },
+    {
+      "name": "game6",
+      "default": 19133,
+      "protocol": "udp",
+      "offset": 1
+    }
   ],
   "install": [
-    { "type": "apt", "packages": ["unzip", "libcurl4", "curl"], "label": "Install dependencies" },
+    {
+      "type": "apt",
+      "packages": [
+        "unzip",
+        "libcurl4",
+        "curl"
+      ],
+      "label": "Install dependencies"
+    },
     {
       "type": "script",
       "label": "Download the Bedrock dedicated server",
@@ -42,10 +92,20 @@
   "startCommand": "LD_LIBRARY_PATH=. ./bedrock_server",
   "stopCommand": "stop",
   "stopTimeout": 30,
-  "query": { "type": "bedrock", "port": "game" },
+  "query": {
+    "type": "bedrock",
+    "port": "game"
+  },
   "logPatterns": {
     "ready": "Server started",
     "join": "Player connected: ([^,]+)",
     "leave": "Player disconnected: ([^,]+)"
-  }
+  },
+  "image": "debian:bookworm-slim",
+  "packages": [
+    "libcurl4",
+    "ca-certificates",
+    "curl",
+    "unzip"
+  ]
 }

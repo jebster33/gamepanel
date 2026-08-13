@@ -6,19 +6,61 @@
   "description": "Unturned dedicated server — light on resources and quick to install.",
   "defaultMemory": 2048,
   "variables": [
-    { "name": "MAP", "label": "Map", "default": "PEI" },
-    { "name": "MAX_PLAYERS", "label": "Max players", "type": "number", "default": 24 },
-    { "name": "SERVER_PASSWORD", "label": "Join password", "default": "" },
-    { "name": "MODE", "label": "Mode", "default": "Normal", "options": ["Easy", "Normal", "Hard"] }
+    {
+      "name": "MAP",
+      "label": "Map",
+      "default": "PEI"
+    },
+    {
+      "name": "MAX_PLAYERS",
+      "label": "Max players",
+      "type": "number",
+      "default": 24
+    },
+    {
+      "name": "SERVER_PASSWORD",
+      "label": "Join password",
+      "default": ""
+    },
+    {
+      "name": "MODE",
+      "label": "Mode",
+      "default": "Normal",
+      "options": [
+        "Easy",
+        "Normal",
+        "Hard"
+      ]
+    }
   ],
   "ports": [
-    { "name": "game", "default": 27015, "protocol": "udp" },
-    { "name": "query", "default": 27016, "protocol": "udp", "offset": 1 }
+    {
+      "name": "game",
+      "default": 27015,
+      "protocol": "udp"
+    },
+    {
+      "name": "query",
+      "default": 27016,
+      "protocol": "udp",
+      "offset": 1
+    }
   ],
   "install": [
-    { "type": "steamcmd", "appid": "1110390", "label": "Install Unturned dedicated server" },
-    { "type": "mkdir", "path": "Servers/gamepanel/Server" },
-    { "type": "chmod", "path": "ServerHelper.sh", "mode": "+x" }
+    {
+      "type": "steamcmd",
+      "appid": "1110390",
+      "label": "Install Unturned dedicated server"
+    },
+    {
+      "type": "mkdir",
+      "path": "Servers/gamepanel/Server"
+    },
+    {
+      "type": "chmod",
+      "path": "ServerHelper.sh",
+      "mode": "+x"
+    }
   ],
   "configFiles": [
     {
@@ -30,10 +72,21 @@
   "startCommand": "./ServerHelper.sh +InternetServer/gamepanel",
   "stopCommand": "shutdown",
   "stopTimeout": 45,
-  "query": { "type": "a2s", "port": "query" },
+  "query": {
+    "type": "a2s",
+    "port": "query"
+  },
   "logPatterns": {
     "ready": "Server started|Loading level",
     "join": "([^ ]+) \\([0-9]+\\) connected",
     "leave": "([^ ]+) \\([0-9]+\\) disconnected"
+  },
+  "image": "cm2network/steamcmd:root",
+  "mods": {
+    "providers": [
+      "workshop"
+    ],
+    "dir": "Servers/gamepanel/Workshop/Content",
+    "appId": 304930
   }
 }

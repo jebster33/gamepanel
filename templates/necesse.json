@@ -6,15 +6,46 @@
   "description": "Necesse dedicated server — tiny footprint, ideal for a small VPS.",
   "defaultMemory": 2048,
   "variables": [
-    { "name": "MAX_PLAYERS", "label": "Max players", "type": "number", "default": 10 },
-    { "name": "WORLD_NAME", "label": "World name", "default": "world" },
-    { "name": "SERVER_PASSWORD", "label": "Join password", "default": "" }
+    {
+      "name": "MAX_PLAYERS",
+      "label": "Max players",
+      "type": "number",
+      "default": 10
+    },
+    {
+      "name": "WORLD_NAME",
+      "label": "World name",
+      "default": "world"
+    },
+    {
+      "name": "SERVER_PASSWORD",
+      "label": "Join password",
+      "default": ""
+    }
   ],
-  "ports": [{ "name": "game", "default": 14159, "protocol": "udp" }],
+  "ports": [
+    {
+      "name": "game",
+      "default": 14159,
+      "protocol": "udp"
+    }
+  ],
   "install": [
-    { "type": "java", "version": "17", "label": "Install Java 17" },
-    { "type": "steamcmd", "appid": "1169370", "label": "Install Necesse dedicated server" },
-    { "type": "chmod", "path": "StartServer-nogui.sh", "mode": "+x" }
+    {
+      "type": "java",
+      "version": "17",
+      "label": "Install Java 17"
+    },
+    {
+      "type": "steamcmd",
+      "appid": "1169370",
+      "label": "Install Necesse dedicated server"
+    },
+    {
+      "type": "chmod",
+      "path": "StartServer-nogui.sh",
+      "mode": "+x"
+    }
   ],
   "configFiles": [
     {
@@ -26,10 +57,18 @@
   "startCommand": "java -Xmx{{MEMORY}}M -jar Server.jar -nogui -port {{PORT}} -world \"{{WORLD_NAME}}\" -slots {{MAX_PLAYERS}}",
   "stopCommand": "stop",
   "stopTimeout": 45,
-  "query": { "type": "udp", "port": "game" },
+  "query": {
+    "type": "udp",
+    "port": "game"
+  },
   "logPatterns": {
     "ready": "Server started|Loaded world",
     "join": "([^ ]+) joined the game",
     "leave": "([^ ]+) left the game"
-  }
+  },
+  "image": "eclipse-temurin:17-jre",
+  "packages": [
+    "curl",
+    "ca-certificates"
+  ]
 }

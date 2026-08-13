@@ -716,13 +716,16 @@ function renderServers(view) {
 
 /* --------------------------------------------------------- server detail */
 
-const SERVER_TABS = [
-  ['console', '⌨ Console'],
-  ['metrics', '📈 Metrics'],
-  ['files', '📁 Files'],
-  ['backups', '💾 Backups'],
-  ['settings', '⚙ Settings'],
-];
+function serverTabs(server) {
+  return [
+    ['console', '⌨ Console'],
+    ['metrics', '📈 Metrics'],
+    ['files', '📁 Files'],
+    ...(server.hasMods ? [['mods', '🧩 Mods']] : []),
+    ['backups', '💾 Backups'],
+    ['settings', '⚙ Settings'],
+  ];
+}
 
 function currentServer() {
   return state.servers.find((s) => s.id === state.route.params.id);
@@ -745,6 +748,9 @@ function renderServerDetail(view) {
         <div class="row" style="margin-top:4px">
           <span id="detail-status">${statusPill(server.status)}</span>
           <span class="address" data-copy="${esc(serverAddress(server))}">${esc(serverAddress(server))}</span>
+          <span class="badge" title="${
+            server.runtime === 'docker' ? 'Isolated in its own container' : 'Running as a plain process on the host'
+          }">${server.runtime === 'docker' ? '📦 container' : '⚙ process'}</span>
           <span class="faint" style="font-size:12.5px" id="detail-uptime">${
             server.status === 'running' ? 'up ' + fmtDuration(server.uptime) : ''
           }</span>
@@ -766,12 +772,17 @@ function renderServerDetail(view) {
         server.ping != null ? server.ping + '<small>ms</small>' : '—'
       }</div></div>
       <div class="metric"><div class="k">Connections</div><div class="v" data-detail="conns">${server.connections ?? 0}</div></div>
+      <div class="metric"><div class="k">Network</div><div class="v" data-detail="net" style="font-size:13px">${
+        server.runtime === 'docker'
+          ? `↓ ${fmtRate(server.networkRx)}<br>↑ ${fmtRate(server.networkTx)}`
+          : '<span class="faint">host only</span>'
+      }</div></div>
       <div class="metric"><div class="k">Disk</div><div class="v" data-detail="disk">${fmtBytes(server.diskBytes)}</div></div>
       <div class="metric"><div class="k">Crashes</div><div class="v" data-detail="crashes">${server.crashCount || 0}</div></div>
     </div>
 
     <div class="tabs">
-      ${SERVER_TABS.map(
+      ${serverTabs(server).map(
         ([key, label]) =>
           `<a class="tab ${tab === key ? 'active' : ''}" href="#/servers/${esc(server.id)}/${key}">${label}</a>`
       ).join('')}
@@ -816,6 +827,7 @@ function patchServerDetail() {
   set('ping', server.ping != null ? `${server.ping}<small>ms</small>` : '—');
   set('conns', String(server.connections ?? 0));
   set('crashes', String(server.crashCount || 0));
+  if (server.runtime === 'docker') set('net', `↓ ${fmtRate(server.networkRx)}<br>↑ ${fmtRate(server.networkTx)}`);
   const uptime = $('#detail-uptime');
   if (uptime) uptime.textContent = server.status === 'running' ? 'up ' + fmtDuration(server.uptime) : '';
   if (state.route.params.tab === 'metrics') drawServerCharts(server.id);
@@ -829,6 +841,9 @@ function renderServerTab(server, tab) {
       break;
     case 'files':
       renderFilesTab(host, server, '');
+      break;
+    case 'mods':
+      renderModsTab(host, server);
       break;
     case 'backups':
       renderBackupsTab(host, server);
@@ -999,74 +1014,172 @@ async function renderFilesTab(host, server, dirPath) {
     crumbs.push(`<span class="faint">/</span><a data-dir="${esc(parts.slice(0, i + 1).join('/'))}">${esc(part)}</a>`);
   });
 
+  const isArchive = (name) => /\.(zip|tar|tar\.gz|tgz|tar\.xz|tar\.bz2)$/i.test(name);
+
   host.innerHTML = `
     <div class="row mb-16">
       <div class="file-path">${crumbs.join(' ')}</div>
-      <div class="spacer" style="flex:1"></div>
+      <div style="flex:1"></div>
+      <span class="faint" id="file-selection" style="font-size:12.5px"></span>
+      <button class="btn btn-sm hidden" id="file-compress">🗜 Compress</button>
+      <button class="btn btn-sm btn-danger hidden" id="file-delete-selected">🗑 Delete</button>
       <button class="btn btn-sm" id="file-new-folder">+ Folder</button>
       <button class="btn btn-sm" id="file-new-file">+ File</button>
-      <button class="btn btn-sm" id="file-upload">⬆ Upload</button>
+      <button class="btn btn-sm btn-primary" id="file-upload">⬆ Upload</button>
       <input type="file" id="file-input" class="hidden" multiple />
     </div>
-    <div class="card" style="padding:0">
+
+    <div class="card dropzone" id="file-dropzone" style="padding:0">
+      <div class="dropzone-hint" id="dropzone-hint">Drop files here to upload into <span class="mono">${esc(
+        data.path || '/'
+      )}</span></div>
       <div class="table-wrap"><table>
-        <thead><tr><th>Name</th><th class="nowrap">Size</th><th class="nowrap">Modified</th><th></th></tr></thead>
+        <thead><tr>
+          <th style="width:34px"><input type="checkbox" id="file-select-all" /></th>
+          <th>Name</th><th class="nowrap">Size</th><th class="nowrap">Modified</th><th></th>
+        </tr></thead>
         <tbody>
           ${
             parts.length
-              ? `<tr><td colspan="4"><a data-dir="${esc(parts.slice(0, -1).join('/'))}">📁 ..</a></td></tr>`
+              ? `<tr><td></td><td colspan="4"><a data-dir="${esc(parts.slice(0, -1).join('/'))}">📁 ..</a></td></tr>`
               : ''
           }
           ${data.items
             .map(
               (item) => `
             <tr>
+              <td><input type="checkbox" class="file-check" data-path="${esc(item.path)}" /></td>
               <td><span class="file-name" data-${item.directory ? 'dir' : 'file'}="${esc(item.path)}">
-                ${item.directory ? '📁' : item.editable ? '📄' : '📦'} ${esc(item.name)}</span></td>
+                ${item.directory ? '📁' : isArchive(item.name) ? '🗜' : item.editable ? '📄' : '📦'} ${esc(item.name)}</span></td>
               <td class="faint nowrap">${item.directory ? '—' : fmtBytes(item.size)}</td>
               <td class="faint nowrap">${fmtTime(item.modified)}</td>
               <td class="nowrap" style="text-align:right">
+                ${
+                  isArchive(item.name)
+                    ? `<button class="btn btn-sm" data-extract="${esc(item.path)}" title="Unpack here">📦 Unpack</button>`
+                    : ''
+                }
+                <button class="btn btn-sm" data-rename="${esc(item.path)}" title="Rename or move">✏️</button>
                 ${
                   item.directory
                     ? ''
                     : `<a class="btn btn-sm" href="/api/servers/${esc(server.id)}/files/download?path=${encodeURIComponent(
                         item.path
-                      )}">⬇</a>`
+                      )}" title="Download">⬇</a>`
                 }
                 <button class="btn btn-sm btn-danger" data-delete="${esc(item.path)}">🗑</button>
               </td>
             </tr>`
             )
             .join('')}
-          ${data.items.length ? '' : '<tr><td colspan="4" class="faint">This folder is empty</td></tr>'}
+          ${data.items.length ? '' : '<tr><td colspan="5" class="faint">This folder is empty — drop files here or use Upload</td></tr>'}
         </tbody>
       </table></div>
     </div>`;
+
+  const refresh = () => renderFilesTab(host, server, dirPath);
 
   host.querySelectorAll('[data-dir]').forEach((el) =>
     el.addEventListener('click', () => renderFilesTab(host, server, el.dataset.dir))
   );
   host.querySelectorAll('[data-file]').forEach((el) =>
-    el.addEventListener('click', () => openFileEditor(server, el.dataset.file, () => renderFilesTab(host, server, dirPath)))
+    el.addEventListener('click', () => openFileEditor(server, el.dataset.file, refresh))
   );
-  host.querySelectorAll('[data-delete]').forEach((el) =>
+
+  /* selection ------------------------------------------------------------ */
+
+  const checks = [...host.querySelectorAll('.file-check')];
+  const selected = () => checks.filter((c) => c.checked).map((c) => c.dataset.path);
+  const updateSelection = () => {
+    const count = selected().length;
+    $('#file-selection').textContent = count ? `${count} selected` : '';
+    $('#file-compress').classList.toggle('hidden', count === 0);
+    $('#file-delete-selected').classList.toggle('hidden', count === 0);
+  };
+  checks.forEach((c) => c.addEventListener('change', updateSelection));
+  $('#file-select-all').addEventListener('change', (event) => {
+    checks.forEach((c) => (c.checked = event.target.checked));
+    updateSelection();
+  });
+
+  $('#file-compress').addEventListener('click', async () => {
+    const paths = selected();
+    const name = await promptModal('Compress', 'Archive name', `archive-${Date.now()}.tar.gz`);
+    if (!name) return;
+    try {
+      const res = await api(`/api/servers/${server.id}/files/compress`, { method: 'POST', body: { paths, name } });
+      toast(`Created ${res.name} (${fmtBytes(res.size)})`);
+      refresh();
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+  });
+
+  $('#file-delete-selected').addEventListener('click', async () => {
+    const paths = selected();
+    if (!(await confirmModal('Delete files', `Delete ${paths.length} item(s)? This cannot be undone.`, 'Delete'))) return;
+    for (const path of paths) {
+      await api(`/api/servers/${server.id}/files?path=${encodeURIComponent(path)}`, { method: 'DELETE' }).catch((err) =>
+        toast(err.message, 'error')
+      );
+    }
+    toast('Deleted');
+    refresh();
+  });
+
+  /* per-row actions ------------------------------------------------------ */
+
+  host.querySelectorAll('[data-extract]').forEach((el) =>
     el.addEventListener('click', async () => {
-      if (!(await confirmModal('Delete file', `Delete “${el.dataset.delete}”? This cannot be undone.`))) return;
+      el.disabled = true;
+      el.innerHTML = '<span class="spinner"></span>';
       try {
-        await api(`/api/servers/${server.id}/files?path=${encodeURIComponent(el.dataset.delete)}`, { method: 'DELETE' });
-        toast('Deleted');
-        renderFilesTab(host, server, dirPath);
+        await api(`/api/servers/${server.id}/files/extract`, { method: 'POST', body: { path: el.dataset.extract } });
+        toast('Archive unpacked');
+        refresh();
+      } catch (err) {
+        toast(err.message, 'error');
+        el.disabled = false;
+        el.textContent = '📦 Unpack';
+      }
+    })
+  );
+
+  host.querySelectorAll('[data-rename]').forEach((el) =>
+    el.addEventListener('click', async () => {
+      const from = el.dataset.rename;
+      const to = await promptModal('Rename or move', 'New path (relative to the server root)', from);
+      if (!to || to === from) return;
+      try {
+        await api(`/api/servers/${server.id}/files/rename`, { method: 'POST', body: { from, to } });
+        toast('Moved');
+        refresh();
       } catch (err) {
         toast(err.message, 'error');
       }
     })
   );
 
+  host.querySelectorAll('[data-delete]').forEach((el) =>
+    el.addEventListener('click', async () => {
+      if (!(await confirmModal('Delete', `Delete “${el.dataset.delete}”? This cannot be undone.`, 'Delete'))) return;
+      try {
+        await api(`/api/servers/${server.id}/files?path=${encodeURIComponent(el.dataset.delete)}`, { method: 'DELETE' });
+        toast('Deleted');
+        refresh();
+      } catch (err) {
+        toast(err.message, 'error');
+      }
+    })
+  );
+
+  /* creating and uploading ----------------------------------------------- */
+
   $('#file-new-folder').addEventListener('click', async () => {
     const name = await promptModal('New folder', 'Folder name');
     if (!name) return;
     await api(`/api/servers/${server.id}/files/mkdir`, { method: 'POST', body: { path: joinPath(dirPath, name) } });
-    renderFilesTab(host, server, dirPath);
+    refresh();
   });
 
   $('#file-new-file').addEventListener('click', async () => {
@@ -1076,24 +1189,48 @@ async function renderFilesTab(host, server, dirPath) {
       method: 'PUT',
       body: { content: '' },
     });
-    renderFilesTab(host, server, dirPath);
+    refresh();
   });
 
-  $('#file-upload').addEventListener('click', () => $('#file-input').click());
-  $('#file-input').addEventListener('change', async (event) => {
-    for (const file of event.target.files) {
+  async function uploadFiles(fileList) {
+    let done = 0;
+    for (const file of fileList) {
       try {
         const res = await fetch(
           `/api/servers/${server.id}/files/upload?path=${encodeURIComponent(joinPath(dirPath, file.name))}`,
           { method: 'POST', body: file, credentials: 'same-origin' }
         );
-        if (!res.ok) throw new Error((await res.json()).error || 'Upload failed');
+        if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Upload failed');
+        done++;
         toast(`Uploaded ${file.name}`);
       } catch (err) {
-        toast(err.message, 'error');
+        toast(`${file.name}: ${err.message}`, 'error');
       }
     }
-    renderFilesTab(host, server, dirPath);
+    if (done) refresh();
+  }
+
+  $('#file-upload').addEventListener('click', () => $('#file-input').click());
+  $('#file-input').addEventListener('change', (event) => uploadFiles([...event.target.files]));
+
+  // Drag and drop straight onto the listing — the quickest way to add mods.
+  const dropzone = $('#file-dropzone');
+  ['dragenter', 'dragover'].forEach((type) =>
+    dropzone.addEventListener(type, (event) => {
+      event.preventDefault();
+      dropzone.classList.add('dragging');
+    })
+  );
+  ['dragleave', 'drop'].forEach((type) =>
+    dropzone.addEventListener(type, (event) => {
+      event.preventDefault();
+      if (type === 'dragleave' && dropzone.contains(event.relatedTarget)) return;
+      dropzone.classList.remove('dragging');
+    })
+  );
+  dropzone.addEventListener('drop', (event) => {
+    const files = [...(event.dataTransfer?.files || [])];
+    if (files.length) uploadFiles(files);
   });
 }
 
@@ -1134,6 +1271,244 @@ async function openFileEditor(server, filePath, onClose) {
       },
     ],
   });
+}
+
+/* ------------------------------------------------------------------ mods */
+
+const modState = { provider: null, query: '', page: 0, results: [], loading: false };
+
+async function renderModsTab(host, server) {
+  host.innerHTML = '<div class="card"><span class="spinner"></span> Loading mod sources…</div>';
+  let info;
+  try {
+    info = await api(`/api/servers/${server.id}/mods`);
+  } catch (err) {
+    host.innerHTML = `<div class="card">Could not load mods: ${esc(err.message)}</div>`;
+    return;
+  }
+  if (!info.supported || !info.providers.length) {
+    host.innerHTML = `
+      <div class="empty">
+        <div class="big">🧩</div>
+        <h3>No mod source for this game</h3>
+        <p>You can still upload mods by hand in the <a href="#/servers/${esc(server.id)}/files">file manager</a>${
+          info.installed ? ` — this game loads them from <span class="mono">${esc(info.installed.dir)}</span>` : ''
+        }.</p>
+      </div>`;
+    return;
+  }
+
+  if (!modState.provider || !info.providers.some((p) => p.id === modState.provider)) {
+    modState.provider = info.providers[0].id;
+    modState.results = [];
+    modState.query = '';
+  }
+  const provider = info.providers.find((p) => p.id === modState.provider);
+  const context = info.context || {};
+
+  host.innerHTML = `
+    <div class="card mb-16">
+      <div class="row mb-16">
+        ${info.providers
+          .map(
+            (p) =>
+              `<span class="chip ${p.id === modState.provider ? 'active' : ''}" data-provider="${esc(p.id)}">${esc(
+                p.label
+              )}</span>`
+          )
+          .join('')}
+        <div style="flex:1"></div>
+        <span class="faint" style="font-size:12.5px">
+          Installs into <span class="mono">${esc(context.dir || 'mods')}</span>
+          ${context.loader ? ` · loader <b>${esc(context.loader)}</b>` : ''}
+          ${context.gameVersion ? ` · ${esc(context.gameVersion)}` : ''}
+        </span>
+      </div>
+
+      ${
+        provider.viaSteamcmd
+          ? `<div class="row">
+               <input id="mod-workshop-input" placeholder="Workshop item ID or URL — e.g. https://steamcommunity.com/sharedfiles/filedetails/?id=104604764" style="flex:1" />
+               <button class="btn btn-primary" id="mod-workshop-install">Install item</button>
+             </div>
+             <div class="hint">SteamCMD downloads the item into the server. ${
+               info.keys.workshop ? 'You can also search below.' : 'Add a Steam Web API key in Settings to search the Workshop from here.'
+             }</div>`
+          : ''
+      }
+
+      ${
+        provider.needsKey && !info.keys[provider.id]
+          ? `<div class="hint" style="color:var(--amber)">${esc(provider.label)} needs a free API key — add one in <a href="#/settings">Settings → Integrations</a>.</div>`
+          : ''
+      }
+
+      <div class="row mt-16">
+        <input id="mod-search" placeholder="Search ${esc(provider.label)}…" value="${esc(modState.query)}" style="flex:1" />
+        <button class="btn" id="mod-search-btn">Search</button>
+      </div>
+    </div>
+
+    <div id="mod-results" class="template-grid mb-16"></div>
+
+    <div class="card">
+      <h4 style="margin:0 0 12px">Installed <span class="faint mono" style="font-weight:400">${esc(
+        info.installed.dir
+      )}</span></h4>
+      <div class="table-wrap"><table>
+        <tbody>
+          ${
+            info.installed.items.length
+              ? info.installed.items
+                  .map(
+                    (item) => `<tr>
+                      <td>${item.directory ? '📁' : '🧩'} <span class="${item.disabled ? 'faint' : ''}">${esc(item.name)}</span>
+                        ${item.disabled ? '<span class="badge">disabled</span>' : ''}</td>
+                      <td class="faint nowrap">${item.directory ? '—' : fmtBytes(item.size)}</td>
+                      <td class="faint nowrap">${fmtTime(item.modified)}</td>
+                      <td style="text-align:right" class="nowrap">
+                        ${
+                          item.directory
+                            ? ''
+                            : `<button class="btn btn-sm" data-mod-toggle="${esc(item.name)}">${
+                                item.disabled ? 'Enable' : 'Disable'
+                              }</button>`
+                        }
+                        <button class="btn btn-sm btn-danger" data-mod-delete="${esc(item.name)}">🗑</button>
+                      </td></tr>`
+                  )
+                  .join('')
+              : '<tr><td class="faint">Nothing installed yet</td></tr>'
+          }
+        </tbody>
+      </table></div>
+      <div class="hint">Restart the server for mod changes to take effect.</div>
+    </div>`;
+
+  const runSearch = async () => {
+    const results = $('#mod-results');
+    results.innerHTML = '<div class="card"><span class="spinner"></span> Searching…</div>';
+    try {
+      const data = await api(
+        `/api/servers/${server.id}/mods/search?provider=${encodeURIComponent(modState.provider)}&query=${encodeURIComponent(
+          modState.query
+        )}&page=${modState.page}`
+      );
+      modState.results = data.items;
+      renderModResults(server, data.items);
+    } catch (err) {
+      results.innerHTML = `<div class="card">${esc(err.message)}</div>`;
+    }
+  };
+
+  host.querySelectorAll('[data-provider]').forEach((el) =>
+    el.addEventListener('click', () => {
+      modState.provider = el.dataset.provider;
+      modState.query = '';
+      modState.page = 0;
+      modState.results = [];
+      renderModsTab(host, server);
+    })
+  );
+
+  $('#mod-search-btn').addEventListener('click', () => {
+    modState.query = $('#mod-search').value.trim();
+    modState.page = 0;
+    runSearch();
+  });
+  $('#mod-search').addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') $('#mod-search-btn').click();
+  });
+
+  $('#mod-workshop-install')?.addEventListener('click', async () => {
+    const input = $('#mod-workshop-input').value.trim();
+    if (!input) return;
+    try {
+      const res = await api(`/api/servers/${server.id}/mods/install`, {
+        method: 'POST',
+        body: { provider: 'workshop', projectId: input },
+      });
+      toast(res.message || 'Workshop item queued');
+      $('#mod-workshop-input').value = '';
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+  });
+
+  host.querySelectorAll('[data-mod-delete]').forEach((el) =>
+    el.addEventListener('click', async () => {
+      if (!(await confirmModal('Remove mod', `Delete ${el.dataset.modDelete}?`))) return;
+      await api(`/api/servers/${server.id}/mods/${encodeURIComponent(el.dataset.modDelete)}`, { method: 'DELETE' });
+      renderModsTab(host, server);
+    })
+  );
+  host.querySelectorAll('[data-mod-toggle]').forEach((el) =>
+    el.addEventListener('click', async () => {
+      await api(`/api/servers/${server.id}/mods/${encodeURIComponent(el.dataset.modToggle)}/toggle`, {
+        method: 'POST',
+        body: {},
+      });
+      renderModsTab(host, server);
+    })
+  );
+
+  // Show something useful before the user types anything.
+  if (!provider.viaSteamcmd || info.keys.workshop) runSearch();
+}
+
+function renderModResults(server, items) {
+  const results = $('#mod-results');
+  if (!items.length) {
+    results.innerHTML = '<div class="card faint">No results</div>';
+    return;
+  }
+  results.innerHTML = items
+    .map(
+      (item, index) => `
+      <div class="template-card" style="cursor:default">
+        <div class="t-head">
+          ${
+            item.icon
+              ? `<img src="${esc(item.icon)}" alt="" style="width:38px;height:38px;border-radius:9px;object-fit:cover" loading="lazy" />`
+              : '<span class="t-icon">🧩</span>'
+          }
+          <div style="min-width:0">
+            <h3 style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(item.name)}</h3>
+            <div class="t-cat">${esc(item.author || '')}${
+        item.downloads ? ` · ${Number(item.downloads).toLocaleString()} downloads` : ''
+      }</div>
+          </div>
+        </div>
+        <p style="display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">${esc(
+          item.description || ''
+        )}</p>
+        <div class="row" style="margin-top:auto">
+          ${item.url ? `<a class="btn btn-sm" href="${esc(item.url)}" target="_blank" rel="noopener">Page ↗</a>` : ''}
+          <button class="btn btn-sm btn-primary" style="margin-left:auto" data-install="${index}">Install</button>
+        </div>
+      </div>`
+    )
+    .join('');
+
+  results.querySelectorAll('[data-install]').forEach((el) =>
+    el.addEventListener('click', async () => {
+      const item = items[Number(el.dataset.install)];
+      el.disabled = true;
+      el.innerHTML = '<span class="spinner"></span>';
+      try {
+        const res = await api(`/api/servers/${server.id}/mods/install`, {
+          method: 'POST',
+          body: { provider: item.provider, projectId: item.id },
+        });
+        toast(res.queued ? res.message : `Installed ${res.mod.name}`);
+        el.textContent = '✓ Installed';
+      } catch (err) {
+        toast(err.message, 'error');
+        el.disabled = false;
+        el.textContent = 'Install';
+      }
+    })
+  );
 }
 
 /* --------------------------------------------------------------- backups */
@@ -1413,31 +1788,32 @@ function renderTemplates(view) {
 
 /* --------------------------------------------------------- create server */
 
+function variableField(v) {
+  const id = `var-${v.name}`;
+  if (v.options?.length) {
+    return `<label><span>${esc(v.label || v.name)}</span>
+      <select id="${id}" data-var="${esc(v.name)}">
+        ${v.options.map((o) => `<option ${String(v.default) === String(o) ? 'selected' : ''}>${esc(o)}</option>`).join('')}
+      </select>
+      ${v.description ? `<div class="hint">${esc(v.description)}</div>` : ''}</label>`;
+  }
+  const isLong = String(v.default || '').length > 60;
+  const field = isLong
+    ? `<textarea id="${id}" data-var="${esc(v.name)}" rows="3">${esc(v.default ?? '')}</textarea>`
+    : `<input id="${id}" data-var="${esc(v.name)}" type="${v.type === 'number' ? 'number' : 'text'}" value="${esc(
+        v.default ?? ''
+      )}" ${v.generate === 'password' ? 'placeholder="generated automatically"' : ''} />`;
+  return `<label><span>${esc(v.label || v.name)}</span>${field}${
+    v.description ? `<div class="hint">${esc(v.description)}</div>` : ''
+  }</label>`;
+}
+
 function openCreateServerModal(templateId) {
   const template = state.templates.find((t) => t.id === templateId) || state.templates[0];
   if (!template) return toast('No templates available', 'error');
+  if (template.wizard?.length) return openWizardModal(template);
 
-  const variableFields = (template.variables || [])
-    .map((v) => {
-      const id = `var-${v.name}`;
-      if (v.options?.length) {
-        return `<label><span>${esc(v.label || v.name)}</span>
-          <select id="${id}" data-var="${esc(v.name)}">
-            ${v.options.map((o) => `<option ${String(v.default) === String(o) ? 'selected' : ''}>${esc(o)}</option>`).join('')}
-          </select>
-          ${v.description ? `<div class="hint">${esc(v.description)}</div>` : ''}</label>`;
-      }
-      const isLong = String(v.default || '').length > 60;
-      const field = isLong
-        ? `<textarea id="${id}" data-var="${esc(v.name)}" rows="3">${esc(v.default ?? '')}</textarea>`
-        : `<input id="${id}" data-var="${esc(v.name)}" type="${v.type === 'number' ? 'number' : 'text'}" value="${esc(
-            v.default ?? ''
-          )}" ${v.generate === 'password' ? 'placeholder="generated automatically"' : ''} />`;
-      return `<label><span>${esc(v.label || v.name)}</span>${field}${
-        v.description ? `<div class="hint">${esc(v.description)}</div>` : ''
-      }</label>`;
-    })
-    .join('');
+  const variableFields = (template.variables || []).map(variableField).join('');
 
   const portFields = (template.ports || [])
     .map(
@@ -1502,6 +1878,137 @@ function openCreateServerModal(templateId) {
       },
     ],
   });
+}
+
+/**
+ * Step-by-step create flow for templates that declare a `wizard`
+ * (FiveM walks you through license key, framework and database this way).
+ */
+function openWizardModal(template) {
+  const byName = Object.fromEntries((template.variables || []).map((v) => [v.name, v]));
+  const used = new Set();
+  const steps = template.wizard.map((step) => ({
+    title: step.title,
+    description: step.description,
+    fields: (step.fields || []).filter((name) => byName[name]).map((name) => {
+      used.add(name);
+      return byName[name];
+    }),
+  }));
+
+  // Anything the wizard did not mention goes on a final "advanced" step.
+  const leftovers = (template.variables || []).filter((v) => !used.has(v.name));
+  const allSteps = [
+    {
+      title: 'Server name and resources',
+      description: `Deploying ${template.name}.`,
+      html: `<div class="form-grid">
+          <label><span>Server name</span><input id="new-name" value="${esc(template.name)}" /></label>
+          <label><span>Memory limit (MB)</span><input id="new-memory" type="number" value="${
+            template.defaultMemory || 2048
+          }" /></label>
+          ${(template.ports || [])
+            .map(
+              (p) =>
+                `<label><span>Port · ${esc(p.name)} (${esc(p.protocol || 'tcp')})</span><input data-port="${esc(
+                  p.name
+                )}" type="number" value="${p.default}" /></label>`
+            )
+            .join('')}
+        </div>`,
+    },
+    ...steps.map((step) => ({
+      title: step.title,
+      description: step.description,
+      html: `<div class="form-grid">${step.fields.map(variableField).join('')}</div>`,
+    })),
+    ...(leftovers.length
+      ? [
+          {
+            title: 'Advanced',
+            description: 'Fine — leave these alone unless you know you need them.',
+            html: `<div class="form-grid">${leftovers.map(variableField).join('')}</div>`,
+          },
+        ]
+      : []),
+  ];
+
+  let current = 0;
+  const body = allSteps
+    .map(
+      (step, i) => `
+      <div class="wizard-step ${i === 0 ? '' : 'hidden'}" data-step="${i}">
+        <div class="wizard-head">
+          <span class="wizard-count">Step ${i + 1} of ${allSteps.length}</span>
+          <h3>${esc(step.title)}</h3>
+          ${step.description ? `<p class="hint">${esc(step.description)}</p>` : ''}
+        </div>
+        ${step.html}
+      </div>`
+    )
+    .join('');
+
+  const modal = openModal({
+    title: `${template.icon || '🎮'} ${template.name} setup`,
+    width: 660,
+    body: `<div class="wizard-progress">${allSteps
+      .map((_, i) => `<i data-dot="${i}" class="${i === 0 ? 'active' : ''}"></i>`)
+      .join('')}</div>${body}`,
+    actions: [
+      { label: 'Back', onClick: () => show(current - 1) },
+      { label: 'Next', primary: true, onClick: (btn) => (current === allSteps.length - 1 ? submit(btn) : show(current + 1)) },
+    ],
+  });
+
+  const [backBtn, nextBtn] = [...document.querySelectorAll('.modal-foot .btn')];
+
+  function show(index) {
+    current = Math.max(0, Math.min(allSteps.length - 1, index));
+    document.querySelectorAll('.wizard-step').forEach((el) => {
+      el.classList.toggle('hidden', Number(el.dataset.step) !== current);
+    });
+    document.querySelectorAll('[data-dot]').forEach((el) => {
+      el.classList.toggle('active', Number(el.dataset.dot) <= current);
+    });
+    backBtn.disabled = current === 0;
+    nextBtn.textContent = current === allSteps.length - 1 ? 'Create & install' : 'Next →';
+    document.querySelector('.modal-body').scrollTop = 0;
+  }
+  show(0);
+
+  async function submit(btn) {
+    const vars = {};
+    document.querySelectorAll('[data-var]').forEach((el) => (vars[el.dataset.var] = el.value));
+    const ports = {};
+    document.querySelectorAll('[data-port]').forEach((el) => {
+      const value = Number(el.value);
+      if (value) ports[el.dataset.port] = value;
+    });
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Creating…';
+    try {
+      const data = await api('/api/servers', {
+        method: 'POST',
+        body: {
+          templateId: template.id,
+          name: $('#new-name').value.trim(),
+          memory: Number($('#new-memory').value),
+          autoStart: true,
+          autoRestart: true,
+          vars,
+          ports,
+        },
+      });
+      await loadServers();
+      modal.close();
+      toast('Server created — installation started');
+      location.hash = `#/servers/${data.server.id}/console`;
+    } catch (err) {
+      toast(err.message, 'error');
+      btn.disabled = false;
+      btn.textContent = 'Create & install';
+    }
+  }
 }
 
 /* -------------------------------------------------------------- activity */
@@ -1654,8 +2161,50 @@ async function renderSettings(view) {
   setCrumbs('Settings');
   const data = await api('/api/settings').catch((err) => ({ settings: {}, error: err.message }));
   const s = data.settings;
+  const integrations = s.integrations || {};
   view.innerHTML = `
     <div class="page-head"><h1>Panel settings</h1></div>
+
+    <div class="card mb-16" id="update-card">
+      <h4 style="margin:0 0 6px">Panel updates</h4>
+      <p class="faint" style="margin:0 0 14px">
+        Updates pull the latest code and restart the panel. Servers running in containers keep running —
+        the panel re-attaches to them when it comes back.
+      </p>
+      <div class="row"><button class="btn" id="update-check">Check for updates</button>
+        <span id="update-status" class="faint"></span></div>
+      <div id="update-detail" class="mt-16"></div>
+    </div>
+
+    <div class="card mb-16">
+      <h4 style="margin:0 0 6px">Runtime</h4>
+      <div id="runtime-info" class="faint" style="margin-bottom:12px">Checking Docker…</div>
+      <div class="checkbox-row"><input type="checkbox" id="s-containerize" ${
+        s.containerize !== false ? 'checked' : ''
+      } /><label for="s-containerize">Run each game server in its own container (isolation, hard memory/CPU limits, per-server network stats)</label></div>
+      <div class="hint">Applies the next time a server starts. Without Docker the panel falls back to plain processes.</div>
+    </div>
+
+    <div class="card mb-16">
+      <h4 style="margin:0 0 6px">Integrations</h4>
+      <p class="faint" style="margin:0 0 14px">Optional API keys for the mod browser. Modrinth and uMod work without any key.</p>
+      <div class="form-grid">
+        <label><span>CurseForge API key</span><input id="i-curseforge" type="password" value="${esc(
+          integrations.curseforgeKey || ''
+        )}" placeholder="console.curseforge.com" /></label>
+        <label><span>Steam Web API key</span><input id="i-steam" type="password" value="${esc(
+          integrations.steamApiKey || ''
+        )}" placeholder="steamcommunity.com/dev/apikey" /></label>
+        <label><span>Factorio username</span><input id="i-factorio-user" value="${esc(
+          integrations.factorio?.username || ''
+        )}" /></label>
+        <label><span>Factorio token</span><input id="i-factorio-token" type="password" value="${esc(
+          integrations.factorio?.token || ''
+        )}" /></label>
+      </div>
+      <button class="btn mt-16" id="i-save">Save integrations</button>
+    </div>
+
     <div class="card mb-16">
       <h4 style="margin:0 0 14px">General</h4>
       <div class="form-grid">
@@ -1689,6 +2238,49 @@ async function renderSettings(view) {
       </table></div>
       <button class="btn mt-16" id="s-reload-templates">↻ Reload templates from disk</button>
     </div>`;
+
+  // Runtime status
+  api('/api/system/runtime')
+    .then((data) => {
+      const el = $('#runtime-info');
+      if (!el) return;
+      el.innerHTML = data.docker.available
+        ? `✅ Docker ${esc(data.docker.info?.version || '')} detected — servers run isolated in containers.`
+        : `⚠️ Docker not found at <span class="mono">${esc(
+            data.docker.socket
+          )}</span>. Servers run as plain processes and share the host. Install Docker and restart the panel for isolation.`;
+    })
+    .catch(() => {});
+
+  $('#s-containerize').addEventListener('change', async (event) => {
+    try {
+      await api('/api/settings', { method: 'PATCH', body: { containerize: event.target.checked } });
+      toast(event.target.checked ? 'Containers enabled for new starts' : 'Containers disabled');
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+  });
+
+  $('#i-save').addEventListener('click', async () => {
+    try {
+      await api('/api/settings', {
+        method: 'PATCH',
+        body: {
+          integrations: {
+            curseforgeKey: $('#i-curseforge').value,
+            steamApiKey: $('#i-steam').value,
+            factorio: { username: $('#i-factorio-user').value, token: $('#i-factorio-token').value },
+          },
+        },
+      });
+      toast('Integrations saved');
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+  });
+
+  $('#update-check').addEventListener('click', () => checkForUpdates(true));
+  checkForUpdates(false);
 
   $('#s-save').addEventListener('click', async () => {
     try {
@@ -1728,6 +2320,84 @@ async function renderSettings(view) {
     await loadTemplates();
     toast(`${data.count} templates loaded`);
   });
+}
+
+/* --------------------------------------------------------------- updates */
+
+async function checkForUpdates(interactive) {
+  const status = $('#update-status');
+  const detail = $('#update-detail');
+  if (!status) return;
+  status.innerHTML = '<span class="spinner"></span> Checking…';
+  detail.innerHTML = '';
+
+  let data;
+  try {
+    data = await api('/api/system/update');
+  } catch (err) {
+    status.textContent = err.message;
+    return;
+  }
+
+  if (!data.supported) {
+    status.textContent = data.reason;
+    return;
+  }
+  if (data.error) {
+    status.textContent = data.error;
+    return;
+  }
+
+  const current = data.current ? `${data.current.commit} · ${fmtTime(Date.parse(data.current.date))}` : 'unknown';
+  if (!data.updateAvailable) {
+    status.innerHTML = `✅ Up to date — v${esc(data.version)} (${esc(current)})`;
+    return;
+  }
+
+  status.innerHTML = `🔔 <b>${data.behind} update${data.behind === 1 ? '' : 's'} available</b> — you are on ${esc(current)}`;
+  detail.innerHTML = `
+    <div class="card" style="background:rgba(74,222,128,.06)">
+      <div class="table-wrap"><table>
+        ${data.commits
+          .map(
+            (c) => `<tr><td class="mono faint nowrap" style="width:80px">${esc(c.commit)}</td>
+                      <td>${esc(c.subject)}</td>
+                      <td class="faint nowrap">${fmtTime(Date.parse(c.date))}</td></tr>`
+          )
+          .join('')}
+      </table></div>
+      <button class="btn btn-primary mt-16" id="update-apply">⬇ Update and restart</button>
+    </div>`;
+
+  $('#update-apply').addEventListener('click', async (event) => {
+    const btn = event.currentTarget;
+    if (!(await confirmModal('Update the panel', 'The panel will restart. Containerised game servers keep running; plain processes are stopped and restarted.', 'Update'))) return;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Updating…';
+    try {
+      const result = await api('/api/system/update', { method: 'POST', body: {} });
+      detail.innerHTML = `<div class="card">Updated ${esc(result.from)} → ${esc(result.to)}. Waiting for the panel to come back…</div>`;
+      waitForPanel();
+    } catch (err) {
+      toast(err.message, 'error');
+      btn.disabled = false;
+      btn.textContent = '⬇ Update and restart';
+    }
+  });
+}
+
+/** Poll /api/status after an update until the new panel answers, then reload. */
+function waitForPanel(attempt = 0) {
+  setTimeout(async () => {
+    try {
+      await api('/api/status');
+      toast('Panel updated — reloading');
+      setTimeout(() => location.reload(), 800);
+    } catch {
+      if (attempt < 40) waitForPanel(attempt + 1);
+      else toast('The panel did not come back. Check: journalctl -u gamepanel -n 50', 'error', 15000);
+    }
+  }, 2000);
 }
 
 /* ---------------------------------------------------------------- modals */

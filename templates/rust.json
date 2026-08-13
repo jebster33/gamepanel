@@ -6,31 +6,114 @@
   "description": "Facepunch's Rust dedicated server. Expect a large install (~15 GB) and heavy RAM use.",
   "defaultMemory": 8192,
   "variables": [
-    { "name": "SERVER_HOSTNAME", "label": "Server name", "default": "A GamePanel Rust server" },
-    { "name": "MAX_PLAYERS", "label": "Max players", "type": "number", "default": 50 },
-    { "name": "WORLD_SIZE", "label": "World size", "type": "number", "default": 3500 },
-    { "name": "WORLD_SEED", "label": "World seed", "type": "number", "default": 1337 },
-    { "name": "SERVER_DESCRIPTION", "label": "Description", "default": "Powered by GamePanel" },
-    { "name": "RCON_PASSWORD", "label": "RCON password", "generate": "password", "default": "" }
+    {
+      "name": "SERVER_HOSTNAME",
+      "label": "Server name",
+      "default": "A GamePanel Rust server"
+    },
+    {
+      "name": "MAX_PLAYERS",
+      "label": "Max players",
+      "type": "number",
+      "default": 50
+    },
+    {
+      "name": "WORLD_SIZE",
+      "label": "World size",
+      "type": "number",
+      "default": 3500
+    },
+    {
+      "name": "WORLD_SEED",
+      "label": "World seed",
+      "type": "number",
+      "default": 1337
+    },
+    {
+      "name": "SERVER_DESCRIPTION",
+      "label": "Description",
+      "default": "Powered by GamePanel"
+    },
+    {
+      "name": "RCON_PASSWORD",
+      "label": "RCON password",
+      "generate": "password",
+      "default": ""
+    },
+    {
+      "name": "INSTALL_OXIDE",
+      "label": "Install uMod/Oxide (plugin support)",
+      "default": "true",
+      "options": [
+        "true",
+        "false"
+      ],
+      "description": "Required for the plugin browser. Note that Oxide/uMod servers cannot join the official server list."
+    }
   ],
   "ports": [
-    { "name": "game", "default": 28015, "protocol": "udp" },
-    { "name": "rcon", "default": 28016, "protocol": "tcp", "offset": 1 },
-    { "name": "query", "default": 28017, "protocol": "udp", "offset": 2 },
-    { "name": "app", "default": 28082, "protocol": "tcp", "offset": 67 }
+    {
+      "name": "game",
+      "default": 28015,
+      "protocol": "udp"
+    },
+    {
+      "name": "rcon",
+      "default": 28016,
+      "protocol": "tcp",
+      "offset": 1
+    },
+    {
+      "name": "query",
+      "default": 28017,
+      "protocol": "udp",
+      "offset": 2
+    },
+    {
+      "name": "app",
+      "default": 28082,
+      "protocol": "tcp",
+      "offset": 67
+    }
   ],
   "install": [
-    { "type": "steamcmd", "appid": "258550", "label": "Install Rust dedicated server (this takes a while)" },
-    { "type": "mkdir", "path": "server/gamepanel" }
+    {
+      "type": "steamcmd",
+      "appid": "258550",
+      "label": "Install Rust dedicated server (this takes a while)"
+    },
+    {
+      "type": "mkdir",
+      "path": "server/gamepanel"
+    },
+    {
+      "type": "script",
+      "label": "Install uMod / Oxide",
+      "run": "if [ \"{{INSTALL_OXIDE}}\" = \"true\" ]; then\n  gp_fetch \"https://umod.org/games/rust/download/public\" oxide.zip\n  gp_extract oxide.zip .\n  rm -f oxide.zip\n  mkdir -p oxide/plugins oxide/config oxide/data\n  gp_log \"Oxide installed — plugins go in oxide/plugins\"\nelse\n  gp_log \"Skipping Oxide (vanilla Rust)\"\nfi"
+    }
   ],
   "startCommand": "./RustDedicated -batchmode -nographics +server.identity gamepanel +server.ip 0.0.0.0 +server.port {{PORT}} +server.queryport {{PORT_QUERY}} +rcon.ip 0.0.0.0 +rcon.port {{PORT_RCON}} +rcon.password \"{{RCON_PASSWORD}}\" +rcon.web 1 +app.port {{PORT_APP}} +server.maxplayers {{MAX_PLAYERS}} +server.hostname \"{{SERVER_HOSTNAME}}\" +server.description \"{{SERVER_DESCRIPTION}}\" +server.worldsize {{WORLD_SIZE}} +server.seed {{WORLD_SEED}} +server.saveinterval 300",
   "stopCommand": "quit",
   "stopTimeout": 120,
-  "query": { "type": "a2s", "port": "query" },
-  "rcon": { "type": "source", "port": "rcon" },
+  "query": {
+    "type": "a2s",
+    "port": "query"
+  },
+  "rcon": {
+    "type": "source",
+    "port": "rcon"
+  },
   "logPatterns": {
     "ready": "Server startup complete",
     "join": "([A-Za-z0-9_.\\- ]+)\\[[0-9]+/[0-9]+\\] has entered the game",
     "leave": "([A-Za-z0-9_.\\- ]+)\\[[0-9]+/[0-9]+\\] disconnecting"
+  },
+  "image": "cm2network/steamcmd:root",
+  "mods": {
+    "providers": [
+      "umod"
+    ],
+    "dir": "oxide/plugins",
+    "game": "rust"
   }
 }

@@ -6,14 +6,47 @@
   "description": "Factorio headless server. Creates a fresh map on install; drop your own saves into saves/ to use them instead.",
   "defaultMemory": 2048,
   "variables": [
-    { "name": "FACTORIO_CHANNEL", "label": "Release channel", "default": "stable", "options": ["stable", "latest"] },
-    { "name": "SAVE_NAME", "label": "Save name", "default": "gamepanel" },
-    { "name": "MAX_PLAYERS", "label": "Max players", "type": "number", "default": 10 },
-    { "name": "SERVER_PASSWORD", "label": "Join password", "default": "" }
+    {
+      "name": "FACTORIO_CHANNEL",
+      "label": "Release channel",
+      "default": "stable",
+      "options": [
+        "stable",
+        "latest"
+      ]
+    },
+    {
+      "name": "SAVE_NAME",
+      "label": "Save name",
+      "default": "gamepanel"
+    },
+    {
+      "name": "MAX_PLAYERS",
+      "label": "Max players",
+      "type": "number",
+      "default": 10
+    },
+    {
+      "name": "SERVER_PASSWORD",
+      "label": "Join password",
+      "default": ""
+    }
   ],
-  "ports": [{ "name": "game", "default": 34197, "protocol": "udp" }],
+  "ports": [
+    {
+      "name": "game",
+      "default": 34197,
+      "protocol": "udp"
+    }
+  ],
   "install": [
-    { "type": "apt", "packages": ["xz-utils"], "label": "Install xz-utils" },
+    {
+      "type": "apt",
+      "packages": [
+        "xz-utils"
+      ],
+      "label": "Install xz-utils"
+    },
     {
       "type": "script",
       "label": "Download and unpack Factorio headless",
@@ -29,10 +62,25 @@
   ],
   "startCommand": "./bin/x64/factorio --start-server \"saves/{{SAVE_NAME}}.zip\" --port {{PORT}} --server-settings data/server-settings.json",
   "stopTimeout": 45,
-  "query": { "type": "udp", "port": "game" },
+  "query": {
+    "type": "udp",
+    "port": "game"
+  },
   "logPatterns": {
     "ready": "Hosting game at|Started server",
     "join": "\\[JOIN\\] ([^ ]+) joined",
     "leave": "\\[LEAVE\\] ([^ ]+) left"
+  },
+  "image": "debian:bookworm-slim",
+  "packages": [
+    "xz-utils",
+    "curl",
+    "ca-certificates"
+  ],
+  "mods": {
+    "providers": [
+      "factorio"
+    ],
+    "dir": "mods"
   }
 }

@@ -6,17 +6,51 @@
   "description": "Enshrouded dedicated server. The Windows binary runs under Proton/Wine, which the installer sets up for you.",
   "defaultMemory": 16384,
   "variables": [
-    { "name": "MAX_PLAYERS", "label": "Max players", "type": "number", "default": 16 },
-    { "name": "SERVER_PASSWORD", "label": "Join password", "default": "" },
-    { "name": "SAVE_DIR", "label": "Save directory", "default": "./savegame" }
+    {
+      "name": "MAX_PLAYERS",
+      "label": "Max players",
+      "type": "number",
+      "default": 16
+    },
+    {
+      "name": "SERVER_PASSWORD",
+      "label": "Join password",
+      "default": ""
+    },
+    {
+      "name": "SAVE_DIR",
+      "label": "Save directory",
+      "default": "./savegame"
+    }
   ],
   "ports": [
-    { "name": "game", "default": 15636, "protocol": "udp" },
-    { "name": "query", "default": 15637, "protocol": "udp", "offset": 1 }
+    {
+      "name": "game",
+      "default": 15636,
+      "protocol": "udp"
+    },
+    {
+      "name": "query",
+      "default": 15637,
+      "protocol": "udp",
+      "offset": 1
+    }
   ],
   "install": [
-    { "type": "apt", "packages": ["wine64", "xvfb", "cabextract"], "label": "Install Wine (Enshrouded ships a Windows binary)" },
-    { "type": "steamcmd", "appid": "2278520", "label": "Install Enshrouded dedicated server" }
+    {
+      "type": "apt",
+      "packages": [
+        "wine64",
+        "xvfb",
+        "cabextract"
+      ],
+      "label": "Install Wine (Enshrouded ships a Windows binary)"
+    },
+    {
+      "type": "steamcmd",
+      "appid": "2278520",
+      "label": "Install Enshrouded dedicated server"
+    }
   ],
   "configFiles": [
     {
@@ -30,13 +64,27 @@
       "path": "enshrouded_server.json",
       "format": "json",
       "createIfMissing": true,
-      "set": { "gamePort": "{{PORT}}", "queryPort": "{{PORT_QUERY}}", "slotCount": "{{MAX_PLAYERS}}" }
+      "set": {
+        "gamePort": "{{PORT}}",
+        "queryPort": "{{PORT_QUERY}}",
+        "slotCount": "{{MAX_PLAYERS}}"
+      }
     }
   ],
   "startCommand": "WINEDEBUG=-all WINEPREFIX={{SERVER_DIR}}/.wine xvfb-run -a wine64 enshrouded_server.exe",
   "stopTimeout": 60,
-  "query": { "type": "a2s", "port": "query" },
+  "query": {
+    "type": "a2s",
+    "port": "query"
+  },
   "logPatterns": {
     "ready": "HostOnline|Server started"
-  }
+  },
+  "image": "cm2network/steamcmd:root",
+  "packages": [
+    "wine",
+    "wine64",
+    "xvfb",
+    "cabextract"
+  ]
 }

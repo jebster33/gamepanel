@@ -20,6 +20,13 @@ const DEFAULT_STATE = {
     portRangeEnd: 27999,
     autoRestart: true,
     maxCrashRestarts: 5,
+    // Run each game server in its own container when Docker is available.
+    containerize: true,
+    integrations: {
+      curseforgeKey: '',
+      steamApiKey: '',
+      factorio: { username: '', token: '' },
+    },
   },
 };
 

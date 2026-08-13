@@ -59,6 +59,24 @@ if [ "$need_node" = "1" ]; then
   ok "Node.js $(node -v) installed"
 fi
 
+# ----------------------------------------------------------------- docker --
+
+# Containers are what keep game servers from interfering with each other.
+# The panel still works without Docker, just without isolation.
+if [ "${GP_SKIP_DOCKER:-0}" = "1" ]; then
+  warn "Skipping Docker installation (GP_SKIP_DOCKER=1) — servers will run as plain processes"
+elif command -v docker >/dev/null 2>&1; then
+  ok "Docker $(docker --version | awk '{print $3}' | tr -d ,) already installed"
+else
+  info "Installing Docker Engine (used to isolate each game server)"
+  if curl -fsSL https://get.docker.com | sh >/dev/null 2>&1; then
+    systemctl enable --now docker >/dev/null 2>&1 || true
+    ok "Docker installed"
+  else
+    warn "Docker could not be installed automatically — the panel will fall back to plain processes"
+  fi
+fi
+
 # ------------------------------------------------------------------- user --
 
 if ! id -u "$SERVICE_USER" >/dev/null 2>&1; then
@@ -67,6 +85,14 @@ if ! id -u "$SERVICE_USER" >/dev/null 2>&1; then
   ok "User created"
 else
   ok "User '$SERVICE_USER' already exists"
+fi
+
+# Talking to the Docker socket requires membership of the docker group.
+# Note: that is equivalent to root on this host — see the README's security
+# section before giving anyone else access to the panel user.
+if getent group docker >/dev/null 2>&1; then
+  usermod -aG docker "$SERVICE_USER"
+  ok "Added '$SERVICE_USER' to the docker group"
 fi
 
 # ------------------------------------------------------------------- code --
@@ -107,8 +133,9 @@ ok "Data directory ready"
 info "Granting '$SERVICE_USER' passwordless apt-get for game dependencies"
 cat > /etc/sudoers.d/gamepanel <<EOF
 # Installed by the GamePanel installer.
-# Lets the panel install game runtime dependencies without running as root.
-$SERVICE_USER ALL=(root) NOPASSWD: /usr/bin/apt-get, /usr/bin/dpkg
+# Lets the panel install game runtime dependencies without running as root,
+# and restart itself when you apply an update from the web UI.
+$SERVICE_USER ALL=(root) NOPASSWD: /usr/bin/apt-get, /usr/bin/dpkg, /usr/bin/systemctl restart gamepanel, /bin/systemctl restart gamepanel
 EOF
 chmod 440 /etc/sudoers.d/gamepanel
 visudo -cf /etc/sudoers.d/gamepanel >/dev/null || { rm -f /etc/sudoers.d/gamepanel; warn "sudoers rule rejected — dependency installs will need manual apt"; }

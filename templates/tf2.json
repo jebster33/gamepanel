@@ -6,18 +6,53 @@
   "description": "Team Fortress 2 dedicated server.",
   "defaultMemory": 2048,
   "variables": [
-    { "name": "MAP", "label": "Starting map", "default": "cp_dustbowl" },
-    { "name": "MAX_PLAYERS", "label": "Max players", "type": "number", "default": 24 },
-    { "name": "GSLT", "label": "Steam game server token (GSLT)", "default": "" },
-    { "name": "RCON_PASSWORD", "label": "RCON password", "generate": "password", "default": "" }
+    {
+      "name": "MAP",
+      "label": "Starting map",
+      "default": "cp_dustbowl"
+    },
+    {
+      "name": "MAX_PLAYERS",
+      "label": "Max players",
+      "type": "number",
+      "default": 24
+    },
+    {
+      "name": "GSLT",
+      "label": "Steam game server token (GSLT)",
+      "default": ""
+    },
+    {
+      "name": "RCON_PASSWORD",
+      "label": "RCON password",
+      "generate": "password",
+      "default": ""
+    }
   ],
   "ports": [
-    { "name": "game", "default": 27015, "protocol": "udp" },
-    { "name": "tv", "default": 27020, "protocol": "udp", "offset": 5 }
+    {
+      "name": "game",
+      "default": 27015,
+      "protocol": "udp"
+    },
+    {
+      "name": "tv",
+      "default": 27020,
+      "protocol": "udp",
+      "offset": 5
+    }
   ],
   "install": [
-    { "type": "steamcmd", "appid": "232250", "label": "Install Team Fortress 2 dedicated server" },
-    { "type": "chmod", "path": "srcds_run", "mode": "+x" }
+    {
+      "type": "steamcmd",
+      "appid": "232250",
+      "label": "Install Team Fortress 2 dedicated server"
+    },
+    {
+      "type": "chmod",
+      "path": "srcds_run",
+      "mode": "+x"
+    }
   ],
   "configFiles": [
     {
@@ -29,11 +64,18 @@
   "startCommand": "./srcds_run -game tf -console -norestart -port {{PORT}} +tv_port {{PORT_TV}} +maxplayers {{MAX_PLAYERS}} +map {{MAP}} +sv_setsteamaccount \"{{GSLT}}\"",
   "stopCommand": "quit",
   "stopTimeout": 45,
-  "query": { "type": "a2s", "port": "game" },
-  "rcon": { "type": "source", "port": "game" },
+  "query": {
+    "type": "a2s",
+    "port": "game"
+  },
+  "rcon": {
+    "type": "source",
+    "port": "game"
+  },
   "logPatterns": {
     "ready": "VAC secure mode|gameserver Steam ID",
     "join": "\"([^<]+)<[0-9]+><[^>]*><>\" entered the game",
     "leave": "\"([^<]+)<[0-9]+><[^>]*><[^>]*>\" disconnected"
-  }
+  },
+  "image": "cm2network/steamcmd:root"
 }

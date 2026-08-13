@@ -6,21 +6,79 @@
   "description": "Counter-Strike 2 dedicated server. A Game Server Login Token (GSLT) is required for public internet servers — get one at steamcommunity.com/dev/managegameservers.",
   "defaultMemory": 4096,
   "variables": [
-    { "name": "GSLT", "label": "Steam game server token (GSLT)", "default": "", "description": "Leave empty for LAN-only play." },
-    { "name": "MAP", "label": "Starting map", "default": "de_dust2" },
-    { "name": "GAME_MODE", "label": "Game mode", "default": "1", "options": ["0", "1", "2"], "description": "0 = casual, 1 = competitive, 2 = wingman." },
-    { "name": "GAME_TYPE", "label": "Game type", "default": "0", "options": ["0", "1"] },
-    { "name": "MAX_PLAYERS", "label": "Max players", "type": "number", "default": 12 },
-    { "name": "RCON_PASSWORD", "label": "RCON password", "generate": "password", "default": "" },
-    { "name": "SERVER_PASSWORD", "label": "Join password", "default": "" }
+    {
+      "name": "GSLT",
+      "label": "Steam game server token (GSLT)",
+      "default": "",
+      "description": "Leave empty for LAN-only play."
+    },
+    {
+      "name": "MAP",
+      "label": "Starting map",
+      "default": "de_dust2"
+    },
+    {
+      "name": "GAME_MODE",
+      "label": "Game mode",
+      "default": "1",
+      "options": [
+        "0",
+        "1",
+        "2"
+      ],
+      "description": "0 = casual, 1 = competitive, 2 = wingman."
+    },
+    {
+      "name": "GAME_TYPE",
+      "label": "Game type",
+      "default": "0",
+      "options": [
+        "0",
+        "1"
+      ]
+    },
+    {
+      "name": "MAX_PLAYERS",
+      "label": "Max players",
+      "type": "number",
+      "default": 12
+    },
+    {
+      "name": "RCON_PASSWORD",
+      "label": "RCON password",
+      "generate": "password",
+      "default": ""
+    },
+    {
+      "name": "SERVER_PASSWORD",
+      "label": "Join password",
+      "default": ""
+    }
   ],
   "ports": [
-    { "name": "game", "default": 27015, "protocol": "udp" },
-    { "name": "tv", "default": 27020, "protocol": "udp", "offset": 5 }
+    {
+      "name": "game",
+      "default": 27015,
+      "protocol": "udp"
+    },
+    {
+      "name": "tv",
+      "default": 27020,
+      "protocol": "udp",
+      "offset": 5
+    }
   ],
   "install": [
-    { "type": "steamcmd", "appid": "730", "label": "Install Counter-Strike 2 (~35 GB)" },
-    { "type": "chmod", "path": "game/bin/linuxsteamrt64/cs2", "mode": "+x" }
+    {
+      "type": "steamcmd",
+      "appid": "730",
+      "label": "Install Counter-Strike 2 (~35 GB)"
+    },
+    {
+      "type": "chmod",
+      "path": "game/bin/linuxsteamrt64/cs2",
+      "mode": "+x"
+    }
   ],
   "configFiles": [
     {
@@ -32,11 +90,18 @@
   "startCommand": "./game/bin/linuxsteamrt64/cs2 -dedicated -console -usercon -port {{PORT}} +tv_port {{PORT_TV}} +game_type {{GAME_TYPE}} +game_mode {{GAME_MODE}} +map {{MAP}} +sv_visiblemaxplayers {{MAX_PLAYERS}} +rcon_password \"{{RCON_PASSWORD}}\" +sv_setsteamaccount \"{{GSLT}}\" +exec gamepanel.cfg",
   "stopCommand": "quit",
   "stopTimeout": 45,
-  "query": { "type": "a2s", "port": "game" },
-  "rcon": { "type": "source", "port": "game" },
+  "query": {
+    "type": "a2s",
+    "port": "game"
+  },
+  "rcon": {
+    "type": "source",
+    "port": "game"
+  },
   "logPatterns": {
     "ready": "Connection to Steam servers successful|GC Connection established",
     "join": "\"([^<]+)<[0-9]+><\\[?U?:?[0-9:]+\\]?><>\" entered the game",
     "leave": "\"([^<]+)<[0-9]+><\\[?U?:?[0-9:]+\\]?><[^>]*>\" disconnected"
-  }
+  },
+  "image": "cm2network/steamcmd:root"
 }

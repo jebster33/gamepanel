@@ -6,25 +6,68 @@
   "description": "Modded Minecraft with the Fabric loader. Drop your mods into the mods/ folder from the file manager.",
   "defaultMemory": 6144,
   "variables": [
-    { "name": "MC_VERSION", "label": "Minecraft version", "default": "1.21.4" },
-    { "name": "LOADER_VERSION", "label": "Fabric loader version", "default": "latest" },
-    { "name": "MAX_PLAYERS", "label": "Max players", "type": "number", "default": 20 },
-    { "name": "MOTD", "label": "Server MOTD", "default": "A modded GamePanel server" },
-    { "name": "JAVA_ARGS", "label": "Extra JVM flags", "default": "-XX:+UseG1GC" },
-    { "name": "RCON_PASSWORD", "label": "RCON password", "generate": "password", "default": "" }
+    {
+      "name": "MC_VERSION",
+      "label": "Minecraft version",
+      "default": "1.21.4"
+    },
+    {
+      "name": "LOADER_VERSION",
+      "label": "Fabric loader version",
+      "default": "latest"
+    },
+    {
+      "name": "MAX_PLAYERS",
+      "label": "Max players",
+      "type": "number",
+      "default": 20
+    },
+    {
+      "name": "MOTD",
+      "label": "Server MOTD",
+      "default": "A modded GamePanel server"
+    },
+    {
+      "name": "JAVA_ARGS",
+      "label": "Extra JVM flags",
+      "default": "-XX:+UseG1GC"
+    },
+    {
+      "name": "RCON_PASSWORD",
+      "label": "RCON password",
+      "generate": "password",
+      "default": ""
+    }
   ],
   "ports": [
-    { "name": "game", "default": 25565, "protocol": "tcp" },
-    { "name": "rcon", "default": 25575, "protocol": "tcp", "offset": 10 }
+    {
+      "name": "game",
+      "default": 25565,
+      "protocol": "tcp"
+    },
+    {
+      "name": "rcon",
+      "default": 25575,
+      "protocol": "tcp",
+      "offset": 10
+    }
   ],
   "install": [
-    { "type": "java", "version": "21", "label": "Install Java 21" },
+    {
+      "type": "java",
+      "version": "21",
+      "label": "Install Java 21"
+    },
     {
       "type": "script",
       "label": "Install the Fabric server launcher",
       "run": "LOADER=\"{{LOADER_VERSION}}\"\nif [ \"$LOADER\" = \"latest\" ] || [ -z \"$LOADER\" ]; then\n  LOADER=$(curl -sf https://meta.fabricmc.net/v2/versions/loader | node -e 'let d=\"\";process.stdin.on(\"data\",c=>d+=c).on(\"end\",()=>{const j=JSON.parse(d);console.log((j.find(x=>x.stable)||j[0]).version);})')\nfi\nINSTALLER=$(curl -sf https://meta.fabricmc.net/v2/versions/installer | node -e 'let d=\"\";process.stdin.on(\"data\",c=>d+=c).on(\"end\",()=>{const j=JSON.parse(d);console.log((j.find(x=>x.stable)||j[0]).version);})')\ngp_log \"Fabric loader $LOADER / installer $INSTALLER for Minecraft {{MC_VERSION}}\"\ngp_fetch \"https://meta.fabricmc.net/v2/versions/loader/{{MC_VERSION}}/$LOADER/$INSTALLER/server/jar\" server.jar\nmkdir -p mods"
     },
-    { "type": "writeFile", "path": "eula.txt", "content": "# Accepted through GamePanel on install\neula=true\n" }
+    {
+      "type": "writeFile",
+      "path": "eula.txt",
+      "content": "# Accepted through GamePanel on install\neula=true\n"
+    }
   ],
   "configFiles": [
     {
@@ -51,11 +94,28 @@
   "startCommand": "java -Xms{{MEMORY}}M -Xmx{{MEMORY}}M {{JAVA_ARGS}} -jar server.jar nogui",
   "stopCommand": "stop",
   "stopTimeout": 90,
-  "query": { "type": "minecraft", "port": "game" },
-  "rcon": { "type": "source", "port": "rcon" },
+  "query": {
+    "type": "minecraft",
+    "port": "game"
+  },
+  "rcon": {
+    "type": "source",
+    "port": "rcon"
+  },
   "logPatterns": {
     "ready": "Done \\([0-9.]+s\\)!",
     "join": "([A-Za-z0-9_]{3,16}) joined the game",
     "leave": "([A-Za-z0-9_]{3,16}) left the game"
+  },
+  "image": "eclipse-temurin:21-jre",
+  "mods": {
+    "providers": [
+      "modrinth",
+      "curseforge"
+    ],
+    "dir": "mods",
+    "loader": "fabric",
+    "projectType": "mod",
+    "gameVersionVar": "MC_VERSION"
   }
 }

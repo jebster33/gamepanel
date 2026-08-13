@@ -6,19 +6,57 @@
   "description": "Garry's Mod dedicated server with Workshop collection support.",
   "defaultMemory": 4096,
   "variables": [
-    { "name": "GAMEMODE", "label": "Gamemode", "default": "sandbox" },
-    { "name": "MAP", "label": "Starting map", "default": "gm_construct" },
-    { "name": "MAX_PLAYERS", "label": "Max players", "type": "number", "default": 16 },
-    { "name": "WORKSHOP_COLLECTION", "label": "Workshop collection ID", "default": "" },
-    { "name": "GSLT", "label": "Steam game server token (GSLT)", "default": "" },
-    { "name": "RCON_PASSWORD", "label": "RCON password", "generate": "password", "default": "" }
+    {
+      "name": "GAMEMODE",
+      "label": "Gamemode",
+      "default": "sandbox"
+    },
+    {
+      "name": "MAP",
+      "label": "Starting map",
+      "default": "gm_construct"
+    },
+    {
+      "name": "MAX_PLAYERS",
+      "label": "Max players",
+      "type": "number",
+      "default": 16
+    },
+    {
+      "name": "WORKSHOP_COLLECTION",
+      "label": "Workshop collection ID",
+      "default": ""
+    },
+    {
+      "name": "GSLT",
+      "label": "Steam game server token (GSLT)",
+      "default": ""
+    },
+    {
+      "name": "RCON_PASSWORD",
+      "label": "RCON password",
+      "generate": "password",
+      "default": ""
+    }
   ],
   "ports": [
-    { "name": "game", "default": 27015, "protocol": "udp" }
+    {
+      "name": "game",
+      "default": 27015,
+      "protocol": "udp"
+    }
   ],
   "install": [
-    { "type": "steamcmd", "appid": "4020", "label": "Install Garry's Mod dedicated server" },
-    { "type": "chmod", "path": "srcds_run", "mode": "+x" }
+    {
+      "type": "steamcmd",
+      "appid": "4020",
+      "label": "Install Garry's Mod dedicated server"
+    },
+    {
+      "type": "chmod",
+      "path": "srcds_run",
+      "mode": "+x"
+    }
   ],
   "configFiles": [
     {
@@ -30,11 +68,25 @@
   "startCommand": "./srcds_run -game garrysmod -console -norestart -port {{PORT}} +maxplayers {{MAX_PLAYERS}} +gamemode {{GAMEMODE}} +map {{MAP}} +host_workshop_collection {{WORKSHOP_COLLECTION}} +sv_setsteamaccount \"{{GSLT}}\"",
   "stopCommand": "quit",
   "stopTimeout": 45,
-  "query": { "type": "a2s", "port": "game" },
-  "rcon": { "type": "source", "port": "game" },
+  "query": {
+    "type": "a2s",
+    "port": "game"
+  },
+  "rcon": {
+    "type": "source",
+    "port": "game"
+  },
   "logPatterns": {
     "ready": "gameserver Steam ID|VAC secure mode",
     "join": "Client \"([^\"]+)\" connected",
     "leave": "Dropped ([^ ]+) from server"
+  },
+  "image": "cm2network/steamcmd:root",
+  "mods": {
+    "providers": [
+      "workshop"
+    ],
+    "dir": "garrysmod/addons",
+    "appId": 4020
   }
 }

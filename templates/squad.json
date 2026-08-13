@@ -6,17 +6,47 @@
   "description": "Squad dedicated server. Large install; 100-player rounds want a fast CPU and 12 GB+ of RAM.",
   "defaultMemory": 12288,
   "variables": [
-    { "name": "MAX_PLAYERS", "label": "Max players", "type": "number", "default": 80 },
-    { "name": "RCON_PASSWORD", "label": "RCON password", "generate": "password", "default": "" }
+    {
+      "name": "MAX_PLAYERS",
+      "label": "Max players",
+      "type": "number",
+      "default": 80
+    },
+    {
+      "name": "RCON_PASSWORD",
+      "label": "RCON password",
+      "generate": "password",
+      "default": ""
+    }
   ],
   "ports": [
-    { "name": "game", "default": 7787, "protocol": "udp" },
-    { "name": "query", "default": 27165, "protocol": "udp" },
-    { "name": "rcon", "default": 21114, "protocol": "tcp" }
+    {
+      "name": "game",
+      "default": 7787,
+      "protocol": "udp"
+    },
+    {
+      "name": "query",
+      "default": 27165,
+      "protocol": "udp"
+    },
+    {
+      "name": "rcon",
+      "default": 21114,
+      "protocol": "tcp"
+    }
   ],
   "install": [
-    { "type": "steamcmd", "appid": "403240", "label": "Install Squad dedicated server (~50 GB)" },
-    { "type": "chmod", "path": "SquadGameServer.sh", "mode": "+x" }
+    {
+      "type": "steamcmd",
+      "appid": "403240",
+      "label": "Install Squad dedicated server (~50 GB)"
+    },
+    {
+      "type": "chmod",
+      "path": "SquadGameServer.sh",
+      "mode": "+x"
+    }
   ],
   "configFiles": [
     {
@@ -32,7 +62,16 @@
   ],
   "startCommand": "./SquadGameServer.sh Port={{PORT}} QueryPort={{PORT_QUERY}} FIXEDMAXPLAYERS={{MAX_PLAYERS}} RANDOM=ALWAYS -log",
   "stopTimeout": 90,
-  "query": { "type": "a2s", "port": "query" },
-  "rcon": { "type": "source", "port": "rcon" },
-  "logPatterns": { "ready": "Server started|LogSquad: PostLogin" }
+  "query": {
+    "type": "a2s",
+    "port": "query"
+  },
+  "rcon": {
+    "type": "source",
+    "port": "rcon"
+  },
+  "logPatterns": {
+    "ready": "Server started|LogSquad: PostLogin"
+  },
+  "image": "cm2network/steamcmd:root"
 }

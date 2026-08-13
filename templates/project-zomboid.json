@@ -6,18 +6,54 @@
   "description": "Project Zomboid dedicated server. Console commands work directly from the panel.",
   "defaultMemory": 6144,
   "variables": [
-    { "name": "ADMIN_PASSWORD", "label": "Admin password", "generate": "password", "default": "" },
-    { "name": "SERVER_PASSWORD", "label": "Join password", "default": "" },
-    { "name": "MAX_PLAYERS", "label": "Max players", "type": "number", "default": 16 },
-    { "name": "SERVER_MEMORY", "label": "Java heap (MB)", "type": "number", "default": 4096 }
+    {
+      "name": "ADMIN_PASSWORD",
+      "label": "Admin password",
+      "generate": "password",
+      "default": ""
+    },
+    {
+      "name": "SERVER_PASSWORD",
+      "label": "Join password",
+      "default": ""
+    },
+    {
+      "name": "MAX_PLAYERS",
+      "label": "Max players",
+      "type": "number",
+      "default": 16
+    },
+    {
+      "name": "SERVER_MEMORY",
+      "label": "Java heap (MB)",
+      "type": "number",
+      "default": 4096
+    }
   ],
   "ports": [
-    { "name": "game", "default": 16261, "protocol": "udp" },
-    { "name": "direct", "default": 16262, "protocol": "udp", "offset": 1 }
+    {
+      "name": "game",
+      "default": 16261,
+      "protocol": "udp"
+    },
+    {
+      "name": "direct",
+      "default": 16262,
+      "protocol": "udp",
+      "offset": 1
+    }
   ],
   "install": [
-    { "type": "steamcmd", "appid": "380870", "label": "Install Project Zomboid dedicated server" },
-    { "type": "chmod", "path": "start-server.sh", "mode": "+x" }
+    {
+      "type": "steamcmd",
+      "appid": "380870",
+      "label": "Install Project Zomboid dedicated server"
+    },
+    {
+      "type": "chmod",
+      "path": "start-server.sh",
+      "mode": "+x"
+    }
   ],
   "configFiles": [
     {
@@ -31,16 +67,27 @@
       "path": "Zomboid/Server/servertest.ini",
       "format": "properties",
       "createIfMissing": true,
-      "set": { "DefaultPort": "{{PORT}}", "UDPPort": "{{PORT_DIRECT}}", "MaxPlayers": "{{MAX_PLAYERS}}" }
+      "set": {
+        "DefaultPort": "{{PORT}}",
+        "UDPPort": "{{PORT_DIRECT}}",
+        "MaxPlayers": "{{MAX_PLAYERS}}"
+      }
     }
   ],
   "startCommand": "ZOMBOID_HOME={{SERVER_DIR}}/Zomboid ./start-server.sh -cachedir={{SERVER_DIR}}/Zomboid -adminpassword \"{{ADMIN_PASSWORD}}\" -port {{PORT}}",
   "stopCommand": "quit",
   "stopTimeout": 90,
-  "query": { "type": "udp", "port": "game" },
+  "query": {
+    "type": "udp",
+    "port": "game"
+  },
   "logPatterns": {
     "ready": "SERVER STARTED",
     "join": "Fully connected: ([^ ]+)",
     "leave": "Disconnected player \"([^\"]+)\""
-  }
+  },
+  "image": "cm2network/steamcmd:root",
+  "packages": [
+    "openjdk-17-jre-headless"
+  ]
 }

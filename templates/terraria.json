@@ -6,16 +6,66 @@
   "description": "Vanilla Terraria dedicated server. Lightweight — happily runs several worlds on a small VPS.",
   "defaultMemory": 1024,
   "variables": [
-    { "name": "TERRARIA_BUILD", "label": "Terraria build number", "default": "1449", "description": "From terraria.org/api/download/pc-dedicated-server — 1449 is 1.4.4.9." },
-    { "name": "WORLD_NAME", "label": "World name", "default": "World" },
-    { "name": "WORLD_SIZE", "label": "World size", "default": "2", "options": ["1", "2", "3"], "description": "1 small, 2 medium, 3 large." },
-    { "name": "DIFFICULTY", "label": "Difficulty", "default": "1", "options": ["0", "1", "2", "3"] },
-    { "name": "MAX_PLAYERS", "label": "Max players", "type": "number", "default": 8 },
-    { "name": "SERVER_PASSWORD", "label": "Join password", "default": "" }
+    {
+      "name": "TERRARIA_BUILD",
+      "label": "Terraria build number",
+      "default": "1449",
+      "description": "From terraria.org/api/download/pc-dedicated-server — 1449 is 1.4.4.9."
+    },
+    {
+      "name": "WORLD_NAME",
+      "label": "World name",
+      "default": "World"
+    },
+    {
+      "name": "WORLD_SIZE",
+      "label": "World size",
+      "default": "2",
+      "options": [
+        "1",
+        "2",
+        "3"
+      ],
+      "description": "1 small, 2 medium, 3 large."
+    },
+    {
+      "name": "DIFFICULTY",
+      "label": "Difficulty",
+      "default": "1",
+      "options": [
+        "0",
+        "1",
+        "2",
+        "3"
+      ]
+    },
+    {
+      "name": "MAX_PLAYERS",
+      "label": "Max players",
+      "type": "number",
+      "default": 8
+    },
+    {
+      "name": "SERVER_PASSWORD",
+      "label": "Join password",
+      "default": ""
+    }
   ],
-  "ports": [{ "name": "game", "default": 7777, "protocol": "tcp" }],
+  "ports": [
+    {
+      "name": "game",
+      "default": 7777,
+      "protocol": "tcp"
+    }
+  ],
   "install": [
-    { "type": "apt", "packages": ["unzip"], "label": "Install unzip" },
+    {
+      "type": "apt",
+      "packages": [
+        "unzip"
+      ],
+      "label": "Install unzip"
+    },
     {
       "type": "script",
       "label": "Download the Terraria dedicated server",
@@ -34,16 +84,28 @@
       "path": "serverconfig.txt",
       "format": "properties",
       "createIfMissing": true,
-      "set": { "port": "{{PORT}}", "maxplayers": "{{MAX_PLAYERS}}" }
+      "set": {
+        "port": "{{PORT}}",
+        "maxplayers": "{{MAX_PLAYERS}}"
+      }
     }
   ],
   "startCommand": "./TerrariaServer.bin.x86_64 -config serverconfig.txt",
   "stopCommand": "exit",
   "stopTimeout": 45,
-  "query": { "type": "tcp", "port": "game" },
+  "query": {
+    "type": "tcp",
+    "port": "game"
+  },
   "logPatterns": {
     "ready": "Server started",
     "join": "([^ ]+) has joined",
     "leave": "([^ ]+) has left"
-  }
+  },
+  "image": "debian:bookworm-slim",
+  "packages": [
+    "unzip",
+    "curl",
+    "ca-certificates"
+  ]
 }

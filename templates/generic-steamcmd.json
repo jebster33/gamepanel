@@ -6,22 +6,80 @@
   "description": "Install any dedicated server that lives on Steam by entering its App ID, then point the start command at the server binary. Covers every game that has a SteamCMD server build.",
   "defaultMemory": 4096,
   "variables": [
-    { "name": "STEAM_APPID", "label": "Steam App ID", "default": "", "description": "Find it on steamdb.info — e.g. 896660 for Valheim." },
-    { "name": "STEAM_BRANCH", "label": "Steam branch (optional)", "default": "" },
-    { "name": "STEAM_LOGIN", "label": "Steam login", "default": "anonymous", "description": "Most dedicated servers allow anonymous. Games that do not cannot be installed unattended." },
-    { "name": "LAUNCH_BINARY", "label": "Server binary", "default": "./srcds_run", "description": "Path to the executable inside the server directory." },
-    { "name": "LAUNCH_ARGS", "label": "Launch arguments", "default": "-console -port {{PORT}}" },
-    { "name": "QUERY_TYPE", "label": "Query protocol", "default": "a2s", "options": ["a2s", "minecraft", "bedrock", "tcp", "udp", "none"] }
+    {
+      "name": "STEAM_APPID",
+      "label": "Steam App ID",
+      "default": "",
+      "description": "Find it on steamdb.info — e.g. 896660 for Valheim."
+    },
+    {
+      "name": "STEAM_BRANCH",
+      "label": "Steam branch (optional)",
+      "default": ""
+    },
+    {
+      "name": "STEAM_LOGIN",
+      "label": "Steam login",
+      "default": "anonymous",
+      "description": "Most dedicated servers allow anonymous. Games that do not cannot be installed unattended."
+    },
+    {
+      "name": "LAUNCH_BINARY",
+      "label": "Server binary",
+      "default": "./srcds_run",
+      "description": "Path to the executable inside the server directory."
+    },
+    {
+      "name": "LAUNCH_ARGS",
+      "label": "Launch arguments",
+      "default": "-console -port {{PORT}}"
+    },
+    {
+      "name": "QUERY_TYPE",
+      "label": "Query protocol",
+      "default": "a2s",
+      "options": [
+        "a2s",
+        "minecraft",
+        "bedrock",
+        "tcp",
+        "udp",
+        "none"
+      ]
+    }
   ],
   "ports": [
-    { "name": "game", "default": 27015, "protocol": "udp" },
-    { "name": "query", "default": 27016, "protocol": "udp", "offset": 1 }
+    {
+      "name": "game",
+      "default": 27015,
+      "protocol": "udp"
+    },
+    {
+      "name": "query",
+      "default": 27016,
+      "protocol": "udp",
+      "offset": 1
+    }
   ],
   "install": [
-    { "type": "steamcmd", "appid": "{{STEAM_APPID}}", "branch": "{{STEAM_BRANCH}}", "login": "{{STEAM_LOGIN}}", "label": "Install Steam app {{STEAM_APPID}}" },
-    { "type": "chmod", "path": "{{LAUNCH_BINARY}}", "mode": "+x" }
+    {
+      "type": "steamcmd",
+      "appid": "{{STEAM_APPID}}",
+      "branch": "{{STEAM_BRANCH}}",
+      "login": "{{STEAM_LOGIN}}",
+      "label": "Install Steam app {{STEAM_APPID}}"
+    },
+    {
+      "type": "chmod",
+      "path": "{{LAUNCH_BINARY}}",
+      "mode": "+x"
+    }
   ],
   "startCommand": "{{LAUNCH_BINARY}} {{LAUNCH_ARGS}}",
   "stopTimeout": 60,
-  "query": { "type": "a2s", "port": "query" }
+  "query": {
+    "type": "a2s",
+    "port": "query"
+  },
+  "image": "cm2network/steamcmd:root"
 }
