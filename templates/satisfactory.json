@@ -10,7 +10,17 @@
       "name": "BETA_BRANCH",
       "label": "Steam branch",
       "default": "",
-      "description": "Leave empty for the release build, or use 'experimental'."
+      "description": "Experimental tracks the newest game build.",
+      "options": [
+        {
+          "value": "",
+          "label": "Release (stable)"
+        },
+        {
+          "value": "experimental",
+          "label": "Experimental"
+        }
+      ]
     },
     {
       "name": "MAX_PLAYERS",

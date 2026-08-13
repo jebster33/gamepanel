@@ -405,8 +405,12 @@ class ServerManager extends EventEmitter {
         if (!Number.isFinite(n)) fail(400, `${def.label || def.name} must be a number`);
         value = n;
       }
-      if (def.options && def.options.length && !def.options.includes(String(value))) {
-        fail(400, `${def.label || def.name} must be one of: ${def.options.join(', ')}`);
+      if (def.options && def.options.length) {
+        // Options may be plain values or {value,label} pairs.
+        const allowed = def.options.map((o) => String(typeof o === 'object' ? o.value : o));
+        if (!allowed.includes(String(value))) {
+          fail(400, `${def.label || def.name} must be one of: ${allowed.join(', ')}`);
+        }
       }
       if (def.generate === 'password' && !value) {
         value = require('crypto').randomBytes(12).toString('base64url');

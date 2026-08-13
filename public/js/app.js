@@ -2123,10 +2123,35 @@ function wireGenerateButtons(root = document) {
   );
 }
 
+/**
+ * Dropdowns that allow a custom value keep a hidden text input beside them;
+ * the select drives it, and the input is what actually gets submitted.
+ */
+function wireCustomOptions(root = document) {
+  root.querySelectorAll('[data-custom-for]').forEach((select) => {
+    const name = select.dataset.customFor;
+    const input = root.querySelector(`[data-custom-input="${CSS.escape(name)}"]`);
+    if (!input) return;
+    const sync = () => {
+      const custom = select.value === '__custom__';
+      input.classList.toggle('hidden', !custom);
+      if (custom) {
+        input.focus();
+        input.select();
+      } else {
+        input.value = select.value;
+      }
+    };
+    select.addEventListener('change', sync);
+    if (select.value !== '__custom__') input.value = select.value;
+  });
+}
+
 /** Everything a freshly opened deploy form needs. */
 function wireDeployForm(root = document) {
   wireMemoryField(root);
   wireGenerateButtons(root);
+  wireCustomOptions(root);
   checkPortConflicts(root);
   hydrateOptionFields(root);
 }
@@ -2181,11 +2206,31 @@ function variableField(v) {
       <div class="hint">${esc(v.description || 'Leave blank and one will be generated for you.')}</div></label>`;
   }
 
+  // Fixed choices. Entries may be plain values or {value,label} pairs, and
+  // `allowCustom` adds an escape hatch for things like Workshop map names.
   if (v.options?.length) {
+    const known = v.options.map((o) => String(typeof o === 'object' ? o.value : o));
+    const isCustom = v.default !== undefined && v.default !== '' && !known.includes(String(v.default));
     return `<label><span>${esc(v.label || v.name)}</span>
-      <select id="${id}" data-var="${esc(v.name)}">
-        ${v.options.map((o) => `<option ${String(v.default) === String(o) ? 'selected' : ''}>${esc(o)}</option>`).join('')}
+      <select id="${id}" ${v.allowCustom ? `data-custom-for="${esc(v.name)}"` : `data-var="${esc(v.name)}"`}>
+        ${v.options
+          .map((o) => {
+            const value = typeof o === 'object' ? o.value : o;
+            const text = typeof o === 'object' ? o.label || o.value : o;
+            return `<option value="${esc(value)}" ${
+              String(v.default) === String(value) ? 'selected' : ''
+            }>${esc(text)}</option>`;
+          })
+          .join('')}
+        ${v.allowCustom ? `<option value="__custom__" ${isCustom ? 'selected' : ''}>Custom…</option>` : ''}
       </select>
+      ${
+        v.allowCustom
+          ? `<input class="mt-8 ${isCustom ? '' : 'hidden'}" data-var="${esc(v.name)}" data-custom-input="${esc(
+              v.name
+            )}" value="${esc(v.default ?? '')}" placeholder="Type an exact value" />`
+          : ''
+      }
       ${v.description ? `<div class="hint">${esc(v.description)}</div>` : ''}</label>`;
   }
   const isLong = String(v.default || '').length > 60;

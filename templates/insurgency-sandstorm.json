@@ -9,7 +9,24 @@
     {
       "name": "MAP",
       "label": "Starting map",
-      "default": "Farmhouse"
+      "default": "Farmhouse",
+      "options": [
+        "Farmhouse",
+        "Ministry",
+        "Hideout",
+        "Precinct",
+        "Crossing",
+        "Summit",
+        "Refinery",
+        "Tell",
+        "Hillside",
+        "Bab",
+        "Citadel",
+        "Gap",
+        "Sinjar",
+        "Outskirts"
+      ],
+      "allowCustom": true
     },
     {
       "name": "SCENARIO",

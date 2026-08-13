@@ -10,7 +10,22 @@
       "name": "MAP",
       "label": "Map",
       "default": "TheIsland",
-      "description": "TheIsland, Ragnarok, TheCenter, ScorchedEarth_P, Aberration_P, Extinction, Valguero_P, CrystalIsles, Genesis, Fjordur…"
+      "description": "Maps shipped with the dedicated server.",
+      "options": [
+        "TheIsland",
+        "TheCenter",
+        "ScorchedEarth_P",
+        "Ragnarok",
+        "Aberration_P",
+        "Extinction",
+        "Valguero_P",
+        "CrystalIsles",
+        "Genesis",
+        "Gen2",
+        "LostIsland",
+        "Fjordur"
+      ],
+      "allowCustom": true
     },
     {
       "name": "MAX_PLAYERS",

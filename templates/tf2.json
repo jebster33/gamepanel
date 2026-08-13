@@ -9,7 +9,22 @@
     {
       "name": "MAP",
       "label": "Starting map",
-      "default": "cp_dustbowl"
+      "default": "cp_dustbowl",
+      "options": [
+        "cp_dustbowl",
+        "cp_badlands",
+        "cp_granary",
+        "cp_process_final",
+        "ctf_2fort",
+        "ctf_turbine",
+        "pl_upward",
+        "pl_badwater",
+        "pl_goldrush",
+        "koth_viaduct",
+        "koth_harvest_final",
+        "pl_barnblitz"
+      ],
+      "allowCustom": true
     },
     {
       "name": "MAX_PLAYERS",

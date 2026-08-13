@@ -9,7 +9,22 @@
     {
       "name": "MAP",
       "label": "Map",
-      "default": "PEI"
+      "default": "PEI",
+      "options": [
+        "PEI",
+        "Washington",
+        "Yukon",
+        "Russia",
+        "Hawaii",
+        "Germany",
+        "France",
+        "Elver",
+        "Escalation",
+        "Arid",
+        "Kuwait",
+        "Buak"
+      ],
+      "allowCustom": true
     },
     {
       "name": "MAX_PLAYERS",

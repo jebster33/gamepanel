@@ -9,12 +9,45 @@
     {
       "name": "GAMEMODE",
       "label": "Gamemode",
-      "default": "sandbox"
+      "default": "sandbox",
+      "options": [
+        {
+          "value": "sandbox",
+          "label": "Sandbox"
+        },
+        {
+          "value": "darkrp",
+          "label": "DarkRP (needs the addon)"
+        },
+        {
+          "value": "terrortown",
+          "label": "Trouble in Terrorist Town (needs the addon)"
+        },
+        {
+          "value": "prop_hunt",
+          "label": "Prop Hunt (needs the addon)"
+        },
+        {
+          "value": "murder",
+          "label": "Murder (needs the addon)"
+        }
+      ],
+      "allowCustom": true,
+      "description": "Gamemodes other than Sandbox need their addon installed first."
     },
     {
       "name": "MAP",
       "label": "Starting map",
-      "default": "gm_construct"
+      "default": "gm_construct",
+      "options": [
+        "gm_construct",
+        "gm_flatgrass",
+        "gm_bigcity",
+        "rp_downtown_v4c_v2",
+        "ttt_minecraft_b5"
+      ],
+      "allowCustom": true,
+      "description": "Only maps present on the server will load — Workshop maps arrive with your collection."
     },
     {
       "name": "MAX_PLAYERS",

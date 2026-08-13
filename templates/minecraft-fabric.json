@@ -9,14 +9,16 @@
     {
       "name": "MC_VERSION",
       "label": "Minecraft version",
-      "default": "1.21.4",
+      "default": "latest",
       "source": "fabric-game-version",
       "description": "Fabric-supported game versions."
     },
     {
       "name": "LOADER_VERSION",
       "label": "Fabric loader version",
-      "default": "latest"
+      "default": "latest",
+      "source": "fabric-loader",
+      "description": "Fabric loader build. The newest stable one is picked for you."
     },
     {
       "name": "MAX_PLAYERS",
@@ -63,7 +65,7 @@
     {
       "type": "script",
       "label": "Install the Fabric server launcher",
-      "run": "LOADER=\"{{LOADER_VERSION}}\"\nif [ \"$LOADER\" = \"latest\" ] || [ -z \"$LOADER\" ]; then\n  LOADER=$(curl -sf https://meta.fabricmc.net/v2/versions/loader | node -e 'let d=\"\";process.stdin.on(\"data\",c=>d+=c).on(\"end\",()=>{const j=JSON.parse(d);console.log((j.find(x=>x.stable)||j[0]).version);})')\nfi\nINSTALLER=$(curl -sf https://meta.fabricmc.net/v2/versions/installer | node -e 'let d=\"\";process.stdin.on(\"data\",c=>d+=c).on(\"end\",()=>{const j=JSON.parse(d);console.log((j.find(x=>x.stable)||j[0]).version);})')\ngp_log \"Fabric loader $LOADER / installer $INSTALLER for Minecraft {{MC_VERSION}}\"\ngp_fetch \"https://meta.fabricmc.net/v2/versions/loader/{{MC_VERSION}}/$LOADER/$INSTALLER/server/jar\" server.jar\nmkdir -p mods"
+      "run": "VER=\"{{MC_VERSION}}\"\nif [ \"$VER\" = \"latest\" ] || [ -z \"$VER\" ]; then\n  VER=$(curl -sf https://meta.fabricmc.net/v2/versions/game | node -e 'let d=\"\";process.stdin.on(\"data\",c=>d+=c).on(\"end\",()=>{const j=JSON.parse(d);const s=j.find(v=>v.stable);console.log(s?s.version:\"\");})')\nfi\n[ -n \"$VER\" ] || gp_die \"Could not resolve a Minecraft version for Fabric\"\nLOADER=\"{{LOADER_VERSION}}\"\nif [ \"$LOADER\" = \"latest\" ] || [ -z \"$LOADER\" ]; then\n  LOADER=$(curl -sf https://meta.fabricmc.net/v2/versions/loader | node -e 'let d=\"\";process.stdin.on(\"data\",c=>d+=c).on(\"end\",()=>{const j=JSON.parse(d);console.log(((j.find(x=>x.stable))||j[0]).version);})')\nfi\nINSTALLER=$(curl -sf https://meta.fabricmc.net/v2/versions/installer | node -e 'let d=\"\";process.stdin.on(\"data\",c=>d+=c).on(\"end\",()=>{const j=JSON.parse(d);console.log(((j.find(x=>x.stable))||j[0]).version);})')\ngp_log \"Minecraft $VER · Fabric loader $LOADER · installer $INSTALLER\"\ngp_fetch \"https://meta.fabricmc.net/v2/versions/loader/$VER/$LOADER/$INSTALLER/server/jar\" server.jar\nmkdir -p mods"
     },
     {
       "type": "writeFile",

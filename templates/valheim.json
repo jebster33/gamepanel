@@ -22,8 +22,14 @@
       "label": "List publicly",
       "default": "1",
       "options": [
-        "0",
-        "1"
+        {
+          "value": "1",
+          "label": "Public — listed in the server browser"
+        },
+        {
+          "value": "0",
+          "label": "Private — join by IP only"
+        }
       ]
     },
     {
@@ -31,8 +37,14 @@
       "label": "Enable crossplay",
       "default": "0",
       "options": [
-        "0",
-        "1"
+        {
+          "value": "0",
+          "label": "Off"
+        },
+        {
+          "value": "1",
+          "label": "On (PlayFab crossplay)"
+        }
       ]
     }
   ],

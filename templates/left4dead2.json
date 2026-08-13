@@ -9,7 +9,66 @@
     {
       "name": "MAP",
       "label": "Starting map",
-      "default": "c1m1_hotel"
+      "default": "c1m1_hotel",
+      "options": [
+        {
+          "value": "c1m1_hotel",
+          "label": "Dead Center"
+        },
+        {
+          "value": "c2m1_highway",
+          "label": "Dark Carnival"
+        },
+        {
+          "value": "c3m1_plankcountry",
+          "label": "Swamp Fever"
+        },
+        {
+          "value": "c4m1_milltown_a",
+          "label": "Hard Rain"
+        },
+        {
+          "value": "c5m1_waterfront",
+          "label": "The Parish"
+        },
+        {
+          "value": "c6m1_riverbank",
+          "label": "The Passing"
+        },
+        {
+          "value": "c7m1_docks",
+          "label": "The Sacrifice"
+        },
+        {
+          "value": "c8m1_apartment",
+          "label": "No Mercy"
+        },
+        {
+          "value": "c9m1_alleys",
+          "label": "Crash Course"
+        },
+        {
+          "value": "c10m1_caves",
+          "label": "Death Toll"
+        },
+        {
+          "value": "c11m1_greenhouse",
+          "label": "Dead Air"
+        },
+        {
+          "value": "c12m1_hilltop",
+          "label": "Blood Harvest"
+        },
+        {
+          "value": "c13m1_alpinecreek",
+          "label": "Cold Stream"
+        },
+        {
+          "value": "c14m1_junkyard",
+          "label": "The Last Stand"
+        }
+      ],
+      "allowCustom": true
     },
     {
       "name": "GAME_MODE",

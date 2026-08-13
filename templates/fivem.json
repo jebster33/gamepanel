@@ -78,8 +78,14 @@
       "label": "Framework",
       "default": "txadmin",
       "options": [
-        "txadmin",
-        "vanilla"
+        {
+          "value": "txadmin",
+          "label": "txAdmin — deploy ESX / QBox from its web UI"
+        },
+        {
+          "value": "vanilla",
+          "label": "Vanilla — cfx-server-data only"
+        }
       ],
       "description": "txadmin = guided ESX / QBox / vMenu deployment in the txAdmin web UI. vanilla = plain cfx-server-data, no framework."
     },
@@ -94,8 +100,14 @@
       "label": "Run a MariaDB container for this server",
       "default": "true",
       "options": [
-        "true",
-        "false"
+        {
+          "value": "true",
+          "label": "Yes — run a private MariaDB container"
+        },
+        {
+          "value": "false",
+          "label": "No database"
+        }
       ],
       "description": "Needed for ESX/QBox. Ignored when Docker is unavailable."
     },

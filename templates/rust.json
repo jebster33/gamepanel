@@ -45,8 +45,14 @@
       "label": "Install uMod/Oxide (plugin support)",
       "default": "true",
       "options": [
-        "true",
-        "false"
+        {
+          "value": "true",
+          "label": "Yes — install uMod/Oxide for plugins"
+        },
+        {
+          "value": "false",
+          "label": "No — vanilla Rust"
+        }
       ],
       "description": "Required for the plugin browser. Note that Oxide/uMod servers cannot join the official server list."
     }

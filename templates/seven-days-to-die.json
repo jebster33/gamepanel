@@ -10,7 +10,42 @@
       "name": "WORLD_NAME",
       "label": "World",
       "default": "Navezgane",
-      "description": "Navezgane, PREGEN01, or RWG for a random world."
+      "description": "Navezgane, PREGEN01, or RWG for a random world.",
+      "options": [
+        {
+          "value": "Navezgane",
+          "label": "Navezgane (handcrafted)"
+        },
+        {
+          "value": "PREGEN01",
+          "label": "PREGEN01"
+        },
+        {
+          "value": "PREGEN02",
+          "label": "PREGEN02"
+        },
+        {
+          "value": "PREGEN03",
+          "label": "PREGEN03"
+        },
+        {
+          "value": "PREGEN04",
+          "label": "PREGEN04"
+        },
+        {
+          "value": "PREGEN05",
+          "label": "PREGEN05"
+        },
+        {
+          "value": "PREGEN06",
+          "label": "PREGEN06"
+        },
+        {
+          "value": "RWG",
+          "label": "RWG (random world)"
+        }
+      ],
+      "allowCustom": true
     },
     {
       "name": "GAME_NAME",

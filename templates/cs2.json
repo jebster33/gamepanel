@@ -15,26 +15,55 @@
     {
       "name": "MAP",
       "label": "Starting map",
-      "default": "de_dust2"
+      "default": "de_dust2",
+      "options": [
+        "de_dust2",
+        "de_mirage",
+        "de_inferno",
+        "de_nuke",
+        "de_overpass",
+        "de_ancient",
+        "de_anubis",
+        "de_vertigo",
+        "de_train",
+        "cs_office",
+        "cs_italy"
+      ],
+      "allowCustom": true
     },
     {
       "name": "GAME_MODE",
       "label": "Game mode",
       "default": "1",
       "options": [
-        "0",
-        "1",
-        "2"
+        {
+          "value": "0",
+          "label": "Casual"
+        },
+        {
+          "value": "1",
+          "label": "Competitive"
+        },
+        {
+          "value": "2",
+          "label": "Wingman"
+        }
       ],
-      "description": "0 = casual, 1 = competitive, 2 = wingman."
+      "description": "Wingman also needs game type 0."
     },
     {
       "name": "GAME_TYPE",
       "label": "Game type",
       "default": "0",
       "options": [
-        "0",
-        "1"
+        {
+          "value": "0",
+          "label": "Classic"
+        },
+        {
+          "value": "1",
+          "label": "Gun game / arms race"
+        }
       ]
     },
     {

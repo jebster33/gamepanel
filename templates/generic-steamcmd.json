@@ -21,7 +21,13 @@
       "name": "STEAM_LOGIN",
       "label": "Steam login",
       "default": "anonymous",
-      "description": "Most dedicated servers allow anonymous. Games that do not cannot be installed unattended."
+      "description": "Games requiring a real Steam account cannot be installed unattended.",
+      "options": [
+        {
+          "value": "anonymous",
+          "label": "Anonymous (most dedicated servers)"
+        }
+      ]
     },
     {
       "name": "LAUNCH_BINARY",

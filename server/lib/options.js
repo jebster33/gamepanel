@@ -81,6 +81,63 @@ const PROVIDERS = {
     };
   },
 
+  /** Fabric loader builds; the API flags the current stable one. */
+  'fabric-loader': async () => {
+    const data = await getJson('https://meta.fabricmc.net/v2/versions/loader');
+    const stable = data.find((v) => v.stable)?.version || data[0]?.version;
+    return {
+      options: data.slice(0, 40).map((v) => ({
+        value: v.version,
+        label: v.version,
+        recommended: v.version === stable,
+        note: v.version === stable ? 'Current stable loader' : undefined,
+      })),
+      recommended: stable,
+    };
+  },
+
+  /**
+   * Bedrock dedicated server builds. Mojang publishes no index, so this uses
+   * the community-maintained Bedrock-OSS list, which tracks the same CDN the
+   * installer downloads from.
+   */
+  'bedrock-version': async () => {
+    const data = await getJson('https://raw.githubusercontent.com/Bedrock-OSS/BDS-Versions/main/versions.json');
+    const linux = data.linux || {};
+    const releases = [...(linux.versions || [])].reverse().slice(0, 40);
+    const stable = linux.stable;
+    const options = releases.map((v) => ({
+      value: v,
+      label: v,
+      recommended: v === stable,
+      note: v === stable ? 'Current stable release' : undefined,
+    }));
+    if (linux.preview) {
+      options.unshift({ value: linux.preview, label: `${linux.preview} (preview)`, note: 'Preview build — expect bugs' });
+    }
+    return { options, recommended: stable || releases[0] };
+  },
+
+  /** Terraria publishes the current dedicated-server zip name; derive builds. */
+  'terraria-build': async () => {
+    const names = await getJson('https://terraria.org/api/get/dedicated-servers-names');
+    const builds = [...new Set((Array.isArray(names) ? names : []).map((n) => String(n).match(/(\d+)\.zip$/)?.[1]).filter(Boolean))];
+    const newest = builds[0];
+    const pretty = (build) => {
+      // 1449 -> 1.4.4.9
+      const digits = String(build).split('');
+      return digits.length === 4 ? `${digits[0]}.${digits[1]}.${digits[2]}.${digits[3]}` : String(build);
+    };
+    const options = builds.map((b) => ({
+      value: b,
+      label: `${pretty(b)} (build ${b})`,
+      recommended: b === newest,
+      note: b === newest ? 'Current release' : undefined,
+    }));
+    if (!options.length) throw new Error('no builds listed');
+    return { options, recommended: newest };
+  },
+
   /** Cfx.re artifact channels, with the build number each currently points at. */
   'fivem-build': async () => {
     const data = await getJson('https://changelogs-live.fivem.net/api/changelog/versions/linux/server');
