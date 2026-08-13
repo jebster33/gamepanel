@@ -3,22 +3,36 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="color-scheme" content="dark" />
-    <meta name="theme-color" content="#0b0f16" />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="theme-color" content="#08090a" />
     <title>GamePanel</title>
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ctext y='52' font-size='52'%3E%F0%9F%8E%AE%3C/text%3E%3C/svg%3E" />
-    <!-- ?v is bumped with each release so proxies and browsers never serve a
-         stale dashboard after the panel is updated. -->
-    <link rel="stylesheet" href="/css/style.css?v=1.1.0" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%235e6ad2'/%3E%3Cpath d='M9 12h14v9a2 2 0 0 1-2 2H11a2 2 0 0 1-2-2z' fill='none' stroke='white' stroke-width='2'/%3E%3Cpath d='M13 17h2M14 16v2M19 17h.01' stroke='white' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E"
+    />
+    <!-- ?v is bumped with each release so nothing serves a stale dashboard. -->
+    <link rel="stylesheet" href="/css/style.css?v=1.2.0" />
+    <script>
+      // Apply the saved theme before first paint to avoid a flash.
+      (function () {
+        var theme = localStorage.getItem('gp-theme') || 'dark';
+        document.documentElement.setAttribute('data-theme', theme);
+      })();
+    </script>
   </head>
   <body>
     <!-- Sign in / first-run setup -->
     <div id="auth-screen" class="auth-screen hidden">
       <div class="auth-card">
         <div class="auth-brand">
-          <span class="auth-logo">🎮</span>
+          <span class="auth-logo">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="7" width="20" height="13" rx="4" />
+              <path d="M7 12v3M5.5 13.5h3M16 13h.01M18.5 15.5h.01" />
+            </svg>
+          </span>
           <h1>GamePanel</h1>
-          <p id="auth-subtitle">Sign in to manage your game servers</p>
+          <p id="auth-subtitle">Sign in to continue</p>
         </div>
         <form id="auth-form" autocomplete="on">
           <label>
@@ -43,23 +57,48 @@
     <div id="app" class="app hidden">
       <aside class="sidebar" id="sidebar">
         <div class="sidebar-brand">
-          <span class="brand-logo">🎮</span>
-          <span class="brand-name" id="brand-name">GamePanel</span>
-          <button class="sidebar-close" id="sidebar-close" aria-label="Close menu">✕</button>
+          <span class="brand-mark">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="7" width="20" height="13" rx="4" />
+              <path d="M7 12v3M5.5 13.5h3M16 13h.01M18.5 15.5h.01" />
+            </svg>
+          </span>
+          <span id="brand-name">GamePanel</span>
+          <button class="sidebar-close icon-btn" id="sidebar-close" aria-label="Close menu">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
+          </button>
         </div>
 
         <nav class="nav" id="nav">
-          <a class="nav-item" href="#/dashboard"><span class="nav-icon">📊</span> Dashboard</a>
-          <a class="nav-item" href="#/servers"><span class="nav-icon">🖥️</span> Servers</a>
-          <a class="nav-item" href="#/templates"><span class="nav-icon">🧰</span> Templates</a>
-          <a class="nav-item" href="#/activity"><span class="nav-icon">📜</span> Activity</a>
-          <a class="nav-item admin-only" href="#/users"><span class="nav-icon">👥</span> Users</a>
-          <a class="nav-item admin-only" href="#/settings"><span class="nav-icon">⚙️</span> Settings</a>
+          <a class="nav-item" href="#/dashboard">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+            Dashboard
+          </a>
+          <a class="nav-item" href="#/servers">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="7" rx="2"/><rect x="3" y="13" width="18" height="7" rx="2"/><path d="M7 7.5h.01M7 16.5h.01"/></svg>
+            Servers
+          </a>
+          <a class="nav-item" href="#/templates">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 3 7.5l9 4.5 9-4.5z"/><path d="m3 12 9 4.5 9-4.5M3 16.5 12 21l9-4.5"/></svg>
+            Templates
+          </a>
+          <a class="nav-item" href="#/activity">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg>
+            Activity
+          </a>
+          <a class="nav-item admin-only" href="#/users">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M17 11.2a3 3 0 0 0 0-6M18 20a6 6 0 0 0-3-5.2"/></svg>
+            Users
+          </a>
+          <a class="nav-item admin-only" href="#/settings">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 9 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 9a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/></svg>
+            Settings
+          </a>
         </nav>
 
-        <div class="sidebar-servers">
-          <div class="sidebar-heading">Your servers</div>
-          <div id="sidebar-server-list" class="sidebar-server-list"></div>
+        <div class="sidebar-section">
+          <div class="sidebar-heading"><span>Servers</span></div>
+          <div id="sidebar-server-list"></div>
         </div>
 
         <div class="sidebar-footer">
@@ -70,7 +109,9 @@
               <div class="user-name" id="user-name">—</div>
               <div class="user-role" id="user-role"></div>
             </div>
-            <button class="icon-btn" id="logout-btn" title="Sign out">⏻</button>
+            <button class="icon-btn" id="logout-btn" title="Sign out">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+            </button>
           </div>
         </div>
       </aside>
@@ -79,11 +120,16 @@
 
       <main class="main">
         <header class="topbar">
-          <button class="icon-btn menu-btn" id="menu-btn" aria-label="Open menu">☰</button>
+          <button class="icon-btn menu-btn" id="menu-btn" aria-label="Open menu">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
+          </button>
           <div class="crumbs" id="crumbs"></div>
           <div class="topbar-actions">
-            <span class="ws-status" id="ws-status" title="Live connection">●</span>
-            <button class="btn btn-primary btn-sm admin-only" id="new-server-btn">+ New server</button>
+            <span class="conn-dot" id="ws-status" title="Live connection"></span>
+            <button class="icon-btn" id="theme-toggle" title="Toggle theme">
+              <svg id="theme-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+            </button>
+            <button class="btn btn-primary btn-sm admin-only" id="new-server-btn">New server</button>
           </div>
         </header>
         <div class="view" id="view"></div>
@@ -93,6 +139,6 @@
     <div id="modal-root"></div>
     <div id="toasts" class="toasts"></div>
 
-    <script src="/js/app.js?v=1.1.0" type="module"></script>
+    <script src="/js/app.js?v=1.2.0" type="module"></script>
   </body>
 </html>

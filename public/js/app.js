@@ -80,7 +80,35 @@ const STATUS_LABEL = {
 };
 
 function statusPill(status) {
-  return `<span class="status ${esc(status)}"><i class="dot"></i>${esc(STATUS_LABEL[status] || status)}</span>`;
+  return `<span class="status ${esc(status)}"><span class="dot"></span>${esc(STATUS_LABEL[status] || status)}</span>`;
+}
+
+/** Small stroked icons, drawn inline so the UI stays a single file with no assets. */
+const ICON_PATHS = {
+  play: '<path d="M7 4.5v15l13-7.5z" fill="currentColor" stroke="none"/>',
+  stop: '<rect x="6" y="6" width="12" height="12" rx="1.5" fill="currentColor" stroke="none"/>',
+  restart: '<path d="M20 12a8 8 0 1 1-2.5-5.8M20 4v4h-4"/>',
+  kill: '<path d="M18 6 6 18M6 6l12 12"/>',
+  trash: '<path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13"/>',
+  download: '<path d="M12 4v11m0 0 4-4m-4 4-4-4M5 20h14"/>',
+  upload: '<path d="M12 20V9m0 0 4 4M12 9l-4 4M5 4h14"/>',
+  folder: '<path d="M3 7a2 2 0 0 1 2-2h3.5l2 2.5H19a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+  file: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/>',
+  archive: '<rect x="3" y="4" width="18" height="5" rx="1.5"/><path d="M5 9v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9M10 13h4"/>',
+  edit: '<path d="M4 20h4L19 9a2.1 2.1 0 0 0-3-3L5 17z"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  copy: '<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/>',
+  external: '<path d="M14 4h6v6M20 4l-8 8M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>',
+  refresh: '<path d="M20 11A8 8 0 0 0 6 6.3L4 8M4 13a8 8 0 0 0 14 4.7l2-1.7M4 4v4h4M20 20v-4h-4"/>',
+  check: '<path d="m5 13 4 4L19 7"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+  moon: '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',
+};
+
+function icon(name, size = 14) {
+  const path = ICON_PATHS[name];
+  if (!path) return '';
+  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${path}</svg>`;
 }
 
 function toast(message, kind = 'info', ttl = 4200) {
@@ -328,6 +356,20 @@ setInterval(pollFallback, 5000);
 
 /* ---------------------------------------------------------------- charts */
 
+/** Accept #rrggbb or any CSS colour and return it with an alpha channel. */
+function hexAlpha(color, alpha) {
+  const value = String(color).trim();
+  if (value.startsWith('#') && (value.length === 7 || value.length === 4)) {
+    const full =
+      value.length === 4 ? `#${value[1]}${value[1]}${value[2]}${value[2]}${value[3]}${value[3]}` : value;
+    const r = parseInt(full.slice(1, 3), 16);
+    const g = parseInt(full.slice(3, 5), 16);
+    const b = parseInt(full.slice(5, 7), 16);
+    return `rgba(${r},${g},${b},${alpha})`;
+  }
+  return value;
+}
+
 function drawChart(canvas, series, options = {}) {
   if (!canvas) return;
   const dpr = window.devicePixelRatio || 1;
@@ -382,13 +424,13 @@ function drawChart(canvas, series, options = {}) {
   fill.closePath();
 
   const gradient = ctx.createLinearGradient(0, 0, 0, height);
-  gradient.addColorStop(0, color + '55');
-  gradient.addColorStop(1, color + '00');
+  gradient.addColorStop(0, hexAlpha(color, 0.22));
+  gradient.addColorStop(1, hexAlpha(color, 0));
   ctx.fillStyle = gradient;
   ctx.fill(fill);
 
   ctx.strokeStyle = color;
-  ctx.lineWidth = 1.8;
+  ctx.lineWidth = 1.5;
   ctx.lineJoin = 'round';
   ctx.stroke(path);
 }
@@ -420,13 +462,13 @@ function renderHostMini() {
   const diskPct = host.disk.total ? (host.disk.used / host.disk.total) * 100 : 0;
   $('#host-mini').innerHTML = `
     <div class="host-mini-row"><span class="label">CPU</span>
-      <div class="bar" style="flex:1"><i style="width:${host.cpu.percent.toFixed(0)}%"></i></div>
+      <div class="meter success" style="flex:1"><i style="width:${host.cpu.percent.toFixed(0)}%"></i></div>
       <span class="value">${host.cpu.percent.toFixed(0)}%</span></div>
     <div class="host-mini-row"><span class="label">RAM</span>
-      <div class="bar blue" style="flex:1"><i style="width:${memPct.toFixed(0)}%"></i></div>
+      <div class="meter accent" style="flex:1"><i style="width:${memPct.toFixed(0)}%"></i></div>
       <span class="value">${memPct.toFixed(0)}%</span></div>
     <div class="host-mini-row"><span class="label">Disk</span>
-      <div class="bar amber" style="flex:1"><i style="width:${diskPct.toFixed(0)}%"></i></div>
+      <div class="meter warning" style="flex:1"><i style="width:${diskPct.toFixed(0)}%"></i></div>
       <span class="value">${diskPct.toFixed(0)}%</span></div>`;
 }
 
@@ -506,7 +548,7 @@ function render() {
       renderSettings(view);
       break;
     default:
-      view.innerHTML = '<div class="empty"><div class="big">🤔</div><h3>Page not found</h3></div>';
+      view.innerHTML = '<div class="empty"><h3>Page not found</h3></div>';
   }
 }
 
@@ -530,65 +572,76 @@ function renderDashboard(view) {
       <span class="faint mono">${esc(host?.hostname || '')} · up ${fmtDuration((host?.uptime || 0) * 1000)}</span>
     </div>
 
-    <div class="stat-grid">
-      <div class="stat">
-        <div class="stat-label">CPU</div>
-        <div class="stat-value" data-host="cpu">${(host?.cpu.percent ?? 0).toFixed(0)}<span class="unit">%</span></div>
-        <div class="stat-sub" data-host="cpu-sub">${host?.cpu.cores ?? 0} cores · load ${(host?.load?.[0] ?? 0).toFixed(2)}</div>
+    <div class="metrics">
+      <div class="tile">
+        <div class="tile-label">CPU</div>
+        <div class="tile-value" data-host="cpu">${(host?.cpu.percent ?? 0).toFixed(0)}<span class="unit">%</span></div>
+        <div class="tile-sub" data-host="cpu-sub">${host?.cpu.cores ?? 0} cores · load ${(host?.load?.[0] ?? 0).toFixed(2)}</div>
         <canvas id="chart-host-cpu"></canvas>
       </div>
-      <div class="stat">
-        <div class="stat-label">Memory</div>
-        <div class="stat-value" data-host="mem">${memPct.toFixed(0)}<span class="unit">%</span></div>
-        <div class="stat-sub" data-host="mem-sub">${fmtBytes(host?.memory.used)} of ${fmtBytes(host?.memory.total)}</div>
+      <div class="tile">
+        <div class="tile-label">Memory</div>
+        <div class="tile-value" data-host="mem">${memPct.toFixed(0)}<span class="unit">%</span></div>
+        <div class="tile-sub" data-host="mem-sub">${fmtBytes(host?.memory.used)} of ${fmtBytes(host?.memory.total)}</div>
         <canvas id="chart-host-mem"></canvas>
       </div>
-      <div class="stat">
-        <div class="stat-label">Network</div>
-        <div class="stat-value" data-host="net" style="font-size:20px">
+      <div class="tile">
+        <div class="tile-label">Network</div>
+        <div class="tile-value" data-host="net" style="font-size:20px">
           ↓ ${fmtRate(host?.network.rxBytesPerSec)} · ↑ ${fmtRate(host?.network.txBytesPerSec)}
         </div>
-        <div class="stat-sub">Total ${fmtBytes(host?.network.rxTotal)} in / ${fmtBytes(host?.network.txTotal)} out</div>
+        <div class="tile-sub">Total ${fmtBytes(host?.network.rxTotal)} in / ${fmtBytes(host?.network.txTotal)} out</div>
         <canvas id="chart-host-net"></canvas>
       </div>
-      <div class="stat">
-        <div class="stat-label">Disk</div>
-        <div class="stat-value">${diskPct.toFixed(0)}<span class="unit">%</span></div>
-        <div class="stat-sub">${fmtBytes(host?.disk.free)} free of ${fmtBytes(host?.disk.total)}</div>
-        <div class="bar amber"><i style="width:${diskPct.toFixed(0)}%"></i></div>
+      <div class="tile">
+        <div class="tile-label">Disk</div>
+        <div class="tile-value">${diskPct.toFixed(0)}<span class="unit">%</span></div>
+        <div class="tile-sub">${fmtBytes(host?.disk.free)} free of ${fmtBytes(host?.disk.total)}</div>
+        <div class="meter warning"><i style="width:${diskPct.toFixed(0)}%"></i></div>
       </div>
     </div>
 
-    <div class="stat-grid">
-      <div class="stat">
-        <div class="stat-label">Servers online</div>
-        <div class="stat-value" data-ov="running">${overview.running} <span class="unit">/ ${overview.total}</span></div>
+    <div class="metrics">
+      <div class="tile">
+        <div class="tile-label">Servers online</div>
+        <div class="tile-value" data-ov="running">${overview.running}<span class="unit">/ ${overview.total}</span></div>
       </div>
-      <div class="stat">
-        <div class="stat-label">Players connected</div>
-        <div class="stat-value" data-ov="players">${overview.players}</div>
+      <div class="tile">
+        <div class="tile-label">Players</div>
+        <div class="tile-value" data-ov="players">${overview.players}</div>
       </div>
-      <div class="stat">
-        <div class="stat-label">Crashes recorded</div>
-        <div class="stat-value" data-ov="crashes">${overview.crashes}</div>
+      <div class="tile">
+        <div class="tile-label">Crashes</div>
+        <div class="tile-value" data-ov="crashes">${overview.crashes}</div>
       </div>
-      <div class="stat">
-        <div class="stat-label">Panel version</div>
-        <div class="stat-value" style="font-size:20px">v${esc(state.version || '1.0.0')}</div>
-        <div class="stat-sub">Node ${esc(navigator.hardwareConcurrency || '')} threads client-side</div>
+      <div class="tile">
+        <div class="tile-label">Version</div>
+        <div class="tile-value" style="font-size:17px">${esc(state.version || '1.0.0')}</div>
+        <div class="tile-sub">${esc(host?.platform || '')}</div>
       </div>
     </div>
 
-    <h2 class="section-title">Servers</h2>
-    <div class="server-grid" id="server-grid">${renderServerCards()}</div>`;
+    <div class="row" style="margin-bottom:10px">
+      <h2 class="section-title" style="margin:0">Servers</h2>
+      <div class="spacer" style="flex:1"></div>
+      <a class="btn btn-sm" href="#/servers">View all</a>
+    </div>
+    ${renderServerCards()}`;
 
   drawHostCharts();
 }
 
+/** Chart colours come from the stylesheet so they follow the theme. */
+function themeColor(name, fallback) {
+  const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  return value || fallback;
+}
+
 function drawHostCharts() {
-  drawChart($('#chart-host-cpu'), state.hostHistory.cpu, { color: '#4ade80', max: 100, grid: false, pad: 0 });
-  drawChart($('#chart-host-mem'), state.hostHistory.mem, { color: '#60a5fa', max: 100, grid: false, pad: 0 });
-  drawChart($('#chart-host-net'), state.hostHistory.net, { color: '#a78bfa', grid: false, pad: 0 });
+  const accent = themeColor('--accent', '#5e6ad2');
+  drawChart($('#chart-host-cpu'), state.hostHistory.cpu, { color: accent, max: 100, grid: false, pad: 0 });
+  drawChart($('#chart-host-mem'), state.hostHistory.mem, { color: accent, max: 100, grid: false, pad: 0 });
+  drawChart($('#chart-host-net'), state.hostHistory.net, { color: accent, grid: false, pad: 0 });
 }
 
 function patchDashboard() {
@@ -622,62 +675,74 @@ function serverAddress(server) {
 
 function renderServerCards() {
   if (!state.servers.length) {
-    return `<div class="empty" style="grid-column:1/-1">
-      <div class="big">🎮</div>
+    return `<div class="empty">
       <h3>No servers yet</h3>
       <p>Pick a template and have a game server running in a couple of minutes.</p>
-      <a class="btn btn-primary mt-16" href="#/templates">Browse templates</a>
+      <a class="btn btn-primary" href="#/templates">Browse templates</a>
     </div>`;
   }
-  return state.servers.map(serverCard).join('');
+  return `
+    <div class="srv-list">
+      <div class="srv-row srv-head">
+        <span>Server</span>
+        <span>Status</span>
+        <span class="hide-sm">CPU</span>
+        <span class="hide-sm">Memory</span>
+        <span class="hide-md hide-sm">Players</span>
+        <span class="hide-md hide-sm">Ping</span>
+        <span></span>
+      </div>
+      ${state.servers.map(serverRow).join('')}
+    </div>`;
 }
 
-function serverCard(server) {
+function serverRow(server) {
   const memPct = server.memoryLimit ? Math.min(100, (server.memory / server.memoryLimit) * 100) : 0;
-  const cpuPct = Math.min(100, server.cpu || 0);
-  const running = server.status === 'running';
+  const running = ['running', 'starting'].includes(server.status);
   return `
-  <div class="server-card" data-card="${esc(server.id)}">
-    <div class="head">
-      <div class="server-icon">${esc(server.templateIcon || '🎮')}</div>
-      <div class="title">
-        <h3><a href="#/servers/${esc(server.id)}">${esc(server.name)}</a></h3>
-        <div class="sub">${esc(server.templateName)}</div>
-      </div>
-      <span data-field="status">${statusPill(server.status)}</span>
-    </div>
+  <div class="srv-row" data-card="${esc(server.id)}">
+    <a class="srv-identity" href="#/servers/${esc(server.id)}">
+      <span class="srv-icon">${esc(server.templateIcon || '🎮')}</span>
+      <span class="srv-name">
+        <span class="title">${esc(server.name)}</span>
+        <span class="sub">${esc(server.templateName)} · ${esc(serverAddress(server))}</span>
+      </span>
+    </a>
 
-    <div class="metrics-row">
-      <div class="metric"><div class="k">CPU</div><div class="v" data-field="cpu">${cpuPct.toFixed(0)}<small>%</small></div></div>
-      <div class="metric"><div class="k">RAM</div><div class="v" data-field="mem">${fmtBytes(server.memory)}</div></div>
-      <div class="metric"><div class="k">Players</div><div class="v" data-field="players">${
-        server.players ?? '—'
-      }<small>${server.maxPlayers ? '/' + server.maxPlayers : ''}</small></div></div>
-      <div class="metric"><div class="k">Ping</div><div class="v" data-field="ping">${
-        server.ping != null ? server.ping + '<small>ms</small>' : '—'
-      }</div></div>
-    </div>
+    <span data-field="status">${statusPill(server.status)}</span>
 
-    <div class="bar"><i data-field="cpu-bar" style="width:${cpuPct.toFixed(0)}%"></i></div>
-    <div class="bar blue"><i data-field="mem-bar" style="width:${memPct.toFixed(0)}%"></i></div>
+    <span class="srv-metric hide-sm">
+      <b data-field="cpu">${(server.cpu || 0).toFixed(0)}%</b>
+    </span>
 
-    <div class="row">
-      <span class="address" data-copy="${esc(serverAddress(server))}" title="Click to copy">${esc(serverAddress(server))}</span>
-      <span class="faint" style="font-size:12px" data-field="uptime">${running ? 'up ' + fmtDuration(server.uptime) : ''}</span>
-    </div>
+    <span class="srv-metric hide-sm">
+      <b data-field="mem">${fmtBytes(server.memory)}</b>
+      <span class="meter accent" style="width:52px;margin-top:5px"><i data-field="mem-bar" style="width:${memPct.toFixed(
+        0
+      )}%"></i></span>
+    </span>
 
-    <div class="card-actions">
+    <span class="srv-metric hide-md hide-sm" data-field="players">${
+      server.players ?? '—'
+    }${server.maxPlayers ? ` <span class="faint">/ ${server.maxPlayers}</span>` : ''}</span>
+
+    <span class="srv-metric hide-md hide-sm" data-field="ping">${server.ping != null ? server.ping + ' ms' : '—'}</span>
+
+    <span class="srv-actions">
       ${
-        running || server.status === 'starting'
-          ? `<button class="btn btn-sm btn-warn" data-power="restart" data-id="${esc(server.id)}">↻ Restart</button>
-             <button class="btn btn-sm btn-danger" data-power="stop" data-id="${esc(server.id)}">■ Stop</button>`
-          : `<button class="btn btn-sm btn-primary" data-power="start" data-id="${esc(server.id)}" ${
+        running
+          ? `<button class="btn btn-sm btn-ghost" data-power="restart" data-id="${esc(
+              server.id
+            )}" title="Restart">${icon('restart')}</button>
+             <button class="btn btn-sm btn-ghost btn-danger" data-power="stop" data-id="${esc(
+               server.id
+             )}" title="Stop">${icon('stop', 12)}</button>`
+          : `<button class="btn btn-sm" data-power="start" data-id="${esc(server.id)}" ${
               ['installing', 'stopping'].includes(server.status) ? 'disabled' : ''
-            }>▶ Start</button>`
+            }>${icon('play', 12)} Start</button>`
       }
-      <a class="btn btn-sm" href="#/servers/${esc(server.id)}/console">⌨ Console</a>
-      <a class="btn btn-sm" href="#/servers/${esc(server.id)}/files">📁 Files</a>
-    </div>
+      <a class="btn btn-sm" href="#/servers/${esc(server.id)}/console">Console</a>
+    </span>
   </div>`;
 }
 
@@ -689,15 +754,14 @@ function patchServerCards() {
       const el = card.querySelector(`[data-field="${field}"]`);
       if (el) el.innerHTML = html;
     };
-    const cpuPct = Math.min(100, server.cpu || 0);
     const memPct = server.memoryLimit ? Math.min(100, (server.memory / server.memoryLimit) * 100) : 0;
-    set('cpu', `${cpuPct.toFixed(0)}<small>%</small>`);
+    set('cpu', `${(server.cpu || 0).toFixed(0)}%`);
     set('mem', fmtBytes(server.memory));
-    set('players', `${server.players ?? '—'}<small>${server.maxPlayers ? '/' + server.maxPlayers : ''}</small>`);
-    set('ping', server.ping != null ? `${server.ping}<small>ms</small>` : '—');
-    set('uptime', server.status === 'running' ? 'up ' + fmtDuration(server.uptime) : '');
-    const cpuBar = card.querySelector('[data-field="cpu-bar"]');
-    if (cpuBar) cpuBar.style.width = `${cpuPct.toFixed(0)}%`;
+    set(
+      'players',
+      `${server.players ?? '—'}${server.maxPlayers ? ` <span class="faint">/ ${server.maxPlayers}</span>` : ''}`
+    );
+    set('ping', server.ping != null ? `${server.ping} ms` : '—');
     const memBar = card.querySelector('[data-field="mem-bar"]');
     if (memBar) memBar.style.width = `${memPct.toFixed(0)}%`;
   }
@@ -709,21 +773,21 @@ function renderServers(view) {
     <div class="page-head">
       <h1>Servers</h1>
       <div class="spacer"></div>
-      ${state.user.role === 'admin' ? '<a class="btn btn-primary" href="#/templates">+ New server</a>' : ''}
+      ${state.user.role === 'admin' ? '<a class="btn btn-primary" href="#/templates">New server</a>' : ''}
     </div>
-    <div class="server-grid">${renderServerCards()}</div>`;
+    ${renderServerCards()}`;
 }
 
 /* --------------------------------------------------------- server detail */
 
 function serverTabs(server) {
   return [
-    ['console', '⌨ Console'],
-    ['metrics', '📈 Metrics'],
-    ['files', '📁 Files'],
-    ...(server.hasMods ? [['mods', '🧩 Mods']] : []),
-    ['backups', '💾 Backups'],
-    ['settings', '⚙ Settings'],
+    ['console', 'Console'],
+    ['metrics', 'Metrics'],
+    ['files', 'Files'],
+    ...(server.hasMods ? [['mods', 'Mods']] : []),
+    ['backups', 'Backups'],
+    ['settings', 'Settings'],
   ];
 }
 
@@ -734,24 +798,24 @@ function currentServer() {
 function renderServerDetail(view) {
   const server = currentServer();
   if (!server) {
-    view.innerHTML = '<div class="empty"><div class="big">🔍</div><h3>Server not found</h3><a href="#/servers">Back to servers</a></div>';
+    view.innerHTML = '<div class="empty"><h3>Server not found</h3><a href="#/servers">Back to servers</a></div>';
     return;
   }
   const tab = state.route.params.tab || 'console';
-  setCrumbs(`<a href="#/servers">Servers</a> <span class="dim">/</span> ${esc(server.name)}`);
+  setCrumbs(`<a href="#/servers">Servers</a> <span class="sep">/</span> ${esc(server.name)}`);
 
   view.innerHTML = `
     <div class="page-head">
-      <div class="server-icon">${esc(server.templateIcon)}</div>
+      <div class="srv-icon" style="width:34px;height:34px;font-size:17px">${esc(server.templateIcon)}</div>
       <div>
         <h1>${esc(server.name)}</h1>
-        <div class="row" style="margin-top:4px">
+        <div class="row" style="margin-top:3px">
           <span id="detail-status">${statusPill(server.status)}</span>
           <span class="address" data-copy="${esc(serverAddress(server))}">${esc(serverAddress(server))}</span>
           <span class="badge" title="${
             server.runtime === 'docker' ? 'Isolated in its own container' : 'Running as a plain process on the host'
-          }">${server.runtime === 'docker' ? '📦 container' : '⚙ process'}</span>
-          <span class="faint" style="font-size:12.5px" id="detail-uptime">${
+          }">${server.runtime === 'docker' ? 'Container' : 'Process'}</span>
+          <span class="faint" style="font-size:12px" id="detail-uptime">${
             server.status === 'running' ? 'up ' + fmtDuration(server.uptime) : ''
           }</span>
         </div>
@@ -760,25 +824,49 @@ function renderServerDetail(view) {
       <div class="row" id="detail-power">${powerButtons(server)}</div>
     </div>
 
-    <div class="metrics-row mb-16" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
-      <div class="metric"><div class="k">CPU</div><div class="v" data-detail="cpu">${(server.cpu || 0).toFixed(1)}<small>%</small></div></div>
-      <div class="metric"><div class="k">Memory</div><div class="v" data-detail="mem">${fmtBytes(server.memory)}<small> / ${fmtBytes(
-        server.memoryLimit
-      )}</small></div></div>
-      <div class="metric"><div class="k">Players</div><div class="v" data-detail="players">${server.players ?? '—'}<small>${
-        server.maxPlayers ? '/' + server.maxPlayers : ''
-      }</small></div></div>
-      <div class="metric"><div class="k">Ping</div><div class="v" data-detail="ping">${
-        server.ping != null ? server.ping + '<small>ms</small>' : '—'
-      }</div></div>
-      <div class="metric"><div class="k">Connections</div><div class="v" data-detail="conns">${server.connections ?? 0}</div></div>
-      <div class="metric"><div class="k">Network</div><div class="v" data-detail="net" style="font-size:13px">${
-        server.runtime === 'docker'
-          ? `↓ ${fmtRate(server.networkRx)}<br>↑ ${fmtRate(server.networkTx)}`
-          : '<span class="faint">host only</span>'
-      }</div></div>
-      <div class="metric"><div class="k">Disk</div><div class="v" data-detail="disk">${fmtBytes(server.diskBytes)}</div></div>
-      <div class="metric"><div class="k">Crashes</div><div class="v" data-detail="crashes">${server.crashCount || 0}</div></div>
+    <div class="metrics" style="grid-template-columns:repeat(auto-fit,minmax(132px,1fr))">
+      <div class="tile" style="min-height:0;padding:11px 13px">
+        <div class="tile-label">CPU</div>
+        <div class="tile-value" style="font-size:17px" data-detail="cpu">${(server.cpu || 0).toFixed(1)}<span class="unit">%</span></div>
+      </div>
+      <div class="tile" style="min-height:0;padding:11px 13px">
+        <div class="tile-label">Memory</div>
+        <div class="tile-value" style="font-size:17px" data-detail="mem">${fmtBytes(server.memory)}<span class="unit">/ ${fmtBytes(
+          server.memoryLimit
+        )}</span></div>
+      </div>
+      <div class="tile" style="min-height:0;padding:11px 13px">
+        <div class="tile-label">Players</div>
+        <div class="tile-value" style="font-size:17px" data-detail="players">${server.players ?? '—'}<span class="unit">${
+          server.maxPlayers ? '/ ' + server.maxPlayers : ''
+        }</span></div>
+      </div>
+      <div class="tile" style="min-height:0;padding:11px 13px">
+        <div class="tile-label">Ping</div>
+        <div class="tile-value" style="font-size:17px" data-detail="ping">${
+          server.ping != null ? server.ping + '<span class="unit">ms</span>' : '—'
+        }</div>
+      </div>
+      <div class="tile" style="min-height:0;padding:11px 13px">
+        <div class="tile-label">Connections</div>
+        <div class="tile-value" style="font-size:17px" data-detail="conns">${server.connections ?? 0}</div>
+      </div>
+      <div class="tile" style="min-height:0;padding:11px 13px">
+        <div class="tile-label">Network</div>
+        <div class="tile-value" style="font-size:13px" data-detail="net">${
+          server.runtime === 'docker'
+            ? `↓ ${fmtRate(server.networkRx)}<br>↑ ${fmtRate(server.networkTx)}`
+            : '<span class="faint" style="font-size:13px">host-wide only</span>'
+        }</div>
+      </div>
+      <div class="tile" style="min-height:0;padding:11px 13px">
+        <div class="tile-label">Disk</div>
+        <div class="tile-value" style="font-size:17px" data-detail="disk">${fmtBytes(server.diskBytes)}</div>
+      </div>
+      <div class="tile" style="min-height:0;padding:11px 13px">
+        <div class="tile-label">Crashes</div>
+        <div class="tile-value" style="font-size:17px" data-detail="crashes">${server.crashCount || 0}</div>
+      </div>
     </div>
 
     <div class="tabs">
@@ -798,10 +886,14 @@ function powerButtons(server) {
   return `
     ${
       running
-        ? `<button class="btn btn-warn" data-power="restart" data-id="${esc(server.id)}">↻ Restart</button>
-           <button class="btn btn-danger" data-power="stop" data-id="${esc(server.id)}">■ Stop</button>
-           <button class="btn btn-danger" data-power="kill" data-id="${esc(server.id)}" title="Force kill">✖</button>`
-        : `<button class="btn btn-primary" data-power="start" data-id="${esc(server.id)}" ${busy ? 'disabled' : ''}>▶ Start</button>`
+        ? `<button class="btn" data-power="restart" data-id="${esc(server.id)}">${icon('restart', 13)} Restart</button>
+           <button class="btn btn-danger" data-power="stop" data-id="${esc(server.id)}">${icon('stop', 12)} Stop</button>
+           <button class="btn btn-danger btn-ghost" data-power="kill" data-id="${esc(
+             server.id
+           )}" title="Force kill">${icon('kill', 13)}</button>`
+        : `<button class="btn btn-primary" data-power="start" data-id="${esc(server.id)}" ${
+            busy ? 'disabled' : ''
+          }>${icon('play', 12)} Start</button>`
     }`;
 }
 
@@ -821,10 +913,13 @@ function patchServerDetail() {
     const el = $(`[data-detail="${field}"]`);
     if (el) el.innerHTML = html;
   };
-  set('cpu', `${(server.cpu || 0).toFixed(1)}<small>%</small>`);
-  set('mem', `${fmtBytes(server.memory)}<small> / ${fmtBytes(server.memoryLimit)}</small>`);
-  set('players', `${server.players ?? '—'}<small>${server.maxPlayers ? '/' + server.maxPlayers : ''}</small>`);
-  set('ping', server.ping != null ? `${server.ping}<small>ms</small>` : '—');
+  set('cpu', `${(server.cpu || 0).toFixed(1)}<span class="unit">%</span>`);
+  set('mem', `${fmtBytes(server.memory)}<span class="unit">/ ${fmtBytes(server.memoryLimit)}</span>`);
+  set(
+    'players',
+    `${server.players ?? '—'}<span class="unit">${server.maxPlayers ? '/ ' + server.maxPlayers : ''}</span>`
+  );
+  set('ping', server.ping != null ? `${server.ping}<span class="unit">ms</span>` : '—');
   set('conns', String(server.connections ?? 0));
   set('crashes', String(server.crashCount || 0));
   if (server.runtime === 'docker') set('net', `↓ ${fmtRate(server.networkRx)}<br>↑ ${fmtRate(server.networkTx)}`);
@@ -980,10 +1075,12 @@ function drawServerCharts(id) {
   const hist = state.serverHistory.get(id);
   if (!hist) return;
   const server = state.servers.find((s) => s.id === id);
-  drawChart($('#chart-cpu'), hist.cpu, { color: '#4ade80' });
-  drawChart($('#chart-mem'), hist.mem, { color: '#60a5fa' });
-  drawChart($('#chart-players'), hist.players, { color: '#fbbf24' });
-  drawChart($('#chart-ping'), hist.ping, { color: '#a78bfa' });
+  const accent = themeColor('--accent', '#5e6ad2');
+  const success = themeColor('--success', '#4cb782');
+  drawChart($('#chart-cpu'), hist.cpu, { color: accent });
+  drawChart($('#chart-mem'), hist.mem, { color: accent });
+  drawChart($('#chart-players'), hist.players, { color: success });
+  drawChart($('#chart-ping'), hist.ping, { color: themeColor('--text-tertiary', '#6a6d73') });
   const set = (sel, text) => {
     const el = $(sel);
     if (el) el.textContent = text;
@@ -1021,11 +1118,11 @@ async function renderFilesTab(host, server, dirPath) {
       <div class="file-path">${crumbs.join(' ')}</div>
       <div style="flex:1"></div>
       <span class="faint" id="file-selection" style="font-size:12.5px"></span>
-      <button class="btn btn-sm hidden" id="file-compress">🗜 Compress</button>
-      <button class="btn btn-sm btn-danger hidden" id="file-delete-selected">🗑 Delete</button>
-      <button class="btn btn-sm" id="file-new-folder">+ Folder</button>
-      <button class="btn btn-sm" id="file-new-file">+ File</button>
-      <button class="btn btn-sm btn-primary" id="file-upload">⬆ Upload</button>
+      <button class="btn btn-sm hidden" id="file-compress">${icon('archive',12)} Compress</button>
+      <button class="btn btn-sm btn-danger hidden" id="file-delete-selected">${icon('trash',12)} Delete</button>
+      <button class="btn btn-sm" id="file-new-folder">New folder</button>
+      <button class="btn btn-sm" id="file-new-file">New file</button>
+      <button class="btn btn-sm btn-primary" id="file-upload">${icon('upload',12)} Upload</button>
       <input type="file" id="file-input" class="hidden" multiple />
     </div>
 
@@ -1041,7 +1138,7 @@ async function renderFilesTab(host, server, dirPath) {
         <tbody>
           ${
             parts.length
-              ? `<tr><td></td><td colspan="4"><a data-dir="${esc(parts.slice(0, -1).join('/'))}">📁 ..</a></td></tr>`
+              ? `<tr><td></td><td colspan="4"><a data-dir="${esc(parts.slice(0, -1).join('/'))}">${icon('folder',13)} ..</a></td></tr>`
               : ''
           }
           ${data.items
@@ -1050,24 +1147,24 @@ async function renderFilesTab(host, server, dirPath) {
             <tr>
               <td><input type="checkbox" class="file-check" data-path="${esc(item.path)}" /></td>
               <td><span class="file-name" data-${item.directory ? 'dir' : 'file'}="${esc(item.path)}">
-                ${item.directory ? '📁' : isArchive(item.name) ? '🗜' : item.editable ? '📄' : '📦'} ${esc(item.name)}</span></td>
+                ${item.directory ? icon('folder', 14) : isArchive(item.name) ? icon('archive', 14) : icon('file', 14)} ${esc(item.name)}</span></td>
               <td class="faint nowrap">${item.directory ? '—' : fmtBytes(item.size)}</td>
               <td class="faint nowrap">${fmtTime(item.modified)}</td>
               <td class="nowrap" style="text-align:right">
                 ${
                   isArchive(item.name)
-                    ? `<button class="btn btn-sm" data-extract="${esc(item.path)}" title="Unpack here">📦 Unpack</button>`
+                    ? `<button class="btn btn-sm" data-extract="${esc(item.path)}" title="Unpack here">Unpack</button>`
                     : ''
                 }
-                <button class="btn btn-sm" data-rename="${esc(item.path)}" title="Rename or move">✏️</button>
+                <button class="btn btn-sm" data-rename="${esc(item.path)}" title="Rename or move">${icon('edit',12)}</button>
                 ${
                   item.directory
                     ? ''
                     : `<a class="btn btn-sm" href="/api/servers/${esc(server.id)}/files/download?path=${encodeURIComponent(
                         item.path
-                      )}" title="Download">⬇</a>`
+                      )}" title="Download">${icon('download',12)}</a>`
                 }
-                <button class="btn btn-sm btn-danger" data-delete="${esc(item.path)}">🗑</button>
+                <button class="btn btn-sm btn-danger" data-delete="${esc(item.path)}">${icon('trash',12)}</button>
               </td>
             </tr>`
             )
@@ -1140,7 +1237,7 @@ async function renderFilesTab(host, server, dirPath) {
       } catch (err) {
         toast(err.message, 'error');
         el.disabled = false;
-        el.textContent = '📦 Unpack';
+        el.textContent = 'Unpack';
       }
     })
   );
@@ -1247,7 +1344,7 @@ async function openFileEditor(server, filePath, onClose) {
     return;
   }
   const modal = openModal({
-    title: `📄 ${filePath}`,
+    title: esc(filePath),
     width: 900,
     body: `<textarea class="editor" id="file-editor" spellcheck="false">${esc(data.content)}</textarea>`,
     actions: [
@@ -1289,7 +1386,7 @@ async function renderModsTab(host, server) {
   if (!info.supported || !info.providers.length) {
     host.innerHTML = `
       <div class="empty">
-        <div class="big">🧩</div>
+        
         <h3>No mod source for this game</h3>
         <p>You can still upload mods by hand in the <a href="#/servers/${esc(server.id)}/files">file manager</a>${
           info.installed ? ` — this game loads them from <span class="mono">${esc(info.installed.dir)}</span>` : ''
@@ -1349,7 +1446,7 @@ async function renderModsTab(host, server) {
       </div>
     </div>
 
-    <div id="mod-results" class="template-grid mb-16"></div>
+    <div id="mod-results" class="grid-cards mb-16"></div>
 
     <div class="card">
       <h4 style="margin:0 0 12px">Installed <span class="faint mono" style="font-weight:400">${esc(
@@ -1362,7 +1459,7 @@ async function renderModsTab(host, server) {
               ? info.installed.items
                   .map(
                     (item) => `<tr>
-                      <td>${item.directory ? '📁' : '🧩'} <span class="${item.disabled ? 'faint' : ''}">${esc(item.name)}</span>
+                      <td>${item.directory ? icon('folder', 13) : icon('file', 13)} <span class="${item.disabled ? 'faint' : ''}">${esc(item.name)}</span>
                         ${item.disabled ? '<span class="badge">disabled</span>' : ''}</td>
                       <td class="faint nowrap">${item.directory ? '—' : fmtBytes(item.size)}</td>
                       <td class="faint nowrap">${fmtTime(item.modified)}</td>
@@ -1374,7 +1471,7 @@ async function renderModsTab(host, server) {
                                 item.disabled ? 'Enable' : 'Disable'
                               }</button>`
                         }
-                        <button class="btn btn-sm btn-danger" data-mod-delete="${esc(item.name)}">🗑</button>
+                        <button class="btn btn-sm btn-danger" data-mod-delete="${esc(item.name)}">${icon('trash',12)}</button>
                       </td></tr>`
                   )
                   .join('')
@@ -1465,16 +1562,16 @@ function renderModResults(server, items) {
   results.innerHTML = items
     .map(
       (item, index) => `
-      <div class="template-card" style="cursor:default">
+      <div class="tile-card" style="cursor:default">
         <div class="t-head">
           ${
             item.icon
               ? `<img src="${esc(item.icon)}" alt="" style="width:38px;height:38px;border-radius:9px;object-fit:cover" loading="lazy" />`
-              : '<span class="t-icon">🧩</span>'
+              : `<span class="t-icon">${icon('file', 15)}</span>`
           }
           <div style="min-width:0">
             <h3 style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(item.name)}</h3>
-            <div class="t-cat">${esc(item.author || '')}${
+            <div class="t-meta">${esc(item.author || '')}${
         item.downloads ? ` · ${Number(item.downloads).toLocaleString()} downloads` : ''
       }</div>
           </div>
@@ -1483,7 +1580,7 @@ function renderModResults(server, items) {
           item.description || ''
         )}</p>
         <div class="row" style="margin-top:auto">
-          ${item.url ? `<a class="btn btn-sm" href="${esc(item.url)}" target="_blank" rel="noopener">Page ↗</a>` : ''}
+          ${item.url ? `<a class="btn btn-sm" href="${esc(item.url)}" target="_blank" rel="noopener">Open page</a>` : ''}
           <button class="btn btn-sm btn-primary" style="margin-left:auto" data-install="${index}">Install</button>
         </div>
       </div>`
@@ -1519,10 +1616,10 @@ async function renderBackupsTab(host, server) {
 
   host.innerHTML = `
     <div class="row mb-16">
-      <button class="btn btn-primary" id="backup-create">💾 Create backup</button>
+      <button class="btn btn-primary" id="backup-create">Create backup</button>
       <span class="faint">Backups are plain .tar.gz archives of the whole server directory.</span>
     </div>
-    <div class="card" style="padding:0">
+    <div class="card card-flush">
       <div class="table-wrap"><table>
         <thead><tr><th>Backup</th><th>Size</th><th>Created</th><th></th></tr></thead>
         <tbody>
@@ -1535,9 +1632,9 @@ async function renderBackupsTab(host, server) {
                       <td class="faint nowrap">${fmtBytes(b.size)}</td>
                       <td class="faint nowrap">${fmtTime(b.createdAt)}</td>
                       <td class="nowrap" style="text-align:right">
-                        <a class="btn btn-sm" href="/api/servers/${esc(server.id)}/backups/${encodeURIComponent(b.name)}/download">⬇</a>
-                        <button class="btn btn-sm btn-warn" data-restore="${esc(b.name)}">↺ Restore</button>
-                        <button class="btn btn-sm btn-danger" data-del-backup="${esc(b.name)}">🗑</button>
+                        <a class="btn btn-sm" href="/api/servers/${esc(server.id)}/backups/${encodeURIComponent(b.name)}/download">${icon('download',12)}</a>
+                        <button class="btn btn-sm" data-restore="${esc(b.name)}">Restore</button>
+                        <button class="btn btn-sm btn-danger" data-del-backup="${esc(b.name)}">${icon('trash',12)}</button>
                       </td></tr>`
                   )
                   .join('')
@@ -1558,7 +1655,7 @@ async function renderBackupsTab(host, server) {
     } catch (err) {
       toast(err.message, 'error');
       btn.disabled = false;
-      btn.textContent = '💾 Create backup';
+      btn.textContent = 'Create backup';
     }
   });
 
@@ -1648,8 +1745,8 @@ function renderServerSettingsTab(host, server) {
              <h4 style="margin:0 0 6px">Danger zone</h4>
              <p class="faint" style="margin:0 0 14px">Reinstalling re-runs the template installer in place. Deleting removes the server and all of its files.</p>
              <div class="row">
-               <button class="btn btn-warn" id="set-reinstall">↻ Reinstall</button>
-               <button class="btn btn-danger" id="set-delete">🗑 Delete server</button>
+               <button class="btn" id="set-reinstall">Reinstall</button>
+               <button class="btn btn-danger" id="set-delete">Delete server</button>
              </div>
            </div>`
         : ''
@@ -1739,31 +1836,33 @@ function renderTemplates(view) {
         )
         .join('')}
     </div>
-    <div class="template-grid">
+    <div class="grid-cards">
       ${
         filtered.length
           ? filtered
               .map(
                 (tpl) => `
-        <div class="template-card" data-template="${esc(tpl.id)}">
+        <div class="tile-card" data-template="${esc(tpl.id)}">
           <div class="t-head">
             <span class="t-icon">${esc(tpl.icon || '🎮')}</span>
             <div>
               <h3>${esc(tpl.name)}</h3>
-              <div class="t-cat">${esc(tpl.category || 'Other')}${tpl.custom ? ' · custom' : ''}</div>
+              <div class="t-meta">${esc(tpl.category || 'Other')}${tpl.custom ? ' · custom' : ''}</div>
             </div>
           </div>
           <p>${esc(tpl.description || '')}</p>
-          <div class="row" style="margin-top:auto">
-            <span class="badge">${esc(Object.keys(tpl.ports || {}).length ? '' : '')}${(tpl.ports || [])
-                  .map((p) => p.default)
-                  .join(' · ')}</span>
-            ${state.user.role === 'admin' ? '<button class="btn btn-sm btn-primary" style="margin-left:auto">Deploy →</button>' : ''}
+          <div class="t-foot">
+            <span class="badge mono" title="Default ports">${(tpl.ports || []).map((p) => p.default).join(' · ')}</span>
+            ${
+              state.user.role === 'admin'
+                ? '<button class="btn btn-sm" style="margin-left:auto">Deploy</button>'
+                : ''
+            }
           </div>
         </div>`
               )
               .join('')
-          : '<div class="empty" style="grid-column:1/-1"><div class="big">🔍</div><h3>No templates match</h3></div>'
+          : '<div class="empty" style="grid-column:1/-1"><h3>No templates match</h3></div>'
       }
     </div>`;
 
@@ -2017,23 +2116,18 @@ async function renderActivity(view) {
   setCrumbs('Activity');
   view.innerHTML = '<div class="card"><span class="spinner"></span> Loading…</div>';
   const data = await api('/api/events?limit=200').catch(() => ({ events: [] }));
-  const icons = {
-    'server.crashed': '💥',
-    'server.started': '▶️',
-    'server.created': '✨',
-    'server.deleted': '🗑️',
-    'server.installed': '📦',
-    'server.install_failed': '⚠️',
-    'backup.created': '💾',
-    'backup.restored': '↺',
-    'user.login': '🔑',
-    'user.created': '👤',
+  // A coloured dot reads faster than an icon per event type.
+  const tone = (type) => {
+    if (type.includes('crash') || type.includes('failed')) return 'var(--danger)';
+    if (type.includes('started') || type.includes('installed') || type.includes('created')) return 'var(--success)';
+    if (type.includes('deleted') || type.includes('restored')) return 'var(--warning)';
+    return 'var(--text-tertiary)';
   };
   view.innerHTML = `
     <div class="page-head"><h1>Activity</h1></div>
-    <div class="card" style="padding:0">
+    <div class="card card-flush">
       <div class="table-wrap"><table>
-        <thead><tr><th></th><th>Event</th><th>Server</th><th class="nowrap">When</th></tr></thead>
+        <thead><tr><th style="width:30px"></th><th>Event</th><th>Server</th><th class="nowrap">When</th></tr></thead>
         <tbody>
           ${
             data.events.length
@@ -2041,7 +2135,9 @@ async function renderActivity(view) {
                   .map((e) => {
                     const server = state.servers.find((s) => s.id === e.serverId);
                     return `<tr>
-                      <td style="width:32px">${icons[e.type] || '•'}</td>
+                      <td><span style="display:block;width:5px;height:5px;border-radius:50%;background:${tone(
+                        e.type
+                      )}"></span></td>
                       <td>${esc(e.message)}</td>
                       <td>${server ? `<a href="#/servers/${esc(server.id)}">${esc(server.name)}</a>` : '<span class="faint">—</span>'}</td>
                       <td class="faint nowrap">${fmtTime(e.at)}</td>
@@ -2064,9 +2160,9 @@ async function renderUsers(view) {
     <div class="page-head">
       <h1>Users</h1>
       <div class="spacer"></div>
-      <button class="btn btn-primary" id="user-new">+ Add user</button>
+      <button class="btn btn-primary" id="user-new">New user</button>
     </div>
-    <div class="card" style="padding:0">
+    <div class="card card-flush">
       <div class="table-wrap"><table>
         <thead><tr><th>User</th><th>Role</th><th>Servers</th><th>Last login</th><th></th></tr></thead>
         <tbody>
@@ -2079,7 +2175,7 @@ async function renderUsers(view) {
                 <td class="faint nowrap">${fmtTime(u.lastLogin)}</td>
                 <td style="text-align:right" class="nowrap">
                   <button class="btn btn-sm" data-edit-user="${esc(u.id)}">Edit</button>
-                  ${u.id !== state.user.id ? `<button class="btn btn-sm btn-danger" data-del-user="${esc(u.id)}">🗑</button>` : ''}
+                  ${u.id !== state.user.id ? `<button class="btn btn-sm btn-danger" data-del-user="${esc(u.id)}">${icon('trash',12)}</button>` : ''}
                 </td></tr>`
             )
             .join('')}
@@ -2236,7 +2332,7 @@ async function renderSettings(view) {
         <tr><th>Uptime</th><td>${fmtDuration((state.host?.uptime || 0) * 1000)}</td></tr>
         <tr><th>Templates loaded</th><td>${state.templates.length}</td></tr>
       </table></div>
-      <button class="btn mt-16" id="s-reload-templates">↻ Reload templates from disk</button>
+      <button class="btn mt-16" id="s-reload-templates">Reload templates</button>
     </div>`;
 
   // Runtime status
@@ -2245,8 +2341,8 @@ async function renderSettings(view) {
       const el = $('#runtime-info');
       if (!el) return;
       el.innerHTML = data.docker.available
-        ? `✅ Docker ${esc(data.docker.info?.version || '')} detected — servers run isolated in containers.`
-        : `⚠️ Docker not found at <span class="mono">${esc(
+        ? `Docker ${esc(data.docker.info?.version || '')} detected — servers run isolated in containers.`
+        : `Docker not found at <span class="mono">${esc(
             data.docker.socket
           )}</span>. Servers run as plain processes and share the host. Install Docker and restart the panel for isolation.`;
     })
@@ -2350,11 +2446,11 @@ async function checkForUpdates(interactive) {
 
   const current = data.current ? `${data.current.commit} · ${fmtTime(Date.parse(data.current.date))}` : 'unknown';
   if (!data.updateAvailable) {
-    status.innerHTML = `✅ Up to date — v${esc(data.version)} (${esc(current)})`;
+    status.innerHTML = `Up to date — v${esc(data.version)} (${esc(current)})`;
     return;
   }
 
-  status.innerHTML = `🔔 <b>${data.behind} update${data.behind === 1 ? '' : 's'} available</b> — you are on ${esc(current)}`;
+  status.innerHTML = `<b>${data.behind} update${data.behind === 1 ? '' : 's'} available</b> — you are on ${esc(current)}`;
   detail.innerHTML = `
     <div class="card" style="background:rgba(74,222,128,.06)">
       <div class="table-wrap"><table>
@@ -2366,7 +2462,7 @@ async function checkForUpdates(interactive) {
           )
           .join('')}
       </table></div>
-      <button class="btn btn-primary mt-16" id="update-apply">⬇ Update and restart</button>
+      <button class="btn btn-primary mt-16" id="update-apply">Update and restart</button>
     </div>`;
 
   $('#update-apply').addEventListener('click', async (event) => {
@@ -2381,7 +2477,7 @@ async function checkForUpdates(interactive) {
     } catch (err) {
       toast(err.message, 'error');
       btn.disabled = false;
-      btn.textContent = '⬇ Update and restart';
+      btn.textContent = 'Update and restart';
     }
   });
 }
@@ -2547,6 +2643,25 @@ $('#new-server-btn').addEventListener('click', () => {
   location.hash = '#/templates';
 });
 
+/* ----------------------------------------------------------------- theme */
+
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem('gp-theme', theme);
+  const el = $('#theme-icon');
+  if (el) el.outerHTML = icon(theme === 'dark' ? 'moon' : 'sun', 15).replace('<svg', '<svg id="theme-icon"');
+  // Canvas charts are painted, not styled — redraw them for the new palette.
+  if (state.route.name === 'dashboard') drawHostCharts();
+  if (state.route.name === 'server' && state.route.params.tab === 'metrics') drawServerCharts(state.route.params.id);
+}
+
+$('#theme-toggle').addEventListener('click', () => {
+  const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  applyTheme(next);
+});
+
+applyTheme(localStorage.getItem('gp-theme') || 'dark');
+
 $('#menu-btn').addEventListener('click', () => {
   $('#sidebar').classList.add('open');
   $('#sidebar-backdrop').classList.add('show');
@@ -2566,7 +2681,7 @@ window.addEventListener('resize', () => {
 });
 
 bootstrap().catch((err) => {
-  document.body.innerHTML = `<div class="empty"><div class="big">⚠️</div><h3>GamePanel could not start</h3><p>${esc(
+  document.body.innerHTML = `<div class="empty"><h3>GamePanel could not start</h3><p>${esc(
     err.message
   )}</p></div>`;
 });
