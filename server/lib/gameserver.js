@@ -80,8 +80,16 @@ class ServerManager extends EventEmitter {
     return 'docker';
   }
 
-  imageFor(template) {
-    return (template && (template.image || template.container?.image)) || DEFAULT_IMAGE;
+  /**
+   * The image a server runs in. Templates may parameterise it — Java games use
+   * `eclipse-temurin:{{JAVA_VERSION}}-jre`, and JAVA_VERSION is whatever the
+   * resolver said that Minecraft release needs.
+   */
+  imageFor(template, server) {
+    const raw = (template && (template.image || template.container?.image)) || DEFAULT_IMAGE;
+    const vars = { ...(server?.vars || {}) };
+    if (!vars.JAVA_VERSION) vars.JAVA_VERSION = '21';
+    return interpolate(raw, vars) || DEFAULT_IMAGE;
   }
 
   /**
@@ -89,8 +97,8 @@ class ServerManager extends EventEmitter {
    * the template declares runtime `packages` (apt installs performed during a
    * game install would be thrown away with the install container).
    */
-  async resolveImage(template, onLine = () => {}) {
-    const base = this.imageFor(template);
+  async resolveImage(template, server, onLine = () => {}) {
+    const base = this.imageFor(template, server);
     const packages = template?.packages || [];
     if (!packages.length) {
       await docker.ensureImage(base, onLine);
@@ -101,6 +109,8 @@ class ServerManager extends EventEmitter {
       .update(`${base}|${packages.join(' ')}`)
       .digest('hex')
       .slice(0, 10);
+    // The tag includes the base image hash, so switching Java version builds
+    // (and caches) a separate layer rather than reusing the wrong one.
     const tag = `gamepanel/${template.id}:${hash}`;
     if (await docker.hasImage(tag)) return tag;
 
@@ -540,10 +550,10 @@ class ServerManager extends EventEmitter {
         Object.assign(vars, extra);
         // Remember what was actually installed, so the UI can show a version
         // even for a server deployed with "latest" that has never started.
-        if (extra.RESOLVED_VERSION) {
-          server.resolvedVersion = String(extra.RESOLVED_VERSION);
-          this.store.save();
-        }
+        if (extra.RESOLVED_VERSION) server.resolvedVersion = String(extra.RESOLVED_VERSION);
+        // Persisted so later starts pick the same JRE image as the install did.
+        if (extra.JAVA_VERSION) server.vars = { ...server.vars, JAVA_VERSION: String(extra.JAVA_VERSION) };
+        if (extra.RESOLVED_VERSION || extra.JAVA_VERSION) this.store.save();
         this.pushConsole(server, `Using ${extra.RESOLVED_VERSION || 'the latest build'}`, 'system');
       } catch (err) {
         this.pushConsole(server, err.message, 'system');
@@ -663,7 +673,7 @@ class ServerManager extends EventEmitter {
     try {
       if (containerized) {
         const name = `gp-task-${server.id}`;
-        const image = await this.resolveImage(template, (line) => this.pushConsole(server, line, 'system'));
+        const image = await this.resolveImage(template, server, (line) => this.pushConsole(server, line, 'system'));
         await docker.remove(name);
         const created = await docker.create(name, {
           Image: image,
@@ -1390,7 +1400,7 @@ class ServerManager extends EventEmitter {
     const name = `gp-install-${server.id}`;
 
     try {
-      const image = await this.resolveImage(template, (line) => this.pushConsole(server, line, 'system'));
+      const image = await this.resolveImage(template, server, (line) => this.pushConsole(server, line, 'system'));
       await docker.remove(name);
 
       const created = await docker.create(name, {
@@ -1443,7 +1453,7 @@ class ServerManager extends EventEmitter {
     const name = this.containerName(server.id);
     const network = await docker.ensureNetwork(this.networkName(server.id));
 
-    const image = await this.resolveImage(template, (line) => this.pushConsole(server, line, 'system'));
+    const image = await this.resolveImage(template, server, (line) => this.pushConsole(server, line, 'system'));
     await docker.remove(name);
     await this.startSidecars(server, template, network);
 

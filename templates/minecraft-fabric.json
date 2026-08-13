@@ -59,8 +59,8 @@
   "install": [
     {
       "type": "java",
-      "version": "21",
-      "label": "Install Java 21"
+      "version": "{{JAVA_VERSION}}",
+      "label": "Install the Java the game needs"
     },
     {
       "type": "script",
@@ -111,7 +111,7 @@
     "join": "([A-Za-z0-9_]{3,16}) joined the game",
     "leave": "([A-Za-z0-9_]{3,16}) left the game"
   },
-  "image": "eclipse-temurin:21-jre",
+  "image": "eclipse-temurin:{{JAVA_VERSION}}-jre",
   "mods": {
     "providers": [
       "modrinth",

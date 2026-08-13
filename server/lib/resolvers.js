@@ -27,6 +27,31 @@ async function getJson(url) {
 const isPrerelease = (version) => /-(rc|pre|snapshot|exp)/i.test(String(version));
 const wantsLatest = (value) => !value || String(value).toLowerCase() === 'latest';
 
+const javaCache = new Map();
+
+/**
+ * Which Java a given Minecraft release needs. Mojang states this in the
+ * version metadata (`javaVersion.majorVersion`), and it moves — 1.20 wanted
+ * 17, later releases want 21, and current ones want 25. Guessing it wrong
+ * produces an UnsupportedClassVersionError at boot, so ask rather than pin.
+ */
+async function javaForMinecraft(id) {
+  if (!id) return null;
+  if (javaCache.has(id)) return javaCache.get(id);
+  try {
+    const manifest = await getJson('https://launchermeta.mojang.com/mc/game/version_manifest_v2.json');
+    const entry = manifest.versions.find((v) => v.id === id);
+    if (!entry) return null;
+    const detail = await getJson(entry.url);
+    const major = detail.javaVersion?.majorVersion || null;
+    javaCache.set(id, major);
+    return major;
+  } catch (err) {
+    logger.debug(`could not read the Java requirement for ${id}: ${err.message}`);
+    return null;
+  }
+}
+
 const RESOLVERS = {
   /** PaperMC: pick a version, then its newest stable build. */
   async paper(vars) {
@@ -44,7 +69,12 @@ const RESOLVERS = {
     const build = (stable.length ? stable : builds)[0];
     const url = build?.downloads?.['server:default']?.url;
     if (!url) throw new Error(`no Paper build published for ${version}`);
-    return { DOWNLOAD_URL: url, RESOLVED_VERSION: version, RESOLVED_BUILD: String(build.id ?? '') };
+    return {
+      DOWNLOAD_URL: url,
+      RESOLVED_VERSION: version,
+      RESOLVED_BUILD: String(build.id ?? ''),
+      JAVA_VERSION: String((await javaForMinecraft(version)) || 21),
+    };
   },
 
   /** Mojang's own server jar for a release. */
@@ -56,7 +86,11 @@ const RESOLVERS = {
     const detail = await getJson(entry.url);
     const url = detail.downloads?.server?.url;
     if (!url) throw new Error(`Minecraft ${id} has no dedicated server download`);
-    return { DOWNLOAD_URL: url, RESOLVED_VERSION: id };
+    return {
+      DOWNLOAD_URL: url,
+      RESOLVED_VERSION: id,
+      JAVA_VERSION: String(detail.javaVersion?.majorVersion || 21),
+    };
   },
 
   /** Fabric's prebuilt server launcher for game + loader + installer. */
@@ -80,6 +114,7 @@ const RESOLVERS = {
         loader
       )}/${encodeURIComponent(installer)}/server/jar`,
       RESOLVED_VERSION: `${game} (loader ${loader})`,
+      JAVA_VERSION: String((await javaForMinecraft(game)) || 21),
     };
   },
 
