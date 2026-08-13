@@ -781,7 +781,9 @@ function serverRow(server) {
       <span class="srv-icon">${esc(server.templateIcon || '🎮')}</span>
       <span class="srv-name">
         <span class="title">${esc(server.name)}</span>
-        <span class="sub">${esc(server.templateName)} · ${esc(serverAddress(server))}</span>
+        <span class="sub">${esc(server.templateName)}${
+          server.gameVersion ? ` · <span class="ver">${esc(server.gameVersion)}</span>` : ''
+        } · ${esc(serverAddress(server))}</span>
       </span>
     </a>
 
@@ -889,6 +891,7 @@ function renderServerDetail(view) {
         <div class="row" style="margin-top:3px">
           <span id="detail-status">${statusPill(server.status)}</span>
           <span class="address" data-copy="${esc(serverAddress(server))}">${esc(serverAddress(server))}</span>
+          ${server.gameVersion ? `<span class="badge">${esc(server.gameVersion)}</span>` : ''}
           <span class="badge" title="${
             server.runtime === 'docker' ? 'Isolated in its own container' : 'Running as a plain process on the host'
           }">${server.runtime === 'docker' ? 'Container' : 'Process'}</span>
@@ -1091,6 +1094,28 @@ function handleConsoleMessage(msg) {
   }
 }
 
+/**
+ * Light syntax colouring for console output: the timestamp/thread prefix is
+ * dimmed so the message itself reads first, and the severity decides the tone.
+ */
+function consoleLineHtml(entry) {
+  const raw = String(entry.line ?? '');
+  let tone = entry.stream === 'stderr' ? 'err' : entry.stream;
+
+  if (entry.stream === 'stdout') {
+    if (/\b(error|severe|fatal|exception|failed|traceback)\b/i.test(raw)) tone = 'err';
+    else if (/\b(warn(ing)?|deprecated)\b/i.test(raw)) tone = 'warn';
+    else tone = 'out';
+  }
+
+  // Split a leading "[12:34:56] [Server thread/INFO]:" style prefix.
+  const match = raw.match(/^((?:\[[^\]]*\]\s*)+:?\s*)(.*)$/s);
+  const body = match ? match[2] : raw;
+  const prefix = match ? match[1] : '';
+
+  return `<div class="l ${esc(tone)}">${prefix ? `<span class="ts">${esc(prefix)}</span>` : ''}${esc(body)}</div>`;
+}
+
 function appendConsoleLines(lines, replace = false) {
   const el = $('#console');
   if (lines.length) {
@@ -1099,7 +1124,7 @@ function appendConsoleLines(lines, replace = false) {
   }
   if (!el) return;
   const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 60;
-  const html = lines.map((l) => `<div class="l ${esc(l.stream)}">${esc(l.line)}</div>`).join('');
+  const html = lines.map(consoleLineHtml).join('');
   el.insertAdjacentHTML('beforeend', html);
   while (el.childElementCount > 600) el.firstElementChild.remove();
   if (atBottom || replace) el.scrollTop = el.scrollHeight;
@@ -1966,8 +1991,172 @@ function renderTemplates(view) {
 
 /* --------------------------------------------------------- create server */
 
+/** Fill every `data-source` select from the panel's live option providers. */
+async function hydrateOptionFields(root = document) {
+  const fields = [...root.querySelectorAll('select[data-source]')];
+  if (!fields.length) return;
+  const sources = [...new Set(fields.map((f) => f.dataset.source))];
+
+  await Promise.all(
+    sources.map(async (source) => {
+      let data;
+      try {
+        data = await api(`/api/options/${encodeURIComponent(source)}`);
+      } catch (err) {
+        data = { options: [], error: err.message };
+      }
+      for (const field of fields.filter((f) => f.dataset.source === source)) {
+        const hint = root.querySelector(`[data-hint-for="${CSS.escape(field.dataset.var)}"]`);
+
+        // Unreachable provider: degrade to a plain text box rather than a
+        // dropdown with nothing in it.
+        if (!data.options?.length) {
+          const input = document.createElement('input');
+          input.id = field.id;
+          input.dataset.var = field.dataset.var;
+          input.value = field.dataset.default || '';
+          field.replaceWith(input);
+          if (hint) hint.textContent = data.error || 'Could not load the list — type a value instead.';
+          continue;
+        }
+
+        field.innerHTML = data.options
+          .map(
+            (o) =>
+              `<option value="${esc(o.value)}">${esc(o.label)}${o.recommended ? ' — recommended' : ''}</option>`
+          )
+          .join('');
+
+        // Honour an explicit template default when it still exists, otherwise
+        // take the newest/recommended entry.
+        const wanted = field.dataset.default;
+        const usable = wanted && wanted !== 'latest' && data.options.some((o) => o.value === wanted);
+        field.value = usable ? wanted : data.recommended ?? data.options[0].value;
+
+        const describe = () => {
+          if (!hint) return;
+          const chosen = data.options.find((o) => o.value === field.value);
+          const note = chosen?.note || (chosen?.recommended ? 'Newest stable release.' : '');
+          hint.textContent = [note, data.stale ? '(cached list)' : ''].filter(Boolean).join(' ');
+        };
+        field.addEventListener('change', describe);
+        describe();
+      }
+    })
+  );
+}
+
+/** Warn before submitting if a chosen port is already taken by another server. */
+function checkPortConflicts(root = document) {
+  const used = new Map();
+  for (const server of state.servers) {
+    for (const [name, port] of Object.entries(server.ports || {})) used.set(Number(port), server.name);
+  }
+  root.querySelectorAll('[data-port]').forEach((input) => {
+    const update = () => {
+      const owner = used.get(Number(input.value));
+      let hint = input.parentElement.querySelector('.port-hint');
+      if (!hint) {
+        hint = document.createElement('div');
+        hint.className = 'hint port-hint';
+        input.parentElement.appendChild(hint);
+      }
+      hint.textContent = owner ? `In use by “${owner}” — pick another or it will be reassigned.` : '';
+      hint.style.color = owner ? 'var(--warning)' : '';
+    };
+    input.addEventListener('input', update);
+    update();
+  });
+}
+
+/** Wire the memory preset dropdown to its hidden numeric input. */
+function wireMemoryField(root = document) {
+  const preset = root.querySelector('#new-memory-preset');
+  const input = root.querySelector('#new-memory');
+  if (!preset || !input) return;
+  preset.addEventListener('change', () => {
+    if (preset.value === 'custom') {
+      input.classList.remove('hidden');
+      input.focus();
+      input.select();
+    } else {
+      input.classList.add('hidden');
+      input.value = preset.value;
+    }
+  });
+}
+
+/** Reroll button on generated secrets. */
+function wireGenerateButtons(root = document) {
+  root.querySelectorAll('[data-generate]').forEach((btn) =>
+    btn.addEventListener('click', () => {
+      const field = root.querySelector(`[data-var="${CSS.escape(btn.dataset.generate)}"]`);
+      if (!field) return;
+      const bytes = crypto.getRandomValues(new Uint8Array(12));
+      field.value = btoa(String.fromCharCode(...bytes)).replace(/[+/=]/g, '').slice(0, 16);
+      field.focus();
+    })
+  );
+}
+
+/** Everything a freshly opened deploy form needs. */
+function wireDeployForm(root = document) {
+  wireMemoryField(root);
+  wireGenerateButtons(root);
+  checkPortConflicts(root);
+  hydrateOptionFields(root);
+}
+
+/**
+ * Memory picker: common sizes as a dropdown, with an escape hatch to type an
+ * exact number. The hidden #new-memory input stays the single source of truth.
+ */
+function memoryField(defaultMb) {
+  const presets = [1024, 2048, 3072, 4096, 6144, 8192, 12288, 16384, 24576, 32768];
+  if (!presets.includes(defaultMb)) presets.push(defaultMb);
+  presets.sort((a, b) => a - b);
+  const label = (mb) => (mb >= 1024 && mb % 1024 === 0 ? `${mb / 1024} GB` : `${mb} MB`);
+  return `
+    <label><span>Memory limit</span>
+      <select id="new-memory-preset">
+        ${presets
+          .map(
+            (mb) =>
+              `<option value="${mb}" ${mb === defaultMb ? 'selected' : ''}>${label(mb)}${
+                mb === defaultMb ? ' — recommended' : ''
+              }</option>`
+          )
+          .join('')}
+        <option value="custom">Custom…</option>
+      </select>
+      <input id="new-memory" type="number" min="256" step="256" value="${defaultMb}" class="hidden" />
+      <div class="hint">The container is capped at this; a server that exceeds it is restarted rather than taking the host down.</div>
+    </label>`;
+}
+
 function variableField(v) {
   const id = `var-${v.name}`;
+
+  // Choices fetched live from the panel (game versions, build channels…).
+  if (v.source) {
+    return `<label><span>${esc(v.label || v.name)}</span>
+      <select id="${id}" data-var="${esc(v.name)}" data-source="${esc(v.source)}" data-default="${esc(v.default ?? '')}">
+        <option>Loading choices…</option>
+      </select>
+      <div class="hint" data-hint-for="${esc(v.name)}">${esc(v.description || '')}</div></label>`;
+  }
+
+  // Secrets: prefilled with something strong, with a button to reroll.
+  if (v.generate === 'password') {
+    return `<label><span>${esc(v.label || v.name)}</span>
+      <span class="input-row">
+        <input id="${id}" data-var="${esc(v.name)}" type="text" value="${esc(v.default ?? '')}"
+               placeholder="generated automatically" spellcheck="false" />
+        <button type="button" class="btn btn-sm" data-generate="${esc(v.name)}">Generate</button>
+      </span>
+      <div class="hint">${esc(v.description || 'Leave blank and one will be generated for you.')}</div></label>`;
+  }
+
   if (v.options?.length) {
     return `<label><span>${esc(v.label || v.name)}</span>
       <select id="${id}" data-var="${esc(v.name)}">
@@ -2008,7 +2197,7 @@ function openCreateServerModal(templateId) {
       <p class="faint" style="margin-top:0">${esc(template.description || '')}</p>
       <div class="form-grid">
         <label><span>Server name</span><input id="new-name" value="${esc(template.name)}" /></label>
-        <label><span>Memory limit (MB)</span><input id="new-memory" type="number" value="${template.defaultMemory || 2048}" /></label>
+        ${memoryField(template.defaultMemory || 2048)}
       </div>
       ${portFields ? `<h4 class="section-title mt-16">Ports</h4><div class="form-grid">${portFields}</div>` : ''}
       ${variableFields ? `<h4 class="section-title mt-16">Game settings</h4><div class="form-grid">${variableFields}</div>` : ''}
@@ -2056,6 +2245,9 @@ function openCreateServerModal(templateId) {
       },
     ],
   });
+
+  wireDeployForm(document);
+  return modal;
 }
 
 /**
@@ -2082,9 +2274,7 @@ function openWizardModal(template) {
       description: `Deploying ${template.name}.`,
       html: `<div class="form-grid">
           <label><span>Server name</span><input id="new-name" value="${esc(template.name)}" /></label>
-          <label><span>Memory limit (MB)</span><input id="new-memory" type="number" value="${
-            template.defaultMemory || 2048
-          }" /></label>
+          ${memoryField(template.defaultMemory || 2048)}
           ${(template.ports || [])
             .map(
               (p) =>
@@ -2137,6 +2327,8 @@ function openWizardModal(template) {
       { label: 'Next', primary: true, onClick: (btn) => (current === allSteps.length - 1 ? submit(btn) : show(current + 1)) },
     ],
   });
+
+  wireDeployForm(document);
 
   const [backBtn, nextBtn] = [...document.querySelectorAll('.modal-foot .btn')];
 
@@ -2681,13 +2873,67 @@ document.addEventListener('click', async (event) => {
   }
 
   const copy = event.target.closest('[data-copy]');
-  if (copy) {
-    navigator.clipboard?.writeText(copy.dataset.copy).then(
-      () => toast('Address copied'),
-      () => {}
-    );
-  }
+  if (copy) copyToClipboard(copy.dataset.copy, copy);
 });
+
+/**
+ * navigator.clipboard only exists on secure origins, and the panel is usually
+ * reached over plain http on a LAN address — so fall back to the old
+ * execCommand path instead of silently doing nothing.
+ */
+async function copyToClipboard(text, sourceEl) {
+  let ok = false;
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+      ok = true;
+    }
+  } catch {
+    ok = false;
+  }
+
+  if (!ok) {
+    const scratch = document.createElement('textarea');
+    scratch.value = text;
+    scratch.setAttribute('readonly', '');
+    scratch.style.cssText = 'position:fixed;top:0;left:-9999px;opacity:0';
+    document.body.appendChild(scratch);
+    scratch.select();
+    scratch.setSelectionRange(0, text.length);
+    try {
+      ok = document.execCommand('copy');
+    } catch {
+      ok = false;
+    }
+    scratch.remove();
+  }
+
+  if (ok) {
+    toast(`Copied ${text}`);
+    // Brief inline confirmation on the element itself.
+    if (sourceEl && !sourceEl.dataset.copying) {
+      const original = sourceEl.textContent;
+      sourceEl.dataset.copying = '1';
+      sourceEl.classList.add('copied');
+      sourceEl.textContent = 'Copied';
+      setTimeout(() => {
+        sourceEl.textContent = original;
+        sourceEl.classList.remove('copied');
+        delete sourceEl.dataset.copying;
+      }, 1100);
+    }
+  } else if (sourceEl) {
+    // Last resort: select it so the user only has to press Ctrl+C.
+    const range = document.createRange();
+    range.selectNodeContents(sourceEl);
+    const selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+    toast('Selected the address — press Ctrl+C to copy', 'warn');
+  } else {
+    toast('Could not copy to the clipboard', 'warn');
+  }
+}
 
 $('#auth-form').addEventListener('submit', async (event) => {
   event.preventDefault();

@@ -9,7 +9,9 @@
     {
       "name": "MC_VERSION",
       "label": "Minecraft version",
-      "default": "1.21.4"
+      "default": "1.21.4",
+      "source": "fabric-game-version",
+      "description": "Fabric-supported game versions."
     },
     {
       "name": "LOADER_VERSION",

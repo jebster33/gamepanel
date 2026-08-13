@@ -432,6 +432,23 @@ textarea[disabled] {
   cursor: pointer;
 }
 
+.input-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.input-row input {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Copy confirmation on an address chip. */
+.address.copied {
+  color: var(--success);
+  border-color: color-mix(in srgb, var(--success) 45%, var(--border));
+}
+
 .form-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
@@ -1138,7 +1155,7 @@ textarea[disabled] {
 
 .srv-row {
   display: grid;
-  grid-template-columns: minmax(180px, 1.6fr) 96px 84px 92px 74px 74px auto;
+  grid-template-columns: minmax(170px, 1.5fr) 104px 74px 104px 78px 68px 152px;
   align-items: center;
   gap: 12px;
   padding: 0 14px;
@@ -1224,6 +1241,10 @@ textarea[disabled] {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.srv-name .ver {
+  color: var(--text-secondary);
 }
 
 .srv-metric {
@@ -1360,11 +1381,37 @@ tbody tr:hover {
   overflow-y: auto;
   white-space: pre-wrap;
   word-break: break-word;
-  color: var(--text-secondary);
+  color: #ccd2da;
+}
+
+:root[data-theme="light"] .console {
+  color: #2b2f36;
+}
+
+/* The timestamp / thread prefix is noise once you are scanning output. */
+.console .ts {
+  color: var(--text-tertiary);
+}
+
+.console .l.out {
+  color: inherit;
+}
+
+.console .l.warn {
+  color: var(--warning);
+}
+
+.console .l.err {
+  color: var(--danger);
 }
 
 .console .l.stderr {
   color: var(--danger);
+}
+
+.console .l.input .ts,
+.console .l.system .ts {
+  color: inherit;
 }
 
 .console .l.system {
@@ -1858,7 +1905,7 @@ kbd {
 
 @media (max-width: 1080px) {
   .srv-row {
-    grid-template-columns: minmax(150px, 1.6fr) 92px 80px 88px auto;
+    grid-template-columns: minmax(150px, 1.5fr) 104px 74px 104px 152px;
   }
   .srv-row > .hide-md {
     display: none;

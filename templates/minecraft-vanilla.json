@@ -10,7 +10,8 @@
       "name": "MC_VERSION",
       "label": "Minecraft version",
       "default": "latest",
-      "description": "A release version, or 'latest' for the newest release."
+      "description": "Any Mojang release.",
+      "source": "minecraft-release"
     },
     {
       "name": "MAX_PLAYERS",

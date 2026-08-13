@@ -305,6 +305,21 @@ class ServerManager extends EventEmitter {
     return out;
   }
 
+  /**
+   * What version the server is actually running: whatever the live query
+   * reported, else the version variable the template was deployed with.
+   */
+  gameVersion(server, template) {
+    const rt = this.rt(server.id);
+    if (rt.version) return rt.version;
+    const vars = server.vars || {};
+    const key = template?.versionVar || Object.keys(vars).find((k) => /(_VERSION|_BUILD)$/.test(k));
+    const value = key ? vars[key] : null;
+    if (!value) return null;
+    const text = String(value);
+    return text && text.toLowerCase() !== 'latest' ? text : null;
+  }
+
   publicServer(server) {
     const rt = this.rt(server.id);
     const tpl = this.template(server);
@@ -335,6 +350,7 @@ class ServerManager extends EventEmitter {
       hasRcon: Boolean(tpl?.rcon && server.vars?.RCON_PASSWORD),
       hasMods: Boolean(tpl?.mods),
       modProviders: tpl?.mods?.providers || [],
+      gameVersion: this.gameVersion(server, tpl),
     };
   }
 
@@ -1283,6 +1299,7 @@ class ServerManager extends EventEmitter {
           if (typeof result.players === 'number') rt.players = result.players;
           if (typeof result.maxPlayers === 'number' && result.maxPlayers > 0) rt.maxPlayers = result.maxPlayers;
           if (result.playerList?.length) rt.playerList = result.playerList;
+          if (result.version) rt.version = result.version;
           if (result.motd) rt.motd = result.motd;
           if (result.map) rt.map = result.map;
         } else {

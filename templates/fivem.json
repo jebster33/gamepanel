@@ -109,11 +109,8 @@
       "name": "FIVEM_BUILD",
       "label": "Artifact build",
       "default": "recommended",
-      "options": [
-        "recommended",
-        "latest"
-      ],
-      "description": "'recommended' is the stable build Cfx.re advises for production."
+      "description": "'recommended' is the stable build Cfx.re advises for production.",
+      "source": "fivem-build"
     }
   ],
   "ports": [

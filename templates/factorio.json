@@ -10,10 +10,7 @@
       "name": "FACTORIO_CHANNEL",
       "label": "Release channel",
       "default": "stable",
-      "options": [
-        "stable",
-        "latest"
-      ]
+      "source": "factorio-channel"
     },
     {
       "name": "SAVE_NAME",
