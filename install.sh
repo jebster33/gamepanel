@@ -99,9 +99,13 @@ fi
 
 if [ -d "$INSTALL_DIR/.git" ]; then
   info "Updating GamePanel in $INSTALL_DIR"
-  git -C "$INSTALL_DIR" fetch --quiet origin "$BRANCH"
-  git -C "$INSTALL_DIR" reset --quiet --hard "origin/$BRANCH"
-  ok "Updated to $(git -C "$INSTALL_DIR" rev-parse --short HEAD)"
+  # The checkout belongs to the service user, and git refuses to operate on a
+  # repository owned by someone else — so run git as its owner, not as root.
+  chown -R "$SERVICE_USER":"$SERVICE_USER" "$INSTALL_DIR"
+  as_owner() { sudo -u "$SERVICE_USER" git -C "$INSTALL_DIR" "$@"; }
+  as_owner fetch --quiet origin "$BRANCH"
+  as_owner reset --quiet --hard "origin/$BRANCH"
+  ok "Updated to $(as_owner rev-parse --short HEAD)"
 elif [ -f "$(dirname "$(readlink -f "$0")")/server/index.js" ]; then
   # Running from a checkout — install from these files instead of cloning.
   SRC="$(dirname "$(readlink -f "$0")")"
