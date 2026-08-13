@@ -61,14 +61,22 @@ async function checkForUpdate() {
   }
 
   const behind = Number(await git(`rev-list --count HEAD..origin/${BRANCH}`).catch(() => '0'));
+
+  // %x09 is a literal tab: it keeps the format free of shell metacharacters
+  // (a "|" separator would be parsed as a pipe by the shell running git) and
+  // cannot appear inside a commit subject.
   const commits = behind
-    ? (await git(`log --format=%h|%cI|%s HEAD..origin/${BRANCH} --max-count=20`))
-        .split('\n')
-        .filter(Boolean)
-        .map((line) => {
-          const [commit, date, ...rest] = line.split('|');
-          return { commit, date, subject: rest.join('|') };
-        })
+    ? await git(`log --format=%h%x09%cI%x09%s HEAD..origin/${BRANCH} --max-count=20`)
+        .then((out) =>
+          out
+            .split('\n')
+            .filter(Boolean)
+            .map((line) => {
+              const [commit, date, ...rest] = line.split('\t');
+              return { commit, date, subject: rest.join('\t') };
+            })
+        )
+        .catch(() => [])
     : [];
 
   return {
