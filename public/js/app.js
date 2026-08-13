@@ -79,6 +79,14 @@ const STATUS_LABEL = {
   crashed: 'Crashed',
 };
 
+/** Does the signed-in account hold a capability? Admins always do. */
+function can(capability) {
+  const user = state.user;
+  if (!user) return false;
+  if (user.role === 'admin') return true;
+  return (user.permissions || []).includes(capability);
+}
+
 function statusPill(status) {
   return `<span class="status ${esc(status)}"><span class="dot"></span>${esc(STATUS_LABEL[status] || status)}</span>`;
 }
@@ -188,7 +196,13 @@ async function enterApp() {
   const isAdmin = state.user.role === 'admin';
   $$('.admin-only').forEach((el) => el.classList.toggle('hidden', !isAdmin));
 
-  await Promise.all([loadServers(), loadTemplates(), loadSystem()]);
+  // Hide navigation the account cannot use at all, so nothing dead-ends in a
+  // permission error.
+  $$('[data-needs]').forEach((el) => el.classList.toggle('hidden', !can(el.dataset.needs)));
+
+  // Restricted accounts may not be allowed every one of these; a refused
+  // request must not stop the panel from loading.
+  await Promise.allSettled([loadServers(), loadTemplates(), loadSystem()]);
   connectWebSocket();
   renderSidebarServers();
   handleRoute();
@@ -200,6 +214,11 @@ async function loadServers() {
 }
 
 async function loadTemplates() {
+  if (!can('templates')) {
+    state.templates = [];
+    state.categories = [];
+    return;
+  }
   const data = await api('/api/templates');
   state.templates = data.templates;
   state.categories = data.categories;
@@ -860,13 +879,14 @@ function renderServers(view) {
 /* --------------------------------------------------------- server detail */
 
 function serverTabs(server) {
+  const allowed = (cap) => can(cap);
   return [
-    ['console', 'Console'],
+    ...(allowed('console') ? [['console', 'Console']] : []),
     ['metrics', 'Metrics'],
-    ['files', 'Files'],
-    ...(server.hasMods ? [['mods', 'Mods']] : []),
-    ['backups', 'Backups'],
-    ['settings', 'Settings'],
+    ...(allowed('files') ? [['files', 'Files']] : []),
+    ...(server.hasMods && allowed('mods') ? [['mods', 'Mods']] : []),
+    ...(allowed('backups') ? [['backups', 'Backups']] : []),
+    ...(allowed('settings') ? [['settings', 'Settings']] : []),
   ];
 }
 
@@ -1786,7 +1806,9 @@ async function renderBackupsTab(host, server) {
 /* ------------------------------------------------- server settings tab -- */
 
 function renderServerSettingsTab(host, server) {
-  const isAdmin = state.user.role === 'admin';
+  // Editing follows the "settings" capability; the danger zone stays admin-only.
+  const isAdmin = can('settings');
+  const isOwner = state.user.role === 'admin';
   host.innerHTML = `
     <div class="card mb-16">
       <h4 style="margin:0 0 14px">General</h4>
@@ -1842,7 +1864,7 @@ function renderServerSettingsTab(host, server) {
     </div>
 
     ${
-      isAdmin
+      isOwner
         ? `<div class="card">
              <h4 style="margin:0 0 6px">Danger zone</h4>
              <p class="faint" style="margin:0 0 14px">Reinstalling re-runs the template installer in place. Deleting removes the server and all of its files.</p>
@@ -1882,6 +1904,8 @@ function renderServerSettingsTab(host, server) {
       toast(err.message, 'error');
     }
   });
+
+  if (!isOwner) return; // the danger zone below is not rendered for non-admins
 
   $('#set-reinstall').addEventListener('click', async () => {
     if (!(await confirmModal('Reinstall server', 'Re-run the installer for this server? Game files may be overwritten; worlds and configs are normally kept.')))
@@ -2398,7 +2422,7 @@ async function renderActivity(view) {
     <div class="page-head"><h1>Activity</h1></div>
     <div class="card card-flush">
       <div class="table-wrap"><table>
-        <thead><tr><th style="width:30px"></th><th>Event</th><th>Server</th><th class="nowrap">When</th></tr></thead>
+        <thead><tr><th style="width:30px"></th><th>Event</th><th>Server</th><th>Origin</th><th class="nowrap">When</th></tr></thead>
         <tbody>
           ${
             data.events.length
@@ -2411,11 +2435,16 @@ async function renderActivity(view) {
                       )}"></span></td>
                       <td>${esc(e.message)}</td>
                       <td>${server ? `<a href="#/servers/${esc(server.id)}">${esc(server.name)}</a>` : '<span class="faint">—</span>'}</td>
+                      <td class="faint nowrap">${
+                        e.ip
+                          ? `<span class="mono">${esc(e.ip)}</span>${e.location ? ` · ${esc(e.location)}` : ''}`
+                          : '—'
+                      }</td>
                       <td class="faint nowrap">${fmtTime(e.at)}</td>
                     </tr>`;
                   })
                   .join('')
-              : '<tr><td colspan="4" class="faint">Nothing has happened yet</td></tr>'
+              : '<tr><td colspan="5" class="faint">Nothing has happened yet</td></tr>'
           }
         </tbody>
       </table></div>
@@ -2435,7 +2464,7 @@ async function renderUsers(view) {
     </div>
     <div class="card card-flush">
       <div class="table-wrap"><table>
-        <thead><tr><th>User</th><th>Role</th><th>Servers</th><th>Last login</th><th></th></tr></thead>
+        <thead><tr><th>User</th><th>Role</th><th>Servers</th><th>Permissions</th><th>Last login</th><th></th></tr></thead>
         <tbody>
           ${data.users
             .map(
@@ -2443,6 +2472,11 @@ async function renderUsers(view) {
                 <td><strong>${esc(u.username)}</strong></td>
                 <td><span class="badge ${u.role === 'admin' ? 'admin' : ''}">${esc(u.role)}</span></td>
                 <td class="faint">${u.role === 'admin' ? 'All servers' : (u.servers || []).length + ' assigned'}</td>
+                <td class="faint">${
+                  u.role === 'admin'
+                    ? 'Everything'
+                    : `${(u.permissions || []).length} of ${(data.capabilities || []).length}`
+                }</td>
                 <td class="faint nowrap">${fmtTime(u.lastLogin)}</td>
                 <td style="text-align:right" class="nowrap">
                   <button class="btn btn-sm" data-edit-user="${esc(u.id)}">Edit</button>
@@ -2454,9 +2488,11 @@ async function renderUsers(view) {
       </table></div>
     </div>`;
 
-  $('#user-new').addEventListener('click', () => openUserModal(null, data.users));
+  $('#user-new').addEventListener('click', () => openUserModal(null, data.capabilities, data.defaults));
   view.querySelectorAll('[data-edit-user]').forEach((el) =>
-    el.addEventListener('click', () => openUserModal(data.users.find((u) => u.id === el.dataset.editUser), data.users))
+    el.addEventListener('click', () =>
+      openUserModal(data.users.find((u) => u.id === el.dataset.editUser), data.capabilities, data.defaults)
+    )
   );
   view.querySelectorAll('[data-del-user]').forEach((el) =>
     el.addEventListener('click', async () => {
@@ -2471,27 +2507,78 @@ async function renderUsers(view) {
   );
 }
 
-function openUserModal(user) {
+function openUserModal(user, capabilities = [], defaults = []) {
   const editing = Boolean(user);
+  const held = new Set(user ? user.permissions || [] : defaults);
+
+  // Group the capability checkboxes the way they are grouped server-side.
+  const groups = {};
+  for (const cap of capabilities) (groups[cap.group] = groups[cap.group] || []).push(cap);
+
+  const permissionUi = Object.entries(groups)
+    .map(
+      ([group, caps]) => `
+      <div class="perm-group">
+        <div class="perm-group-title">${esc(group)}</div>
+        ${caps
+          .map(
+            (cap) => `
+          <label class="checkbox-row perm-row">
+            <input type="checkbox" data-cap="${esc(cap.id)}" ${held.has(cap.id) ? 'checked' : ''} />
+            <span>${esc(cap.label)}</span>
+          </label>`
+          )
+          .join('')}
+      </div>`
+    )
+    .join('');
+
   const modal = openModal({
-    title: editing ? `Edit ${user.username}` : 'Add user',
+    title: editing ? `Edit ${user.username}` : 'New user',
+    width: 640,
     body: `
-      <label><span>Username</span><input id="u-name" value="${esc(user?.username || '')}" ${editing ? 'disabled' : ''} /></label>
-      <label><span>${editing ? 'New password (leave blank to keep)' : 'Password'}</span><input id="u-pass" type="password" autocomplete="new-password" /></label>
+      <div class="form-grid">
+        <label><span>Username</span><input id="u-name" value="${esc(user?.username || '')}" ${
+      editing ? 'disabled' : ''
+    } /></label>
+        <label><span>${
+          editing ? 'New password (blank keeps it)' : 'Password'
+        }</span><input id="u-pass" type="password" autocomplete="new-password" /></label>
+      </div>
+
       <label><span>Role</span>
         <select id="u-role">
-          <option value="user" ${user?.role === 'user' ? 'selected' : ''}>User — only assigned servers</option>
-          <option value="admin" ${user?.role === 'admin' ? 'selected' : ''}>Administrator — full access</option>
+          <option value="user" ${user?.role === 'user' || !editing ? 'selected' : ''}>User — only what you allow below</option>
+          <option value="admin" ${user?.role === 'admin' ? 'selected' : ''}>Administrator — full access to everything</option>
         </select>
       </label>
-      <label><span>Assigned servers</span>
-        <select id="u-servers" multiple size="${Math.min(6, Math.max(3, state.servers.length))}">
-          ${state.servers
-            .map((s) => `<option value="${esc(s.id)}" ${user?.servers?.includes(s.id) ? 'selected' : ''}>${esc(s.name)}</option>`)
-            .join('')}
-        </select>
-        <div class="hint">Ignored for administrators, who always see every server.</div>
-      </label>`,
+
+      <div id="u-scoped" class="${user?.role === 'admin' ? 'hidden' : ''}">
+        <label><span>Assigned servers</span>
+          <select id="u-servers" multiple size="${Math.min(6, Math.max(3, state.servers.length))}">
+            ${state.servers
+              .map(
+                (s) =>
+                  `<option value="${esc(s.id)}" ${user?.servers?.includes(s.id) ? 'selected' : ''}>${esc(s.name)}</option>`
+              )
+              .join('')}
+          </select>
+          <div class="hint">Hold ⌘/Ctrl to pick several. This user sees nothing else.</div>
+        </label>
+
+        <div class="row" style="margin:16px 0 8px">
+          <span class="field-label" style="margin:0">Permissions</span>
+          <div style="flex:1"></div>
+          <button type="button" class="btn btn-sm" id="u-all">Select all</button>
+          <button type="button" class="btn btn-sm" id="u-none">Clear</button>
+        </div>
+        <div class="perm-grid">${permissionUi}</div>
+      </div>
+
+      <div id="u-admin-note" class="hint ${user?.role === 'admin' ? '' : 'hidden'}">
+        Administrators hold every permission on every server, including panel settings,
+        user management and updates — which is effectively shell access on this machine.
+      </div>`,
     actions: [
       { label: 'Cancel', close: true },
       {
@@ -2502,6 +2589,7 @@ function openUserModal(user) {
             username: $('#u-name').value.trim(),
             role: $('#u-role').value,
             servers: [...$('#u-servers').selectedOptions].map((o) => o.value),
+            permissions: [...document.querySelectorAll('[data-cap]')].filter((c) => c.checked).map((c) => c.dataset.cap),
           };
           const password = $('#u-pass').value;
           if (password) body.password = password;
@@ -2520,6 +2608,23 @@ function openUserModal(user) {
       },
     ],
   });
+
+  // Role switch hides the per-server scoping, since admins bypass all of it.
+  const roleSelect = $('#u-role');
+  roleSelect.addEventListener('change', () => {
+    const isAdmin = roleSelect.value === 'admin';
+    $('#u-scoped').classList.toggle('hidden', isAdmin);
+    $('#u-admin-note').classList.toggle('hidden', !isAdmin);
+  });
+
+  const setAll = (checked) =>
+    document.querySelectorAll('[data-cap]').forEach((box) => {
+      box.checked = checked;
+    });
+  $('#u-all').addEventListener('click', () => setAll(true));
+  $('#u-none').addEventListener('click', () => setAll(false));
+
+  return modal;
 }
 
 /* -------------------------------------------------------------- settings */
@@ -2581,6 +2686,10 @@ async function renderSettings(view) {
         <label><span>Max crash restarts (per 10 min)</span><input id="s-max-crash" type="number" value="${s.maxCrashRestarts}" /></label>
       </div>
       <div class="checkbox-row"><input type="checkbox" id="s-autorestart" ${s.autoRestart ? 'checked' : ''} /><label for="s-autorestart">Enable crash auto-restart globally</label></div>
+      <div class="checkbox-row"><input type="checkbox" id="s-geo" ${
+        s.geoLookup !== false ? 'checked' : ''
+      } /><label for="s-geo">Show sign-in locations in the activity log</label></div>
+      <div class="hint">Looks public sign-in IPs up via ipwho.is. Private and LAN addresses are labelled locally and never leave the machine.</div>
       <button class="btn btn-primary mt-16" id="s-save">Save settings</button>
     </div>
 
@@ -2659,6 +2768,7 @@ async function renderSettings(view) {
           portRangeEnd: Number($('#s-port-end').value),
           maxCrashRestarts: Number($('#s-max-crash').value),
           autoRestart: $('#s-autorestart').checked,
+          geoLookup: $('#s-geo').checked,
         },
       });
       $('#brand-name').textContent = $('#s-name').value;

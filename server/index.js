@@ -139,7 +139,7 @@ async function main() {
             // Console streams are per-server and access controlled.
             if (topic.startsWith('console:')) {
               const id = topic.slice(8);
-              if (!auth.canAccessServer(conn.user, id)) continue;
+              if (!auth.canAccessServer(conn.user, id) || !auth.can(conn.user, 'console')) continue;
               conn.send({ topic, type: 'lines', serverId: id, lines: manager.getConsole(id) });
             }
             conn.subscriptions.add(topic);
@@ -147,7 +147,7 @@ async function main() {
         } else if (msg.type === 'unsubscribe' && Array.isArray(msg.topics)) {
           for (const topic of msg.topics) conn.subscriptions.delete(topic);
         } else if (msg.type === 'command' && msg.serverId) {
-          if (!auth.canAccessServer(conn.user, msg.serverId)) return;
+          if (!auth.canAccessServer(conn.user, msg.serverId) || !auth.can(conn.user, 'command')) return;
           await manager.sendCommand(msg.serverId, String(msg.command || ''));
         }
       } catch (err) {

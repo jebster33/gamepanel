@@ -73,13 +73,24 @@ function createApi(ctx) {
   const { store, auth, manager, templates, hostMetrics } = ctx;
   const router = new Router();
 
+  const { CAPABILITIES } = require('./auth');
+
   const requireAdmin = (user) => {
     if (!user || user.role !== 'admin') fail(403, 'Administrator access required');
   };
 
-  const serverFor = (user, id) => {
+  /** Capability gate for non-admin accounts. */
+  const requireCap = (user, capability) => {
+    if (!auth.can(user, capability)) {
+      const label = CAPABILITIES.find((c) => c.id === capability)?.label || capability;
+      fail(403, `Your account is not allowed to: ${label.toLowerCase()}`);
+    }
+  };
+
+  const serverFor = (user, id, capability) => {
     const server = manager.require(id);
     if (!auth.canAccessServer(user, server.id)) fail(403, 'You do not have access to this server');
+    if (capability) requireCap(user, capability);
     return server;
   };
 
@@ -106,7 +117,19 @@ function createApi(ctx) {
     const ip = clientIp(req);
     const { token, user } = auth.login(body.username, body.password, ip);
     res.setHeader('Set-Cookie', auth.cookieHeader(token, isSecure(req)));
-    store.addEvent('user.login', `${user.username} signed in`, { ip });
+    const event = store.addEvent('user.login', `${user.username} signed in`, { ip });
+
+    // Resolving the location can take a moment and must never delay a sign-in,
+    // so fill it in afterwards and let the activity view pick it up.
+    require('./geoip')
+      .locate(ip, { enabled: store.state.settings.geoLookup !== false })
+      .then((location) => {
+        if (!location) return;
+        event.location = location;
+        store.save();
+      })
+      .catch(() => {});
+
     return { ok: true, user, token };
   }, { public: true });
 
@@ -138,6 +161,7 @@ function createApi(ctx) {
   }));
 
   router.get('/api/events', ({ user, url }) => {
+    requireCap(user, 'activity');
     const limit = clamp(url.searchParams.get('limit') || 100, 1, 500);
     const all = store.state.events;
     const filtered = user.role === 'admin' ? all : all.filter((e) => !e.serverId || auth.canAccessServer(user, e.serverId));
@@ -146,7 +170,10 @@ function createApi(ctx) {
 
   /* ---------------------------------------------------------- templates -- */
 
-  router.get('/api/templates', () => ({ templates: templates.list(), categories: templates.categories() }));
+  router.get('/api/templates', ({ user }) => {
+    requireCap(user, 'templates');
+    return { templates: templates.list(), categories: templates.categories() };
+  });
 
   router.get('/api/templates/:id', ({ params }) => ({ template: templates.require(params.id) }));
 
@@ -191,7 +218,9 @@ function createApi(ctx) {
   });
 
   router.patch('/api/servers/:id', ({ user, params, body }) => {
-    requireAdmin(user);
+    // Administrators, or a user holding the "settings" capability on a server
+    // that is assigned to them.
+    if (user.role !== 'admin') serverFor(user, params.id, 'settings');
     return { server: manager.publicServer(manager.update(params.id, body)) };
   });
 
@@ -202,7 +231,7 @@ function createApi(ctx) {
   });
 
   router.post('/api/servers/:id/power', async ({ user, params, body }) => {
-    const server = serverFor(user, params.id);
+    const server = serverFor(user, params.id, 'power');
     const action = String(body.action || '').toLowerCase();
     switch (action) {
       case 'start':
@@ -230,12 +259,12 @@ function createApi(ctx) {
   });
 
   router.get('/api/servers/:id/console', ({ user, params }) => {
-    const server = serverFor(user, params.id);
+    const server = serverFor(user, params.id, 'console');
     return { lines: manager.getConsole(server.id) };
   });
 
   router.post('/api/servers/:id/command', async ({ user, params, body }) => {
-    const server = serverFor(user, params.id);
+    const server = serverFor(user, params.id, 'command');
     if (!body.command || !String(body.command).trim()) fail(400, 'Command is required');
     return await manager.sendCommand(server.id, String(body.command).trim());
   });
@@ -255,7 +284,7 @@ function createApi(ctx) {
   });
 
   router.post('/api/servers/:id/rcon', async ({ user, params, body }) => {
-    const server = serverFor(user, params.id);
+    const server = serverFor(user, params.id, 'command');
     const template = manager.template(server);
     if (!template?.rcon) fail(400, 'This game does not support RCON');
     const response = await rconCommand({
@@ -269,7 +298,7 @@ function createApi(ctx) {
 
   /* -------------------------------------------------------------- files -- */
 
-  const rootOf = (user, id) => serverFor(user, id).dir;
+  const rootOf = (user, id, capability = 'files') => serverFor(user, id, capability).dir;
 
   router.get('/api/servers/:id/files', async ({ user, params, url }) =>
     files.list(rootOf(user, params.id), url.searchParams.get('path') || '')
@@ -280,27 +309,27 @@ function createApi(ctx) {
   );
 
   router.put('/api/servers/:id/files/content', async ({ user, params, url, body }) =>
-    files.write(rootOf(user, params.id), url.searchParams.get('path') || '', body.content)
+    files.write(rootOf(user, params.id, 'files.write'), url.searchParams.get('path') || '', body.content)
   );
 
   router.post('/api/servers/:id/files/mkdir', async ({ user, params, body }) =>
-    files.mkdir(rootOf(user, params.id), body.path)
+    files.mkdir(rootOf(user, params.id, 'files.write'), body.path)
   );
 
   router.post('/api/servers/:id/files/rename', async ({ user, params, body }) =>
-    files.rename(rootOf(user, params.id), body.from, body.to)
+    files.rename(rootOf(user, params.id, 'files.write'), body.from, body.to)
   );
 
   router.delete('/api/servers/:id/files', async ({ user, params, url }) =>
-    files.remove(rootOf(user, params.id), url.searchParams.get('path') || '')
+    files.remove(rootOf(user, params.id, 'files.write'), url.searchParams.get('path') || '')
   );
 
   router.post('/api/servers/:id/files/extract', async ({ user, params, body }) =>
-    files.extract(rootOf(user, params.id), body.path)
+    files.extract(rootOf(user, params.id, 'files.write'), body.path)
   );
 
   router.post('/api/servers/:id/files/compress', async ({ user, params, body }) =>
-    files.compress(rootOf(user, params.id), body.paths, body.name)
+    files.compress(rootOf(user, params.id, 'files.write'), body.paths, body.name)
   );
 
   router.get('/api/servers/:id/files/download', async ({ user, params, url, res }) => {
@@ -315,7 +344,7 @@ function createApi(ctx) {
   }, { raw: true });
 
   router.post('/api/servers/:id/files/upload', async ({ user, params, url, req }) => {
-    const root = rootOf(user, params.id);
+    const root = rootOf(user, params.id, 'files.write');
     const rel = url.searchParams.get('path');
     if (!rel) fail(400, 'A target path is required');
     const buf = await readBody(req, 512 * 1024 * 1024);
@@ -363,7 +392,7 @@ function createApi(ctx) {
   };
 
   router.get('/api/servers/:id/mods', async ({ user, params }) => {
-    const server = serverFor(user, params.id);
+    const server = serverFor(user, params.id, 'mods');
     const template = manager.template(server);
     if (!template?.mods) return { supported: false, providers: [] };
     return {
@@ -418,7 +447,7 @@ function createApi(ctx) {
   });
 
   router.post('/api/servers/:id/mods/install', async ({ user, params, body }) => {
-    const server = serverFor(user, params.id);
+    const server = serverFor(user, params.id, 'mods');
     const template = manager.template(server);
     if (!template?.mods) fail(400, 'This game has no mod support configured');
     const providerId = String(body.provider || '');
@@ -461,23 +490,25 @@ function createApi(ctx) {
 
   router.delete('/api/servers/:id/mods/:name', async ({ user, params }) => {
     const server = serverFor(user, params.id);
+    requireCap(user, 'mods');
     return mods.removeInstalled(server, manager.template(server), params.name);
   });
 
   router.post('/api/servers/:id/mods/:name/toggle', async ({ user, params }) => {
     const server = serverFor(user, params.id);
+    requireCap(user, 'mods');
     return mods.toggleInstalled(server, manager.template(server), params.name);
   });
 
   /* ------------------------------------------------------------ backups -- */
 
   router.get('/api/servers/:id/backups', ({ user, params }) => {
-    const server = serverFor(user, params.id);
+    const server = serverFor(user, params.id, 'backups');
     return { backups: backups.list(server.id) };
   });
 
   router.post('/api/servers/:id/backups', async ({ user, params, body }) => {
-    const server = serverFor(user, params.id);
+    const server = serverFor(user, params.id, 'backups');
     const backup = await backups.create(server, body.label || '');
     store.addEvent('backup.created', `Backup created for ${server.name}`, { serverId: server.id });
     return { backup };
@@ -494,6 +525,7 @@ function createApi(ctx) {
 
   router.delete('/api/servers/:id/backups/:name', ({ user, params }) => {
     const server = serverFor(user, params.id);
+    requireCap(user, 'backups.restore');
     return backups.remove(server.id, params.name);
   });
 
@@ -514,7 +546,11 @@ function createApi(ctx) {
 
   router.get('/api/users', ({ user }) => {
     requireAdmin(user);
-    return { users: auth.users.map((u) => auth.publicUser(u)) };
+    return {
+      users: auth.users.map((u) => auth.publicUser(u)),
+      capabilities: CAPABILITIES,
+      defaults: require('./auth').DEFAULT_PERMISSIONS,
+    };
   });
 
   router.post('/api/users', ({ user, body }) => {
@@ -530,8 +566,12 @@ function createApi(ctx) {
     if (!target) fail(404, 'User not found');
     if (body.role) target.role = body.role === 'admin' ? 'admin' : 'user';
     if (Array.isArray(body.servers)) target.servers = body.servers;
+    if (Array.isArray(body.permissions)) {
+      target.permissions = require('./auth').sanitizePermissions(body.permissions);
+    }
     if (body.password) auth.setPassword(target.id, body.password);
     store.save();
+    store.addEvent('user.updated', `${target.username} updated by ${user.username}`);
     return { user: auth.publicUser(target) };
   });
 
@@ -590,6 +630,7 @@ function createApi(ctx) {
     if (body.autoRestart !== undefined) s.autoRestart = Boolean(body.autoRestart);
     if (body.maxCrashRestarts !== undefined) s.maxCrashRestarts = clamp(body.maxCrashRestarts, 0, 100);
     if (body.containerize !== undefined) s.containerize = Boolean(body.containerize);
+    if (body.geoLookup !== undefined) s.geoLookup = Boolean(body.geoLookup);
     if (body.integrations) {
       s.integrations = { ...(s.integrations || {}) };
       const { curseforgeKey, steamApiKey, factorio } = body.integrations;

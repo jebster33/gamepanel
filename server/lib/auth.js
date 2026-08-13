@@ -8,6 +8,29 @@
 const crypto = require('crypto');
 const { uid, fail, timingSafeEqual } = require('./util');
 
+/**
+ * What a non-admin account is allowed to do, on the servers assigned to it.
+ * Administrators implicitly hold every capability.
+ */
+const CAPABILITIES = [
+  { id: 'power', label: 'Start, stop and restart servers', group: 'Server' },
+  { id: 'console', label: 'View the console', group: 'Server' },
+  { id: 'command', label: 'Send console commands', group: 'Server' },
+  { id: 'settings', label: 'Edit server settings, ports and variables', group: 'Server' },
+  { id: 'files', label: 'Browse and download files', group: 'Files' },
+  { id: 'files.write', label: 'Upload, edit and delete files', group: 'Files' },
+  { id: 'mods', label: 'Install and remove mods', group: 'Content' },
+  { id: 'backups', label: 'Create and download backups', group: 'Backups' },
+  { id: 'backups.restore', label: 'Restore and delete backups', group: 'Backups' },
+  { id: 'activity', label: 'View the activity log', group: 'Panel' },
+  { id: 'templates', label: 'Browse the template catalogue', group: 'Panel' },
+];
+
+const CAPABILITY_IDS = CAPABILITIES.map((c) => c.id);
+
+/** A sensible starting point: run the server, look at it, leave it intact. */
+const DEFAULT_PERMISSIONS = ['power', 'console', 'command', 'files', 'backups'];
+
 const SCRYPT_PARAMS = { N: 16384, r: 8, p: 1, keylen: 64 };
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const COOKIE_NAME = 'gp_session';
@@ -93,7 +116,7 @@ class Auth {
     return this.users.find((u) => u.username.toLowerCase() === lower);
   }
 
-  createUser({ username, password, role = 'user', servers = [] }) {
+  createUser({ username, password, role = 'user', servers = [], permissions }) {
     username = String(username || '').trim();
     if (!/^[A-Za-z0-9_.-]{3,32}$/.test(username)) {
       fail(400, 'Username must be 3-32 characters (letters, numbers, . _ -)');
@@ -106,6 +129,7 @@ class Auth {
       password: hashPassword(password),
       role: role === 'admin' ? 'admin' : 'user',
       servers,
+      permissions: sanitizePermissions(permissions ?? DEFAULT_PERMISSIONS),
       createdAt: Date.now(),
     };
     this.users.push(user);
@@ -183,6 +207,7 @@ class Auth {
       username: user.username,
       role: user.role,
       servers: user.servers || [],
+      permissions: user.role === 'admin' ? CAPABILITY_IDS : sanitizePermissions(user.permissions),
       createdAt: user.createdAt,
       lastLogin: user.lastLogin || null,
     };
@@ -193,6 +218,18 @@ class Auth {
     if (!user) return false;
     if (user.role === 'admin') return true;
     return (user.servers || []).includes(serverId);
+  }
+
+  /**
+   * Capability check. Administrators hold everything; everyone else holds
+   * exactly what was ticked for them. Accounts created before permissions
+   * existed fall back to the default set rather than being locked out.
+   */
+  can(user, capability) {
+    if (!user) return false;
+    if (user.role === 'admin') return true;
+    const held = user.permissions === undefined ? DEFAULT_PERMISSIONS : sanitizePermissions(user.permissions);
+    return held.includes(capability);
   }
 
   cookieHeader(token, secure) {
@@ -212,4 +249,19 @@ class Auth {
   }
 }
 
-module.exports = { Auth, hashPassword, verifyPassword, COOKIE_NAME };
+/** Keep only known capability ids, so the store never holds junk. */
+function sanitizePermissions(list) {
+  if (!Array.isArray(list)) return [];
+  return CAPABILITY_IDS.filter((id) => list.includes(id));
+}
+
+module.exports = {
+  Auth,
+  hashPassword,
+  verifyPassword,
+  sanitizePermissions,
+  COOKIE_NAME,
+  CAPABILITIES,
+  CAPABILITY_IDS,
+  DEFAULT_PERMISSIONS,
+};

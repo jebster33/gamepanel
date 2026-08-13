@@ -60,8 +60,13 @@ You still get the thing that actually matters: **every game server runs in its o
 - Containerised game servers **stay online** through a panel update
 - Or from the shell: `sudo /opt/gamepanel/update.sh`
 
-**Users**
-- Admin and restricted roles; regular users only see the servers assigned to them
+**Users & permissions**
+- Assign specific servers to a user, then tick exactly what they may do on them:
+  power, console, send commands, edit settings, browse files, write files,
+  manage mods, create backups, restore backups — plus panel-level access to the
+  activity log and template catalogue
+- Anything not granted is hidden in the UI *and* refused by the API
+- Activity log records sign-ins with IP and (optionally) their location
 - scrypt password hashing, HMAC-signed session cookies, login rate limiting
 
 ## Included templates

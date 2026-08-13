@@ -22,6 +22,8 @@ const DEFAULT_STATE = {
     maxCrashRestarts: 5,
     // Run each game server in its own container when Docker is available.
     containerize: true,
+    // Resolve sign-in IPs to a city for the activity log (uses ipwho.is).
+    geoLookup: true,
     integrations: {
       curseforgeKey: '',
       steamApiKey: '',
