@@ -838,11 +838,24 @@ class ServerManager extends EventEmitter {
     };
   }
 
+  /** A JRE the installer fetched for this server, if it had to. */
+  privateJavaBin(dir) {
+    const bin = path.join(dir, '.java', 'bin');
+    return fs.existsSync(path.join(bin, 'java')) ? bin : null;
+  }
+
   envFor(server, vars) {
+    const javaBin = this.privateJavaBin(server.dir);
     const env = {
       GP_SERVER_ID: server.id,
       GP_SERVER_DIR: server.dir,
       HOME: server.dir,
+      ...(javaBin
+        ? {
+            PATH: `${javaBin}:${process.env.PATH || '/usr/local/bin:/usr/bin:/bin'}`,
+            JAVA_HOME: path.dirname(javaBin),
+          }
+        : {}),
       LD_LIBRARY_PATH: [
         path.join(server.dir, 'linux64'),
         path.join(server.dir, '.steam', 'sdk64'),
@@ -1385,6 +1398,22 @@ class ServerManager extends EventEmitter {
     await docker.remove(name);
     await this.startSidecars(server, template, network);
 
+    // If the installer had to fetch its own JRE, put it on PATH ahead of the
+    // image's own — while preserving that PATH, since setting Env replaces it.
+    const extraEnv = {};
+    if (this.privateJavaBin(server.dir)) {
+      let imagePath = '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin';
+      try {
+        const info = await docker.request('GET', `/images/${encodeURIComponent(image)}/json`);
+        const found = (info?.Config?.Env || []).find((e) => e.startsWith('PATH='));
+        if (found) imagePath = found.slice(5);
+      } catch {
+        /* fall back to the standard path */
+      }
+      extraEnv.PATH = `${CONTAINER_DIR}/.java/bin:${imagePath}`;
+      extraEnv.JAVA_HOME = `${CONTAINER_DIR}/.java`;
+    }
+
     const { exposed, bindings } = this.portBindings(server);
     const memoryBytes = Math.max(64, Number(server.memory) || 1024) * 1024 * 1024;
     const nanoCpus = server.cpuLimit ? Math.round((Number(server.cpuLimit) / 100) * 1e9) : 0;
@@ -1393,7 +1422,7 @@ class ServerManager extends EventEmitter {
       Image: image,
       Cmd: ['bash', '-lc', command],
       WorkingDir: CONTAINER_DIR,
-      Env: this.containerEnv(server, vars),
+      Env: this.containerEnv(server, vars, extraEnv),
       User: this.containerUser(),
       Hostname: server.id.slice(0, 63),
       Tty: false,

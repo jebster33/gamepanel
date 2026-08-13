@@ -21,23 +21,24 @@ gp_warn() { printf '\\n\\033[33m[gamepanel]\\033[0m %s\\n' "$*"; }
 gp_die()  { printf '\\n\\033[31m[gamepanel]\\033[0m %s\\n' "$*"; exit 1; }
 
 # Package installs need root. install.sh grants the panel user a narrow
-# passwordless sudo rule for apt-get; without it we warn instead of failing so
-# a manually-prepared box still installs fine.
+# passwordless sudo rule for apt-get and dpkg only — so never probe with
+# "sudo -n true" (that command is not in the rule and would always fail).
+# Just attempt the real command and let its exit status speak.
 gp_sudo() {
-  if [ "$(id -u)" = "0" ]; then "$@";
-  elif sudo -n true 2>/dev/null; then sudo "$@";
-  else return 127; fi
+  if [ "$(id -u)" = "0" ]; then "$@"; return $?; fi
+  if command -v sudo >/dev/null 2>&1; then sudo -n "$@"; return $?; fi
+  return 127
 }
 
 gp_apt() {
-  command -v apt-get >/dev/null 2>&1 || { gp_warn "apt-get not available, skipping: $*"; return 0; }
+  command -v apt-get >/dev/null 2>&1 || { gp_warn "apt-get not available, skipping: $*"; return 1; }
   if ! gp_sudo apt-get update -qq; then
-    gp_warn "Could not run apt-get (needs root or passwordless sudo). Install manually: $*"
-    return 0
+    gp_warn "Cannot run apt-get (needs root or the panel's sudo rule). Wanted: $*"
+    return 1
   fi
   if ! gp_sudo apt-get install -y -qq --no-install-recommends "$@"; then
     gp_warn "apt-get install failed for: $*"
-    return 0
+    return 1
   fi
   gp_log "Installed packages: $*"
 }
@@ -66,8 +67,44 @@ gp_extract() {
   esac
 }
 
+gp_arch() {
+  case "$(uname -m)" in
+    x86_64|amd64) echo x64 ;;
+    aarch64|arm64) echo aarch64 ;;
+    armv7l|armv6l) echo arm ;;
+    *) echo x64 ;;
+  esac
+}
+
+# Last resort that needs no root at all: fetch a Temurin JRE from Adoptium
+# into the server directory. The panel puts <server>/.java/bin on PATH, so the
+# start command finds it exactly like a system-wide install.
+gp_java_local() {
+  local want="\${1:-21}" url
+  url="https://api.adoptium.net/v3/binary/latest/\${want}/ga/linux/$(gp_arch)/jre/hotspot/normal/eclipse"
+  gp_log "Installing a private Java \${want} runtime (no root required)"
+  # Relative paths: the script always runs with the server directory as cwd.
+  cd "$GP_SERVER_DIR" || return 1
+  rm -rf .java .java.tar.gz
+  if ! curl -fL --retry 3 --connect-timeout 20 -o .java.tar.gz "$url"; then
+    gp_warn "Could not download a Java runtime from Adoptium"
+    return 1
+  fi
+  mkdir -p .java
+  tar -xzf .java.tar.gz -C .java --strip-components=1 || { gp_warn "Could not unpack the Java runtime"; return 1; }
+  rm -f .java.tar.gz
+  [ -f .java/bin/java ] || { gp_warn "The downloaded Java runtime looks incomplete"; return 1; }
+  # Some tar/filesystem combinations drop the exec bit — put it back.
+  chmod -R u+x .java/bin 2>/dev/null || true
+  export JAVA_HOME="$GP_SERVER_DIR/.java"
+  export PATH="$JAVA_HOME/bin:$PATH"
+  gp_log "Java ready: $(java -version 2>&1 | head -1)"
+}
+
 gp_ensure_java() {
   local want="\${1:-21}"
+  # Anything already on PATH, including a runtime a previous install fetched.
+  [ -x "$GP_SERVER_DIR/.java/bin/java" ] && export PATH="$GP_SERVER_DIR/.java/bin:$PATH"
   if gp_have java; then
     local have
     have="$(java -version 2>&1 | head -1 | sed -E 's/.*"([0-9]+).*/\\1/')"
@@ -75,10 +112,16 @@ gp_ensure_java() {
       gp_log "Java $have already present"
       return 0
     fi
+    gp_log "Java $have is older than $want — installing a newer runtime"
   fi
-  gp_apt "openjdk-\${want}-jre-headless" || true
-  gp_have java || gp_apt default-jre-headless
-  gp_have java || gp_die "Java could not be installed automatically. Install a JRE >= $want and reinstall."
+  # Try the system package first (fast, shared), then fall back to a private
+  # runtime so a panel without sudo rights can still run Java games.
+  if gp_apt "openjdk-\${want}-jre-headless"; then
+    gp_have java && return 0
+  fi
+  gp_java_local "$want" && return 0
+  gp_apt default-jre-headless && gp_have java && return 0
+  gp_die "Java could not be installed. Install a JRE >= $want on the host, or give the panel user sudo rights for apt-get, then reinstall."
 }
 
 gp_ensure_steamcmd() {
