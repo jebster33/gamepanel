@@ -80,7 +80,7 @@
     {
       "type": "script",
       "label": "Download the latest Paper build",
-      "run": "UA=\"GamePanel/1.0\"\nVER=\"{{MC_VERSION}}\"\nif [ \"$VER\" = \"latest\" ] || [ -z \"$VER\" ]; then\n  VER=$(curl -sf -A \"$UA\" https://fill.papermc.io/v3/projects/paper | node -e 'let d=\"\";process.stdin.on(\"data\",c=>d+=c).on(\"end\",()=>{const j=JSON.parse(d);const all=Object.values(j.versions||{}).flat().filter(v=>!/-(rc|pre|snapshot)/i.test(v));console.log(all[0]||\"\");})')\nfi\n[ -n \"$VER\" ] || gp_die \"Could not resolve a Paper version\"\ngp_log \"Minecraft $VER\"\nURL=$(curl -sf -A \"$UA\" \"https://fill.papermc.io/v3/projects/paper/versions/$VER/builds\" | node -e 'let d=\"\";process.stdin.on(\"data\",c=>d+=c).on(\"end\",()=>{const j=JSON.parse(d);const builds=Array.isArray(j)?j:(j.builds||[]);const stable=builds.filter(b=>b.channel===\"STABLE\");const pick=(stable.length?stable:builds)[0];console.log(pick&&pick.downloads&&pick.downloads[\"server:default\"]?pick.downloads[\"server:default\"].url:\"\");})')\n[ -n \"$URL\" ] || gp_die \"No Paper build available for $VER\"\ngp_fetch \"$URL\" server.jar"
+      "run": "gp_log \"Paper {{RESOLVED_VERSION}} build {{RESOLVED_BUILD}}\"\ngp_fetch \"{{DOWNLOAD_URL}}\" server.jar"
     },
     {
       "type": "writeFile",
@@ -136,5 +136,10 @@
     "loader": "paper",
     "projectType": "plugin",
     "gameVersionVar": "MC_VERSION"
-  }
+  },
+  "resolve": "paper",
+  "packages": [
+    "curl",
+    "ca-certificates"
+  ]
 }

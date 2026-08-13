@@ -91,7 +91,7 @@
     {
       "type": "script",
       "label": "Download the Terraria dedicated server",
-      "run": "BUILD=\"{{TERRARIA_BUILD}}\"\nif [ \"$BUILD\" = \"latest\" ] || [ -z \"$BUILD\" ]; then\n  BUILD=$(curl -sf https://terraria.org/api/get/dedicated-servers-names | node -e 'let d=\"\";process.stdin.on(\"data\",c=>d+=c).on(\"end\",()=>{const j=JSON.parse(d);const m=String(j[0]||\"\").match(/(\\d+)\\.zip$/);console.log(m?m[1]:\"\");})')\nfi\n[ -n \"$BUILD\" ] || gp_die \"Could not work out the current Terraria build\"\ngp_log \"Terraria server build $BUILD\"\ngp_fetch \"https://terraria.org/api/download/pc-dedicated-server/terraria-server-$BUILD.zip\" terraria.zip\ngp_extract terraria.zip .\nrm -f terraria.zip\nif [ -d \"$BUILD/Linux\" ]; then cp -r \"$BUILD/Linux/.\" .; rm -rf \"$BUILD\"; fi\nchmod +x TerrariaServer.bin.x86_64 2>/dev/null || true\nmkdir -p worlds"
+      "run": "gp_log \"Terraria server build {{RESOLVED_BUILD}}\"\ngp_fetch \"{{DOWNLOAD_URL}}\" terraria.zip\ngp_extract terraria.zip .\nrm -f terraria.zip\nif [ -d \"{{RESOLVED_BUILD}}/Linux\" ]; then cp -r \"{{RESOLVED_BUILD}}/Linux/.\" .; rm -rf \"{{RESOLVED_BUILD}}\"; fi\nchmod +x TerrariaServer.bin.x86_64 2>/dev/null || true\nmkdir -p worlds"
     }
   ],
   "configFiles": [
@@ -129,5 +129,6 @@
     "unzip",
     "curl",
     "ca-certificates"
-  ]
+  ],
+  "resolve": "terraria"
 }

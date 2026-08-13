@@ -52,7 +52,7 @@ gp_have() { command -v "$1" >/dev/null 2>&1; }
 gp_fetch() {
   local url="$1" dest="$2"
   gp_log "Downloading $url"
-  if gp_have curl; then curl -fL --retry 3 --connect-timeout 20 -o "$dest" "$url" || gp_die "Download failed: $url"
+  if gp_have curl; then curl -fL -sS --retry 3 --connect-timeout 20 -o "$dest" "$url" || gp_die "Download failed: $url"
   elif gp_have wget; then wget -q -O "$dest" "$url" || gp_die "Download failed: $url"
   else gp_die "Neither curl nor wget is installed"; fi
 }
@@ -90,7 +90,7 @@ gp_java_local() {
   # Relative paths: the script always runs with the server directory as cwd.
   cd "$GP_SERVER_DIR" || return 1
   rm -rf .java .java.tar.gz
-  if ! curl -fL --retry 3 --connect-timeout 20 -o .java.tar.gz "$url"; then
+  if ! curl -fL -sS --retry 3 --connect-timeout 20 -o .java.tar.gz "$url"; then
     gp_warn "Could not download a Java runtime from Adoptium"
     return 1
   fi

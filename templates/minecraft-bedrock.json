@@ -72,7 +72,7 @@
     {
       "type": "script",
       "label": "Download the Bedrock dedicated server",
-      "run": "VER=\"{{BEDROCK_VERSION}}\"\nif [ \"$VER\" = \"latest\" ] || [ -z \"$VER\" ]; then\n  VER=$(curl -sf https://raw.githubusercontent.com/Bedrock-OSS/BDS-Versions/main/versions.json | node -e 'let d=\"\";process.stdin.on(\"data\",c=>d+=c).on(\"end\",()=>{const j=JSON.parse(d);console.log((j.linux&&j.linux.stable)||\"\");})')\nfi\n[ -n \"$VER\" ] || gp_die \"Could not work out which Bedrock version to install\"\ngp_log \"Bedrock dedicated server $VER\"\nURL=\"https://www.minecraft.net/bedrockdedicatedserver/bin-linux/bedrock-server-$VER.zip\"\nif ! curl -fL -A 'Mozilla/5.0' --retry 3 -o bedrock.zip \"$URL\"; then\n  gp_die \"Mojang refused the download for $VER. Pick another version and reinstall.\"\nfi\ngp_extract bedrock.zip .\nrm -f bedrock.zip\nchmod +x bedrock_server"
+      "run": "gp_log \"Bedrock dedicated server {{RESOLVED_VERSION}}\"\nif ! curl -fL -sS -A 'Mozilla/5.0' --retry 3 -o bedrock.zip \"{{DOWNLOAD_URL}}\"; then\n  gp_die \"Mojang refused that download. Pick a different version and reinstall.\"\nfi\ngp_extract bedrock.zip .\nrm -f bedrock.zip\nchmod +x bedrock_server"
     }
   ],
   "patchProperties": [
@@ -108,5 +108,6 @@
     "ca-certificates",
     "curl",
     "unzip"
-  ]
+  ],
+  "resolve": "bedrock"
 }

@@ -312,6 +312,7 @@ class ServerManager extends EventEmitter {
   gameVersion(server, template) {
     const rt = this.rt(server.id);
     if (rt.version) return rt.version;
+    if (server.resolvedVersion) return server.resolvedVersion;
     const vars = server.vars || {};
     const key = template?.versionVar || Object.keys(vars).find((k) => /(_VERSION|_BUILD)$/.test(k));
     const value = key ? vars[key] : null;
@@ -527,6 +528,33 @@ class ServerManager extends EventEmitter {
 
     fs.mkdirSync(server.dir, { recursive: true });
     const vars = this.vars(server);
+
+    // Anything that needs JSON parsing is resolved here, not in the install
+    // script: that script runs inside the game's container, which has no Node
+    // and no jq. The script only ever sees a finished URL.
+    if (template.resolve) {
+      this.setStatus(server, STATUS.INSTALLING);
+      this.pushConsole(server, `Looking up the ${template.name} download…`, 'system');
+      try {
+        const extra = await require('./resolvers').resolveDownload(template.resolve, vars);
+        Object.assign(vars, extra);
+        // Remember what was actually installed, so the UI can show a version
+        // even for a server deployed with "latest" that has never started.
+        if (extra.RESOLVED_VERSION) {
+          server.resolvedVersion = String(extra.RESOLVED_VERSION);
+          this.store.save();
+        }
+        this.pushConsole(server, `Using ${extra.RESOLVED_VERSION || 'the latest build'}`, 'system');
+      } catch (err) {
+        this.pushConsole(server, err.message, 'system');
+        this.setStatus(server, STATUS.INSTALL_FAILED);
+        this.store.addEvent('server.install_failed', `${server.name} install failed: ${err.message}`, {
+          serverId: server.id,
+        });
+        return { ok: false, error: err.message };
+      }
+    }
+
     const containerized = this.runtimeFor(server) === 'docker';
     const workDir = containerized ? CONTAINER_DIR : server.dir;
     const { script, env } = buildInstallScript(template, workDir, vars, {

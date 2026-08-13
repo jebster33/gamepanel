@@ -156,7 +156,7 @@
     {
       "type": "script",
       "label": "Download the FiveM server artifacts",
-      "run": "CHANNEL=\"{{FIVEM_BUILD}}\"\nURL=$(curl -sf https://changelogs-live.fivem.net/api/changelog/versions/linux/server | node -e 'let d=\"\";const want=process.argv[1];process.stdin.on(\"data\",c=>d+=c).on(\"end\",()=>{const j=JSON.parse(d);console.log(want===\"latest\"?j.latest_download:j.recommended_download);})' \"$CHANNEL\")\n[ -n \"$URL\" ] || gp_die \"Could not resolve the FiveM artifact download\"\ngp_log \"Artifact: $URL\"\nmkdir -p artifacts\ngp_fetch \"$URL\" fx.tar.xz\ntar -xJf fx.tar.xz -C artifacts || gp_die \"Could not unpack the artifacts\"\nrm -f fx.tar.xz\nchmod +x artifacts/run.sh artifacts/FXServer 2>/dev/null || true"
+      "run": "gp_log \"FiveM artifacts build {{RESOLVED_VERSION}}\"\nmkdir -p artifacts\ngp_fetch \"{{DOWNLOAD_URL}}\" fx.tar.xz\ntar -xJf fx.tar.xz -C artifacts || gp_die \"Could not unpack the artifacts\"\nrm -f fx.tar.xz\nchmod +x artifacts/run.sh artifacts/FXServer 2>/dev/null || true"
     },
     {
       "type": "script",
@@ -183,5 +183,6 @@
     "ready": "Server started|Started resource|txAdmin is now",
     "join": "Player \\[([^\\]]+)\\] joined",
     "leave": "Dropping client ([^ ]+)"
-  }
+  },
+  "resolve": "fivem"
 }
