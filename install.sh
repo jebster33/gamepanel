@@ -143,6 +143,11 @@ cat > /etc/sudoers.d/gamepanel <<EOF
 # Installed by the GamePanel installer.
 # Lets the panel install game runtime dependencies without running as root,
 # and restart itself when you apply an update from the web UI.
+#
+# env_keep is limited to the two variables that keep apt quiet and
+# non-interactive; sudo otherwise resets the environment, which is why
+# unattended installs would still try to open a debconf dialog.
+Defaults:$SERVICE_USER env_keep += "DEBIAN_FRONTEND NEEDRESTART_MODE NEEDRESTART_SUSPEND"
 $SERVICE_USER ALL=(root) NOPASSWD: /usr/bin/apt-get, /usr/bin/dpkg, /usr/bin/systemctl restart gamepanel, /bin/systemctl restart gamepanel
 EOF
 chmod 440 /etc/sudoers.d/gamepanel

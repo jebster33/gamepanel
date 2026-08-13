@@ -14,6 +14,10 @@ const { config } = require('./config');
 const PREAMBLE = `#!/usr/bin/env bash
 set -uo pipefail
 export DEBIAN_FRONTEND=noninteractive
+# Keep apt from trying to open a dialog, and stop needrestart printing its
+# kernel/services report into the middle of a game install.
+export NEEDRESTART_MODE=a
+export NEEDRESTART_SUSPEND=1
 export HOME="\${HOME:-$GP_SERVER_DIR}"
 
 gp_log()  { printf '\\n\\033[36m[gamepanel]\\033[0m %s\\n' "$*"; }
