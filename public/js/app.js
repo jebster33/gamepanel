@@ -521,6 +521,79 @@ function handleRoute() {
   render();
 }
 
+/* ----------------------------------------------------------- interactions */
+
+const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/**
+ * One delegated pointer listener drives every cursor spotlight: find the
+ * hovered `.spot` element and hand it the pointer position as percentages.
+ * Coalesced into a rAF so a fast mouse cannot outpace the compositor.
+ */
+let spotTarget = null;
+let spotEvent = null;
+let spotQueued = false;
+
+document.addEventListener(
+  'pointermove',
+  (event) => {
+    const el = event.target.closest?.('.spot');
+    spotTarget = el;
+    spotEvent = event;
+    if (!el || spotQueued) return;
+    spotQueued = true;
+    requestAnimationFrame(() => {
+      spotQueued = false;
+      if (!spotTarget || !spotEvent) return;
+      const rect = spotTarget.getBoundingClientRect();
+      spotTarget.style.setProperty('--mx', `${((spotEvent.clientX - rect.left) / rect.width) * 100}%`);
+      spotTarget.style.setProperty('--my', `${((spotEvent.clientY - rect.top) / rect.height) * 100}%`);
+    });
+  },
+  { passive: true }
+);
+
+/** Stagger the entrance of a freshly rendered view, cheaply and once. */
+function revealChildren(root, selector = ':scope > *') {
+  if (reducedMotion || !root) return;
+  const nodes = [...root.querySelectorAll(selector)].slice(0, 14);
+  nodes.forEach((node, i) => {
+    node.style.setProperty('--i', String(i));
+    node.classList.remove('reveal');
+    // Force a reflow so re-renders replay the animation instead of skipping it.
+    void node.offsetWidth;
+    node.classList.add('reveal');
+  });
+}
+
+/** Count a number up on first paint — only for values that do not tick. */
+function countUp(el, target, duration = 700) {
+  if (!el) return;
+  const end = Number(target) || 0;
+  // A hidden tab never fires requestAnimationFrame, so never animate into it —
+  // the value would sit at zero until the next poll.
+  if (reducedMotion || end === 0 || document.hidden) {
+    el.textContent = String(end);
+    return;
+  }
+  const started = performance.now();
+  let finished = false;
+  const step = (now) => {
+    const progress = Math.min(1, (now - started) / duration);
+    // easeOutExpo keeps the last digits from crawling
+    const eased = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress);
+    el.textContent = String(Math.round(end * eased));
+    if (progress < 1) requestAnimationFrame(step);
+    else finished = true;
+  };
+  requestAnimationFrame(step);
+  // Backstop: some environments throttle rAF to a standstill (background tab,
+  // remote/offscreen rendering). Never leave the number stuck mid-count.
+  setTimeout(() => {
+    if (!finished) el.textContent = String(end);
+  }, duration + 400);
+}
+
 /* ----------------------------------------------------------------- views */
 
 function render() {
@@ -573,19 +646,19 @@ function renderDashboard(view) {
     </div>
 
     <div class="metrics">
-      <div class="tile">
+      <div class="tile spot">
         <div class="tile-label">CPU</div>
         <div class="tile-value" data-host="cpu">${(host?.cpu.percent ?? 0).toFixed(0)}<span class="unit">%</span></div>
         <div class="tile-sub" data-host="cpu-sub">${host?.cpu.cores ?? 0} cores · load ${(host?.load?.[0] ?? 0).toFixed(2)}</div>
         <canvas id="chart-host-cpu"></canvas>
       </div>
-      <div class="tile">
+      <div class="tile spot">
         <div class="tile-label">Memory</div>
         <div class="tile-value" data-host="mem">${memPct.toFixed(0)}<span class="unit">%</span></div>
         <div class="tile-sub" data-host="mem-sub">${fmtBytes(host?.memory.used)} of ${fmtBytes(host?.memory.total)}</div>
         <canvas id="chart-host-mem"></canvas>
       </div>
-      <div class="tile">
+      <div class="tile spot">
         <div class="tile-label">Network</div>
         <div class="tile-value" data-host="net" style="font-size:20px">
           ↓ ${fmtRate(host?.network.rxBytesPerSec)} · ↑ ${fmtRate(host?.network.txBytesPerSec)}
@@ -593,7 +666,7 @@ function renderDashboard(view) {
         <div class="tile-sub">Total ${fmtBytes(host?.network.rxTotal)} in / ${fmtBytes(host?.network.txTotal)} out</div>
         <canvas id="chart-host-net"></canvas>
       </div>
-      <div class="tile">
+      <div class="tile spot">
         <div class="tile-label">Disk</div>
         <div class="tile-value">${diskPct.toFixed(0)}<span class="unit">%</span></div>
         <div class="tile-sub">${fmtBytes(host?.disk.free)} free of ${fmtBytes(host?.disk.total)}</div>
@@ -602,19 +675,19 @@ function renderDashboard(view) {
     </div>
 
     <div class="metrics">
-      <div class="tile">
+      <div class="tile spot">
         <div class="tile-label">Servers online</div>
-        <div class="tile-value" data-ov="running">${overview.running}<span class="unit">/ ${overview.total}</span></div>
+        <div class="tile-value"><span data-ov="running" data-countup="${overview.running}">0</span><span class="unit">/ ${overview.total}</span></div>
       </div>
-      <div class="tile">
+      <div class="tile spot">
         <div class="tile-label">Players</div>
-        <div class="tile-value" data-ov="players">${overview.players}</div>
+        <div class="tile-value" data-ov="players" data-countup="${overview.players}">0</div>
       </div>
-      <div class="tile">
+      <div class="tile spot">
         <div class="tile-label">Crashes</div>
-        <div class="tile-value" data-ov="crashes">${overview.crashes}</div>
+        <div class="tile-value" data-ov="crashes" data-countup="${overview.crashes}">0</div>
       </div>
-      <div class="tile">
+      <div class="tile spot">
         <div class="tile-label">Version</div>
         <div class="tile-value" style="font-size:17px">${esc(state.version || '1.0.0')}</div>
         <div class="tile-sub">${esc(host?.platform || '')}</div>
@@ -629,6 +702,8 @@ function renderDashboard(view) {
     ${renderServerCards()}`;
 
   drawHostCharts();
+  revealChildren(view);
+  view.querySelectorAll('[data-countup]').forEach((el) => countUp(el, el.dataset.countup));
 }
 
 /** Chart colours come from the stylesheet so they follow the theme. */
@@ -659,7 +734,8 @@ function patchDashboard() {
   set('[data-host="mem-sub"]', `${fmtBytes(host.memory.used)} of ${fmtBytes(host.memory.total)}`);
   set('[data-host="net"]', `↓ ${fmtRate(host.network.rxBytesPerSec)} · ↑ ${fmtRate(host.network.txBytesPerSec)}`);
   if (overview) {
-    set('[data-ov="running"]', `${overview.running} <span class="unit">/ ${overview.total}</span>`);
+    // The "/ total" unit lives in a sibling span, so only the number is patched.
+    set('[data-ov="running"]', String(overview.running));
     set('[data-ov="players"]', String(overview.players));
     set('[data-ov="crashes"]', String(overview.crashes));
   }
@@ -700,7 +776,7 @@ function serverRow(server) {
   const memPct = server.memoryLimit ? Math.min(100, (server.memory / server.memoryLimit) * 100) : 0;
   const running = ['running', 'starting'].includes(server.status);
   return `
-  <div class="srv-row" data-card="${esc(server.id)}">
+  <div class="srv-row spot" data-card="${esc(server.id)}">
     <a class="srv-identity" href="#/servers/${esc(server.id)}">
       <span class="srv-icon">${esc(server.templateIcon || '🎮')}</span>
       <span class="srv-name">
@@ -769,6 +845,7 @@ function patchServerCards() {
 
 function renderServers(view) {
   setCrumbs('Servers');
+  setTimeout(() => revealChildren($('.srv-list'), ':scope > .srv-row'), 0);
   view.innerHTML = `
     <div class="page-head">
       <h1>Servers</h1>
@@ -825,33 +902,33 @@ function renderServerDetail(view) {
     </div>
 
     <div class="metrics" style="grid-template-columns:repeat(auto-fit,minmax(132px,1fr))">
-      <div class="tile" style="min-height:0;padding:11px 13px">
+      <div class="tile spot" style="min-height:0;padding:11px 13px">
         <div class="tile-label">CPU</div>
         <div class="tile-value" style="font-size:17px" data-detail="cpu">${(server.cpu || 0).toFixed(1)}<span class="unit">%</span></div>
       </div>
-      <div class="tile" style="min-height:0;padding:11px 13px">
+      <div class="tile spot" style="min-height:0;padding:11px 13px">
         <div class="tile-label">Memory</div>
         <div class="tile-value" style="font-size:17px" data-detail="mem">${fmtBytes(server.memory)}<span class="unit">/ ${fmtBytes(
           server.memoryLimit
         )}</span></div>
       </div>
-      <div class="tile" style="min-height:0;padding:11px 13px">
+      <div class="tile spot" style="min-height:0;padding:11px 13px">
         <div class="tile-label">Players</div>
         <div class="tile-value" style="font-size:17px" data-detail="players">${server.players ?? '—'}<span class="unit">${
           server.maxPlayers ? '/ ' + server.maxPlayers : ''
         }</span></div>
       </div>
-      <div class="tile" style="min-height:0;padding:11px 13px">
+      <div class="tile spot" style="min-height:0;padding:11px 13px">
         <div class="tile-label">Ping</div>
         <div class="tile-value" style="font-size:17px" data-detail="ping">${
           server.ping != null ? server.ping + '<span class="unit">ms</span>' : '—'
         }</div>
       </div>
-      <div class="tile" style="min-height:0;padding:11px 13px">
+      <div class="tile spot" style="min-height:0;padding:11px 13px">
         <div class="tile-label">Connections</div>
         <div class="tile-value" style="font-size:17px" data-detail="conns">${server.connections ?? 0}</div>
       </div>
-      <div class="tile" style="min-height:0;padding:11px 13px">
+      <div class="tile spot" style="min-height:0;padding:11px 13px">
         <div class="tile-label">Network</div>
         <div class="tile-value" style="font-size:13px" data-detail="net">${
           server.runtime === 'docker'
@@ -859,11 +936,11 @@ function renderServerDetail(view) {
             : '<span class="faint" style="font-size:13px">host-wide only</span>'
         }</div>
       </div>
-      <div class="tile" style="min-height:0;padding:11px 13px">
+      <div class="tile spot" style="min-height:0;padding:11px 13px">
         <div class="tile-label">Disk</div>
         <div class="tile-value" style="font-size:17px" data-detail="disk">${fmtBytes(server.diskBytes)}</div>
       </div>
-      <div class="tile" style="min-height:0;padding:11px 13px">
+      <div class="tile spot" style="min-height:0;padding:11px 13px">
         <div class="tile-label">Crashes</div>
         <div class="tile-value" style="font-size:17px" data-detail="crashes">${server.crashCount || 0}</div>
       </div>
@@ -1562,7 +1639,7 @@ function renderModResults(server, items) {
   results.innerHTML = items
     .map(
       (item, index) => `
-      <div class="tile-card" style="cursor:default">
+      <div class="tile-card spot" style="cursor:default">
         <div class="t-head">
           ${
             item.icon
@@ -1842,7 +1919,7 @@ function renderTemplates(view) {
           ? filtered
               .map(
                 (tpl) => `
-        <div class="tile-card" data-template="${esc(tpl.id)}">
+        <div class="tile-card spot" data-template="${esc(tpl.id)}">
           <div class="t-head">
             <span class="t-icon">${esc(tpl.icon || '🎮')}</span>
             <div>
@@ -1865,6 +1942,8 @@ function renderTemplates(view) {
           : '<div class="empty" style="grid-column:1/-1"><h3>No templates match</h3></div>'
       }
     </div>`;
+
+  revealChildren(view.querySelector('.grid-cards'));
 
   $('#tpl-search').addEventListener('input', (event) => {
     templateFilter.search = event.target.value;

@@ -40,6 +40,24 @@
 
   --sidebar-width: 216px;
   --topbar-height: 46px;
+
+  /* Depth: glass fills, hairline highlights and shadows are tokens too, so
+     the light theme can soften all of them in one place. */
+  --glass: rgba(18, 19, 22, 0.62);
+  --glass-strong: rgba(20, 21, 25, 0.82);
+  --highlight: rgba(255, 255, 255, 0.055);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 8px 24px -8px rgba(0, 0, 0, 0.6);
+  --shadow-lg: 0 24px 64px -16px rgba(0, 0, 0, 0.7);
+  --glow: 0 0 24px -6px rgba(94, 106, 210, 0.55);
+  --spot: rgba(255, 255, 255, 0.06);
+  --aurora-1: rgba(94, 106, 210, 0.28);
+  --aurora-2: rgba(147, 91, 214, 0.2);
+  --aurora-3: rgba(46, 122, 190, 0.16);
+  --noise-opacity: 0.035;
+
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.34, 1.42, 0.64, 1);
 }
 
 :root[data-theme="light"] {
@@ -68,6 +86,19 @@
   --warning-subtle: rgba(181, 125, 18, 0.1);
   --danger: #d13438;
   --danger-subtle: rgba(209, 52, 56, 0.1);
+
+  --glass: rgba(255, 255, 255, 0.72);
+  --glass-strong: rgba(255, 255, 255, 0.9);
+  --highlight: rgba(255, 255, 255, 0.9);
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.05);
+  --shadow-md: 0 8px 24px -10px rgba(16, 24, 40, 0.14);
+  --shadow-lg: 0 24px 56px -18px rgba(16, 24, 40, 0.2);
+  --glow: 0 0 22px -8px rgba(91, 99, 211, 0.5);
+  --spot: rgba(91, 99, 211, 0.055);
+  --aurora-1: rgba(91, 99, 211, 0.16);
+  --aurora-2: rgba(147, 91, 214, 0.12);
+  --aurora-3: rgba(46, 122, 190, 0.1);
+  --noise-opacity: 0.02;
 }
 
 * {
@@ -87,6 +118,109 @@ body {
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   font-feature-settings: "cv11", "ss01";
+}
+
+/* ------------------------------------------------------------ atmosphere */
+
+/*
+ * Two fixed layers sit behind everything: a slowly drifting aurora so large
+ * dark areas are never flat, and a film grain that stops the gradients from
+ * banding on cheap panels. Both are inert to pointer events.
+ */
+body::before,
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+body::before {
+  background:
+    radial-gradient(60vw 48vh at 12% -10%, var(--aurora-1), transparent 62%),
+    radial-gradient(48vw 42vh at 88% 4%, var(--aurora-2), transparent 60%),
+    radial-gradient(52vw 46vh at 52% 108%, var(--aurora-3), transparent 62%);
+  filter: blur(18px);
+  animation: drift 28s ease-in-out infinite alternate;
+  will-change: transform;
+}
+
+body::after {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+  opacity: var(--noise-opacity);
+  mix-blend-mode: overlay;
+}
+
+@keyframes drift {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(-2.5%, 1.5%, 0) scale(1.06);
+  }
+  100% {
+    transform: translate3d(2%, -1%, 0) scale(1.03);
+  }
+}
+
+.app,
+.auth-screen,
+.toasts,
+.modal-backdrop {
+  position: relative;
+  z-index: 1;
+}
+
+/*
+ * Cursor spotlight. JS writes --mx/--my as percentages on hover; the layer
+ * only paints while the pointer is inside, so idle rows cost nothing.
+ */
+.spot {
+  position: relative;
+  isolation: isolate;
+}
+
+.spot::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(220px circle at var(--mx, 50%) var(--my, 50%), var(--spot), transparent 70%);
+  opacity: 0;
+  transition: opacity 0.25s var(--ease-out);
+  pointer-events: none;
+  z-index: -1;
+}
+
+.spot:hover::before {
+  opacity: 1;
+}
+
+/* Staggered entrance for freshly rendered views. */
+.reveal {
+  animation: rise 0.42s var(--ease-out) both;
+  animation-delay: calc(var(--i, 0) * 45ms);
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(7px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body::before {
+    animation: none;
+  }
+  .reveal {
+    animation: none;
+  }
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
 }
 
 /* Toggled from JS for non-admin accounts. */
@@ -144,7 +278,17 @@ svg {
   display: grid;
   place-items: center;
   padding: 24px;
-  background: var(--bg);
+  animation: rise 0.5s var(--ease-out) both;
+}
+
+.auth-card {
+  background: var(--glass);
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 28px;
+  box-shadow: var(--shadow-lg), inset 0 1px 0 var(--highlight);
 }
 
 .auth-card {
@@ -156,10 +300,11 @@ svg {
 }
 
 .auth-logo {
-  width: 32px;
-  height: 32px;
-  border-radius: var(--radius);
-  background: var(--accent);
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: linear-gradient(160deg, var(--accent-hover), var(--accent));
+  box-shadow: var(--glow), inset 0 1px 0 rgba(255, 255, 255, 0.25);
   display: grid;
   place-items: center;
   margin-bottom: 18px;
@@ -321,6 +466,15 @@ textarea[disabled] {
 
 .btn:active {
   background: var(--panel-active);
+  transform: translateY(0.5px);
+}
+
+.btn:focus-visible,
+.nav-item:focus-visible,
+.tab:focus-visible,
+.chip:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-subtle), 0 0 0 1px var(--accent);
 }
 
 .btn:disabled {
@@ -334,9 +488,14 @@ textarea[disabled] {
   color: #fff;
 }
 
+.btn-primary {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
 .btn-primary:hover {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), var(--glow);
 }
 
 .btn-danger {
@@ -398,7 +557,9 @@ textarea[disabled] {
 .sidebar {
   width: var(--sidebar-width);
   flex: 0 0 var(--sidebar-width);
-  background: var(--bg-subtle);
+  background: var(--glass);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
@@ -424,7 +585,8 @@ textarea[disabled] {
   width: 20px;
   height: 20px;
   border-radius: 5px;
-  background: var(--accent);
+  background: linear-gradient(160deg, var(--accent-hover), var(--accent));
+  box-shadow: 0 0 14px -4px var(--accent), inset 0 1px 0 rgba(255, 255, 255, 0.25);
   display: grid;
   place-items: center;
   flex: none;
@@ -468,6 +630,22 @@ textarea[disabled] {
   background: var(--panel-active);
   color: var(--text);
   font-weight: 500;
+  box-shadow: inset 0 1px 0 var(--highlight);
+}
+
+.nav-item.active::before {
+  content: "";
+  position: absolute;
+  left: -8px;
+  width: 2px;
+  height: 15px;
+  border-radius: 0 2px 2px 0;
+  background: var(--accent);
+  box-shadow: 0 0 8px 0 var(--accent);
+}
+
+.nav-item {
+  position: relative;
 }
 
 .nav-item svg {
@@ -624,7 +802,9 @@ textarea[disabled] {
   gap: 10px;
   padding: 0 18px;
   border-bottom: 1px solid var(--border);
-  background: var(--bg);
+  background: var(--glass);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
   position: sticky;
   top: 0;
   z-index: 30;
@@ -711,10 +891,13 @@ textarea[disabled] {
 }
 
 .card {
-  background: var(--panel);
+  background: var(--glass);
+  backdrop-filter: blur(14px) saturate(130%);
+  -webkit-backdrop-filter: blur(14px) saturate(130%);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 16px;
+  box-shadow: var(--shadow-sm), inset 0 1px 0 var(--highlight);
 }
 
 .card h4 {
@@ -772,11 +955,15 @@ textarea[disabled] {
   border-radius: var(--radius);
   overflow: hidden;
   margin-bottom: 20px;
+  box-shadow: var(--shadow-md), inset 0 1px 0 var(--highlight);
 }
 
 .tile {
-  background: var(--panel);
+  background: var(--glass);
+  backdrop-filter: blur(14px) saturate(130%);
+  -webkit-backdrop-filter: blur(14px) saturate(130%);
   padding: 13px 15px 12px;
+  transition: background 0.25s var(--ease-out);
   position: relative;
   overflow: hidden;
   min-height: 92px;
@@ -873,7 +1060,17 @@ textarea[disabled] {
 }
 .status.running .dot {
   background: var(--success);
-  box-shadow: 0 0 0 3px var(--success-subtle);
+  box-shadow: 0 0 0 3px var(--success-subtle), 0 0 10px -1px var(--success);
+  animation: breathe 2.6s ease-in-out infinite;
+}
+
+@keyframes breathe {
+  0%, 100% {
+    box-shadow: 0 0 0 3px var(--success-subtle), 0 0 10px -1px var(--success);
+  }
+  50% {
+    box-shadow: 0 0 0 5px transparent, 0 0 14px 0 var(--success);
+  }
 }
 
 .status.starting,
@@ -933,7 +1130,10 @@ textarea[disabled] {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   overflow: hidden;
-  background: var(--panel);
+  background: var(--glass);
+  backdrop-filter: blur(14px) saturate(130%);
+  -webkit-backdrop-filter: blur(14px) saturate(130%);
+  box-shadow: var(--shadow-md), inset 0 1px 0 var(--highlight);
 }
 
 .srv-row {
@@ -952,7 +1152,27 @@ textarea[disabled] {
 }
 
 .srv-row:hover {
-  background: var(--panel-hover);
+  background: color-mix(in srgb, var(--panel-hover) 70%, transparent);
+}
+
+/* Power controls stay out of the way until you reach for the row. */
+.srv-row .srv-actions {
+  opacity: 0;
+  transform: translateX(4px);
+  transition: opacity 0.18s var(--ease-out), transform 0.18s var(--ease-out);
+}
+
+.srv-row:hover .srv-actions,
+.srv-row:focus-within .srv-actions {
+  opacity: 1;
+  transform: none;
+}
+
+@media (hover: none) {
+  .srv-row .srv-actions {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 .srv-head {
@@ -1106,6 +1326,14 @@ tbody tr:hover {
   height: 1.5px;
   background: var(--text);
   border-radius: 2px;
+  animation: tab-in 0.28s var(--ease-out) both;
+}
+
+@keyframes tab-in {
+  from {
+    transform: scaleX(0.35);
+    opacity: 0;
+  }
 }
 
 /* --------------------------------------------------------------- console */
@@ -1117,9 +1345,13 @@ tbody tr:hover {
 }
 
 .console {
-  background: var(--bg-subtle);
+  position: relative;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--accent) 6%, transparent), transparent 120px),
+    var(--bg-subtle);
   border: 1px solid var(--border);
   border-radius: var(--radius);
+  box-shadow: inset 0 1px 0 var(--highlight), var(--shadow-sm);
   padding: 12px 14px;
   font-family: var(--mono);
   font-size: 12px;
@@ -1270,7 +1502,9 @@ tbody tr:hover {
 }
 
 .tile-card {
-  background: var(--panel);
+  background: var(--glass);
+  backdrop-filter: blur(14px) saturate(130%);
+  -webkit-backdrop-filter: blur(14px) saturate(130%);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 14px;
@@ -1278,12 +1512,18 @@ tbody tr:hover {
   flex-direction: column;
   gap: 9px;
   cursor: pointer;
-  transition: border-color 0.12s ease, background 0.12s ease;
+  box-shadow: var(--shadow-sm), inset 0 1px 0 var(--highlight);
+  transition: border-color 0.2s var(--ease-out), transform 0.25s var(--ease-out), box-shadow 0.25s var(--ease-out);
 }
 
 .tile-card:hover {
-  border-color: var(--border-strong);
-  background: var(--panel-hover);
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md), var(--glow), inset 0 1px 0 var(--highlight);
+}
+
+.tile-card:active {
+  transform: translateY(0);
 }
 
 .tile-card .t-head {
@@ -1389,7 +1629,9 @@ tbody tr:hover {
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.55);
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
   display: grid;
   place-items: center;
   padding: 20px;
@@ -1406,14 +1648,24 @@ tbody tr:hover {
 
 .modal {
   width: min(600px, 100%);
-  background: var(--panel);
+  background: var(--glass-strong);
+  backdrop-filter: blur(24px) saturate(150%);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-lg);
   max-height: calc(100vh - 40px);
   display: flex;
   flex-direction: column;
   margin: auto;
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.45);
+  box-shadow: var(--shadow-lg), inset 0 1px 0 var(--highlight);
+  animation: modal-in 0.22s var(--ease-out) both;
+}
+
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.99);
+  }
 }
 
 .modal-head {
@@ -1509,7 +1761,9 @@ tbody tr:hover {
   border-radius: var(--radius);
   padding: 10px 13px;
   font-size: 12.5px;
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--shadow-lg), inset 0 1px 0 var(--highlight);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
   max-width: 340px;
   animation: slide-in 0.16s ease;
 }
