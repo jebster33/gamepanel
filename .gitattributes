@@ -1,0 +1,6 @@
+# Shell scripts and server code must keep LF endings — CRLF breaks the
+# shebang and bash heredocs on Linux.
+* text=auto eol=lf
+*.sh text eol=lf
+*.json text eol=lf
+*.js text eol=lf
