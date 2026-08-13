@@ -1,0 +1,25 @@
+{
+  "name": "gamepanel",
+  "version": "1.0.0",
+  "description": "A dead-simple, self-hosted game server control panel for Ubuntu. Zero npm dependencies.",
+  "main": "server/index.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node server/index.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "game-server",
+    "panel",
+    "minecraft",
+    "rust",
+    "pterodactyl",
+    "hosting",
+    "ubuntu"
+  ],
+  "license": "MIT",
+  "dependencies": {}
+}

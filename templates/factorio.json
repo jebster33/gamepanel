@@ -1,0 +1,38 @@
+{
+  "id": "factorio",
+  "name": "Factorio",
+  "category": "Sandbox",
+  "icon": "⚙️",
+  "description": "Factorio headless server. Creates a fresh map on install; drop your own saves into saves/ to use them instead.",
+  "defaultMemory": 2048,
+  "variables": [
+    { "name": "FACTORIO_CHANNEL", "label": "Release channel", "default": "stable", "options": ["stable", "latest"] },
+    { "name": "SAVE_NAME", "label": "Save name", "default": "gamepanel" },
+    { "name": "MAX_PLAYERS", "label": "Max players", "type": "number", "default": 10 },
+    { "name": "SERVER_PASSWORD", "label": "Join password", "default": "" }
+  ],
+  "ports": [{ "name": "game", "default": 34197, "protocol": "udp" }],
+  "install": [
+    { "type": "apt", "packages": ["xz-utils"], "label": "Install xz-utils" },
+    {
+      "type": "script",
+      "label": "Download and unpack Factorio headless",
+      "run": "gp_fetch \"https://factorio.com/get-download/{{FACTORIO_CHANNEL}}/headless/linux64\" factorio.tar.xz\ngp_extract factorio.tar.xz .\nrm -f factorio.tar.xz\nif [ -d factorio ]; then cp -rn factorio/. . 2>/dev/null || true; rm -rf factorio; fi\nmkdir -p saves\nif [ ! -f \"saves/{{SAVE_NAME}}.zip\" ]; then\n  gp_log \"Generating a new map\"\n  ./bin/x64/factorio --create \"saves/{{SAVE_NAME}}.zip\"\nfi"
+    }
+  ],
+  "configFiles": [
+    {
+      "path": "data/server-settings.json",
+      "mode": "create",
+      "content": "{\n  \"name\": \"{{SERVER_NAME}}\",\n  \"description\": \"Hosted with GamePanel\",\n  \"max_players\": {{MAX_PLAYERS}},\n  \"visibility\": { \"public\": false, \"lan\": true },\n  \"username\": \"\",\n  \"password\": \"\",\n  \"game_password\": \"{{SERVER_PASSWORD}}\",\n  \"require_user_verification\": false,\n  \"autosave_interval\": 10,\n  \"autosave_slots\": 5,\n  \"afk_autokick_interval\": 0\n}\n"
+    }
+  ],
+  "startCommand": "./bin/x64/factorio --start-server \"saves/{{SAVE_NAME}}.zip\" --port {{PORT}} --server-settings data/server-settings.json",
+  "stopTimeout": 45,
+  "query": { "type": "udp", "port": "game" },
+  "logPatterns": {
+    "ready": "Hosting game at|Started server",
+    "join": "\\[JOIN\\] ([^ ]+) joined",
+    "leave": "\\[LEAVE\\] ([^ ]+) left"
+  }
+}

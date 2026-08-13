@@ -1,0 +1,37 @@
+{
+  "id": "palworld",
+  "name": "Palworld",
+  "category": "Survival",
+  "icon": "🐾",
+  "description": "Palworld dedicated server. Needs plenty of RAM — 16 GB is comfortable for a full 32-player world.",
+  "defaultMemory": 12288,
+  "variables": [
+    { "name": "MAX_PLAYERS", "label": "Max players", "type": "number", "default": 16 },
+    { "name": "SERVER_PASSWORD", "label": "Join password", "default": "" },
+    { "name": "ADMIN_PASSWORD", "label": "Admin password", "generate": "password", "default": "" },
+    { "name": "RCON_PASSWORD", "label": "RCON password", "generate": "password", "default": "" },
+    { "name": "PUBLIC_IP", "label": "Public IP (optional)", "default": "" }
+  ],
+  "ports": [
+    { "name": "game", "default": 8211, "protocol": "udp" },
+    { "name": "rcon", "default": 25575, "protocol": "tcp" },
+    { "name": "query", "default": 27015, "protocol": "udp" }
+  ],
+  "install": [
+    { "type": "steamcmd", "appid": "2394010", "label": "Install Palworld dedicated server" },
+    { "type": "chmod", "path": "PalServer.sh", "mode": "+x" },
+    {
+      "type": "script",
+      "label": "Seed the default configuration",
+      "run": "mkdir -p Pal/Saved/Config/LinuxServer\nif [ ! -f Pal/Saved/Config/LinuxServer/PalWorldSettings.ini ] && [ -f DefaultPalWorldSettings.ini ]; then\n  cp DefaultPalWorldSettings.ini Pal/Saved/Config/LinuxServer/PalWorldSettings.ini\nfi"
+    }
+  ],
+  "startCommand": "./PalServer.sh -useperfthreads -NoAsyncLoadingThread -UseMultithreadForDS -port={{PORT}} -queryport={{PORT_QUERY}} -players={{MAX_PLAYERS}} -RconEnabled=True -RconPort={{PORT_RCON}} -AdminPassword=\"{{ADMIN_PASSWORD}}\" -ServerPassword=\"{{SERVER_PASSWORD}}\" -ServerName=\"{{SERVER_NAME}}\"",
+  "stopTimeout": 60,
+  "query": { "type": "a2s", "port": "query" },
+  "rcon": { "type": "source", "port": "rcon" },
+  "stopRconCommand": "Shutdown 5",
+  "logPatterns": {
+    "ready": "Setting breakpad minidump|Running Palworld dedicated server"
+  }
+}

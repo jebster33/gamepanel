@@ -1,0 +1,51 @@
+{
+  "id": "minecraft-bedrock",
+  "name": "Minecraft: Bedrock",
+  "category": "Minecraft",
+  "icon": "🧱",
+  "description": "Official Bedrock Edition dedicated server for console, mobile and Windows 10 players.",
+  "defaultMemory": 2048,
+  "variables": [
+    { "name": "BEDROCK_VERSION", "label": "Bedrock server version", "default": "1.21.62.01", "description": "Version string from minecraft.net/download/server/bedrock." },
+    { "name": "MAX_PLAYERS", "label": "Max players", "type": "number", "default": 10 },
+    { "name": "MOTD", "label": "Server name", "default": "GamePanel Bedrock" },
+    { "name": "GAMEMODE", "label": "Game mode", "default": "survival", "options": ["survival", "creative", "adventure"] },
+    { "name": "DIFFICULTY", "label": "Difficulty", "default": "easy", "options": ["peaceful", "easy", "normal", "hard"] }
+  ],
+  "ports": [
+    { "name": "game", "default": 19132, "protocol": "udp" },
+    { "name": "game6", "default": 19133, "protocol": "udp", "offset": 1 }
+  ],
+  "install": [
+    { "type": "apt", "packages": ["unzip", "libcurl4", "curl"], "label": "Install dependencies" },
+    {
+      "type": "script",
+      "label": "Download the Bedrock dedicated server",
+      "run": "URL=\"https://www.minecraft.net/bedrockdedicatedserver/bin-linux/bedrock-server-{{BEDROCK_VERSION}}.zip\"\ngp_log \"Fetching $URL\"\nif ! curl -fL -A 'Mozilla/5.0' --retry 3 -o bedrock.zip \"$URL\"; then\n  gp_die \"Mojang refused the download. Grab the current version string from https://www.minecraft.net/download/server/bedrock and reinstall with it.\"\nfi\ngp_extract bedrock.zip .\nrm -f bedrock.zip\nchmod +x bedrock_server"
+    }
+  ],
+  "patchProperties": [
+    {
+      "path": "server.properties",
+      "format": "properties",
+      "createIfMissing": true,
+      "set": {
+        "server-port": "{{PORT}}",
+        "server-portv6": "{{PORT_GAME6}}",
+        "server-name": "{{MOTD}}",
+        "max-players": "{{MAX_PLAYERS}}",
+        "gamemode": "{{GAMEMODE}}",
+        "difficulty": "{{DIFFICULTY}}"
+      }
+    }
+  ],
+  "startCommand": "LD_LIBRARY_PATH=. ./bedrock_server",
+  "stopCommand": "stop",
+  "stopTimeout": 30,
+  "query": { "type": "bedrock", "port": "game" },
+  "logPatterns": {
+    "ready": "Server started",
+    "join": "Player connected: ([^,]+)",
+    "leave": "Player disconnected: ([^,]+)"
+  }
+}

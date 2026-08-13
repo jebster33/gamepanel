@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#0b0f16" />
+    <title>GamePanel</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ctext y='52' font-size='52'%3E%F0%9F%8E%AE%3C/text%3E%3C/svg%3E" />
+    <!-- ?v is bumped with each release so proxies and browsers never serve a
+         stale dashboard after the panel is updated. -->
+    <link rel="stylesheet" href="/css/style.css?v=1.0.0" />
+  </head>
+  <body>
+    <!-- Sign in / first-run setup -->
+    <div id="auth-screen" class="auth-screen hidden">
+      <div class="auth-card">
+        <div class="auth-brand">
+          <span class="auth-logo">🎮</span>
+          <h1>GamePanel</h1>
+          <p id="auth-subtitle">Sign in to manage your game servers</p>
+        </div>
+        <form id="auth-form" autocomplete="on">
+          <label>
+            <span>Username</span>
+            <input id="auth-username" name="username" type="text" required autocomplete="username" spellcheck="false" />
+          </label>
+          <label>
+            <span>Password</span>
+            <input id="auth-password" name="password" type="password" required autocomplete="current-password" />
+          </label>
+          <label id="auth-confirm-wrap" class="hidden">
+            <span>Confirm password</span>
+            <input id="auth-confirm" type="password" autocomplete="new-password" />
+          </label>
+          <p id="auth-error" class="auth-error hidden"></p>
+          <button id="auth-submit" class="btn btn-primary btn-block" type="submit">Sign in</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Main application -->
+    <div id="app" class="app hidden">
+      <aside class="sidebar" id="sidebar">
+        <div class="sidebar-brand">
+          <span class="brand-logo">🎮</span>
+          <span class="brand-name" id="brand-name">GamePanel</span>
+          <button class="sidebar-close" id="sidebar-close" aria-label="Close menu">✕</button>
+        </div>
+
+        <nav class="nav" id="nav">
+          <a class="nav-item" href="#/dashboard"><span class="nav-icon">📊</span> Dashboard</a>
+          <a class="nav-item" href="#/servers"><span class="nav-icon">🖥️</span> Servers</a>
+          <a class="nav-item" href="#/templates"><span class="nav-icon">🧰</span> Templates</a>
+          <a class="nav-item" href="#/activity"><span class="nav-icon">📜</span> Activity</a>
+          <a class="nav-item admin-only" href="#/users"><span class="nav-icon">👥</span> Users</a>
+          <a class="nav-item admin-only" href="#/settings"><span class="nav-icon">⚙️</span> Settings</a>
+        </nav>
+
+        <div class="sidebar-servers">
+          <div class="sidebar-heading">Your servers</div>
+          <div id="sidebar-server-list" class="sidebar-server-list"></div>
+        </div>
+
+        <div class="sidebar-footer">
+          <div class="host-mini" id="host-mini"></div>
+          <div class="user-row">
+            <div class="avatar" id="user-avatar">?</div>
+            <div class="user-meta">
+              <div class="user-name" id="user-name">—</div>
+              <div class="user-role" id="user-role"></div>
+            </div>
+            <button class="icon-btn" id="logout-btn" title="Sign out">⏻</button>
+          </div>
+        </div>
+      </aside>
+
+      <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+
+      <main class="main">
+        <header class="topbar">
+          <button class="icon-btn menu-btn" id="menu-btn" aria-label="Open menu">☰</button>
+          <div class="crumbs" id="crumbs"></div>
+          <div class="topbar-actions">
+            <span class="ws-status" id="ws-status" title="Live connection">●</span>
+            <button class="btn btn-primary btn-sm admin-only" id="new-server-btn">+ New server</button>
+          </div>
+        </header>
+        <div class="view" id="view"></div>
+      </main>
+    </div>
+
+    <div id="modal-root"></div>
+    <div id="toasts" class="toasts"></div>
+
+    <script src="/js/app.js?v=1.0.0" type="module"></script>
+  </body>
+</html>

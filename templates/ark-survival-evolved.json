@@ -1,0 +1,36 @@
+{
+  "id": "ark-survival-evolved",
+  "name": "ARK: Survival Evolved",
+  "category": "Survival",
+  "icon": "🦖",
+  "description": "ARK: Survival Evolved dedicated server. Large install and very RAM-hungry — 16 GB recommended.",
+  "defaultMemory": 12288,
+  "variables": [
+    { "name": "MAP", "label": "Map", "default": "TheIsland", "description": "TheIsland, Ragnarok, TheCenter, ScorchedEarth_P, Aberration_P, Extinction, Valguero_P, CrystalIsles, Genesis, Fjordur…" },
+    { "name": "MAX_PLAYERS", "label": "Max players", "type": "number", "default": 20 },
+    { "name": "SERVER_PASSWORD", "label": "Join password", "default": "" },
+    { "name": "ADMIN_PASSWORD", "label": "Admin password", "generate": "password", "default": "" },
+    { "name": "RCON_PASSWORD", "label": "RCON password", "generate": "password", "default": "" }
+  ],
+  "ports": [
+    { "name": "game", "default": 7777, "protocol": "udp" },
+    { "name": "raw", "default": 7778, "protocol": "udp", "offset": 1 },
+    { "name": "query", "default": 27015, "protocol": "udp" },
+    { "name": "rcon", "default": 32330, "protocol": "tcp" }
+  ],
+  "install": [
+    { "type": "apt", "packages": ["lib32gcc-s1", "libc6-i386"], "label": "Install 32-bit runtime libraries" },
+    { "type": "steamcmd", "appid": "376030", "label": "Install ARK dedicated server (~15 GB)" },
+    { "type": "chmod", "path": "ShooterGame/Binaries/Linux/ShooterGameServer", "mode": "+x" }
+  ],
+  "startCommand": "./ShooterGame/Binaries/Linux/ShooterGameServer \"{{MAP}}?listen?SessionName={{SERVER_NAME}}?MaxPlayers={{MAX_PLAYERS}}?ServerPassword={{SERVER_PASSWORD}}?ServerAdminPassword={{ADMIN_PASSWORD}}?Port={{PORT}}?QueryPort={{PORT_QUERY}}?RCONEnabled=True?RCONPort={{PORT_RCON}}\" -server -log -NoBattlEye",
+  "stopTimeout": 120,
+  "query": { "type": "a2s", "port": "query" },
+  "rcon": { "type": "source", "port": "rcon" },
+  "stopRconCommand": "DoExit",
+  "logPatterns": {
+    "ready": "Full Startup:|Server has completed startup",
+    "join": "([^ ]+) joined this ARK",
+    "leave": "([^ ]+) left this ARK"
+  }
+}

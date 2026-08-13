@@ -1,0 +1,36 @@
+{
+  "id": "left4dead2",
+  "name": "Left 4 Dead 2",
+  "category": "Shooter",
+  "icon": "🧪",
+  "description": "Left 4 Dead 2 dedicated server for co-op and versus campaigns.",
+  "defaultMemory": 2048,
+  "variables": [
+    { "name": "MAP", "label": "Starting map", "default": "c1m1_hotel" },
+    { "name": "GAME_MODE", "label": "Game mode", "default": "coop", "options": ["coop", "versus", "survival", "scavenge", "realism"] },
+    { "name": "MAX_PLAYERS", "label": "Max players", "type": "number", "default": 8 },
+    { "name": "RCON_PASSWORD", "label": "RCON password", "generate": "password", "default": "" }
+  ],
+  "ports": [{ "name": "game", "default": 27015, "protocol": "udp" }],
+  "install": [
+    { "type": "steamcmd", "appid": "222860", "label": "Install Left 4 Dead 2 dedicated server" },
+    { "type": "chmod", "path": "srcds_run", "mode": "+x" }
+  ],
+  "configFiles": [
+    {
+      "path": "left4dead2/cfg/server.cfg",
+      "mode": "create",
+      "content": "hostname \"{{SERVER_NAME}}\"\nrcon_password \"{{RCON_PASSWORD}}\"\nsv_lan 0\nsv_steamgroup_exclusive 0\n"
+    }
+  ],
+  "startCommand": "./srcds_run -game left4dead2 -console -norestart -port {{PORT}} +maxplayers {{MAX_PLAYERS}} +map {{MAP}} +mp_gamemode {{GAME_MODE}}",
+  "stopCommand": "quit",
+  "stopTimeout": 45,
+  "query": { "type": "a2s", "port": "game" },
+  "rcon": { "type": "source", "port": "game" },
+  "logPatterns": {
+    "ready": "VAC secure mode|gameserver Steam ID",
+    "join": "\"([^<]+)<[0-9]+><[^>]*><>\" entered the game",
+    "leave": "\"([^<]+)<[0-9]+><[^>]*><[^>]*>\" disconnected"
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "id": "terraria",
+  "name": "Terraria",
+  "category": "Sandbox",
+  "icon": "🌳",
+  "description": "Vanilla Terraria dedicated server. Lightweight — happily runs several worlds on a small VPS.",
+  "defaultMemory": 1024,
+  "variables": [
+    { "name": "TERRARIA_BUILD", "label": "Terraria build number", "default": "1449", "description": "From terraria.org/api/download/pc-dedicated-server — 1449 is 1.4.4.9." },
+    { "name": "WORLD_NAME", "label": "World name", "default": "World" },
+    { "name": "WORLD_SIZE", "label": "World size", "default": "2", "options": ["1", "2", "3"], "description": "1 small, 2 medium, 3 large." },
+    { "name": "DIFFICULTY", "label": "Difficulty", "default": "1", "options": ["0", "1", "2", "3"] },
+    { "name": "MAX_PLAYERS", "label": "Max players", "type": "number", "default": 8 },
+    { "name": "SERVER_PASSWORD", "label": "Join password", "default": "" }
+  ],
+  "ports": [{ "name": "game", "default": 7777, "protocol": "tcp" }],
+  "install": [
+    { "type": "apt", "packages": ["unzip"], "label": "Install unzip" },
+    {
+      "type": "script",
+      "label": "Download the Terraria dedicated server",
+      "run": "gp_fetch \"https://terraria.org/api/download/pc-dedicated-server/terraria-server-{{TERRARIA_BUILD}}.zip\" terraria.zip\ngp_extract terraria.zip .\nrm -f terraria.zip\nif [ -d \"{{TERRARIA_BUILD}}/Linux\" ]; then cp -r \"{{TERRARIA_BUILD}}/Linux/.\" .; rm -rf \"{{TERRARIA_BUILD}}\"; fi\nchmod +x TerrariaServer.bin.x86_64 2>/dev/null || true\nmkdir -p worlds"
+    }
+  ],
+  "configFiles": [
+    {
+      "path": "serverconfig.txt",
+      "mode": "create",
+      "content": "world=./worlds/{{WORLD_NAME}}.wld\nautocreate={{WORLD_SIZE}}\ndifficulty={{DIFFICULTY}}\nworldname={{WORLD_NAME}}\nmaxplayers={{MAX_PLAYERS}}\nport={{PORT}}\npassword={{SERVER_PASSWORD}}\nmotd=Welcome to {{SERVER_NAME}}\nsecure=1\nlanguage=en/US\nupnp=0\n"
+    }
+  ],
+  "patchProperties": [
+    {
+      "path": "serverconfig.txt",
+      "format": "properties",
+      "createIfMissing": true,
+      "set": { "port": "{{PORT}}", "maxplayers": "{{MAX_PLAYERS}}" }
+    }
+  ],
+  "startCommand": "./TerrariaServer.bin.x86_64 -config serverconfig.txt",
+  "stopCommand": "exit",
+  "stopTimeout": 45,
+  "query": { "type": "tcp", "port": "game" },
+  "logPatterns": {
+    "ready": "Server started",
+    "join": "([^ ]+) has joined",
+    "leave": "([^ ]+) has left"
+  }
+}

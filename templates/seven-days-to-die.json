@@ -1,0 +1,42 @@
+{
+  "id": "seven-days-to-die",
+  "name": "7 Days to Die",
+  "category": "Survival",
+  "icon": "🧟",
+  "description": "7 Days to Die dedicated server with the web control panel and telnet disabled in favour of GamePanel's console.",
+  "defaultMemory": 8192,
+  "variables": [
+    { "name": "WORLD_NAME", "label": "World", "default": "Navezgane", "description": "Navezgane, PREGEN01, or RWG for a random world." },
+    { "name": "GAME_NAME", "label": "Save name", "default": "GamePanel" },
+    { "name": "MAX_PLAYERS", "label": "Max players", "type": "number", "default": 8 },
+    { "name": "SERVER_PASSWORD", "label": "Join password", "default": "" },
+    { "name": "GAME_DIFFICULTY", "label": "Difficulty (0-5)", "type": "number", "default": 2 },
+    { "name": "RCON_PASSWORD", "label": "RCON password", "generate": "password", "default": "" }
+  ],
+  "ports": [
+    { "name": "game", "default": 26900, "protocol": "udp" },
+    { "name": "game2", "default": 26901, "protocol": "udp", "offset": 1 },
+    { "name": "game3", "default": 26902, "protocol": "udp", "offset": 2 },
+    { "name": "rcon", "default": 8081, "protocol": "tcp" }
+  ],
+  "install": [
+    { "type": "steamcmd", "appid": "294420", "label": "Install 7 Days to Die dedicated server" },
+    { "type": "chmod", "path": "7DaysToDieServer.x86_64", "mode": "+x" },
+    { "type": "chmod", "path": "startserver.sh", "mode": "+x" }
+  ],
+  "configFiles": [
+    {
+      "path": "gamepanel.xml",
+      "mode": "overwrite",
+      "content": "<?xml version=\"1.0\"?>\n<ServerSettings>\n  <property name=\"ServerName\" value=\"{{SERVER_NAME}}\"/>\n  <property name=\"ServerPassword\" value=\"{{SERVER_PASSWORD}}\"/>\n  <property name=\"ServerMaxPlayerCount\" value=\"{{MAX_PLAYERS}}\"/>\n  <property name=\"ServerPort\" value=\"{{PORT}}\"/>\n  <property name=\"ServerVisibility\" value=\"2\"/>\n  <property name=\"GameWorld\" value=\"{{WORLD_NAME}}\"/>\n  <property name=\"GameName\" value=\"{{GAME_NAME}}\"/>\n  <property name=\"GameDifficulty\" value=\"{{GAME_DIFFICULTY}}\"/>\n  <property name=\"WebDashboardEnabled\" value=\"false\"/>\n  <property name=\"TelnetEnabled\" value=\"false\"/>\n  <property name=\"ControlPanelEnabled\" value=\"false\"/>\n  <property name=\"UserDataFolder\" value=\"{{SERVER_DIR}}/data\"/>\n</ServerSettings>\n"
+    }
+  ],
+  "startCommand": "./7DaysToDieServer.x86_64 -logfile /dev/stdout -quit -batchmode -nographics -dedicated -configfile=gamepanel.xml",
+  "stopTimeout": 90,
+  "query": { "type": "a2s", "port": "game" },
+  "logPatterns": {
+    "ready": "StartGame done|GameServer.LogOn successful",
+    "join": "PlayerSpawnedInWorld .*playerName='([^']+)'",
+    "leave": "Player disconnected: .*playerName='([^']+)'"
+  }
+}

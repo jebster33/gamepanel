@@ -1,0 +1,39 @@
+{
+  "id": "tf2",
+  "name": "Team Fortress 2",
+  "category": "Shooter",
+  "icon": "🎩",
+  "description": "Team Fortress 2 dedicated server.",
+  "defaultMemory": 2048,
+  "variables": [
+    { "name": "MAP", "label": "Starting map", "default": "cp_dustbowl" },
+    { "name": "MAX_PLAYERS", "label": "Max players", "type": "number", "default": 24 },
+    { "name": "GSLT", "label": "Steam game server token (GSLT)", "default": "" },
+    { "name": "RCON_PASSWORD", "label": "RCON password", "generate": "password", "default": "" }
+  ],
+  "ports": [
+    { "name": "game", "default": 27015, "protocol": "udp" },
+    { "name": "tv", "default": 27020, "protocol": "udp", "offset": 5 }
+  ],
+  "install": [
+    { "type": "steamcmd", "appid": "232250", "label": "Install Team Fortress 2 dedicated server" },
+    { "type": "chmod", "path": "srcds_run", "mode": "+x" }
+  ],
+  "configFiles": [
+    {
+      "path": "tf/cfg/server.cfg",
+      "mode": "create",
+      "content": "hostname \"{{SERVER_NAME}}\"\nrcon_password \"{{RCON_PASSWORD}}\"\nsv_lan 0\nmp_timelimit 30\n"
+    }
+  ],
+  "startCommand": "./srcds_run -game tf -console -norestart -port {{PORT}} +tv_port {{PORT_TV}} +maxplayers {{MAX_PLAYERS}} +map {{MAP}} +sv_setsteamaccount \"{{GSLT}}\"",
+  "stopCommand": "quit",
+  "stopTimeout": 45,
+  "query": { "type": "a2s", "port": "game" },
+  "rcon": { "type": "source", "port": "game" },
+  "logPatterns": {
+    "ready": "VAC secure mode|gameserver Steam ID",
+    "join": "\"([^<]+)<[0-9]+><[^>]*><>\" entered the game",
+    "leave": "\"([^<]+)<[0-9]+><[^>]*><[^>]*>\" disconnected"
+  }
+}

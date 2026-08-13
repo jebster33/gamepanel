@@ -1,0 +1,61 @@
+{
+  "id": "minecraft-vanilla",
+  "name": "Minecraft: Vanilla",
+  "category": "Minecraft",
+  "icon": "🟫",
+  "description": "The official Mojang Java Edition server — unmodified gameplay, no plugin support.",
+  "defaultMemory": 4096,
+  "variables": [
+    { "name": "MC_VERSION", "label": "Minecraft version", "default": "latest", "description": "A release version, or 'latest' for the newest release." },
+    { "name": "MAX_PLAYERS", "label": "Max players", "type": "number", "default": 20 },
+    { "name": "MOTD", "label": "Server MOTD", "default": "A GamePanel server" },
+    { "name": "DIFFICULTY", "label": "Difficulty", "default": "normal", "options": ["peaceful", "easy", "normal", "hard"] },
+    { "name": "JAVA_ARGS", "label": "Extra JVM flags", "default": "-XX:+UseG1GC" },
+    { "name": "RCON_PASSWORD", "label": "RCON password", "generate": "password", "default": "" }
+  ],
+  "ports": [
+    { "name": "game", "default": 25565, "protocol": "tcp" },
+    { "name": "rcon", "default": 25575, "protocol": "tcp", "offset": 10 }
+  ],
+  "install": [
+    { "type": "java", "version": "21", "label": "Install Java 21" },
+    {
+      "type": "script",
+      "label": "Download the Mojang server jar",
+      "run": "MANIFEST=https://launchermeta.mojang.com/mc/game/version_manifest_v2.json\nURL=$(curl -sf \"$MANIFEST\" | node -e 'let d=\"\";const want=process.argv[1];process.stdin.on(\"data\",c=>d+=c).on(\"end\",()=>{const j=JSON.parse(d);const id=(!want||want===\"latest\")?j.latest.release:want;const v=j.versions.find(v=>v.id===id);if(!v){console.error(\"Unknown Minecraft version: \"+id);process.exit(1);}console.log(v.url);})' \"{{MC_VERSION}}\")\n[ -n \"$URL\" ] || gp_die \"Could not resolve that Minecraft version\"\nJAR=$(curl -sf \"$URL\" | node -e 'let d=\"\";process.stdin.on(\"data\",c=>d+=c).on(\"end\",()=>{const j=JSON.parse(d);if(!j.downloads.server){console.error(\"That version has no dedicated server download\");process.exit(1);}console.log(j.downloads.server.url);})')\n[ -n \"$JAR\" ] || gp_die \"No server download for that version\"\ngp_fetch \"$JAR\" server.jar"
+    },
+    { "type": "writeFile", "path": "eula.txt", "content": "# Accepted through GamePanel on install\neula=true\n" }
+  ],
+  "configFiles": [
+    {
+      "path": "server.properties",
+      "mode": "create",
+      "content": "server-port={{PORT}}\nenable-rcon=true\nrcon.port={{PORT_RCON}}\nrcon.password={{RCON_PASSWORD}}\nmotd={{MOTD}}\nmax-players={{MAX_PLAYERS}}\ndifficulty={{DIFFICULTY}}\nonline-mode=true\n"
+    }
+  ],
+  "patchProperties": [
+    {
+      "path": "server.properties",
+      "format": "properties",
+      "createIfMissing": true,
+      "set": {
+        "server-port": "{{PORT}}",
+        "enable-rcon": "true",
+        "rcon.port": "{{PORT_RCON}}",
+        "rcon.password": "{{RCON_PASSWORD}}",
+        "max-players": "{{MAX_PLAYERS}}",
+        "motd": "{{MOTD}}"
+      }
+    }
+  ],
+  "startCommand": "java -Xms{{MEMORY}}M -Xmx{{MEMORY}}M {{JAVA_ARGS}} -jar server.jar nogui",
+  "stopCommand": "stop",
+  "stopTimeout": 60,
+  "query": { "type": "minecraft", "port": "game" },
+  "rcon": { "type": "source", "port": "rcon" },
+  "logPatterns": {
+    "ready": "Done \\([0-9.]+s\\)!",
+    "join": "([A-Za-z0-9_]{3,16}) joined the game",
+    "leave": "([A-Za-z0-9_]{3,16}) left the game"
+  }
+}

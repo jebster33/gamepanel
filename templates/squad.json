@@ -1,0 +1,38 @@
+{
+  "id": "squad",
+  "name": "Squad",
+  "category": "Shooter",
+  "icon": "🎖️",
+  "description": "Squad dedicated server. Large install; 100-player rounds want a fast CPU and 12 GB+ of RAM.",
+  "defaultMemory": 12288,
+  "variables": [
+    { "name": "MAX_PLAYERS", "label": "Max players", "type": "number", "default": 80 },
+    { "name": "RCON_PASSWORD", "label": "RCON password", "generate": "password", "default": "" }
+  ],
+  "ports": [
+    { "name": "game", "default": 7787, "protocol": "udp" },
+    { "name": "query", "default": 27165, "protocol": "udp" },
+    { "name": "rcon", "default": 21114, "protocol": "tcp" }
+  ],
+  "install": [
+    { "type": "steamcmd", "appid": "403240", "label": "Install Squad dedicated server (~50 GB)" },
+    { "type": "chmod", "path": "SquadGameServer.sh", "mode": "+x" }
+  ],
+  "configFiles": [
+    {
+      "path": "SquadGame/ServerConfig/Rcon.cfg",
+      "mode": "create",
+      "content": "Password={{RCON_PASSWORD}}\nPort={{PORT_RCON}}\nMaxConnections=5\n"
+    },
+    {
+      "path": "SquadGame/ServerConfig/Server.cfg",
+      "mode": "create",
+      "content": "ServerName=\"{{SERVER_NAME}}\"\nMaxPlayers={{MAX_PLAYERS}}\nNumReservedSlots=0\nServerMessageInterval=300\n"
+    }
+  ],
+  "startCommand": "./SquadGameServer.sh Port={{PORT}} QueryPort={{PORT_QUERY}} FIXEDMAXPLAYERS={{MAX_PLAYERS}} RANDOM=ALWAYS -log",
+  "stopTimeout": 90,
+  "query": { "type": "a2s", "port": "query" },
+  "rcon": { "type": "source", "port": "rcon" },
+  "logPatterns": { "ready": "Server started|LogSquad: PostLogin" }
+}
