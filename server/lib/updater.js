@@ -108,6 +108,9 @@ async function applyUpdate({ onLog = () => {} } = {}) {
   await git(`fetch origin ${BRANCH}`);
   await git(`reset --hard origin/${BRANCH}`);
 
+  // Keep the helper scripts runnable even if a checkout landed without modes.
+  await sh(`chmod +x ${JSON.stringify(config.rootDir)}/*.sh`).catch(() => {});
+
   const after = await currentRevision();
   onLog(`Now at ${after?.commit} — ${after?.subject}`);
 

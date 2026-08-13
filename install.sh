@@ -119,6 +119,10 @@ fi
 
 # --------------------------------------------------------------- data dir --
 
+# Belt and braces: the exec bit is set in git, but repair it anyway so an
+# older checkout (or a copy over a filesystem that drops modes) still works.
+chmod +x "$INSTALL_DIR"/*.sh 2>/dev/null || true
+
 info "Preparing data directory $DATA_DIR"
 mkdir -p "$DATA_DIR"/{servers,backups,logs,cache,templates,run}
 chown -R "$SERVICE_USER":"$SERVICE_USER" "$DATA_DIR"
