@@ -169,12 +169,19 @@ const RESOLVERS = {
     const index = await readMrpackIndex(file.url);
     const game = index.dependencies?.minecraft;
     const loader = detectLoader(index.dependencies);
+
+    // Whether players have to install the pack locally, and where they get it.
+    const project = await getJson(`https://api.modrinth.com/v2/project/${encodeURIComponent(slug)}`).catch(() => ({}));
     if (!game) throw new Error('the pack does not say which Minecraft version it needs');
     if (!loader) throw new Error('the pack uses a mod loader GamePanel cannot install yet');
 
-    // Every file the pack wants, as plain shell.
-    const downloads = (index.files || [])
-      .filter((entry) => entry.env?.server !== 'unsupported')
+    // Client-only mods crash a dedicated server (Forge and NeoForge abort the
+    // whole load). `env` is optional in the mrpack spec, so anything the pack
+    // did not label gets looked up on Modrinth by file hash before we decide.
+    const wanted = await filterServerFiles(index.files || []);
+    const skipped = (index.files || []).length - wanted.length;
+
+    const downloads = wanted
       .map((entry) => {
         const target = String(entry.path).replace(/^[/\\]+/, '');
         if (target.includes('..')) return null;
@@ -190,11 +197,22 @@ const RESOLVERS = {
       DOWNLOAD_URL: file.url,
       MRPACK_FILE: file.filename,
       RESOLVED_VERSION: `${index.name || slug} ${index.versionId || version.version_number}`,
-      PACK_NAME: index.name || slug,
+      PACK_NAME: index.name || project.title || slug,
+      PACK_SLUG: project.slug || slug,
+      PACK_VERSION_NUMBER: version.version_number,
+      PACK_URL: `https://modrinth.com/modpack/${project.slug || slug}`,
+      PACK_VERSION_URL: `https://modrinth.com/modpack/${project.slug || slug}/version/${encodeURIComponent(
+        version.version_number
+      )}`,
+      PACK_CLIENT_REQUIRED: String(project.client_side !== 'unsupported'),
+      PACK_ICON: project.icon_url || '',
       PACK_MC_VERSION: game,
       PACK_LOADER: `${loader.name} ${loader.version}`,
       PACK_FILE_COUNT: String(downloads.length),
-      PACK_DOWNLOADS: downloads.join('\n') || 'gp_log "This pack ships no separate downloads"',
+      PACK_SKIPPED: String(skipped),
+      PACK_DOWNLOADS:
+        (downloads.join('\n') || 'gp_log "This pack ships no separate downloads"') +
+        (skipped ? `\ngp_log "Skipped ${skipped} client-only mod(s) — they would crash a dedicated server"` : ''),
       LOADER_INSTALL: loaderInstall.install,
       START_SCRIPT: loaderInstall.start,
       JAVA_VERSION: String((await javaForMinecraft(game)) || 21),
@@ -277,6 +295,69 @@ async function readMrpackIndex(url) {
     offset += 46 + nameLength + extraLength + commentLength;
   }
   throw new Error('the modpack has no modrinth.index.json');
+}
+
+/**
+ * Decide which of a pack's files belong on a dedicated server.
+ *
+ * The pack's own `env` block wins when present. For the rest, Modrinth is
+ * asked in bulk — hashes to versions, versions to projects — and any project
+ * marked `server_side: unsupported` is dropped. Getting this wrong is not
+ * cosmetic: a single client mod aborts a Forge/NeoForge server at boot.
+ */
+async function filterServerFiles(files) {
+  const explicit = [];
+  const unknown = [];
+  for (const file of files) {
+    const env = file.env?.server;
+    if (env === 'unsupported') continue;
+    if (env) explicit.push(file);
+    else unknown.push(file);
+  }
+  if (!unknown.length) return explicit;
+
+  const sides = new Map();
+  try {
+    const hashes = unknown.map((f) => f.hashes?.sha512).filter(Boolean);
+    const hashToProject = new Map();
+
+    for (const batch of chunk(hashes, 100)) {
+      const res = await fetch('https://api.modrinth.com/v2/version_files', {
+        method: 'POST',
+        headers: { 'User-Agent': UA, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hashes: batch, algorithm: 'sha512' }),
+        signal: AbortSignal.timeout(TIMEOUT_MS),
+      });
+      if (!res.ok) throw new Error(`version lookup failed (${res.status})`);
+      const found = await res.json();
+      for (const [hash, version] of Object.entries(found)) hashToProject.set(hash, version.project_id);
+    }
+
+    const ids = [...new Set([...hashToProject.values()])];
+    for (const batch of chunk(ids, 100)) {
+      const projects = await getJson(
+        `https://api.modrinth.com/v2/projects?ids=${encodeURIComponent(JSON.stringify(batch))}`
+      );
+      for (const project of projects) sides.set(project.id, project.server_side);
+    }
+
+    for (const file of unknown) {
+      const projectId = hashToProject.get(file.hashes?.sha512);
+      const side = projectId ? sides.get(projectId) : null;
+      if (side !== 'unsupported') explicit.push(file);
+    }
+    return explicit;
+  } catch (err) {
+    // If the lookup fails, keep everything rather than silently gutting a pack.
+    logger.warn(`Could not check which pack files are server-safe: ${err.message}`);
+    return [...explicit, ...unknown];
+  }
+}
+
+function chunk(list, size) {
+  const out = [];
+  for (let i = 0; i < list.length; i += size) out.push(list.slice(i, i + size));
+  return out;
 }
 
 /** Which loader a pack wants, from its dependency map. */

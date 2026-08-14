@@ -44,9 +44,14 @@ You still get the thing that actually matters: **every game server runs in its o
 - Everything is sandboxed to the server's own directory
 
 **Modpacks**
-- Deploy any Modrinth modpack as a server: pick the pack from a searchable list,
-  pick a version, and the panel installs the loader, every mod and the pack's
-  own configs
+- Deploy any Modrinth modpack as a server, or switch an existing one to a
+  different pack or version from its **Modpacks** tab
+- The panel installs the loader, every mod and the pack's own configs, and
+  gives you the exact link to send players for the matching client install
+- Client-only mods are filtered out — by the pack's metadata where it exists,
+  and by hashing what actually landed where it does not, since one client mod
+  aborts a Forge/NeoForge server at boot
+- Mod and pack listings say plainly whether players need a local install too
 - Fabric, Quilt, NeoForge and Forge packs are all handled — the loader and the
   Java version come from the pack's own metadata
 - The pack index is read out of the .mrpack by the panel, so the container

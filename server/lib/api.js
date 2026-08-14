@@ -502,6 +502,66 @@ function createApi(ctx) {
     return mods.toggleInstalled(server, manager.template(server), params.name);
   });
 
+  /* ----------------------------------------------------------- modpacks -- */
+
+  router.get('/api/servers/:id/modpacks', ({ user, params }) => {
+    const server = serverFor(user, params.id, 'mods');
+    const template = manager.template(server);
+    if (!template?.modpacks) return { supported: false };
+    return {
+      supported: true,
+      // Servers installed before pack details were recorded still get a link.
+      current: server.vars?.MODPACK
+        ? {
+            slug: server.pack?.slug || server.vars.MODPACK,
+            versionId: server.vars.MODPACK_VERSION || null,
+            label: server.resolvedVersion || server.vars.MODPACK,
+            url: `https://modrinth.com/modpack/${server.pack?.slug || server.vars.MODPACK}`,
+            ...(server.pack || {}),
+          }
+        : null,
+      running: manager.isActive(server.id),
+    };
+  });
+
+  router.get('/api/servers/:id/modpacks/search', async ({ user, params, url }) => {
+    serverFor(user, params.id, 'mods');
+    return mods.PROVIDERS.modrinth.search({
+      query: url.searchParams.get('query') || '',
+      page: clamp(url.searchParams.get('page') || 0, 0, 200),
+      limit: 24,
+      projectType: 'modpack',
+    });
+  });
+
+  router.get('/api/servers/:id/modpacks/versions', async ({ user, params, url }) => {
+    serverFor(user, params.id, 'mods');
+    const versions = await mods.PROVIDERS.modrinth.versions({ projectId: url.searchParams.get('project') });
+    // Only versions that ship an installable pack file are any use here.
+    return { versions: versions.filter((v) => String(v.filename || '').endsWith('.mrpack')) };
+  });
+
+  /**
+   * Switch this server to a modpack (or a different version of it) by
+   * rewriting the variables the resolver reads, then reinstalling.
+   */
+  router.post('/api/servers/:id/modpacks/install', async ({ user, params, body }) => {
+    const server = serverFor(user, params.id, 'mods');
+    const template = manager.template(server);
+    if (!template?.modpacks) fail(400, 'This server does not use modpacks');
+    if (manager.isActive(server.id)) fail(409, 'Stop the server before changing its modpack');
+    if (!body.project) fail(400, 'Pick a modpack first');
+
+    manager.update(server.id, {
+      vars: { MODPACK: String(body.project), MODPACK_VERSION: String(body.versionId || '') },
+    });
+    manager
+      .install(server.id, { reinstall: true })
+      .catch((err) => logger.error('Modpack install failed:', err.message));
+    store.addEvent('modpack.installed', `${server.name} switched to modpack ${body.project}`, { serverId: server.id });
+    return { ok: true, queued: true, message: 'Installing the pack — watch the console.' };
+  });
+
   /* ------------------------------------------------------------ backups -- */
 
   router.get('/api/servers/:id/backups', ({ user, params }) => {

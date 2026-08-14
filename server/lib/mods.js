@@ -93,6 +93,8 @@ const modrinth = {
         url: `https://modrinth.com/${hit.project_type}/${hit.slug}`,
         categories: hit.categories || [],
         updated: hit.date_modified,
+        clientSide: hit.client_side,
+        serverSide: hit.server_side,
       })),
     };
   },
@@ -244,6 +246,8 @@ const umod = {
         categories: String(plugin.tags_all || '').split(',').filter(Boolean).slice(0, 4),
         updated: plugin.latest_release_at,
         version: plugin.latest_release_version,
+        clientSide: 'unsupported',
+        serverSide: 'required',
         downloadUrl: plugin.download_url,
       })),
     };
@@ -440,6 +444,88 @@ async function toggleInstalled(server, template, name) {
   return { name: path.basename(to), disabled: to.endsWith('.disabled') };
 }
 
+/**
+ * Move client-only mods out of a server's mods folder.
+ *
+ * A pack's overrides/ folder carries jars with no metadata at all, so the only
+ * reliable check is to hash what actually landed and ask Modrinth what each
+ * one is. Forge and NeoForge abort the entire server when a client mod is
+ * present, so this runs after every modpack install.
+ *
+ * Files are moved aside rather than deleted, so nothing is lost if the
+ * classification is ever wrong.
+ */
+async function pruneClientOnlyMods(server, template, log = () => {}) {
+  const dir = safeJoin(server.dir, modDir(server, template));
+  let entries = [];
+  try {
+    entries = (await fsp.readdir(dir, { withFileTypes: true }))
+      .filter((e) => e.isFile() && e.name.toLowerCase().endsWith('.jar'))
+      .map((e) => e.name);
+  } catch {
+    return { checked: 0, moved: [] };
+  }
+  if (!entries.length) return { checked: 0, moved: [] };
+
+  const crypto = require('crypto');
+  const byHash = new Map();
+  for (const name of entries) {
+    try {
+      const buf = await fsp.readFile(path.join(dir, name));
+      byHash.set(crypto.createHash('sha512').update(buf).digest('hex'), name);
+    } catch {
+      /* unreadable file — leave it alone */
+    }
+  }
+
+  const moved = [];
+  try {
+    const hashToProject = new Map();
+    const hashes = [...byHash.keys()];
+    for (let i = 0; i < hashes.length; i += 100) {
+      const res = await fetch('https://api.modrinth.com/v2/version_files', {
+        method: 'POST',
+        headers: { 'User-Agent': UA, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hashes: hashes.slice(i, i + 100), algorithm: 'sha512' }),
+        signal: AbortSignal.timeout(TIMEOUT),
+      });
+      if (!res.ok) throw new Error(`lookup failed (${res.status})`);
+      for (const [hash, version] of Object.entries(await res.json())) {
+        hashToProject.set(hash, version.project_id);
+      }
+    }
+
+    const ids = [...new Set(hashToProject.values())];
+    const sides = new Map();
+    for (let i = 0; i < ids.length; i += 100) {
+      const projects = await getJson(
+        `https://api.modrinth.com/v2/projects?ids=${encodeURIComponent(JSON.stringify(ids.slice(i, i + 100)))}`
+      );
+      for (const project of projects) sides.set(project.id, project.server_side);
+    }
+
+    const quarantine = path.join(dir, '_client-only');
+    for (const [hash, name] of byHash) {
+      const projectId = hashToProject.get(hash);
+      if (!projectId || sides.get(projectId) !== 'unsupported') continue;
+      await fsp.mkdir(quarantine, { recursive: true });
+      await fsp.rename(path.join(dir, name), path.join(quarantine, name));
+      moved.push(name);
+    }
+  } catch (err) {
+    logger.warn(`Could not verify which mods are server-safe: ${err.message}`);
+    return { checked: byHash.size, moved, error: err.message };
+  }
+
+  if (moved.length) {
+    log(
+      `Moved ${moved.length} client-only mod(s) into ${modDir(server, template)}/_client-only — ` +
+        `they crash a dedicated server: ${moved.slice(0, 6).join(', ')}${moved.length > 6 ? '…' : ''}`
+    );
+  }
+  return { checked: byHash.size, moved };
+}
+
 /** Pull the Workshop ID out of a pasted URL or raw number. */
 function parseWorkshopId(input) {
   const text = String(input || '').trim();
@@ -457,6 +543,7 @@ module.exports = {
   installFile,
   removeInstalled,
   toggleInstalled,
+  pruneClientOnlyMods,
   parseWorkshopId,
   safeFileName,
 };

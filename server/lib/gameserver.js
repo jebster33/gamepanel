@@ -360,6 +360,7 @@ class ServerManager extends EventEmitter {
       supportsConsoleInput: Boolean(tpl?.stopCommand || tpl?.consoleInput !== false),
       hasRcon: Boolean(tpl?.rcon && server.vars?.RCON_PASSWORD),
       hasMods: Boolean(tpl?.mods),
+      hasModpacks: Boolean(tpl?.modpacks),
       modProviders: tpl?.mods?.providers || [],
       gameVersion: this.gameVersion(server, tpl),
     };
@@ -551,6 +552,21 @@ class ServerManager extends EventEmitter {
         // Remember what was actually installed, so the UI can show a version
         // even for a server deployed with "latest" that has never started.
         if (extra.RESOLVED_VERSION) server.resolvedVersion = String(extra.RESOLVED_VERSION);
+        // Keep what players need to join: the pack, the exact version, and
+        // whether they have to install it themselves.
+        if (extra.PACK_SLUG) {
+          server.pack = {
+            slug: extra.PACK_SLUG,
+            name: extra.PACK_NAME,
+            version: extra.PACK_VERSION_NUMBER,
+            url: extra.PACK_URL,
+            versionUrl: extra.PACK_VERSION_URL,
+            icon: extra.PACK_ICON || null,
+            mcVersion: extra.PACK_MC_VERSION,
+            loader: extra.PACK_LOADER,
+            clientRequired: extra.PACK_CLIENT_REQUIRED === 'true',
+          };
+        }
         // Persisted so later starts pick the same JRE image as the install did.
         if (extra.JAVA_VERSION) server.vars = { ...server.vars, JAVA_VERSION: String(extra.JAVA_VERSION) };
         if (extra.RESOLVED_VERSION || extra.JAVA_VERSION) this.store.save();
@@ -621,6 +637,15 @@ class ServerManager extends EventEmitter {
       server.installedAt = Date.now();
       this.store.save();
       this.writeConfigFiles(server, template, { overwrite: reinstall });
+
+      // Modpack overrides can smuggle in client-only mods, which take a
+      // Forge/NeoForge server down at boot. Check what actually landed.
+      if (template.modpacks) {
+        require('./mods')
+          .pruneClientOnlyMods(server, template, (line) => this.pushConsole(server, line, 'system'))
+          .catch(() => {});
+      }
+
       this.pushConsole(server, 'Installation finished successfully. You can start the server now.', 'system');
       this.setStatus(server, STATUS.OFFLINE);
       this.store.addEvent('server.installed', `${server.name} installed`, { serverId: server.id });
