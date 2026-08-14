@@ -1,12 +1,14 @@
 {
   "name": "gamepanel",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "description": "A dead-simple, self-hosted game server control panel for Ubuntu. Zero npm dependencies.",
   "main": "server/index.js",
   "type": "commonjs",
   "scripts": {
     "start": "node server/index.js",
-    "dev": "node server/index.js"
+    "dev": "node server/index.js",
+    "test": "node test/check.js",
+    "test:live": "node test/check.js --live"
   },
   "engines": {
     "node": ">=18.0.0"

@@ -16,7 +16,12 @@ const CAPABILITIES = [
   { id: 'power', label: 'Start, stop and restart servers', group: 'Server' },
   { id: 'console', label: 'View the console', group: 'Server' },
   { id: 'command', label: 'Send console commands', group: 'Server' },
-  { id: 'settings', label: 'Edit server settings, ports and variables', group: 'Server' },
+  {
+    id: 'settings',
+    label: 'Edit server settings, ports and variables',
+    group: 'Server',
+    warning: 'Trusted: variables are passed to the game process, so this can influence how it launches.',
+  },
   { id: 'files', label: 'Browse and download files', group: 'Files' },
   { id: 'files.write', label: 'Upload, edit and delete files', group: 'Files' },
   { id: 'mods', label: 'Install and remove mods', group: 'Content' },

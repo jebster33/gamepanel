@@ -13,7 +13,7 @@ const { spawn } = require('child_process');
 const { EventEmitter } = require('events');
 
 const { config } = require('./config');
-const { logger, uid, slugify, interpolate, fail, stripAnsi, sleep } = require('./util');
+const { logger, uid, slugify, interpolate, fail, stripAnsi, sleep, redactSecrets } = require('./util');
 const { buildInstallScript } = require('./installer');
 const { query } = require('./query');
 const { rconCommand } = require('./rcon');
@@ -837,7 +837,9 @@ class ServerManager extends EventEmitter {
     const env = { ...process.env, ...this.envFor(server, vars) };
 
     this.setStatus(server, STATUS.STARTING);
-    this.pushConsole(server, `Starting: ${command}`, 'system');
+    // The console is visible to anyone with console access, and is written to
+    // the log file — never echo secrets that were substituted into the command.
+    this.pushConsole(server, `Starting: ${redactSecrets(command, vars)}`, 'system');
 
     if (this.runtimeFor(server) !== 'docker' && template.sidecars?.length) {
       this.pushConsole(

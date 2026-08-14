@@ -2072,6 +2072,11 @@ function renderServerSettingsTab(host, server) {
       ${isAdmin ? '<button class="btn btn-primary mt-16" id="set-save">Save changes</button>' : ''}
     </div>
 
+    <div class="card mb-16" id="network-card">
+      <h4 style="margin:0 0 6px">Reachability</h4>
+      <p class="faint" style="margin:0 0 12px">Checking the firewall and your router…</p>
+    </div>
+
     <div class="card mb-16">
       <h4 style="margin:0 0 14px">Ports</h4>
       <div class="form-grid">
@@ -2114,6 +2119,8 @@ function renderServerSettingsTab(host, server) {
            </div>`
         : ''
     }`;
+
+  renderNetworkCard(server);
 
   if (!isAdmin) return;
 
@@ -2165,6 +2172,126 @@ function renderServerSettingsTab(host, server) {
       toast(err.message, 'error');
     }
   });
+}
+
+/**
+ * Firewall and router state for one server, with one-click opening. Routers
+ * without UPnP still get exact copy-paste instructions.
+ */
+async function renderNetworkCard(server) {
+  const card = $('#network-card');
+  if (!card) return;
+
+  let data;
+  try {
+    data = await api(`/api/servers/${server.id}/network`);
+  } catch (err) {
+    card.innerHTML = `<h4 style="margin:0 0 6px">Reachability</h4><p class="faint" style="margin:0">${esc(
+      err.message
+    )}</p>`;
+    return;
+  }
+
+  const dot = (ok, label, title) =>
+    `<span class="status ${ok ? 'running' : 'crashed'}" title="${esc(title || '')}"><span class="dot"></span>${esc(
+      label
+    )}</span>`;
+
+  const fw = data.firewall;
+  const fwAllOpen = data.ports.every((p) => p.openInFirewall);
+  const fwLine = !fw.available
+    ? dot(true, 'No host firewall', 'ufw is not installed, so nothing is blocking locally')
+    : !fw.active
+      ? dot(true, 'Firewall inactive', 'ufw is installed but not enabled — nothing is blocked')
+      : fwAllOpen
+        ? dot(true, 'Ports open in firewall')
+        : dot(false, 'Blocked by the firewall');
+
+  const upnpLine = data.upnp.available
+    ? dot(true, `Router supports UPnP${data.upnp.externalIp ? ` · public IP ${data.upnp.externalIp}` : ''}`)
+    : dot(false, 'No UPnP router', data.upnp.reason || '');
+
+  card.innerHTML = `
+    <div class="row" style="margin-bottom:10px">
+      <h4 style="margin:0">Reachability</h4>
+      <div style="flex:1"></div>
+      <span class="faint mono" style="font-size:12px">LAN ${esc(data.lanIp || 'unknown')}</span>
+    </div>
+
+    <div class="row mb-16" style="gap:14px">${fwLine}${upnpLine}</div>
+
+    <div class="table-wrap mb-16">
+      <table>
+        <thead><tr><th>Port</th><th>Protocol</th><th>Firewall</th></tr></thead>
+        <tbody>
+          ${data.ports
+            .map(
+              (p) => `<tr>
+                <td class="mono">${p.port}<span class="faint"> · ${esc(p.name)}</span></td>
+                <td class="faint">${esc(p.protocol.toUpperCase())}</td>
+                <td>${
+                  !fw.active
+                    ? '<span class="faint">not filtered</span>'
+                    : p.openInFirewall
+                      ? '<span style="color:var(--success)">open</span>'
+                      : '<span style="color:var(--danger)">closed</span>'
+                }</td>
+              </tr>`
+            )
+            .join('')}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="row">
+      <button class="btn btn-primary" id="net-open">Open these ports</button>
+      ${data.upnp.available ? '<button class="btn" id="net-forward">Forward on router (UPnP)</button>' : ''}
+      <button class="btn btn-danger" id="net-close">Close</button>
+      <button class="btn btn-ghost" id="net-manual">Do it manually</button>
+    </div>
+    <div id="net-result" class="hint"></div>
+
+    <div id="net-manual-box" class="hidden mt-16">
+      <div class="field-label">On this machine</div>
+      <pre class="share-box mono" style="white-space:pre-wrap;margin:0 0 12px">${esc(data.manual.ufw.join('\n'))}</pre>
+      <div class="field-label">On your router — forward to ${esc(data.lanIp || 'this machine')}</div>
+      <pre class="share-box mono" style="white-space:pre-wrap;margin:0">${esc(data.manual.forward.join('\n'))}</pre>
+      <div class="hint">
+        Router settings are usually under “Port forwarding”, “Virtual server” or “NAT”.
+        ${data.upnp.externalIp ? `Players connect to <span class="mono">${esc(data.upnp.externalIp)}</span>.` : ''}
+      </div>
+    </div>`;
+
+  const act = async (btn, body, label) => {
+    btn.disabled = true;
+    const original = btn.textContent;
+    btn.innerHTML = '<span class="spinner"></span> Working…';
+    try {
+      const result = await api(`/api/servers/${server.id}/network`, { method: 'POST', body });
+      const all = [...(result.firewall || []), ...(result.upnp?.mappings || [])];
+      const failed = all.filter((r) => !r.ok);
+      $('#net-result').innerHTML = failed.length
+        ? `<span style="color:var(--warning)">${failed.length} of ${all.length} failed — ${esc(
+            failed[0].error || ''
+          )}</span>`
+        : `<span style="color:var(--success)">${label} (${all.length} rule${all.length === 1 ? '' : 's'})</span>`;
+      toast(failed.length ? 'Some rules failed — see the details' : label, failed.length ? 'warn' : 'info');
+      setTimeout(() => renderNetworkCard(server), 900);
+    } catch (err) {
+      toast(err.message, 'error');
+      btn.disabled = false;
+      btn.textContent = original;
+    }
+  };
+
+  $('#net-open').addEventListener('click', (e) => act(e.currentTarget, { open: true, firewall: true }, 'Ports opened'));
+  $('#net-forward')?.addEventListener('click', (e) =>
+    act(e.currentTarget, { open: true, firewall: true, upnp: true }, 'Firewall opened and router forwarded')
+  );
+  $('#net-close').addEventListener('click', (e) =>
+    act(e.currentTarget, { open: false, firewall: true, upnp: data.upnp.available }, 'Ports closed')
+  );
+  $('#net-manual').addEventListener('click', () => $('#net-manual-box').classList.toggle('hidden'));
 }
 
 /* ------------------------------------------------------------- templates */
@@ -2841,7 +2968,11 @@ function openUserModal(user, capabilities = [], defaults = []) {
             (cap) => `
           <label class="checkbox-row perm-row">
             <input type="checkbox" data-cap="${esc(cap.id)}" ${held.has(cap.id) ? 'checked' : ''} />
-            <span>${esc(cap.label)}</span>
+            <span>${esc(cap.label)}${
+              cap.warning
+                ? `<span class="faint" style="display:block;font-size:11.5px">${esc(cap.warning)}</span>`
+                : ''
+            }</span>
           </label>`
           )
           .join('')}

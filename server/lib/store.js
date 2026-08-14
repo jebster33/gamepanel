@@ -84,8 +84,15 @@ class Store {
     this._dirty = false;
     try {
       fs.mkdirSync(path.dirname(this.file), { recursive: true });
-      fs.writeFileSync(this.tmp, JSON.stringify(this.state, null, 2));
+      // This file holds password hashes, RCON passwords and API keys — it must
+      // not be readable by other accounts on the machine.
+      fs.writeFileSync(this.tmp, JSON.stringify(this.state, null, 2), { mode: 0o600 });
       fs.renameSync(this.tmp, this.file);
+      try {
+        fs.chmodSync(this.file, 0o600);
+      } catch {
+        /* best effort on non-POSIX */
+      }
     } catch (err) {
       logger.error('Failed to persist state:', err.message);
     } finally {

@@ -146,6 +146,23 @@ function timingSafeEqual(a, b) {
   return crypto.timingSafeEqual(ba, bb);
 }
 
+/**
+ * Replace secret variable values with •••• before text reaches the console,
+ * the log file or the activity feed. Anything whose name looks like a
+ * credential counts, and only values long enough to matter are masked.
+ */
+const SECRET_NAME = /(PASSWORD|SECRET|TOKEN|APIKEY|API_KEY|LICENSE|GSLT|_KEY)$/i;
+
+function redactSecrets(text, vars = {}) {
+  let out = String(text ?? '');
+  for (const [name, value] of Object.entries(vars)) {
+    const secret = String(value ?? '');
+    if (secret.length < 4 || !SECRET_NAME.test(name)) continue;
+    out = out.split(secret).join('••••••••');
+  }
+  return out;
+}
+
 /** Strip ANSI escapes so console output stays readable in the browser. */
 function stripAnsi(s) {
   // eslint-disable-next-line no-control-regex
@@ -168,4 +185,5 @@ module.exports = {
   slugify,
   timingSafeEqual,
   stripAnsi,
+  redactSecrets,
 };

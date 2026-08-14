@@ -222,7 +222,14 @@ function createApi(ctx) {
   router.patch('/api/servers/:id', ({ user, params, body }) => {
     // Administrators, or a user holding the "settings" capability on a server
     // that is assigned to them.
-    if (user.role !== 'admin') serverFor(user, params.id, 'settings');
+    if (user.role !== 'admin') {
+      serverFor(user, params.id, 'settings');
+      // The start command is executed by a shell as the panel user, so editing
+      // it is equivalent to running code on the host: administrators only.
+      if (body.startCommand !== undefined) {
+        fail(403, 'Only administrators can change the start command');
+      }
+    }
     return { server: manager.publicServer(manager.update(params.id, body)) };
   });
 
@@ -350,8 +357,7 @@ function createApi(ctx) {
     const rel = url.searchParams.get('path');
     if (!rel) fail(400, 'A target path is required');
     const buf = await readBody(req, 512 * 1024 * 1024);
-    const { safeJoin } = require('./util');
-    const target = safeJoin(root, rel);
+    const target = files.containedPath(root, rel);
     fs.mkdirSync(path.dirname(target), { recursive: true });
     fs.writeFileSync(target, buf);
     return { ok: true, path: rel, size: buf.length };
@@ -500,6 +506,46 @@ function createApi(ctx) {
     const server = serverFor(user, params.id);
     requireCap(user, 'mods');
     return mods.toggleInstalled(server, manager.template(server), params.name);
+  });
+
+  /* ------------------------------------------------------------ network -- */
+
+  /** What stands between this server's ports and the outside world. */
+  router.get('/api/servers/:id/network', async ({ user, params }) => {
+    const server = serverFor(user, params.id, 'settings');
+    const network = require('./network');
+    const ports = network.serverPorts(server, manager.template(server));
+    const [firewall, upnp] = await Promise.all([network.ufwStatus(), network.upnpStatus()]);
+
+    return {
+      ports: ports.map((p) => ({ ...p, openInFirewall: network.isOpenInUfw(firewall, p.port, p.protocol) })),
+      firewall,
+      upnp,
+      lanIp: network.lanAddress(),
+      // Everything needed to do it by hand, for routers without UPnP.
+      manual: {
+        ufw: ports.map((p) => `sudo ufw allow ${p.port}/${p.protocol}`),
+        forward: ports.map((p) => `${p.port}/${p.protocol.toUpperCase()} → ${network.lanAddress()}:${p.port}`),
+      },
+    };
+  });
+
+  router.post('/api/servers/:id/network', async ({ user, params, body }) => {
+    const server = serverFor(user, params.id, 'settings');
+    const network = require('./network');
+    const ports = network.serverPorts(server, manager.template(server));
+    const open = body.open !== false;
+    const result = {};
+
+    if (body.firewall !== false) result.firewall = await network.ufwSet(ports, open);
+    if (body.upnp) result.upnp = await network.upnpSet(ports, open, `GamePanel ${server.name}`);
+
+    store.addEvent(
+      open ? 'network.opened' : 'network.closed',
+      `${server.name} ports ${open ? 'opened' : 'closed'} (${ports.map((p) => p.port + '/' + p.protocol).join(', ')})`,
+      { serverId: server.id }
+    );
+    return result;
   });
 
   /* ----------------------------------------------------------- modpacks -- */
@@ -718,6 +764,27 @@ function createApi(ctx) {
       return;
     }
     const { route, params } = match;
+
+    /*
+     * CSRF: the session cookie is SameSite=Lax, so a cross-site form cannot
+     * carry it — but check the Origin as well, since that is cheap and closes
+     * the gap for any client that treats Lax loosely.
+     */
+    if (['POST', 'PATCH', 'PUT', 'DELETE'].includes(req.method)) {
+      const origin = req.headers.origin;
+      if (origin) {
+        let sameOrigin = false;
+        try {
+          sameOrigin = new URL(origin).host === req.headers.host;
+        } catch {
+          sameOrigin = false;
+        }
+        if (!sameOrigin) {
+          json(res, 403, { error: 'Cross-origin request refused' });
+          return;
+        }
+      }
+    }
 
     let user = null;
     if (!route.public) {

@@ -175,6 +175,31 @@ Templates that need extra runtime packages declare them in `packages`, and the p
 
 **Not using Docker?** The panel falls back to supervised child processes in their own process groups. Everything works, but servers share the host's filesystem, RAM and network, and per-server bandwidth is not available. The toggle lives in Settings → Runtime.
 
+## Making a server reachable
+
+Two things usually sit between a player and your server, and each server's
+**Settings → Reachability** card handles both:
+
+- **The host firewall** — one click opens exactly that server's ports in `ufw`
+  (the installer grants the panel a narrow sudo rule for it). The card shows
+  each port as open, closed, or unfiltered.
+- **Your router** — if it speaks UPnP, one click forwards the same ports to this
+  machine and shows your public IP. If it does not, the card prints the exact
+  rules to enter by hand, including the LAN address to forward to.
+
+Nothing is opened unless you ask, and the same buttons close it all again.
+
+## Testing
+
+```bash
+npm test           # every template: schema, placeholders, ports, bash syntax
+npm run test:live  # also: real download URLs, container images, dropdown sources
+```
+
+The live run resolves an actual download for each game, confirms every container
+image exists on Docker Hub, and calls every dropdown provider — so an upstream
+that moved or sunset its API shows up here rather than half way through a deploy.
+
 ## Everyday use
 
 | What | Command |
@@ -279,6 +304,17 @@ Please read this before exposing the panel to the internet.
 - Game servers themselves run unprivileged, in containers, as a non-root uid, with `no-new-privileges` — so *players* and game exploits are contained.
 - The `gamepanel` user has passwordless sudo for `apt-get`, `dpkg` and restarting its own service only. Remove `/etc/sudoers.d/gamepanel` if you would rather do those by hand.
 - Passwords are hashed with scrypt; sessions are HMAC-SHA256 signed and expire after 7 days. Failed logins are rate limited per IP.
+- The file manager resolves symlinks before every operation, so a link inside a
+  server directory cannot be used to reach the rest of the machine — and archives
+  containing symlinks, absolute paths or `..` are refused rather than unpacked.
+- `panel.json` is written `0600`; it holds password hashes, RCON passwords and any
+  API keys you add.
+- Secrets substituted into a start command are masked in the console and log file.
+- State-changing requests are refused if they carry a foreign `Origin`, on top of
+  the SameSite=Lax session cookie.
+- The **settings** capability lets a user change variables that are handed to the
+  game process, so treat it as trusted. Only administrators can edit the raw start
+  command.
 - API keys you add under Integrations are stored in plain text in `panel.json` (mode 0600 directory). They are per-panel, not per-user.
 
 ## About the metrics
