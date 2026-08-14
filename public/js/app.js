@@ -2015,21 +2015,42 @@ function renderTemplates(view) {
 
 /* --------------------------------------------------------- create server */
 
-/** Fill every `data-source` select from the panel's live option providers. */
-async function hydrateOptionFields(root = document) {
-  const fields = [...root.querySelectorAll('select[data-source]')];
+/**
+ * Fill every `data-source` select from the panel's live option providers.
+ * A field may depend on another (a modpack's versions need the modpack), in
+ * which case it reloads whenever its parent changes.
+ */
+async function hydrateOptionFields(root = document, only = null) {
+  const all = [...root.querySelectorAll('select[data-source]')];
+  const fields = only ? all.filter((f) => only.includes(f)) : all;
   if (!fields.length) return;
-  const sources = [...new Set(fields.map((f) => f.dataset.source))];
+
+  // Group by source *and* query, so dependent fields fetch their own list.
+  const jobs = new Map();
+  for (const field of fields) {
+    const parent = field.dataset.dependsOn
+      ? root.querySelector(`[data-var="${CSS.escape(field.dataset.dependsOn)}"]`)
+      : null;
+    const query = parent ? parent.value : '';
+    const key = `${field.dataset.source} ${query}`;
+    if (!jobs.has(key)) jobs.set(key, { source: field.dataset.source, query, fields: [] });
+    jobs.get(key).fields.push(field);
+  }
 
   await Promise.all(
-    sources.map(async (source) => {
+    [...jobs.values()].map(async ({ source, query, fields: group }) => {
+      for (const field of group) {
+        if (!field.options.length || field.options[0].value === '') {
+          field.innerHTML = '<option>Loading choices…</option>';
+        }
+      }
       let data;
       try {
-        data = await api(`/api/options/${encodeURIComponent(source)}`);
+        data = await api(`/api/options/${encodeURIComponent(source)}?q=${encodeURIComponent(query)}`);
       } catch (err) {
         data = { options: [], error: err.message };
       }
-      for (const field of fields.filter((f) => f.dataset.source === source)) {
+      for (const field of group) {
         const hint = root.querySelector(`[data-hint-for="${CSS.escape(field.dataset.var)}"]`);
 
         // Unreachable provider: degrade to a plain text box rather than a
@@ -2065,6 +2086,15 @@ async function hydrateOptionFields(root = document) {
         };
         field.addEventListener('change', describe);
         describe();
+
+        // Anything depending on this field reloads when it changes.
+        if (!field.dataset.wiredDependants) {
+          field.dataset.wiredDependants = '1';
+          const dependants = [...root.querySelectorAll(`select[data-depends-on="${CSS.escape(field.dataset.var)}"]`)];
+          if (dependants.length) {
+            field.addEventListener('change', () => hydrateOptionFields(root, dependants));
+          }
+        }
       }
     })
   );
@@ -2186,10 +2216,12 @@ function memoryField(defaultMb) {
 function variableField(v) {
   const id = `var-${v.name}`;
 
-  // Choices fetched live from the panel (game versions, build channels…).
+  // Choices fetched live from the panel (game versions, modpacks, channels…).
   if (v.source) {
     return `<label><span>${esc(v.label || v.name)}</span>
-      <select id="${id}" data-var="${esc(v.name)}" data-source="${esc(v.source)}" data-default="${esc(v.default ?? '')}">
+      <select id="${id}" data-var="${esc(v.name)}" data-source="${esc(v.source)}" data-default="${esc(
+      v.default ?? ''
+    )}" ${v.dependsOn ? `data-depends-on="${esc(v.dependsOn)}"` : ''}>
         <option>Loading choices…</option>
       </select>
       <div class="hint" data-hint-for="${esc(v.name)}">${esc(v.description || '')}</div></label>`;

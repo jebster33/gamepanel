@@ -155,6 +155,43 @@ const PROVIDERS = {
     };
   },
 
+  /** Popular Modrinth modpacks, newest-and-biggest first. */
+  'modrinth-modpack': async (query) => {
+    const params = new URLSearchParams({
+      query: query || '',
+      limit: '60',
+      index: query ? 'relevance' : 'downloads',
+      facets: JSON.stringify([['project_type:modpack']]),
+    });
+    const data = await getJson(`https://api.modrinth.com/v2/search?${params}`);
+    const options = data.hits.map((hit) => ({
+      value: hit.slug,
+      label: `${hit.title} — ${Number(hit.downloads).toLocaleString()} downloads`,
+      note: hit.description,
+    }));
+    if (options.length) options[0].recommended = true;
+    return { options, recommended: options[0]?.value, searchable: true };
+  },
+
+  /** Versions of one modpack; driven by whichever pack is selected. */
+  'modrinth-modpack-version': async (query) => {
+    if (!query) return { options: [], error: 'Pick a modpack first' };
+    const versions = await getJson(`https://api.modrinth.com/v2/project/${encodeURIComponent(query)}/version`);
+    const usable = versions.filter((v) => v.files?.some((f) => f.filename.endsWith('.mrpack')));
+    const newest = usable[0];
+    return {
+      options: usable.slice(0, 40).map((v) => ({
+        value: v.id,
+        label: `${v.version_number} — MC ${(v.game_versions || []).join(', ')}${
+          v.version_type !== 'release' ? ` (${v.version_type})` : ''
+        }`,
+        note: (v.loaders || []).join(', '),
+        recommended: v.id === newest?.id,
+      })),
+      recommended: newest?.id,
+    };
+  },
+
   /** Factorio release channels. */
   'factorio-channel': async () => ({
     options: [
@@ -165,19 +202,25 @@ const PROVIDERS = {
   }),
 };
 
-async function getOptions(source) {
+/**
+ * @param {string} source provider id
+ * @param {string} [query] refines the list — a search term, or the value of a
+ *   field this one depends on (a modpack's versions need the modpack)
+ */
+async function getOptions(source, query = '') {
   const provider = PROVIDERS[source];
   if (!provider) return { options: [], error: `Unknown option source: ${source}` };
 
-  const cached = cache.get(source);
+  const key = query ? `${source}:${query}` : source;
+  const cached = cache.get(key);
   if (cached && Date.now() - cached.at < TTL_MS) return cached.value;
 
   try {
-    const value = await provider();
-    cache.set(source, { at: Date.now(), value });
+    const value = await provider(query);
+    cache.set(key, { at: Date.now(), value });
     return value;
   } catch (err) {
-    logger.warn(`Option source "${source}" failed: ${err.message}`);
+    logger.warn(`Option source "${key}" failed: ${err.message}`);
     // Serve a stale list rather than nothing if we ever had one.
     if (cached) return { ...cached.value, stale: true };
     return { options: [], error: `Could not load choices: ${err.message}` };

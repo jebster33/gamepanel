@@ -1,6 +1,6 @@
 {
   "name": "gamepanel",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "A dead-simple, self-hosted game server control panel for Ubuntu. Zero npm dependencies.",
   "main": "server/index.js",
   "type": "commonjs",

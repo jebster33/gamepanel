@@ -1,0 +1,127 @@
+{
+  "id": "minecraft-modpack",
+  "name": "Minecraft: Modpack",
+  "category": "Minecraft",
+  "icon": "📦",
+  "description": "Deploy any Modrinth modpack as a server — pick the pack, pick a version, and the panel installs the right loader, every mod and the pack's own configs. Fabric, Quilt, NeoForge and Forge packs are all supported.",
+  "defaultMemory": 6144,
+  "image": "eclipse-temurin:{{JAVA_VERSION}}-jre",
+  "packages": ["curl", "ca-certificates", "unzip"],
+  "resolve": "modrinth-modpack",
+  "versionVar": "MODPACK",
+  "wizard": [
+    {
+      "title": "Choose a modpack",
+      "description": "Anything on Modrinth with a server-installable release. The list shows the most downloaded packs — start typing to jump to one.",
+      "fields": ["MODPACK", "MODPACK_VERSION"]
+    },
+    {
+      "title": "Server settings",
+      "description": "Modpacks are heavy: give it 6 GB or more, and expect the first start to take several minutes while it generates the world.",
+      "fields": ["MOTD", "MAX_PLAYERS", "DIFFICULTY", "JAVA_ARGS", "RCON_PASSWORD"]
+    }
+  ],
+  "variables": [
+    {
+      "name": "MODPACK",
+      "label": "Modpack",
+      "default": "",
+      "source": "modrinth-modpack",
+      "allowCustom": true,
+      "description": "Or choose Custom… and paste a Modrinth project slug, e.g. 'fabulously-optimized'."
+    },
+    {
+      "name": "MODPACK_VERSION",
+      "label": "Pack version",
+      "default": "",
+      "source": "modrinth-modpack-version",
+      "dependsOn": "MODPACK",
+      "description": "The newest release is picked for you."
+    },
+    { "name": "MOTD", "label": "Server MOTD", "default": "A GamePanel modpack server" },
+    { "name": "MAX_PLAYERS", "label": "Max players", "type": "number", "default": 10 },
+    {
+      "name": "DIFFICULTY",
+      "label": "Difficulty",
+      "default": "normal",
+      "options": ["peaceful", "easy", "normal", "hard"]
+    },
+    {
+      "name": "JAVA_ARGS",
+      "label": "Extra JVM flags",
+      "default": "-XX:+UseG1GC -XX:+ParallelRefProcEnabled -XX:MaxGCPauseMillis=200",
+      "description": "Applied on top of the memory limit."
+    },
+    { "name": "RCON_PASSWORD", "label": "RCON password", "generate": "password", "default": "" }
+  ],
+  "ports": [
+    { "name": "game", "default": 25565, "protocol": "tcp" },
+    { "name": "rcon", "default": 25575, "protocol": "tcp", "offset": 10 }
+  ],
+  "install": [
+    { "type": "java", "version": "{{JAVA_VERSION}}", "label": "Install the Java the pack needs" },
+    {
+      "type": "script",
+      "label": "Fetch {{PACK_NAME}} and unpack its configs",
+      "run": "gp_log \"{{PACK_NAME}} · Minecraft {{PACK_MC_VERSION}} · {{PACK_LOADER}}\"\ngp_fetch \"{{DOWNLOAD_URL}}\" pack.mrpack\ngp_have unzip || gp_apt unzip\nrm -rf .packtmp && mkdir -p .packtmp\nunzip -oq pack.mrpack -d .packtmp || gp_die \"Could not unpack the modpack\"\n# 'overrides' holds the pack's own configs and scripts; the server-only\n# variant wins where both exist.\nif [ -d .packtmp/overrides ]; then cp -rf .packtmp/overrides/. .; fi\nif [ -d .packtmp/server-overrides ]; then cp -rf .packtmp/server-overrides/. .; fi\nrm -rf .packtmp pack.mrpack\nmkdir -p mods"
+    },
+    {
+      "type": "script",
+      "label": "Download the pack's {{PACK_FILE_COUNT}} mods",
+      "run": "{{PACK_DOWNLOADS}}\ngp_log \"All pack files downloaded\""
+    },
+    {
+      "type": "script",
+      "label": "Install the {{PACK_LOADER}} server",
+      "run": "{{LOADER_INSTALL}}"
+    },
+    {
+      "type": "writeFile",
+      "path": "start.sh",
+      "content": "{{START_SCRIPT}}"
+    },
+    { "type": "chmod", "path": "start.sh", "mode": "+x" },
+    {
+      "type": "writeFile",
+      "path": "eula.txt",
+      "content": "# Accepted through GamePanel on install\neula=true\n"
+    }
+  ],
+  "configFiles": [
+    {
+      "path": "server.properties",
+      "mode": "create",
+      "content": "server-port={{PORT}}\nenable-rcon=true\nrcon.port={{PORT_RCON}}\nrcon.password={{RCON_PASSWORD}}\nmotd={{MOTD}}\nmax-players={{MAX_PLAYERS}}\ndifficulty={{DIFFICULTY}}\nonline-mode=true\nspawn-protection=0\nview-distance=8\nsimulation-distance=6\n"
+    }
+  ],
+  "patchProperties": [
+    {
+      "path": "server.properties",
+      "format": "properties",
+      "createIfMissing": true,
+      "set": {
+        "server-port": "{{PORT}}",
+        "enable-rcon": "true",
+        "rcon.port": "{{PORT_RCON}}",
+        "rcon.password": "{{RCON_PASSWORD}}",
+        "max-players": "{{MAX_PLAYERS}}",
+        "motd": "{{MOTD}}"
+      }
+    }
+  ],
+  "startCommand": "./start.sh",
+  "stopCommand": "stop",
+  "stopTimeout": 120,
+  "query": { "type": "minecraft", "port": "game" },
+  "rcon": { "type": "source", "port": "rcon" },
+  "mods": {
+    "providers": ["modrinth", "curseforge"],
+    "dir": "mods",
+    "gameVersionVar": "PACK_MC_VERSION"
+  },
+  "logPatterns": {
+    "ready": "Done \\([0-9.]+s\\)!",
+    "join": "([A-Za-z0-9_]{3,16}) joined the game",
+    "leave": "([A-Za-z0-9_]{3,16}) left the game"
+  }
+}

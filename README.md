@@ -43,6 +43,15 @@ You still get the thing that actually matters: **every game server runs in its o
 - **Unpack** `.zip` / `.tar.gz` / `.tar.xz` archives in place, or compress a selection into an archive
 - Everything is sandboxed to the server's own directory
 
+**Modpacks**
+- Deploy any Modrinth modpack as a server: pick the pack from a searchable list,
+  pick a version, and the panel installs the loader, every mod and the pack's
+  own configs
+- Fabric, Quilt, NeoForge and Forge packs are all handled — the loader and the
+  Java version come from the pack's own metadata
+- The pack index is read out of the .mrpack by the panel, so the container
+  never needs a JSON parser
+
 **Mod manager**
 - Browse and install mods without leaving the panel:
   | Source | Games | Key needed |
@@ -73,7 +82,7 @@ You still get the thing that actually matters: **every game server runs in its o
 
 | Category | Games |
 |---|---|
-| **Minecraft** | Paper · Vanilla · Fabric · Bedrock |
+| **Minecraft** | Paper · Vanilla · Fabric · Bedrock · **Modpacks (any Modrinth pack)** |
 | **Roleplay** | **FiveM** (guided setup with txAdmin) |
 | **Survival** | Rust (with uMod) · Valheim · Palworld · ARK · 7 Days to Die · Project Zomboid · Enshrouded · V Rising · Unturned · Core Keeper |
 | **Shooter** | Counter-Strike 2 · Team Fortress 2 · Left 4 Dead 2 · Squad · Insurgency: Sandstorm |

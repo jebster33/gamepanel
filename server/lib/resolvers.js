@@ -147,6 +147,60 @@ const RESOLVERS = {
     };
   },
 
+  /**
+   * A Modrinth modpack (.mrpack).
+   *
+   * The pack index is JSON inside a zip, which the container cannot read, so
+   * the panel unpacks the index here and hands the install script a finished
+   * list of downloads, a loader install snippet and a start script.
+   */
+  async 'modrinth-modpack'(vars) {
+    const slug = String(vars.MODPACK || '').trim();
+    if (!slug) throw new Error('no modpack selected');
+
+    const versions = await getJson(`https://api.modrinth.com/v2/project/${encodeURIComponent(slug)}/version`);
+    const usable = versions.filter((v) => v.files?.some((f) => f.filename.endsWith('.mrpack')));
+    if (!usable.length) throw new Error(`"${slug}" has no server-installable versions`);
+    const version = (vars.MODPACK_VERSION && usable.find((v) => v.id === vars.MODPACK_VERSION)) || usable[0];
+    const file = version.files.find((f) => f.primary && f.filename.endsWith('.mrpack')) ||
+      version.files.find((f) => f.filename.endsWith('.mrpack'));
+
+    // Read the pack index straight out of the zip.
+    const index = await readMrpackIndex(file.url);
+    const game = index.dependencies?.minecraft;
+    const loader = detectLoader(index.dependencies);
+    if (!game) throw new Error('the pack does not say which Minecraft version it needs');
+    if (!loader) throw new Error('the pack uses a mod loader GamePanel cannot install yet');
+
+    // Every file the pack wants, as plain shell.
+    const downloads = (index.files || [])
+      .filter((entry) => entry.env?.server !== 'unsupported')
+      .map((entry) => {
+        const target = String(entry.path).replace(/^[/\\]+/, '');
+        if (target.includes('..')) return null;
+        const url = entry.downloads?.[0];
+        if (!url) return null;
+        return `mkdir -p "$(dirname ${shq(target)})"\ngp_fetch ${shq(url)} ${shq(target)}`;
+      })
+      .filter(Boolean);
+
+    const loaderInstall = await loaderInstallScript(loader, game);
+
+    return {
+      DOWNLOAD_URL: file.url,
+      MRPACK_FILE: file.filename,
+      RESOLVED_VERSION: `${index.name || slug} ${index.versionId || version.version_number}`,
+      PACK_NAME: index.name || slug,
+      PACK_MC_VERSION: game,
+      PACK_LOADER: `${loader.name} ${loader.version}`,
+      PACK_FILE_COUNT: String(downloads.length),
+      PACK_DOWNLOADS: downloads.join('\n') || 'gp_log "This pack ships no separate downloads"',
+      LOADER_INSTALL: loaderInstall.install,
+      START_SCRIPT: loaderInstall.start,
+      JAVA_VERSION: String((await javaForMinecraft(game)) || 21),
+    };
+  },
+
   /** Cfx.re server artifacts for the chosen channel. */
   async fivem(vars) {
     const data = await getJson('https://changelogs-live.fivem.net/api/changelog/versions/linux/server');
@@ -175,4 +229,121 @@ async function resolveDownload(name, vars) {
   }
 }
 
-module.exports = { resolveDownload, RESOLVERS };
+/* ------------------------------------------------------------- modpacks -- */
+
+const shq = (value) => `'${String(value).replace(/'/g, `'\\''`)}'`;
+
+/**
+ * Pull modrinth.index.json out of a .mrpack without a zip library: read the
+ * end-of-central-directory, find the entry, then inflate it.
+ */
+async function readMrpackIndex(url) {
+  const res = await fetch(url, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(120000) });
+  if (!res.ok) throw new Error(`could not download the modpack (${res.status})`);
+  const zip = Buffer.from(await res.arrayBuffer());
+
+  // End of central directory: signature 0x06054b50, scanned from the tail.
+  let eocd = -1;
+  for (let i = zip.length - 22; i >= 0 && i > zip.length - 66000; i--) {
+    if (zip.readUInt32LE(i) === 0x06054b50) {
+      eocd = i;
+      break;
+    }
+  }
+  if (eocd === -1) throw new Error('the modpack file is not a valid zip');
+
+  const entries = zip.readUInt16LE(eocd + 10);
+  let offset = zip.readUInt32LE(eocd + 16);
+
+  for (let i = 0; i < entries; i++) {
+    if (zip.readUInt32LE(offset) !== 0x02014b50) break;
+    const method = zip.readUInt16LE(offset + 10);
+    const compressedSize = zip.readUInt32LE(offset + 20);
+    const nameLength = zip.readUInt16LE(offset + 28);
+    const extraLength = zip.readUInt16LE(offset + 30);
+    const commentLength = zip.readUInt16LE(offset + 32);
+    const localOffset = zip.readUInt32LE(offset + 42);
+    const name = zip.toString('utf8', offset + 46, offset + 46 + nameLength);
+
+    if (name === 'modrinth.index.json') {
+      const localNameLength = zip.readUInt16LE(localOffset + 26);
+      const localExtraLength = zip.readUInt16LE(localOffset + 28);
+      const start = localOffset + 30 + localNameLength + localExtraLength;
+      const raw = zip.subarray(start, start + compressedSize);
+      const zlib = require('zlib');
+      const json = method === 0 ? raw : zlib.inflateRawSync(raw);
+      return JSON.parse(json.toString('utf8'));
+    }
+    offset += 46 + nameLength + extraLength + commentLength;
+  }
+  throw new Error('the modpack has no modrinth.index.json');
+}
+
+/** Which loader a pack wants, from its dependency map. */
+function detectLoader(dependencies = {}) {
+  const map = [
+    ['fabric-loader', 'fabric'],
+    ['quilt-loader', 'quilt'],
+    ['neoforge', 'neoforge'],
+    ['forge', 'forge'],
+  ];
+  for (const [key, name] of map) {
+    if (dependencies[key]) return { name, version: dependencies[key] };
+  }
+  return null;
+}
+
+/**
+ * Shell to install a loader's server, plus the start script that suits it.
+ * Fabric and Quilt publish a ready-made launcher jar; Forge and NeoForge ship
+ * an installer that generates run.sh.
+ */
+async function loaderInstallScript(loader, game) {
+  const memory = '${MEMORY:-2048}';
+
+  if (loader.name === 'fabric' || loader.name === 'quilt') {
+    const base = loader.name === 'fabric' ? 'https://meta.fabricmc.net/v2' : 'https://meta.quiltmc.org/v3';
+    const installers = await getJson(`${base}/versions/installer`);
+    const installer = (installers.find((v) => v.stable) || installers[0])?.version;
+    const url = `${base}/versions/loader/${encodeURIComponent(game)}/${encodeURIComponent(
+      loader.version
+    )}/${encodeURIComponent(installer)}/server/jar`;
+    return {
+      install: `gp_fetch ${shq(url)} server.jar`,
+      start: `#!/usr/bin/env bash\nexec java -Xms${memory}M -Xmx${memory}M \${JAVA_ARGS:-} -jar server.jar nogui\n`,
+    };
+  }
+
+  if (loader.name === 'neoforge') {
+    const url = `https://maven.neoforged.net/releases/net/neoforged/neoforge/${loader.version}/neoforge-${loader.version}-installer.jar`;
+    return {
+      install: [
+        `gp_fetch ${shq(url)} loader-installer.jar`,
+        'gp_log "Running the NeoForge installer"',
+        'java -jar loader-installer.jar --installServer || gp_die "The NeoForge installer failed"',
+        'rm -f loader-installer.jar',
+        `printf -- '-Xms%sM\\n-Xmx%sM\\n' "\${MEMORY:-2048}" "\${MEMORY:-2048}" > user_jvm_args.txt`,
+      ].join('\n'),
+      start: `#!/usr/bin/env bash\nprintf -- '-Xms%sM\\n-Xmx%sM\\n' "\${MEMORY:-2048}" "\${MEMORY:-2048}" > user_jvm_args.txt\nexec ./run.sh nogui\n`,
+    };
+  }
+
+  // Forge
+  const full = `${game}-${loader.version}`;
+  const url = `https://maven.minecraftforge.net/net/minecraftforge/forge/${full}/forge-${full}-installer.jar`;
+  return {
+    install: [
+      `gp_fetch ${shq(url)} loader-installer.jar`,
+      'gp_log "Running the Forge installer"',
+      'java -jar loader-installer.jar --installServer || gp_die "The Forge installer failed"',
+      'rm -f loader-installer.jar',
+    ].join('\n'),
+    start:
+      `#!/usr/bin/env bash\n` +
+      `printf -- '-Xms%sM\\n-Xmx%sM\\n' "\${MEMORY:-2048}" "\${MEMORY:-2048}" > user_jvm_args.txt\n` +
+      `if [ -f run.sh ]; then exec ./run.sh nogui; fi\n` +
+      `exec java -Xms\${MEMORY:-2048}M -Xmx\${MEMORY:-2048}M -jar "$(ls forge-*.jar | head -1)" nogui\n`,
+  };
+}
+
+module.exports = { resolveDownload, RESOLVERS, readMrpackIndex, detectLoader };

@@ -3,7 +3,7 @@
   "name": "Satisfactory",
   "category": "Sandbox",
   "icon": "🏭",
-  "description": "Satisfactory dedicated server. After the first start, claim the server from the in-game server manager.",
+  "description": "Satisfactory dedicated server. After the first start, claim the server from the in-game server manager (Server Manager → Add Server).",
   "defaultMemory": 8192,
   "variables": [
     {
@@ -33,12 +33,7 @@
     {
       "name": "game",
       "default": 7777,
-      "protocol": "udp"
-    },
-    {
-      "name": "reliable",
-      "default": 8888,
-      "protocol": "tcp"
+      "protocol": "both"
     }
   ],
   "install": [
@@ -54,14 +49,14 @@
       "mode": "+x"
     }
   ],
-  "startCommand": "./FactoryServer.sh -ServerQueryPort={{PORT}} -BeaconPort={{PORT}} -Port={{PORT}} -ReliablePort={{PORT_RELIABLE}} -multihome=0.0.0.0 -unattended",
+  "startCommand": "./FactoryServer.sh -Port={{PORT}} -log -unattended",
   "stopTimeout": 60,
   "query": {
     "type": "udp",
     "port": "game"
   },
   "logPatterns": {
-    "ready": "Server is ready|Game state is now"
+    "ready": "Server is ready|Game state is now|SocketSubsystem"
   },
   "image": "cm2network/steamcmd:root"
 }

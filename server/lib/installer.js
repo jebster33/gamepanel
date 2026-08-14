@@ -223,7 +223,9 @@ function stepToShell(step, vars) {
  */
 function buildInstallScript(template, serverDir, vars, options = {}) {
   const steps = (template.install || []).map((step, i) => {
-    const label = step.label || `${step.type} step ${i + 1}`;
+    // Labels are shown in the console, so they get the same {{VAR}} treatment
+    // as the commands themselves.
+    const label = interpolate(step.label || `${step.type} step ${i + 1}`, vars);
     return `gp_log ${shellQuote(label)}\n${stepToShell(step, vars)}`;
   });
 

@@ -178,7 +178,9 @@ function createApi(ctx) {
   router.get('/api/templates/:id', ({ params }) => ({ template: templates.require(params.id) }));
 
   /** Live choices for template dropdowns (game versions, build channels…). */
-  router.get('/api/options/:source', async ({ params }) => require('./options').getOptions(params.source));
+  router.get('/api/options/:source', async ({ params, url }) =>
+    require('./options').getOptions(params.source, url.searchParams.get('q') || '')
+  );
 
   router.post('/api/templates', ({ user, body }) => {
     requireAdmin(user);
