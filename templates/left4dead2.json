@@ -162,5 +162,6 @@
     "consoleInput": false,
     "stopCommand": null,
     "stopRconCommand": "quit"
-  }
+  },
+  "pty": true
 }
