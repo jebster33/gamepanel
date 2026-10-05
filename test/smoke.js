@@ -109,6 +109,15 @@ async function main() {
       log(`could not read the console: ${err.message}`);
     }
   };
+  const dumpPanelLog = () => {
+    try {
+      const text = fs.readFileSync(path.join(OUT_DIR, `${TEMPLATE}-panel.log`), 'utf8').trim().split('\n').slice(-25);
+      console.log('──── panel log (last 25 lines) ────');
+      console.log(text.map((l) => `  ${l}`).join('\n'));
+    } catch {
+      /* nothing logged */
+    }
+  };
 
   const status = async () => (await api('GET', `/api/servers/${serverId}`)).server;
 
@@ -248,6 +257,7 @@ async function main() {
     await dumpConsole();
     code = 1;
   } finally {
+    if (code !== 0) dumpPanelLog();
     if (serverId) await api('POST', `/api/servers/${serverId}/power`, { action: 'kill' }).catch(() => {});
     await sleep(1500);
     panel.kill();
