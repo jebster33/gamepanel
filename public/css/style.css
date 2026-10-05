@@ -2659,6 +2659,25 @@ tbody tr:hover {
   width: 100%;
   resize: vertical;
 }
+/* Worlds card */
+.world-list { display: flex; flex-direction: column; gap: 8px; }
+.world-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--raised);
+}
+.world-row.active { border-color: var(--lime-soft); }
+.world-icon { font-size: 22px; }
+.world-name { font-weight: 600; display: flex; align-items: center; gap: 8px; }
+@media (max-width: 640px) {
+  .world-row { flex-wrap: wrap; }
+  .world-row > .row { width: 100%; justify-content: flex-start !important; }
+}
+
 .recovery-codes {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

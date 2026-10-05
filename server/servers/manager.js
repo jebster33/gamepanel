@@ -14,6 +14,7 @@
  *   history.js         player history and the activity log
  *   versions.js        switching game version / Minecraft server type
  *   doctor.js          crash doctor and log sharing
+ *   worlds.js          Minecraft worlds: switch, import, download, reset
  *   watchers.js        tailing game log files, port-based readiness
  *   runtimes/container.js   running a server in Docker (Linux isolation)
  *   runtimes/process.js     running a server as a plain process (Linux or Windows)
@@ -551,6 +552,7 @@ Object.assign(
   require('./history'),
   require('./versions'),
   require('./doctor'),
+  require('./worlds'),
   require('./watchers'),
   require('./runtimes/container'),
   require('./runtimes/process')

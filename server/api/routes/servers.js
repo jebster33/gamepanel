@@ -133,6 +133,34 @@ module.exports = (router, { store, manager, scheduler }, { requireAdmin, require
     return { ok: true };
   });
 
+  /** Minecraft worlds. */
+  router.get('/api/servers/:id/worlds', async ({ user, params }) => manager.listWorlds(serverFor(user, params.id, 'files')));
+
+  router.post('/api/servers/:id/worlds/use', async ({ user, params, body }) => {
+    const server = serverFor(user, params.id, 'settings');
+    return manager.useWorld(server.id, body?.name, user);
+  });
+
+  router.post('/api/servers/:id/worlds/reset', async ({ user, params, body }) => {
+    const server = serverFor(user, params.id, 'files.write');
+    return manager.resetWorld(server.id, { name: body?.name, seed: body?.seed, backup: body?.backup !== false }, user);
+  });
+
+  router.post('/api/servers/:id/worlds/delete', async ({ user, params, body }) => {
+    const server = serverFor(user, params.id, 'files.write');
+    return manager.deleteWorld(server.id, body?.name, user);
+  });
+
+  router.post('/api/servers/:id/worlds/import', async ({ user, params, body }) => {
+    const server = serverFor(user, params.id, 'files.write');
+    return manager.importWorld(server.id, { path: body?.path, name: body?.name, use: Boolean(body?.use) }, user);
+  });
+
+  router.get('/api/servers/:id/worlds/download', ({ user, params, url, res }) => {
+    manager.downloadWorld(serverFor(user, params.id, 'files'), url.searchParams.get('name'), res);
+    return undefined;
+  });
+
   /** Crash doctor: what went wrong, and a fix where there is a safe one. */
   router.get('/api/servers/:id/diagnose', ({ user, params }) => {
     const server = serverFor(user, params.id, 'console');
