@@ -8,8 +8,9 @@
  * ships with (tar.exe, PowerShell). Output streams to the server console just
  * like the Linux installer's does.
  *
- * Step types: steamcmd, download, extract, writeFile, mkdir, java, vcredist,
- * directx, powershell, workshop. (chmod and apt are accepted and skipped.)
+ * Step types: steamcmd, download, fetchList, extract, copy, remove, run,
+ * writeFile, mkdir, java, vcredist, directx, powershell, workshop.
+ * (chmod and apt are accepted and skipped.)
  */
 
 const fs = require('fs');
@@ -21,7 +22,8 @@ const { pipeline } = require('stream/promises');
 
 const { config } = require('../../core/config');
 const { interpolate, safeJoin } = require('../../core/util');
-const { isWindows, run, powershell } = require('../../core/platform');
+const { isWindows, run, powershell, spawnShell } = require('../../core/platform');
+const { parseList } = require('./bash');
 
 const UA = 'GamePanel/2 (+https://github.com/jebster33/gamepanel)';
 
@@ -34,12 +36,12 @@ const die = (message) => {
 
 /* --------------------------------------------------------------- helpers -- */
 
-async function download(url, dest, log) {
+async function download(url, dest, log, { userAgent = UA } = {}) {
   log(`Downloading ${url}`);
   let lastError = null;
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
-      const res = await fetch(url, { headers: { 'User-Agent': UA }, redirect: 'follow', signal: AbortSignal.timeout(30 * 60_000) });
+      const res = await fetch(url, { headers: { 'User-Agent': userAgent }, redirect: 'follow', signal: AbortSignal.timeout(30 * 60_000) });
       if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
       await fsp.mkdir(path.dirname(dest), { recursive: true });
       await pipeline(Readable.fromWeb(res.body), fs.createWriteStream(dest));
@@ -81,6 +83,14 @@ async function extractArchive(file, dest, log, { strip = 0 } = {}) {
     timeout: 60 * 60_000,
   });
   if (result.code !== 0) {
+    // Some Windows builds of tar.exe cannot read .7z (FiveM ships its Windows
+    // server as one), so fall back to the standalone 7-Zip console tool.
+    if (/\.7z$/i.test(file) && !strip) {
+      const sevenZip = path.join(config.toolsDir, '7zr.exe');
+      if (!fs.existsSync(sevenZip)) await download('https://www.7-zip.org/a/7zr.exe', sevenZip, log);
+      const seven = await run(sevenZip, ['x', file, `-o${dest}`, '-y'], { timeout: 60 * 60_000 });
+      if (seven.code === 0) return;
+    }
     // PowerShell's own unzipper as a fallback for odd zip variants.
     if (isWindows && /\.zip$/i.test(file) && !strip) {
       const ps = await powershell(`Expand-Archive -LiteralPath '${file.replace(/'/g, "''")}' -DestinationPath '${dest.replace(/'/g, "''")}' -Force`, {
@@ -262,7 +272,60 @@ async function runStep(step, ctx) {
       return workshopItem({ appid: val(step.appid), item: val(step.item), dest: inDir(step.dest), dir, log, track: ctx.track });
 
     case 'download':
-      return download(val(step.url), inDir(step.dest || 'download.bin'), log);
+      return download(val(step.url), inDir(step.dest || 'download.bin'), log, step.userAgent ? { userAgent: val(step.userAgent) } : {});
+
+    case 'fetchlist': {
+      const list = parseList(val(step.list));
+      if (!list.length) log('Nothing to download');
+      for (const f of list) {
+        if (ctx.cancelled?.()) die('Install cancelled');
+        await download(f.url, inDir(f.path), log);
+      }
+      return undefined;
+    }
+
+    case 'copy': {
+      const from = inDir(step.from);
+      if (!fs.existsSync(from)) return undefined;
+      const to = inDir(step.to || '.');
+      if (fs.statSync(from).isDirectory()) await fsp.cp(from, to, { recursive: true, force: true });
+      else {
+        await fsp.mkdir(path.dirname(to), { recursive: true });
+        await fsp.copyFile(from, to);
+      }
+      return undefined;
+    }
+
+    case 'remove':
+      for (const p of [].concat(step.path || step.paths || [])) await fsp.rm(inDir(p), { recursive: true, force: true });
+      return undefined;
+
+    case 'run': {
+      // A plain command in the server folder, with a Java fetched earlier in this install on PATH.
+      if (!val(step.command || '').trim()) return undefined;
+      const env = { ...ctx.env };
+      if (ctx.javaHome) {
+        const key = Object.keys(env).find((k) => k.toLowerCase() === 'path') || 'PATH';
+        env[key] = [path.join(ctx.javaHome, 'bin'), env[key] || ''].join(path.delimiter);
+        env.JAVA_HOME = ctx.javaHome;
+      }
+      const code = await new Promise((resolve) => {
+        const child = spawnShell(val(step.command), { cwd: dir, env, keepStdin: false });
+        ctx.track?.(child);
+        const forward = (chunk) => {
+          for (const line of chunk.toString('utf8').split(/\r?\n|\r/)) if (line.trim()) log(line, 'stdout');
+        };
+        child.stdout.on('data', forward);
+        child.stderr.on('data', forward);
+        child.on('error', (err) => {
+          log(`Could not run the command: ${err.message}`);
+          resolve(-1);
+        });
+        child.on('exit', (c) => resolve(c ?? -1));
+      });
+      if (code !== 0) die(`${step.label || 'The command'} failed (exit ${code})`);
+      return undefined;
+    }
 
     case 'extract': {
       const file = inDir(step.file);

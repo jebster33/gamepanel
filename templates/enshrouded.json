@@ -86,5 +86,26 @@
     "wine64",
     "xvfb",
     "cabextract"
-  ]
+  ],
+  "platforms": [
+    "linux",
+    "windows"
+  ],
+  "windows": {
+    "install": [
+      {
+        "type": "steamcmd",
+        "appid": "2278520",
+        "label": "Install Enshrouded dedicated server"
+      },
+      {
+        "type": "vcredist",
+        "label": "Install the Visual C++ runtime"
+      }
+    ],
+    "startCommand": "enshrouded_server.exe",
+    "tailFiles": [
+      "logs/enshrouded_server.log"
+    ]
+  }
 }

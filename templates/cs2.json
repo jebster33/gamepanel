@@ -132,5 +132,29 @@
     "join": "\"([^<]+)<[0-9]+><\\[?U?:?[0-9:]+\\]?><>\" entered the game",
     "leave": "\"([^<]+)<[0-9]+><\\[?U?:?[0-9:]+\\]?><[^>]*>\" disconnected"
   },
-  "image": "cm2network/steamcmd:root"
+  "image": "cm2network/steamcmd:root",
+  "platforms": [
+    "linux",
+    "windows"
+  ],
+  "windows": {
+    "install": [
+      {
+        "type": "steamcmd",
+        "appid": "730",
+        "label": "Install Counter-Strike 2 (~35 GB)"
+      },
+      {
+        "type": "vcredist",
+        "label": "Install the Visual C++ runtime"
+      }
+    ],
+    "startCommand": "game\\bin\\win64\\cs2.exe -dedicated -console -usercon -condebug -port {{PORT}} +tv_port {{PORT_TV}} +game_type {{GAME_TYPE}} +game_mode {{GAME_MODE}} +map {{MAP}} +sv_visiblemaxplayers {{MAX_PLAYERS}} +rcon_password \"{{RCON_PASSWORD}}\" +sv_setsteamaccount \"{{GSLT}}\" +exec gamepanel.cfg",
+    "tailFiles": [
+      "game/csgo/console.log"
+    ],
+    "consoleInput": false,
+    "stopCommand": null,
+    "stopRconCommand": "quit"
+  }
 }

@@ -65,5 +65,26 @@
   "packages": [
     "xvfb",
     "libxi6"
-  ]
+  ],
+  "platforms": [
+    "linux",
+    "windows"
+  ],
+  "windows": {
+    "install": [
+      {
+        "type": "steamcmd",
+        "appid": "1963720",
+        "label": "Install Core Keeper dedicated server"
+      },
+      {
+        "type": "vcredist",
+        "label": "Install the Visual C++ runtime"
+      }
+    ],
+    "startCommand": "CoreKeeperServer.exe -batchmode -nographics -world {{WORLD_INDEX}} -worldseed {{WORLD_SEED}} -maxplayers {{MAX_PLAYERS}} -servername \"{{SERVER_NAME}}\" -logFile \"CoreKeeperServerLog.txt\"",
+    "tailFiles": [
+      "CoreKeeperServerLog.txt"
+    ]
+  }
 }

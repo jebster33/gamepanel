@@ -120,6 +120,33 @@
       "workshop"
     ],
     "dir": "garrysmod/addons",
-    "appId": 4020
+    "appId": 4000,
+    "workshop": {
+      "strategy": "gma"
+    }
+  },
+  "platforms": [
+    "linux",
+    "windows"
+  ],
+  "windows": {
+    "install": [
+      {
+        "type": "steamcmd",
+        "appid": "4020",
+        "label": "Install Garry's Mod dedicated server"
+      },
+      {
+        "type": "vcredist",
+        "label": "Install the Visual C++ runtime"
+      }
+    ],
+    "startCommand": "srcds.exe -console -nocrashdialog -condebug -game garrysmod -port {{PORT}} +maxplayers {{MAX_PLAYERS}} +gamemode {{GAMEMODE}} +map {{MAP}} +host_workshop_collection {{WORKSHOP_COLLECTION}} +sv_setsteamaccount \"{{GSLT}}\"",
+    "tailFiles": [
+      "garrysmod/console.log"
+    ],
+    "consoleInput": false,
+    "stopCommand": null,
+    "stopRconCommand": "quit"
   }
 }

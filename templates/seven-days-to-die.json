@@ -135,5 +135,26 @@
     "join": "PlayerSpawnedInWorld .*playerName='([^']+)'",
     "leave": "Player disconnected: .*playerName='([^']+)'"
   },
-  "image": "cm2network/steamcmd:root"
+  "image": "cm2network/steamcmd:root",
+  "platforms": [
+    "linux",
+    "windows"
+  ],
+  "windows": {
+    "install": [
+      {
+        "type": "steamcmd",
+        "appid": "294420",
+        "label": "Install 7 Days to Die dedicated server"
+      },
+      {
+        "type": "vcredist",
+        "label": "Install the Visual C++ runtime"
+      }
+    ],
+    "startCommand": "7DaysToDieServer.exe -quit -batchmode -nographics -dedicated -configfile=gamepanel.xml -logFile \"logs/server.log\"",
+    "tailFiles": [
+      "logs/server.log"
+    ]
+  }
 }

@@ -106,19 +106,70 @@
       "label": "Install the Java the pack needs"
     },
     {
-      "type": "script",
-      "label": "Fetch {{PACK_NAME}} and unpack its configs",
-      "run": "gp_log \"{{PACK_NAME}} · Minecraft {{PACK_MC_VERSION}} · {{PACK_LOADER}}\"\n# A reinstall may be a pack change: clear mods, keep worlds and configs.\nrm -rf mods\nmkdir -p mods\ngp_fetch \"{{DOWNLOAD_URL}}\" pack.mrpack\ngp_have unzip || gp_apt unzip\nrm -rf .packtmp && mkdir -p .packtmp\nunzip -oq pack.mrpack -d .packtmp || gp_die \"Could not unpack the modpack\"\n# 'overrides' holds the pack's own configs and scripts; the server-only\n# variant wins where both exist.\nif [ -d .packtmp/overrides ]; then cp -rf .packtmp/overrides/. .; fi\nif [ -d .packtmp/server-overrides ]; then cp -rf .packtmp/server-overrides/. .; fi\nrm -rf .packtmp pack.mrpack\nmkdir -p mods"
+      "type": "remove",
+      "label": "Clear old mods (worlds and configs stay)",
+      "paths": [
+        "mods",
+        ".packtmp"
+      ]
     },
     {
-      "type": "script",
+      "type": "download",
+      "label": "Fetch {{PACK_NAME}} · Minecraft {{PACK_MC_VERSION}} · {{PACK_LOADER}}",
+      "url": "{{DOWNLOAD_URL}}",
+      "dest": ".packtmp/pack.zip"
+    },
+    {
+      "type": "extract",
+      "label": "Unpack the pack",
+      "file": ".packtmp/pack.zip",
+      "dest": ".packtmp"
+    },
+    {
+      "type": "copy",
+      "label": "Apply the pack's configs",
+      "from": ".packtmp/overrides",
+      "to": "."
+    },
+    {
+      "type": "copy",
+      "label": "Apply the pack's server configs",
+      "from": ".packtmp/server-overrides",
+      "to": "."
+    },
+    {
+      "type": "remove",
+      "paths": [
+        ".packtmp"
+      ]
+    },
+    {
+      "type": "mkdir",
+      "path": "mods"
+    },
+    {
+      "type": "fetchList",
       "label": "Download the pack's {{PACK_FILE_COUNT}} mods",
-      "run": "{{PACK_DOWNLOADS}}\ngp_log \"All pack files downloaded\""
+      "list": "{{PACK_FILES}}"
     },
     {
-      "type": "script",
-      "label": "Install the {{PACK_LOADER}} server",
-      "run": "{{LOADER_INSTALL}}"
+      "type": "download",
+      "label": "Download the {{PACK_LOADER}} server",
+      "url": "{{LOADER_URL}}",
+      "dest": "{{LOADER_FILE}}"
+    },
+    {
+      "type": "run",
+      "label": "Run the {{PACK_LOADER}} installer",
+      "command": "{{LOADER_RUN}}"
+    },
+    {
+      "type": "remove",
+      "paths": [
+        "loader-installer.jar",
+        "loader-installer.jar.log",
+        "installer.log"
+      ]
     },
     {
       "type": "writeFile",
@@ -187,5 +238,95 @@
     "vars": {
       "MODPACK": "adrenaserver"
     }
+  },
+  "platforms": [
+    "linux",
+    "windows"
+  ],
+  "windows": {
+    "install": [
+      {
+        "type": "java",
+        "version": "{{JAVA_VERSION}}",
+        "label": "Install the Java the pack needs"
+      },
+      {
+        "type": "remove",
+        "label": "Clear old mods (worlds and configs stay)",
+        "paths": [
+          "mods",
+          ".packtmp"
+        ]
+      },
+      {
+        "type": "download",
+        "label": "Fetch {{PACK_NAME}} · Minecraft {{PACK_MC_VERSION}} · {{PACK_LOADER}}",
+        "url": "{{DOWNLOAD_URL}}",
+        "dest": ".packtmp/pack.zip"
+      },
+      {
+        "type": "extract",
+        "label": "Unpack the pack",
+        "file": ".packtmp/pack.zip",
+        "dest": ".packtmp"
+      },
+      {
+        "type": "copy",
+        "label": "Apply the pack's configs",
+        "from": ".packtmp/overrides",
+        "to": "."
+      },
+      {
+        "type": "copy",
+        "label": "Apply the pack's server configs",
+        "from": ".packtmp/server-overrides",
+        "to": "."
+      },
+      {
+        "type": "remove",
+        "paths": [
+          ".packtmp"
+        ]
+      },
+      {
+        "type": "mkdir",
+        "path": "mods"
+      },
+      {
+        "type": "fetchList",
+        "label": "Download the pack's {{PACK_FILE_COUNT}} mods",
+        "list": "{{PACK_FILES}}"
+      },
+      {
+        "type": "download",
+        "label": "Download the {{PACK_LOADER}} server",
+        "url": "{{LOADER_URL}}",
+        "dest": "{{LOADER_FILE}}"
+      },
+      {
+        "type": "run",
+        "label": "Run the {{PACK_LOADER}} installer",
+        "command": "{{LOADER_RUN}}"
+      },
+      {
+        "type": "remove",
+        "paths": [
+          "loader-installer.jar",
+          "loader-installer.jar.log",
+          "installer.log"
+        ]
+      },
+      {
+        "type": "writeFile",
+        "path": "start.cmd",
+        "content": "{{START_CMD}}"
+      },
+      {
+        "type": "writeFile",
+        "path": "eula.txt",
+        "content": "# Accepted through GamePanel on install\neula=true\n"
+      }
+    ],
+    "startCommand": "start.cmd"
   }
 }

@@ -70,9 +70,22 @@
       "label": "Install dependencies"
     },
     {
-      "type": "script",
-      "label": "Download the Bedrock dedicated server",
-      "run": "gp_log \"Bedrock dedicated server {{RESOLVED_VERSION}}\"\nif ! curl -fL -sS -A 'Mozilla/5.0' --retry 3 -o bedrock.zip \"{{DOWNLOAD_URL}}\"; then\n  gp_die \"Mojang refused that download. Pick a different version and reinstall.\"\nfi\ngp_extract bedrock.zip .\nrm -f bedrock.zip\nchmod +x bedrock_server"
+      "type": "download",
+      "label": "Download Bedrock dedicated server {{RESOLVED_VERSION}}",
+      "url": "{{DOWNLOAD_URL}}",
+      "dest": "bedrock.zip",
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
+    },
+    {
+      "type": "extract",
+      "file": "bedrock.zip",
+      "dest": ".",
+      "deleteArchive": true
+    },
+    {
+      "type": "chmod",
+      "path": "bedrock_server",
+      "mode": "+x"
     }
   ],
   "patchProperties": [
@@ -109,5 +122,31 @@
     "curl",
     "unzip"
   ],
-  "resolve": "bedrock"
+  "resolve": "bedrock",
+  "platforms": [
+    "linux",
+    "windows"
+  ],
+  "windows": {
+    "install": [
+      {
+        "type": "vcredist",
+        "label": "Install the Visual C++ runtime"
+      },
+      {
+        "type": "download",
+        "label": "Download Bedrock dedicated server {{RESOLVED_VERSION}}",
+        "url": "{{DOWNLOAD_URL}}",
+        "dest": "bedrock.zip",
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
+      },
+      {
+        "type": "extract",
+        "file": "bedrock.zip",
+        "dest": ".",
+        "deleteArchive": true
+      }
+    ],
+    "startCommand": "bedrock_server.exe"
+  }
 }

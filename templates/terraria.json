@@ -89,9 +89,34 @@
       "label": "Install unzip"
     },
     {
-      "type": "script",
-      "label": "Download the Terraria dedicated server",
-      "run": "gp_log \"Terraria server build {{RESOLVED_BUILD}}\"\ngp_fetch \"{{DOWNLOAD_URL}}\" terraria.zip\ngp_extract terraria.zip .\nrm -f terraria.zip\nif [ -d \"{{RESOLVED_BUILD}}/Linux\" ]; then cp -r \"{{RESOLVED_BUILD}}/Linux/.\" .; rm -rf \"{{RESOLVED_BUILD}}\"; fi\nchmod +x TerrariaServer.bin.x86_64 2>/dev/null || true\nmkdir -p worlds"
+      "type": "download",
+      "label": "Download Terraria server build {{RESOLVED_BUILD}}",
+      "url": "{{DOWNLOAD_URL}}",
+      "dest": "terraria.zip"
+    },
+    {
+      "type": "extract",
+      "file": "terraria.zip",
+      "dest": ".",
+      "deleteArchive": true
+    },
+    {
+      "type": "copy",
+      "from": "{{RESOLVED_BUILD}}/Linux",
+      "to": "."
+    },
+    {
+      "type": "remove",
+      "path": "{{RESOLVED_BUILD}}"
+    },
+    {
+      "type": "mkdir",
+      "path": "worlds"
+    },
+    {
+      "type": "chmod",
+      "path": "TerrariaServer.bin.x86_64",
+      "mode": "+x"
     }
   ],
   "configFiles": [
@@ -130,5 +155,39 @@
     "curl",
     "ca-certificates"
   ],
-  "resolve": "terraria"
+  "resolve": "terraria",
+  "platforms": [
+    "linux",
+    "windows"
+  ],
+  "windows": {
+    "install": [
+      {
+        "type": "download",
+        "label": "Download Terraria server build {{RESOLVED_BUILD}}",
+        "url": "{{DOWNLOAD_URL}}",
+        "dest": "terraria.zip"
+      },
+      {
+        "type": "extract",
+        "file": "terraria.zip",
+        "dest": ".",
+        "deleteArchive": true
+      },
+      {
+        "type": "copy",
+        "from": "{{RESOLVED_BUILD}}/Windows",
+        "to": "."
+      },
+      {
+        "type": "remove",
+        "path": "{{RESOLVED_BUILD}}"
+      },
+      {
+        "type": "mkdir",
+        "path": "worlds"
+      }
+    ],
+    "startCommand": "TerrariaServer.exe -config serverconfig.txt"
+  }
 }
