@@ -11,6 +11,7 @@
  *   install.js         installing, reinstalling and updating games
  *   power.js           start / stop / restart / kill, crashes and auto-restart
  *   stats.js           CPU, memory, players, ping, disk
+ *   history.js         player history and the activity log
  *   watchers.js        tailing game log files, port-based readiness
  *   runtimes/container.js   running a server in Docker (Linux isolation)
  *   runtimes/process.js     running a server as a plain process (Linux or Windows)
@@ -29,6 +30,7 @@ const { logger, uid, slugify, fail, sleep } = require('../core/util');
 const { HOST_PLATFORM, isWindows } = require('../core/platform');
 const { variant } = require('../games/templates');
 const { playerCommands, playerDetails } = require('../games/players');
+const { listsFor } = require('../games/player-lists');
 const { Ring } = require('../features/metrics');
 const { docker } = require('./runtimes/docker-api');
 
@@ -82,6 +84,7 @@ class ServerManager extends EventEmitter {
   async shutdown() {
     this.shuttingDown = true;
     for (const t of this.timers || []) clearInterval(t);
+    this.saveHistories();
     // Containers keep running across a panel restart or update; only child
     // processes have to stop, since they would be orphaned.
     for (const server of this.servers) {
@@ -275,6 +278,7 @@ class ServerManager extends EventEmitter {
       playerList: rt.playerList,
       playerDetails: playerDetails(rt),
       playerCommands: Object.keys(playerCommands(tpl)),
+      playerLists: Object.keys(listsFor(tpl) || {}),
       ping: rt.ping,
       queryError: rt.queryError,
       diskBytes: rt.diskBytes,
@@ -429,6 +433,7 @@ class ServerManager extends EventEmitter {
     if (this.dockerAvailable) await this.cleanupContainers(server).catch(() => {});
     this.servers.splice(this.servers.indexOf(server), 1);
     this.runtime.delete(id);
+    this.deleteHistory(id);
     this.store.save();
     // A server imported in place keeps its folder: those files were never the panel's.
     if (deleteFiles && server.imported?.inPlace) {
@@ -539,6 +544,7 @@ Object.assign(
   require('./import'),
   require('./power'),
   require('./stats'),
+  require('./history'),
   require('./watchers'),
   require('./runtimes/container'),
   require('./runtimes/process')

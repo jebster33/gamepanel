@@ -103,7 +103,52 @@ module.exports = (router, { store, manager, scheduler }, { requireAdmin, require
     if (!manager.rt(server.id).playerList.includes(name) || /["\r\n\x00-\x1f]/.test(name)) fail(400, 'That player is not online');
     const result = await manager.sendCommand(server.id, template.replace('{name}', name));
     store.addEvent(`player.${body.action}`, `${user.username} used ${body.action} on ${name} (${server.name})`, { serverId: server.id });
+    manager.logActivity(server.id, { type: body.action, name, by: user.username });
     return result;
+  });
+
+  /** Whitelist, operators and bans (Minecraft). */
+  router.get('/api/servers/:id/player-lists', ({ user, params }) => {
+    const server = serverFor(user, params.id, 'command');
+    return require('../../games/player-lists').readLists(manager, server);
+  });
+
+  router.post('/api/servers/:id/player-lists', async ({ user, params, body }) => {
+    const server = serverFor(user, params.id, 'command');
+    const result = await require('../../games/player-lists').changeList(manager, server, body || {}, user.username);
+    store.addEvent('player.list', `${user.username} ${body.action === 'add' ? 'added' : 'removed'} ${body.name} (${body.list}, ${server.name})`, { serverId: server.id });
+    return result;
+  });
+
+  router.put('/api/servers/:id/player-lists/whitelist', async ({ user, params, body }) => {
+    const server = serverFor(user, params.id, 'command');
+    const result = await require('../../games/player-lists').setWhitelist(manager, server, Boolean(body?.enabled), user.username);
+    store.addEvent('player.whitelist', `${user.username} turned the whitelist ${body?.enabled ? 'on' : 'off'} (${server.name})`, { serverId: server.id });
+    return result;
+  });
+
+  /** Everyone who has played, the players-online graph and the activity log. */
+  router.get('/api/servers/:id/player-history', ({ user, params }) => {
+    const server = serverFor(user, params.id, 'console');
+    return manager.playerHistory(server.id);
+  });
+
+  router.get('/api/servers/:id/player-history/:name', ({ user, params }) => {
+    const server = serverFor(user, params.id, 'console');
+    const profile = manager.playerProfile(server.id, params.name);
+    if (!profile) fail(404, 'This player has never been seen on this server');
+    return profile;
+  });
+
+  router.get('/api/servers/:id/activity', ({ user, params, url }) => {
+    const qs = Object.fromEntries(url.searchParams);
+    const server = serverFor(user, params.id, 'console');
+    return manager.activityLog(server.id, {
+      before: Number(qs.before) || undefined,
+      types: qs.types ? String(qs.types).split(',') : undefined,
+      q: qs.q,
+      limit: Math.min(500, Number(qs.limit) || 100),
+    });
   });
 
   router.post('/api/servers/:id/command', async ({ user, params, body }) => {

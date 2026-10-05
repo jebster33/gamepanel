@@ -62,6 +62,7 @@ module.exports = {
       });
     }
     if (summary.length) this.bus.broadcast('stats', { servers: summary });
+    this.observePlayers();
   },
 
   getHistory(id) {
