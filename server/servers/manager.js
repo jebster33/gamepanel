@@ -15,6 +15,7 @@
  *   versions.js        switching game version / Minecraft server type
  *   doctor.js          crash doctor and log sharing
  *   worlds.js          Minecraft worlds: switch, import, download, reset
+ *   alerts.js          CPU, memory and disk alerts
  *   watchers.js        tailing game log files, port-based readiness
  *   runtimes/container.js   running a server in Docker (Linux isolation)
  *   runtimes/process.js     running a server as a plain process (Linux or Windows)
@@ -40,7 +41,7 @@ const { docker } = require('./runtimes/docker-api');
 const { STATUS, CONTAINER_DIR } = require('./constants');
 
 /** Fields a PATCH may change. Anything else on a server is managed by the panel. */
-const EDITABLE = ['name', 'memory', 'cpuLimit', 'maxPlayers', 'autoStart', 'autoRestart', 'updateOnStart', 'startCommand', 'notes', 'ip', 'backupRetention', 'idleStopMinutes'];
+const EDITABLE = ['name', 'memory', 'cpuLimit', 'maxPlayers', 'autoStart', 'autoRestart', 'updateOnStart', 'startCommand', 'notes', 'ip', 'backupRetention', 'idleStopMinutes', 'alerts'];
 
 class ServerManager extends EventEmitter {
   /**
@@ -416,6 +417,7 @@ class ServerManager extends EventEmitter {
     if (patch.startCommand === '') server.startCommand = null;
     if (patch.memory !== undefined) server.memory = Math.max(256, Number(patch.memory) || server.memory);
     if (patch.idleStopMinutes !== undefined) server.idleStopMinutes = Math.max(0, Math.min(1440, Math.round(Number(patch.idleStopMinutes) || 0)));
+    if (patch.alerts !== undefined) server.alerts = this.cleanAlerts(patch.alerts);
     if (patch.vars) server.vars = { ...server.vars, ...patch.vars };
     if (patch.ports) {
       const used = this.usedPorts(server.id);
@@ -553,6 +555,7 @@ Object.assign(
   require('./versions'),
   require('./doctor'),
   require('./worlds'),
+  require('./alerts'),
   require('./watchers'),
   require('./runtimes/container'),
   require('./runtimes/process')

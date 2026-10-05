@@ -38,6 +38,17 @@ export function renderServerSettingsTab(host, server) {
       ${isAdmin ? '<button class="btn btn-primary mt-16" id="set-save">Save changes</button>' : ''}
     </div>
 
+    <div class="card mb-16">
+      <h4 style="margin:0 0 6px">Alerts</h4>
+      <p class="faint" style="margin:0 0 12px">Get a Discord message or phone notification when this server runs hot. 0 turns one off.</p>
+      <div class="form-grid">
+        <label><span>CPU above (%)</span><input id="al-cpu" type="number" min="0" value="${server.alerts?.cpu || 0}" ${isAdmin ? '' : 'disabled'} /><div class="hint">For 2 minutes. 100% is one full core.</div></label>
+        <label><span>Memory above (% of limit)</span><input id="al-memory" type="number" min="0" max="100" value="${server.alerts?.memory || 0}" ${isAdmin ? '' : 'disabled'} /><div class="hint">For 2 minutes.</div></label>
+        <label><span>Folder bigger than (GB)</span><input id="al-disk" type="number" min="0" value="${server.alerts?.disk || 0}" ${isAdmin ? '' : 'disabled'} /><div class="hint">Worlds, logs and mods together.</div></label>
+      </div>
+      ${isAdmin ? '<button class="btn mt-16" id="al-save">Save alerts</button>' : ''}
+    </div>
+
     <div class="card mb-16" id="network-card">
       <h4 style="margin:0 0 6px">Reachability</h4>
       <p class="faint" style="margin:0 0 12px">Checking the firewall and your router…</p>
@@ -113,6 +124,19 @@ export function renderServerSettingsTab(host, server) {
       await loadServers();
       toast('Settings saved');
       render();
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+  });
+
+  $('#al-save').addEventListener('click', async () => {
+    try {
+      await api(`/api/servers/${server.id}`, {
+        method: 'PATCH',
+        body: { alerts: { cpu: Number($('#al-cpu').value), memory: Number($('#al-memory').value), disk: Number($('#al-disk').value) } },
+      });
+      await loadServers();
+      toast('Alerts saved. Pick where they go under Settings, Notifications, or on the phone app.');
     } catch (err) {
       toast(err.message, 'error');
     }

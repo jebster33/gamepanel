@@ -63,6 +63,7 @@ module.exports = {
     }
     if (summary.length) this.bus.broadcast('stats', { servers: summary });
     this.observePlayers();
+    this.checkAlerts();
   },
 
   getHistory(id) {
@@ -76,6 +77,7 @@ module.exports = {
       for (const server of this.servers) {
         this.rt(server.id).diskBytes = await directorySize(server.dir).catch(() => 0);
       }
+      this.checkHostDisk();
     } finally {
       this.diskBusy = false;
     }
