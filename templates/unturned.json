@@ -102,6 +102,38 @@
       "workshop"
     ],
     "dir": "Servers/gamepanel/Workshop/Content",
-    "appId": 304930
+    "appId": 304930,
+    "workshop": {
+      "strategy": "list",
+      "file": "Servers/gamepanel/WorkshopDownloadConfig.json",
+      "format": "json",
+      "key": "File_IDs"
+    }
+  },
+  "platforms": [
+    "linux",
+    "windows"
+  ],
+  "windows": {
+    "install": [
+      {
+        "type": "steamcmd",
+        "appid": "1110390",
+        "label": "Install Unturned dedicated server"
+      },
+      {
+        "type": "vcredist",
+        "label": "Install the Visual C++ runtime"
+      },
+      {
+        "type": "mkdir",
+        "path": "Servers/gamepanel/Server"
+      }
+    ],
+    "startCommand": "Unturned.exe -nographics -batchmode +InternetServer/gamepanel -logFile \"logs/server.log\"",
+    "tailFiles": [
+      "logs/server.log"
+    ],
+    "stopCommand": null
   }
 }

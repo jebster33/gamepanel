@@ -1,0 +1,125 @@
+{
+  "id": "conan-exiles",
+  "name": "Conan Exiles",
+  "category": "Survival",
+  "icon": "⚔️",
+  "description": "Open-world survival in the lands of Conan the Barbarian. Windows only.",
+  "platforms": [
+    "windows"
+  ],
+  "defaultMemory": 8192,
+  "variables": [
+    {
+      "name": "MAX_PLAYERS",
+      "label": "Max players",
+      "default": 40,
+      "type": "number"
+    },
+    {
+      "name": "SERVER_PASSWORD",
+      "label": "Join password",
+      "default": "",
+      "description": "Leave empty for an open server."
+    },
+    {
+      "name": "ADMIN_PASSWORD",
+      "label": "Admin password",
+      "default": "",
+      "generate": "password"
+    },
+    {
+      "name": "RCON_PASSWORD",
+      "label": "RCON password",
+      "default": "",
+      "generate": "password"
+    }
+  ],
+  "ports": [
+    {
+      "name": "game",
+      "default": 7777,
+      "protocol": "udp"
+    },
+    {
+      "name": "query",
+      "default": 27015,
+      "protocol": "udp",
+      "offset": 19238
+    },
+    {
+      "name": "rcon",
+      "default": 25575,
+      "protocol": "tcp",
+      "offset": 17798
+    }
+  ],
+  "windows": {
+    "install": [
+      {
+        "type": "steamcmd",
+        "appid": "443030",
+        "label": "Install the Conan Exiles dedicated server"
+      },
+      {
+        "type": "vcredist",
+        "label": "Install the Visual C++ runtime"
+      },
+      {
+        "type": "directx",
+        "label": "Install the DirectX runtime"
+      }
+    ]
+  },
+  "patchProperties": [
+    {
+      "path": "ConanSandbox/Saved/Config/WindowsServer/Engine.ini",
+      "format": "ini",
+      "section": "OnlineSubsystem",
+      "createIfMissing": true,
+      "set": {
+        "ServerName": "{{SERVER_NAME}}",
+        "ServerPassword": "{{SERVER_PASSWORD}}"
+      }
+    },
+    {
+      "path": "ConanSandbox/Saved/Config/WindowsServer/Game.ini",
+      "format": "ini",
+      "section": "RconPlugin",
+      "createIfMissing": true,
+      "set": {
+        "RconEnabled": "1",
+        "RconPassword": "{{RCON_PASSWORD}}",
+        "RconPort": "{{PORT_RCON}}"
+      }
+    },
+    {
+      "path": "ConanSandbox/Saved/Config/WindowsServer/ServerSettings.ini",
+      "format": "ini",
+      "section": "ServerSettings",
+      "createIfMissing": true,
+      "set": {
+        "AdminPassword": "{{ADMIN_PASSWORD}}",
+        "MaxNudity": "0"
+      }
+    }
+  ],
+  "startCommand": "ConanSandboxServer.exe -log -Port={{PORT}} -QueryPort={{PORT_QUERY}} -MaxPlayers={{MAX_PLAYERS}}",
+  "tailFiles": [
+    "ConanSandbox/Saved/Logs/ConanSandbox.log"
+  ],
+  "consoleInput": false,
+  "rcon": {
+    "type": "source",
+    "port": "rcon"
+  },
+  "stopRconCommand": "shutdown",
+  "query": {
+    "type": "a2s",
+    "port": "query"
+  },
+  "readyOnPort": "game",
+  "logPatterns": {
+    "ready": "LogServerStats|Server is ready"
+  },
+  "stopTimeout": 90
+}

@@ -67,6 +67,11 @@
       "type": "chmod",
       "path": "srcds_run",
       "mode": "+x"
+    },
+    {
+      "type": "chmod",
+      "path": "srcds_run_64",
+      "mode": "+x"
     }
   ],
   "configFiles": [
@@ -76,7 +81,7 @@
       "content": "hostname \"{{SERVER_NAME}}\"\nrcon_password \"{{RCON_PASSWORD}}\"\nsv_lan 0\nmp_timelimit 30\n"
     }
   ],
-  "startCommand": "./srcds_run -game tf -console -norestart -port {{PORT}} +tv_port {{PORT_TV}} +maxplayers {{MAX_PLAYERS}} +map {{MAP}} +sv_setsteamaccount \"{{GSLT}}\"",
+  "startCommand": "./srcds_run_64 -game tf -console -norestart -port {{PORT}} +tv_port {{PORT_TV}} +maxplayers {{MAX_PLAYERS}} +map {{MAP}} +sv_setsteamaccount \"{{GSLT}}\"",
   "stopCommand": "quit",
   "stopTimeout": 45,
   "query": {
@@ -88,9 +93,34 @@
     "port": "game"
   },
   "logPatterns": {
-    "ready": "VAC secure mode|gameserver Steam ID",
+    "ready": "VAC secure mode|gameserver Steam ID|Using map cycle file",
     "join": "\"([^<]+)<[0-9]+><[^>]*><>\" entered the game",
     "leave": "\"([^<]+)<[0-9]+><[^>]*><[^>]*>\" disconnected"
   },
-  "image": "cm2network/steamcmd:root"
+  "image": "cm2network/steamcmd:root",
+  "platforms": [
+    "linux",
+    "windows"
+  ],
+  "windows": {
+    "install": [
+      {
+        "type": "steamcmd",
+        "appid": "232250",
+        "label": "Install Team Fortress 2 dedicated server"
+      },
+      {
+        "type": "vcredist",
+        "label": "Install the Visual C++ runtime"
+      }
+    ],
+    "startCommand": "srcds.exe -console -nocrashdialog -condebug -game tf -port {{PORT}} +tv_port {{PORT_TV}} +maxplayers {{MAX_PLAYERS}} +map {{MAP}} +sv_setsteamaccount \"{{GSLT}}\"",
+    "tailFiles": [
+      "tf/console.log"
+    ],
+    "consoleInput": false,
+    "stopCommand": null,
+    "stopRconCommand": "quit"
+  },
+  "pty": true
 }

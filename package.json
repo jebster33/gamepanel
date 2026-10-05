@@ -1,26 +1,29 @@
 {
   "name": "gamepanel",
-  "version": "1.7.0",
-  "description": "A dead-simple, self-hosted game server control panel for Ubuntu. Zero npm dependencies.",
+  "version": "2.0.0",
+  "description": "Self-hosted game server panel for Linux and Windows. One-click games and mods, zero npm dependencies.",
   "main": "server/index.js",
   "type": "commonjs",
   "scripts": {
     "start": "node server/index.js",
     "dev": "node server/index.js",
-    "test": "node test/check.js",
-    "test:live": "node test/check.js --live"
+    "test": "node test/check.js && node test/unit/run.js",
+    "test:unit": "node test/unit/run.js",
+    "test:live": "node test/check.js --live",
+    "smoke": "node test/smoke.js"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   },
   "keywords": [
     "game-server",
     "panel",
     "minecraft",
     "rust",
-    "pterodactyl",
-    "hosting",
-    "ubuntu"
+    "valheim",
+    "pterodactyl-alternative",
+    "windows-server",
+    "self-hosted"
   ],
   "license": "MIT",
   "dependencies": {}

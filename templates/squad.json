@@ -71,7 +71,28 @@
     "port": "rcon"
   },
   "logPatterns": {
-    "ready": "Server started|LogSquad: PostLogin"
+    "ready": "Server started|LogSquad: PostLogin|Session 'GameSession' is being set as 'listening'"
   },
-  "image": "cm2network/steamcmd:root"
+  "image": "cm2network/steamcmd:root",
+  "platforms": [
+    "linux",
+    "windows"
+  ],
+  "windows": {
+    "install": [
+      {
+        "type": "steamcmd",
+        "appid": "403240",
+        "label": "Install Squad dedicated server (~50 GB)"
+      },
+      {
+        "type": "vcredist",
+        "label": "Install the Visual C++ runtime"
+      }
+    ],
+    "startCommand": "SquadGameServer.exe Port={{PORT}} QueryPort={{PORT_QUERY}} FIXEDMAXPLAYERS={{MAX_PLAYERS}} RANDOM=ALWAYS -log",
+    "tailFiles": [
+      "SquadGame/Saved/Logs/SquadGame.log"
+    ]
+  }
 }

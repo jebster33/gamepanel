@@ -106,7 +106,8 @@
     {
       "type": "steamcmd",
       "appid": "222860",
-      "label": "Install Left 4 Dead 2 dedicated server"
+      "label": "Install Left 4 Dead 2 dedicated server",
+      "prefetchPlatform": "windows"
     },
     {
       "type": "chmod",
@@ -137,5 +138,30 @@
     "join": "\"([^<]+)<[0-9]+><[^>]*><>\" entered the game",
     "leave": "\"([^<]+)<[0-9]+><[^>]*><[^>]*>\" disconnected"
   },
-  "image": "cm2network/steamcmd:root"
+  "image": "cm2network/steamcmd:root",
+  "platforms": [
+    "linux",
+    "windows"
+  ],
+  "windows": {
+    "install": [
+      {
+        "type": "steamcmd",
+        "appid": "222860",
+        "label": "Install Left 4 Dead 2 dedicated server"
+      },
+      {
+        "type": "vcredist",
+        "label": "Install the Visual C++ runtime"
+      }
+    ],
+    "startCommand": "srcds.exe -console -nocrashdialog -condebug -game left4dead2 -port {{PORT}} +maxplayers {{MAX_PLAYERS}} +map {{MAP}} +mp_gamemode {{GAME_MODE}}",
+    "tailFiles": [
+      "left4dead2/console.log"
+    ],
+    "consoleInput": false,
+    "stopCommand": null,
+    "stopRconCommand": "quit"
+  },
+  "pty": true
 }

@@ -1,0 +1,210 @@
+{
+  "id": "minecraft-neoforge",
+  "name": "Minecraft: NeoForge",
+  "category": "Minecraft",
+  "icon": "🦊",
+  "description": "The community fork of Forge most new mods target from 1.20.2 on. Only NeoForge mods for your Minecraft version are offered.",
+  "defaultMemory": 6144,
+  "variables": [
+    {
+      "name": "MC_VERSION",
+      "label": "Minecraft version",
+      "default": "latest",
+      "source": "neoforge-game-version",
+      "description": "Minecraft versions NeoForge supports."
+    },
+    {
+      "name": "LOADER_VERSION",
+      "label": "NeoForge version",
+      "default": "latest",
+      "description": "Leave on latest for the newest build of the chosen Minecraft version.",
+      "allowCustom": true
+    },
+    {
+      "name": "MAX_PLAYERS",
+      "label": "Max players",
+      "type": "number",
+      "default": 20
+    },
+    {
+      "name": "MOTD",
+      "label": "Server MOTD",
+      "default": "A modded GamePanel server"
+    },
+    {
+      "name": "JAVA_ARGS",
+      "label": "Extra JVM flags",
+      "default": "-XX:+UseG1GC"
+    },
+    {
+      "name": "RCON_PASSWORD",
+      "label": "RCON password",
+      "generate": "password",
+      "default": ""
+    }
+  ],
+  "ports": [
+    {
+      "name": "game",
+      "default": 25565,
+      "protocol": "tcp"
+    },
+    {
+      "name": "rcon",
+      "default": 25575,
+      "protocol": "tcp",
+      "offset": 10
+    }
+  ],
+  "install": [
+    {
+      "type": "java",
+      "version": "{{JAVA_VERSION}}",
+      "label": "Install the Java the game needs"
+    },
+    {
+      "type": "download",
+      "label": "Download the {{RESOLVED_VERSION}} installer",
+      "url": "{{LOADER_URL}}",
+      "dest": "{{LOADER_FILE}}"
+    },
+    {
+      "type": "run",
+      "label": "Run the NeoForge installer",
+      "command": "{{LOADER_RUN}}"
+    },
+    {
+      "type": "remove",
+      "paths": [
+        "loader-installer.jar",
+        "loader-installer.jar.log",
+        "installer.log"
+      ]
+    },
+    {
+      "type": "mkdir",
+      "path": "mods"
+    },
+    {
+      "type": "writeFile",
+      "path": "start.sh",
+      "content": "{{START_SCRIPT}}"
+    },
+    {
+      "type": "chmod",
+      "path": "start.sh",
+      "mode": "+x"
+    },
+    {
+      "type": "writeFile",
+      "path": "eula.txt",
+      "content": "# Accepted through GamePanel on install\neula=true\n"
+    }
+  ],
+  "configFiles": [
+    {
+      "path": "server.properties",
+      "mode": "create",
+      "content": "server-port={{PORT}}\nenable-rcon=true\nrcon.port={{PORT_RCON}}\nrcon.password={{RCON_PASSWORD}}\nmotd={{MOTD}}\nmax-players={{MAX_PLAYERS}}\nonline-mode=true\n"
+    }
+  ],
+  "patchProperties": [
+    {
+      "path": "server.properties",
+      "format": "properties",
+      "createIfMissing": true,
+      "set": {
+        "server-port": "{{PORT}}",
+        "enable-rcon": "true",
+        "rcon.port": "{{PORT_RCON}}",
+        "rcon.password": "{{RCON_PASSWORD}}",
+        "max-players": "{{MAX_PLAYERS}}",
+        "motd": "{{MOTD}}"
+      }
+    }
+  ],
+  "startCommand": "./start.sh",
+  "stopCommand": "stop",
+  "stopTimeout": 90,
+  "query": {
+    "type": "minecraft",
+    "port": "game"
+  },
+  "rcon": {
+    "type": "source",
+    "port": "rcon"
+  },
+  "logPatterns": {
+    "ready": "Done \\([0-9.]+s\\)!",
+    "join": "([A-Za-z0-9_]{3,16}) joined the game",
+    "leave": "([A-Za-z0-9_]{3,16}) left the game"
+  },
+  "image": "eclipse-temurin:{{JAVA_VERSION}}-jre",
+  "mods": {
+    "providers": [
+      "modrinth",
+      "curseforge"
+    ],
+    "dir": "mods",
+    "loader": "neoforge",
+    "projectType": "mod",
+    "gameVersionVar": "MC_VERSION"
+  },
+  "resolve": "neoforge",
+  "packages": [
+    "curl",
+    "ca-certificates"
+  ],
+  "platforms": [
+    "linux",
+    "windows"
+  ],
+  "ci": {
+    "vars": {
+      "MC_VERSION": "1.21.1"
+    }
+  },
+  "windows": {
+    "install": [
+      {
+        "type": "java",
+        "version": "{{JAVA_VERSION}}",
+        "label": "Install the Java the game needs"
+      },
+      {
+        "type": "download",
+        "label": "Download the {{RESOLVED_VERSION}} installer",
+        "url": "{{LOADER_URL}}",
+        "dest": "{{LOADER_FILE}}"
+      },
+      {
+        "type": "run",
+        "label": "Run the NeoForge installer",
+        "command": "{{LOADER_RUN}}"
+      },
+      {
+        "type": "remove",
+        "paths": [
+          "loader-installer.jar",
+          "loader-installer.jar.log",
+          "installer.log"
+        ]
+      },
+      {
+        "type": "mkdir",
+        "path": "mods"
+      },
+      {
+        "type": "writeFile",
+        "path": "start.cmd",
+        "content": "{{START_CMD}}"
+      },
+      {
+        "type": "writeFile",
+        "path": "eula.txt",
+        "content": "# Accepted through GamePanel on install\neula=true\n"
+      }
+    ],
+    "startCommand": "start.cmd"
+  }
+}

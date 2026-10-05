@@ -1,0 +1,26 @@
+<!--
+  Windows service definition for GamePanel, read by WinSW (GamePanel-Service.exe
+  in the same folder). Change GP_PORT here, then restart the service:
+    GamePanel-Service.exe restart
+-->
+<service>
+  <id>GamePanel</id>
+  <name>GamePanel</name>
+  <description>Game server control panel (http://localhost:8080)</description>
+  <executable>%BASE%\node\node.exe</executable>
+  <arguments>"%BASE%\server\index.js"</arguments>
+  <workingdirectory>%BASE%</workingdirectory>
+  <env name="GP_SERVICE" value="1" />
+  <env name="GP_PORT" value="8080" />
+  <startmode>Automatic</startmode>
+  <delayedAutoStart>true</delayedAutoStart>
+  <!-- The panel exits with code 1 to load an update; WinSW brings it back. -->
+  <onfailure action="restart" delay="3 sec" />
+  <resetfailure>1 hour</resetfailure>
+  <stoptimeout>45 sec</stoptimeout>
+  <logpath>%ProgramData%\GamePanel\logs</logpath>
+  <log mode="roll-by-size">
+    <sizeThreshold>10240</sizeThreshold>
+    <keepFiles>5</keepFiles>
+  </log>
+</service>

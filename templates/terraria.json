@@ -89,9 +89,34 @@
       "label": "Install unzip"
     },
     {
-      "type": "script",
-      "label": "Download the Terraria dedicated server",
-      "run": "gp_log \"Terraria server build {{RESOLVED_BUILD}}\"\ngp_fetch \"{{DOWNLOAD_URL}}\" terraria.zip\ngp_extract terraria.zip .\nrm -f terraria.zip\nif [ -d \"{{RESOLVED_BUILD}}/Linux\" ]; then cp -r \"{{RESOLVED_BUILD}}/Linux/.\" .; rm -rf \"{{RESOLVED_BUILD}}\"; fi\nchmod +x TerrariaServer.bin.x86_64 2>/dev/null || true\nmkdir -p worlds"
+      "type": "download",
+      "label": "Download Terraria server build {{RESOLVED_BUILD}}",
+      "url": "{{DOWNLOAD_URL}}",
+      "dest": "terraria.zip"
+    },
+    {
+      "type": "extract",
+      "file": "terraria.zip",
+      "dest": ".",
+      "deleteArchive": true
+    },
+    {
+      "type": "copy",
+      "from": "{{RESOLVED_BUILD}}/Linux",
+      "to": "."
+    },
+    {
+      "type": "remove",
+      "path": "{{RESOLVED_BUILD}}"
+    },
+    {
+      "type": "mkdir",
+      "path": "worlds"
+    },
+    {
+      "type": "chmod",
+      "path": "TerrariaServer.bin.x86_64",
+      "mode": "+x"
     }
   ],
   "configFiles": [
@@ -130,5 +155,44 @@
     "curl",
     "ca-certificates"
   ],
-  "resolve": "terraria"
+  "resolve": "terraria",
+  "platforms": [
+    "linux",
+    "windows"
+  ],
+  "windows": {
+    "install": [
+      {
+        "type": "download",
+        "label": "Download Terraria server build {{RESOLVED_BUILD}}",
+        "url": "{{DOWNLOAD_URL}}",
+        "dest": "terraria.zip"
+      },
+      {
+        "type": "extract",
+        "file": "terraria.zip",
+        "dest": ".",
+        "deleteArchive": true
+      },
+      {
+        "type": "copy",
+        "from": "{{RESOLVED_BUILD}}/Windows",
+        "to": "."
+      },
+      {
+        "type": "remove",
+        "path": "{{RESOLVED_BUILD}}"
+      },
+      {
+        "type": "mkdir",
+        "path": "worlds"
+      },
+      {
+        "type": "powershell",
+        "label": "Install the XNA Framework 4.0 that Terraria needs",
+        "run": "$gac = Join-Path $env:WINDIR 'Microsoft.NET\\assembly\\GAC_32\\Microsoft.Xna.Framework'\nif (Test-Path $gac) { GP-Log 'XNA Framework 4.0 already installed'; exit 0 }\n$msi = Join-Path $env:TEMP 'xnafx40_redist.msi'\nGP-Fetch 'https://download.microsoft.com/download/A/C/2/AC2C903B-E6E8-42C2-9FD7-BEBAC362A930/xnafx40_redist.msi' $msi\nGP-Log 'Installing the XNA Framework 4.0'\n$p = Start-Process msiexec.exe -ArgumentList @('/i', \"`\"$msi`\"\", '/qn', '/norestart') -Wait -PassThru\nif ($p.ExitCode -ne 0 -and $p.ExitCode -ne 3010) { throw \"The XNA Framework failed to install (code $($p.ExitCode))\" }\n"
+      }
+    ],
+    "startCommand": "TerrariaServer.exe -config serverconfig.txt"
+  }
 }

@@ -1,0 +1,72 @@
+{
+  "id": "space-engineers",
+  "name": "Space Engineers",
+  "category": "Sandbox",
+  "icon": "🛰️",
+  "description": "Build ships and stations in space. Windows only. A new world is created on first start.",
+  "platforms": [
+    "windows"
+  ],
+  "defaultMemory": 8192,
+  "variables": [
+    {
+      "name": "MAX_PLAYERS",
+      "label": "Max players",
+      "default": 16,
+      "type": "number"
+    },
+    {
+      "name": "SERVER_PASSWORD",
+      "label": "Join password",
+      "default": "",
+      "description": "Leave empty for an open server."
+    },
+    {
+      "name": "WORLD_NAME",
+      "label": "World name",
+      "default": "GamePanel World"
+    }
+  ],
+  "ports": [
+    {
+      "name": "game",
+      "default": 27016,
+      "protocol": "udp"
+    }
+  ],
+  "windows": {
+    "install": [
+      {
+        "type": "steamcmd",
+        "appid": "298740",
+        "label": "Install the Space Engineers dedicated server"
+      },
+      {
+        "type": "vcredist",
+        "label": "Install the Visual C++ runtime"
+      },
+      {
+        "type": "directx",
+        "label": "Install the DirectX runtime"
+      },
+      {
+        "type": "mkdir",
+        "path": "Instance"
+      }
+    ]
+  },
+  "startCommand": "DedicatedServer64\\SpaceEngineersDedicated.exe -console -noconsole -path \"{{SERVER_DIR}}\\Instance\" -port {{PORT}}",
+  "tailFiles": [
+    "Instance/SpaceEngineersDedicated_*.log"
+  ],
+  "consoleInput": false,
+  "query": {
+    "type": "a2s",
+    "port": "game"
+  },
+  "readyOnPort": "game",
+  "logPatterns": {
+    "ready": "Game ready|Server started"
+  },
+  "stopTimeout": 60
+}

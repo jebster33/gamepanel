@@ -105,5 +105,38 @@
   "logPatterns": {
     "ready": "Game server registered|LogGameMode"
   },
-  "image": "cm2network/steamcmd:root"
+  "image": "cm2network/steamcmd:root",
+  "platforms": [
+    "linux",
+    "windows"
+  ],
+  "windows": {
+    "install": [
+      {
+        "type": "steamcmd",
+        "appid": "581330",
+        "label": "Install Insurgency: Sandstorm dedicated server"
+      },
+      {
+        "type": "vcredist",
+        "label": "Install the Visual C++ runtime"
+      }
+    ],
+    "startCommand": "Insurgency\\Binaries\\Win64\\InsurgencyServer-Win64-Shipping.exe {{MAP}}?Scenario={{SCENARIO}}?MaxPlayers={{MAX_PLAYERS}} -Port={{PORT}} -QueryPort={{PORT_QUERY}} -GameStats -GSLTToken={{GSLT}} -log",
+    "tailFiles": [
+      "Insurgency/Saved/Logs/Insurgency.log"
+    ],
+    "configFiles": [
+      {
+        "path": "Insurgency/Saved/Config/WindowsServer/Game.ini",
+        "mode": "create",
+        "content": "[/Script/Insurgency.INSGameMode]\nGameSessionName={{SERVER_NAME}}\n"
+      },
+      {
+        "path": "Insurgency/Saved/Config/WindowsServer/Engine.ini",
+        "mode": "create",
+        "content": "[Rcon]\nbEnabled=True\nPassword={{RCON_PASSWORD}}\nListenPort={{PORT_RCON}}\n"
+      }
+    ]
+  }
 }

@@ -41,7 +41,8 @@
       "type": "apt",
       "packages": [
         "wine64",
-        "xvfb"
+        "xvfb",
+        "xauth"
       ],
       "label": "Install Wine"
     },
@@ -87,6 +88,35 @@
   "packages": [
     "wine",
     "wine64",
-    "xvfb"
+    "xvfb",
+    "xauth"
+  ],
+  "platforms": [
+    "linux",
+    "windows"
+  ],
+  "windows": {
+    "install": [
+      {
+        "type": "steamcmd",
+        "appid": "1829350",
+        "label": "Install V Rising dedicated server"
+      },
+      {
+        "type": "vcredist",
+        "label": "Install the Visual C++ runtime"
+      },
+      {
+        "type": "mkdir",
+        "path": "save-data/Settings"
+      }
+    ],
+    "startCommand": "VRisingServer.exe -persistentDataPath ./save-data -serverName \"{{SERVER_NAME}}\" -saveName \"{{SAVE_NAME}}\" -logFile \"logs/VRisingServer.log\"",
+    "tailFiles": [
+      "logs/VRisingServer.log"
+    ]
+  },
+  "tailFiles": [
+    "logs/VRisingServer.log"
   ]
 }

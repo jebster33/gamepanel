@@ -1,0 +1,70 @@
+{
+  "id": "abiotic-factor",
+  "name": "Abiotic Factor",
+  "category": "Survival",
+  "icon": "🧪",
+  "description": "Co-op survival-crafting in an underground research facility, for up to 6 players. Windows only.",
+  "platforms": [
+    "windows"
+  ],
+  "defaultMemory": 6144,
+  "variables": [
+    {
+      "name": "MAX_PLAYERS",
+      "label": "Max players",
+      "default": 6,
+      "type": "number"
+    },
+    {
+      "name": "SERVER_PASSWORD",
+      "label": "Join password",
+      "default": "",
+      "description": "Leave empty for an open server."
+    },
+    {
+      "name": "WORLD_NAME",
+      "label": "World name",
+      "default": "Cascade"
+    }
+  ],
+  "ports": [
+    {
+      "name": "game",
+      "default": 7777,
+      "protocol": "udp"
+    },
+    {
+      "name": "query",
+      "default": 27015,
+      "protocol": "udp",
+      "offset": 19238
+    }
+  ],
+  "windows": {
+    "install": [
+      {
+        "type": "steamcmd",
+        "appid": "2857200",
+        "label": "Install the Abiotic Factor dedicated server"
+      },
+      {
+        "type": "vcredist",
+        "label": "Install the Visual C++ runtime"
+      }
+    ]
+  },
+  "startCommand": "AbioticFactor\\Binaries\\Win64\\AbioticFactorServer-Win64-Shipping.exe -log -useperfthreads -NoAsyncLoadingThread -MaxServerPlayers={{MAX_PLAYERS}} -PORT={{PORT}} -QueryPort={{PORT_QUERY}} -ServerPassword={{SERVER_PASSWORD}} -SteamServerName=\"{{SERVER_NAME}}\" -WorldSaveName=\"{{WORLD_NAME}}\"",
+  "tailFiles": [
+    "AbioticFactor/Saved/Logs/AbioticFactor.log"
+  ],
+  "consoleInput": false,
+  "query": {
+    "type": "a2s",
+    "port": "query"
+  },
+  "readyOnPort": "game",
+  "logPatterns": {
+    "ready": "Session created|LogOnline.*Created"
+  },
+  "stopTimeout": 60
+}

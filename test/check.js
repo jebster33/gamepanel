@@ -89,13 +89,19 @@ function bashParses(script) {
 
 /* --------------------------------------------------------------- checks -- */
 
-const { buildInstallScript } = require(path.join(ROOT, 'server/lib/installer'));
-const { RESOLVERS } = require(path.join(ROOT, 'server/lib/resolvers'));
-const { SOURCES } = require(path.join(ROOT, 'server/lib/options'));
-const { QUERY_TYPES } = require(path.join(ROOT, 'server/lib/query'));
-const { PROVIDERS: MOD_PROVIDERS } = require(path.join(ROOT, 'server/lib/mods'));
+const { buildInstallScript } = require(path.join(ROOT, 'server/servers/install/bash'));
+const { RESOLVERS } = require(path.join(ROOT, 'server/games/resolvers'));
+const { SOURCES } = require(path.join(ROOT, 'server/games/options'));
+const { QUERY_TYPES } = require(path.join(ROOT, 'server/games/query'));
+const { PROVIDERS: MOD_PROVIDERS } = require(path.join(ROOT, 'server/features/mods'));
 
-const VALID_STEP_TYPES = ['apt', 'java', 'steamcmd', 'download', 'extract', 'writefile', 'mkdir', 'chmod', 'script'];
+const { variant, platformsOf } = require(path.join(ROOT, 'server/games/templates'));
+
+const COMMON_STEP_TYPES = ['apt', 'java', 'steamcmd', 'workshop', 'download', 'fetchlist', 'extract', 'copy', 'remove', 'run', 'writefile', 'mkdir', 'chmod'];
+const STEP_TYPES = {
+  linux: [...COMMON_STEP_TYPES, 'script'],
+  windows: [...COMMON_STEP_TYPES, 'powershell', 'vcredist', 'directx'],
+};
 
 /** Every {{VAR}} a template references. */
 function placeholdersIn(value) {
@@ -141,6 +147,13 @@ const BUILTIN_VARS = new Set([
   'PACK_DOWNLOADS',
   'LOADER_INSTALL',
   'START_SCRIPT',
+  'PACK_FILES',
+  'LOADER_URL',
+  'LOADER_FILE',
+  'LOADER_RUN',
+  'START_CMD',
+  'GAME_VERSION',
+  'LOADER',
 ]);
 
 async function checkTemplate(file) {
@@ -195,29 +208,37 @@ async function checkTemplate(file) {
     if (v.default === undefined && !v.generate) warn(`${id}: variable ${v.name} has no default`);
   }
 
-  /* --- placeholders resolve --- */
-  const used = placeholdersIn({
-    start: tpl.startCommand,
-    install: tpl.install,
-    config: tpl.configFiles,
-    patch: tpl.patchProperties,
-    image: tpl.image,
-    sidecars: tpl.sidecars,
-  });
-  for (const name of used) {
-    const isPort = name.startsWith('PORT_') && portNames.has(name.slice(5).toLowerCase());
-    if (!varNames.has(name) && !BUILTIN_VARS.has(name) && !isPort) {
-      fail(`${id}: uses {{${name}}} but nothing defines it`);
+  /* --- every platform: placeholders and install steps --- */
+  for (const platform of platformsOf(tpl)) {
+    const t = variant(tpl, platform);
+    const tag = platform === 'linux' ? id : `${id} (${platform})`;
+    const names = new Set((t.variables || []).map((v) => v.name));
+    const used = placeholdersIn({
+      start: t.startCommand,
+      install: t.install,
+      config: t.configFiles,
+      patch: t.patchProperties,
+      image: t.image,
+      sidecars: t.sidecars,
+      tail: t.tailFiles,
+      env: t.env,
+    });
+    for (const name of used) {
+      const isPort = name.startsWith('PORT_') && portNames.has(name.slice(5).toLowerCase());
+      if (!names.has(name) && !BUILTIN_VARS.has(name) && !isPort) fail(`${tag}: uses {{${name}}} but nothing defines it`);
     }
-  }
-  pass(`${id}: placeholders`);
-
-  /* --- install steps --- */
-  for (const step of tpl.install || []) {
-    if (!VALID_STEP_TYPES.includes(String(step.type).toLowerCase())) {
-      fail(`${id}: unknown install step type "${step.type}"`);
+    for (const step of t.install || []) {
+      if (!STEP_TYPES[platform].includes(String(step.type).toLowerCase())) fail(`${tag}: install step type "${step.type}" does not run on ${platform}`);
+      if (step.type === 'steamcmd' && !step.appid) fail(`${tag}: a steamcmd step has no appid`);
     }
-    if (step.type === 'steamcmd' && !step.appid) fail(`${id}: a steamcmd step has no appid`);
+    for (const file of t.tailFiles || []) {
+      if (/^[\\/]|^[a-z]:|\.\./i.test(file)) fail(`${tag}: tailFiles entry "${file}" leaves the server folder`);
+    }
+    if (platform === 'windows' && /(^|[;&|]\s*)(\.\/|exec |export )|\$\(/.test(t.startCommand || '')) {
+      fail(`${tag}: start command looks like bash, but Windows runs it with cmd.exe`);
+    }
+    if (t.readyOnPort && typeof t.readyOnPort === 'string' && !portNames.has(t.readyOnPort)) fail(`${tag}: readyOnPort names an unknown port`);
+    pass(`${tag}: placeholders and install steps`);
   }
 
   /* --- query and rcon point at real ports --- */
@@ -263,15 +284,19 @@ async function checkTemplate(file) {
   for (const port of tpl.ports || []) vars[`PORT_${port.name.toUpperCase()}`] = String(port.default);
   vars.PORT = String((tpl.ports || [])[0]?.default || 25565);
 
-  const { script } = buildInstallScript(tpl, '/srv/test', vars);
+  if (!platformsOf(tpl).includes('linux')) {
+    if (!LIVE) return;
+  } else {
+  const { script } = buildInstallScript(variant(tpl, 'linux'), '/srv/test', vars);
   const parsed = bashParses(script);
   if (parsed.ok) pass(`${id}: install script parses`);
   else fail(`${id}: install script is not valid bash`, parsed.error);
 
   // The start command is run through bash -lc, so it must parse too.
-  const startParsed = bashParses(require(path.join(ROOT, 'server/lib/util')).interpolate(tpl.startCommand, vars));
+  const startParsed = bashParses(require(path.join(ROOT, 'server/core/util')).interpolate(variant(tpl, 'linux').startCommand, vars));
   if (startParsed.ok) pass(`${id}: start command parses`);
   else fail(`${id}: start command is not valid bash`, startParsed.error);
+  }
 
   /* --- live checks --- */
   if (!LIVE) return;
@@ -326,7 +351,7 @@ async function checkTemplate(file) {
 async function checkOptionSources() {
   if (!LIVE) return;
   console.log(c.bold('\n▸ Option sources (dropdown data)'));
-  const { getOptions } = require(path.join(ROOT, 'server/lib/options'));
+  const { getOptions } = require(path.join(ROOT, 'server/games/options'));
   for (const source of SOURCES) {
     const query = source === 'modrinth-modpack-version' ? 'fabulously-optimized' : '';
     const data = await getOptions(source, query);
@@ -340,24 +365,50 @@ async function checkOptionSources() {
 
 function checkModules() {
   console.log(c.bold('\n▸ Panel modules'));
-  const dir = path.join(ROOT, 'server/lib');
-  for (const file of fs.readdirSync(dir).filter((f) => f.endsWith('.js'))) {
+  const walk = (dir) =>
+    fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(path.join(dir, e.name)) : e.name.endsWith('.js') ? [path.join(dir, e.name)] : []));
+  const serverDir = path.join(ROOT, 'server');
+  for (const full of walk(serverDir)) {
+    const rel = path.relative(ROOT, full).replace(/\\/g, '/');
+    if (rel === 'server/index.js') continue;
     try {
-      require(path.join(dir, file));
-      pass(`server/lib/${file} loads`);
+      require(full);
+      pass(`${rel} loads`);
     } catch (err) {
-      fail(`server/lib/${file} failed to load`, err.message);
+      fail(`${rel} failed to load`, err.message);
     }
   }
-  // index.js starts listening on import, so only check that it parses.
-  for (const file of ['server/index.js', 'public/js/app.js']) {
+  // index.js starts listening on import, and the UI is ES modules, so only check that they parse.
+  try {
+    execFileSync(process.execPath, ['--check', path.join(ROOT, 'server/index.js')], { stdio: 'pipe' });
+    pass('server/index.js parses');
+  } catch (err) {
+    fail('server/index.js has a syntax error', String(err.stderr || err.message).split('\n')[0]);
+  }
+  const publicJs = walk(path.join(ROOT, 'public/js'));
+  const exportsOf = new Map();
+  for (const full of publicJs) {
+    const rel = path.relative(ROOT, full).replace(/\\/g, '/');
+    const source = fs.readFileSync(full, 'utf8');
     try {
-      execFileSync(process.execPath, ['--check', path.join(ROOT, file)], { stdio: 'pipe' });
-      pass(`${file} parses`);
+      execFileSync(process.execPath, ['--input-type=module', '--check'], { input: source, stdio: 'pipe' });
+      pass(`${rel} parses`);
     } catch (err) {
-      fail(`${file} has a syntax error`, String(err.stderr || err.message).split('\n')[0]);
+      fail(`${rel} has a syntax error`, String(err.stderr || err.message).split('\n').slice(0, 3).join(' '));
+    }
+    exportsOf.set(full, new Set([...source.matchAll(/^export\s+(?:async\s+)?(?:function\s*\*?\s*|const\s+|let\s+|class\s+)([\w$]+)/gm)].map((m) => m[1])));
+  }
+  // The browser refuses the whole app when one import names something its module does not export.
+  for (const full of publicJs) {
+    const rel = path.relative(ROOT, full).replace(/\\/g, '/');
+    for (const m of fs.readFileSync(full, 'utf8').matchAll(/^import \{([^}]*)\} from '([^']+)'/gm)) {
+      const target = path.resolve(path.dirname(full), m[2].split('?')[0]);
+      const names = m[1].split(',').map((n) => n.trim()).filter(Boolean);
+      if (!exportsOf.has(target)) fail(`${rel} imports a missing file`, m[2]);
+      else for (const name of names) if (!exportsOf.get(target).has(name)) fail(`${rel} imports ${name}`, `${m[2]} does not export it`);
     }
   }
+  pass(`UI imports resolve across ${publicJs.length} modules`);
   for (const script of ['install.sh', 'update.sh', 'uninstall.sh']) {
     const parsed = bashParses(fs.readFileSync(path.join(ROOT, script), 'utf8'));
     if (parsed.ok) pass(`${script} parses`);

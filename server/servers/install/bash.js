@@ -1,0 +1,380 @@
+'use strict';
+
+/**
+ * Turns a template's declarative `install` steps into a single bash script.
+ *
+ * Running one script (rather than orchestrating steps from Node) means the
+ * install streams to the live console exactly like a terminal session, and any
+ * step can rely on the shell state left by the previous one.
+ */
+
+const { interpolate } = require('../../core/util');
+const { config } = require('../../core/config');
+
+const PREAMBLE = `#!/usr/bin/env bash
+set -uo pipefail
+export DEBIAN_FRONTEND=noninteractive
+# Keep apt from trying to open a dialog, and stop needrestart printing its
+# kernel/services report into the middle of a game install.
+export NEEDRESTART_MODE=a
+export NEEDRESTART_SUSPEND=1
+export HOME="\${HOME:-$GP_SERVER_DIR}"
+
+gp_log()  { printf '\\n\\033[36m[gamepanel]\\033[0m %s\\n' "$*"; }
+gp_warn() { printf '\\n\\033[33m[gamepanel]\\033[0m %s\\n' "$*"; }
+gp_die()  { printf '\\n\\033[31m[gamepanel]\\033[0m %s\\n' "$*"; exit 1; }
+
+# Package installs need root. install.sh grants the panel user a narrow
+# passwordless sudo rule for apt-get and dpkg only — so never probe with
+# "sudo -n true" (that command is not in the rule and would always fail).
+# Just attempt the real command and let its exit status speak.
+gp_sudo() {
+  if [ "$(id -u)" = "0" ]; then "$@"; return $?; fi
+  if command -v sudo >/dev/null 2>&1; then sudo -n "$@"; return $?; fi
+  return 127
+}
+
+gp_apt() {
+  command -v apt-get >/dev/null 2>&1 || { gp_warn "apt-get not available, skipping: $*"; return 1; }
+  if ! gp_sudo apt-get update -qq; then
+    gp_warn "Cannot run apt-get (needs root or the panel's sudo rule). Wanted: $*"
+    return 1
+  fi
+  if ! gp_sudo apt-get install -y -qq --no-install-recommends "$@"; then
+    gp_warn "apt-get install failed for: $*"
+    return 1
+  fi
+  gp_log "Installed packages: $*"
+}
+
+gp_have() { command -v "$1" >/dev/null 2>&1; }
+
+gp_fetch() {
+  local url="$1" dest="$2" ua="\${3:-GamePanel/2}"
+  gp_log "Downloading $url"
+  mkdir -p "$(dirname "$dest")"
+  if gp_have curl; then curl -fL -sS -A "$ua" --retry 3 --connect-timeout 20 -o "$dest" "$url" || gp_die "Download failed: $url"
+  elif gp_have wget; then wget -q -U "$ua" -O "$dest" "$url" || gp_die "Download failed: $url"
+  else gp_die "Neither curl nor wget is installed"; fi
+}
+
+gp_extract() {
+  local file="$1" dest="\${2:-.}"
+  mkdir -p "$dest"
+  gp_log "Extracting $file"
+  case "$file" in
+    *.tar.gz|*.tgz)  tar -xzf "$file" -C "$dest" ;;
+    *.tar.xz)        tar -xJf "$file" -C "$dest" ;;
+    *.tar.bz2)       tar -xjf "$file" -C "$dest" ;;
+    *.tar)           tar -xf  "$file" -C "$dest" ;;
+    *.zip)           gp_have unzip || gp_apt unzip; unzip -oq "$file" -d "$dest" ;;
+    *)               gp_die "Do not know how to extract $file" ;;
+  esac
+}
+
+gp_arch() {
+  case "$(uname -m)" in
+    x86_64|amd64) echo x64 ;;
+    aarch64|arm64) echo aarch64 ;;
+    armv7l|armv6l) echo arm ;;
+    *) echo x64 ;;
+  esac
+}
+
+# Last resort that needs no root at all: fetch a Temurin JRE from Adoptium
+# into the server directory. The panel puts <server>/.java/bin on PATH, so the
+# start command finds it exactly like a system-wide install.
+gp_java_local() {
+  local want="\${1:-21}" url
+  url="https://api.adoptium.net/v3/binary/latest/\${want}/ga/linux/$(gp_arch)/jre/hotspot/normal/eclipse"
+  gp_log "Installing a private Java \${want} runtime (no root required)"
+  # Relative paths: the script always runs with the server directory as cwd.
+  cd "$GP_SERVER_DIR" || return 1
+  rm -rf .java .java.tar.gz
+  if ! curl -fL -sS --retry 3 --connect-timeout 20 -o .java.tar.gz "$url"; then
+    gp_warn "Could not download a Java runtime from Adoptium"
+    return 1
+  fi
+  mkdir -p .java
+  tar -xzf .java.tar.gz -C .java --strip-components=1 || { gp_warn "Could not unpack the Java runtime"; return 1; }
+  rm -f .java.tar.gz
+  [ -f .java/bin/java ] || { gp_warn "The downloaded Java runtime looks incomplete"; return 1; }
+  # Some tar/filesystem combinations drop the exec bit — put it back.
+  chmod -R u+x .java/bin 2>/dev/null || true
+  export JAVA_HOME="$GP_SERVER_DIR/.java"
+  export PATH="$JAVA_HOME/bin:$PATH"
+  gp_log "Java ready: $(java -version 2>&1 | head -1)"
+}
+
+gp_ensure_java() {
+  local want="\${1:-21}"
+  # Anything already on PATH, including a runtime a previous install fetched.
+  [ -x "$GP_SERVER_DIR/.java/bin/java" ] && export PATH="$GP_SERVER_DIR/.java/bin:$PATH"
+  if gp_have java; then
+    local have
+    have="$(java -version 2>&1 | head -1 | sed -E 's/.*"([0-9]+).*/\\1/')"
+    if [ -n "$have" ] && [ "$have" -ge "$want" ] 2>/dev/null; then
+      gp_log "Java $have already present"
+      return 0
+    fi
+    gp_log "Java $have is older than $want — installing a newer runtime"
+  fi
+  # Try the system package first (fast, shared), then fall back to a private
+  # runtime so a panel without sudo rights can still run Java games.
+  if gp_apt "openjdk-\${want}-jre-headless"; then
+    gp_have java && return 0
+  fi
+  gp_java_local "$want" && return 0
+  gp_apt default-jre-headless && gp_have java && return 0
+  gp_die "Java could not be installed. Install a JRE >= $want on the host, or give the panel user sudo rights for apt-get, then reinstall."
+}
+
+gp_ensure_steamcmd() {
+  # Container images often ship SteamCMD already. Copy it next to the server
+  # instead of running it in place: the image's own folder sits on Docker's
+  # overlay filesystem, whose 64-bit inode numbers make 32-bit SteamCMD fail
+  # every install with "Disk write failure".
+  if [ ! -x "$GP_STEAMCMD/steamcmd.sh" ]; then
+    for candidate in /home/steam/steamcmd /usr/games/steamcmd /opt/steamcmd; do
+      [ -x "$candidate/steamcmd.sh" ] || continue
+      mkdir -p "$GP_STEAMCMD"
+      if cp -a "$candidate/." "$GP_STEAMCMD/" 2>/dev/null; then rm -rf "$GP_STEAMCMD/home"; else GP_STEAMCMD="$candidate"; fi
+      break
+    done
+  fi
+  if [ ! -x "$GP_STEAMCMD/steamcmd.sh" ]; then
+    gp_log "Bootstrapping SteamCMD"
+    # 32-bit runtime libs are required by steamcmd itself on 64-bit Ubuntu
+    if gp_have dpkg; then gp_sudo dpkg --add-architecture i386 >/dev/null 2>&1 || true; fi
+    gp_apt lib32gcc-s1 lib32stdc++6 ca-certificates || true
+    mkdir -p "$GP_STEAMCMD"
+    gp_fetch "https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz" "$GP_STEAMCMD/steamcmd.tar.gz"
+    tar -xzf "$GP_STEAMCMD/steamcmd.tar.gz" -C "$GP_STEAMCMD" || gp_die "Could not unpack SteamCMD"
+    rm -f "$GP_STEAMCMD/steamcmd.tar.gz"
+  fi
+}
+
+# SteamCMD keeps its own files (~/Steam) under HOME. Give it a home of its own
+# instead of the server folder, so the client never sits inside the game's
+# install directory.
+gp_steamcmd() {
+  local home="$GP_STEAMCMD/home"
+  mkdir -p "$home"
+  # 32-bit SteamCMD breaks on huge open-file limits ("Disk write failure"),
+  # which newer Docker and systemd hand out; run it in a subshell with a sane one.
+  (
+    if [ "$(ulimit -n)" = unlimited ] || [ "$(ulimit -n)" -gt 65536 ]; then ulimit -n 65536 2>/dev/null || ulimit -Sn 65536 2>/dev/null || true; fi
+    if [ "$(id -u)" != 0 ]; then
+      HOME="$home" "$GP_STEAMCMD/steamcmd.sh" "$@"
+      exit $?
+    fi
+    # Current SteamCMD refuses to install anything as root ("Missing
+    # configuration", "Disk write failure", "Missing file permissions"), and
+    # installs run as root so apt works. Hand SteamCMD to an ordinary user.
+    local uid="\${GP_UID:-0}" gid="\${GP_GID:-0}" a prev="" dirs=( "$GP_STEAMCMD" )
+    if [ "$uid" = 0 ]; then
+      if id steam >/dev/null 2>&1; then uid=$(id -u steam); gid=$(id -g steam); else uid=65534; gid=65534; fi
+    fi
+    for a in "$@"; do [ "$prev" = +force_install_dir ] && dirs+=( "$a" ); prev="$a"; done
+    mkdir -p "\${dirs[@]}" && chown -R "$uid:$gid" "\${dirs[@]}"
+    HOME="$home" setpriv --reuid "$uid" --regid "$gid" --clear-groups -- "$GP_STEAMCMD/steamcmd.sh" "$@"
+  )
+}
+
+# Print the end of SteamCMD's own logs: they hold the real reason behind
+# vague errors like "Disk write failure".
+gp_steam_logs() {
+  local f
+  for f in "$GP_STEAMCMD/home/Steam/logs/content_log.txt" "$GP_STEAMCMD/logs/content_log.txt" "$GP_STEAMCMD/home/Steam/logs/stderr.txt"; do
+    [ -s "$f" ] || continue
+    gp_warn "Last lines of $(basename "$f"):"
+    tail -n 25 "$f"
+  done
+}
+
+# When an install fails, say whether SteamCMD can write anywhere at all: a
+# tiny app into a scratch folder, and the same into the server folder.
+gp_steam_probe() {
+  gp_warn "Checking where SteamCMD can install (user $(id -u):$(id -g), open-file limit $(ulimit -n), SteamCMD in $GP_STEAMCMD)"
+  stat -c '  inode %i  %n' "$GP_STEAMCMD" "$GP_STEAMCMD/home" "$GP_SERVER_DIR" /tmp 2>/dev/null
+  df -h "$GP_SERVER_DIR" /tmp 2>/dev/null | sed 's/^/  /'
+  local dir
+  for dir in /tmp/gp-steam-probe "$GP_SERVER_DIR/.gp-steam-probe"; do
+    mkdir -p "$dir"
+    if gp_steamcmd +force_install_dir "$dir" +login anonymous +app_update 1007 +quit 2>&1 | grep -E "Success|ERROR" ; then :; fi
+    rm -rf "$dir"
+  done
+}
+
+gp_steam_app() {
+  local appid="$1" login="\${2:-anonymous}" branch="\${3:-}" prefetch="\${4:-}" n
+  gp_ensure_steamcmd
+  local args=( +@ShutdownOnFailedCommand 1 +@NoPromptForPassword 1 +force_install_dir "$GP_SERVER_DIR" +login $login )
+  # Some apps (Left 4 Dead 2) answer "Invalid platform" for Linux until the
+  # files of another platform have been fetched once; do that first.
+  if [ -n "$prefetch" ]; then
+    gp_log "Fetching the $prefetch files of app $appid first (Steam needs them for this game)"
+    args+=( +@sSteamCmdForcePlatformType "$prefetch" +app_update "$appid" validate +@sSteamCmdForcePlatformType linux )
+  fi
+  if [ -n "$branch" ]; then args+=( +app_update "$appid" -beta "$branch" validate )
+  else args+=( +app_update "$appid" validate ); fi
+  args+=( +quit )
+  # SteamCMD often stops early right after updating itself, so give it a few goes.
+  for n in 1 2 3; do
+    gp_log "Installing Steam app $appid (attempt $n, this can take a while)"
+    gp_steamcmd "\${args[@]}" && [ -d "$GP_SERVER_DIR/steamapps" ] && break
+    [ "$n" = 3 ] && { gp_steam_logs; gp_steam_probe; gp_die "SteamCMD failed for app $appid"; }
+    sleep 3
+  done
+  # SteamCMD ships its own runtime libs; make them discoverable for the server.
+  mkdir -p "$GP_SERVER_DIR/.steam/sdk64" "$GP_SERVER_DIR/.steam/sdk32"
+  cp -f "$GP_STEAMCMD/linux64/steamclient.so" "$GP_SERVER_DIR/.steam/sdk64/" 2>/dev/null || true
+  cp -f "$GP_STEAMCMD/linux32/steamclient.so" "$GP_SERVER_DIR/.steam/sdk32/" 2>/dev/null || true
+}
+
+# One Steam Workshop item into a folder. Large items often time out on the
+# first try, so give SteamCMD a few goes.
+gp_workshop_item() {
+  local appid="$1" item="$2" dest="$3" stage="$GP_SERVER_DIR/.gamepanel/steam-workshop" n
+  gp_ensure_steamcmd
+  mkdir -p "$stage"
+  for n in 1 2 3; do
+    gp_log "SteamCMD: downloading Workshop item $item (attempt $n)"
+    gp_steamcmd +force_install_dir "$stage" +login anonymous +workshop_download_item "$appid" "$item" validate +quit
+    [ -d "$stage/steamapps/workshop/content/$appid/$item" ] && break
+  done
+  local src="$stage/steamapps/workshop/content/$appid/$item"
+  [ -d "$src" ] || gp_die "SteamCMD could not download Workshop item $item. Check that it exists, is public, and belongs to app $appid."
+  rm -rf "$dest"; mkdir -p "$dest"
+  cp -rf "$src/." "$dest/" || gp_die "Could not copy Workshop item $item"
+  rm -rf "$src"
+}
+
+cd "$GP_SERVER_DIR" || gp_die "Server directory is missing"
+`;
+
+/** A resolver's JSON file list; entries that would leave the server folder are dropped. */
+function parseList(value) {
+  let list = [];
+  try {
+    list = JSON.parse(value || '[]');
+  } catch {
+    return [];
+  }
+  return (Array.isArray(list) ? list : []).filter(
+    (f) => f && typeof f.url === 'string' && /^https:\/\//.test(f.url) && typeof f.path === 'string' && !f.path.split(/[\\/]/).includes('..') && !/^[\\/]|^[a-z]:/i.test(f.path)
+  );
+}
+
+function shellQuote(value) {
+  return `'${String(value).replace(/'/g, `'\\''`)}'`;
+}
+
+function stepToShell(step, vars) {
+  const type = String(step.type || '').toLowerCase();
+  const val = (v) => interpolate(v, vars);
+
+  switch (type) {
+    case 'apt':
+      return `gp_apt ${(step.packages || []).map((p) => shellQuote(val(p))).join(' ')}`;
+
+    case 'java':
+      return `gp_ensure_java ${shellQuote(val(step.version || '21'))}`;
+
+    case 'steamcmd':
+      return `gp_steam_app ${shellQuote(val(step.appid))} ${shellQuote(val(step.login || 'anonymous'))} ${shellQuote(
+        val(step.branch || '')
+      )} ${shellQuote(val(step.prefetchPlatform || ''))}`;
+
+    case 'workshop':
+      return `gp_workshop_item ${shellQuote(val(step.appid))} ${shellQuote(val(step.item))} ${shellQuote(val(step.dest))}`;
+
+    case 'download':
+      return `gp_fetch ${shellQuote(val(step.url))} ${shellQuote(val(step.dest || 'download.bin'))}${
+        step.userAgent ? ` ${shellQuote(val(step.userAgent))}` : ''
+      }`;
+
+    case 'fetchlist': {
+      // A JSON list of {url, path} worked out by a resolver (e.g. a modpack's mods).
+      const list = parseList(val(step.list));
+      if (!list.length) return `gp_log ${shellQuote('Nothing to download')}`;
+      return list.map((f) => `gp_fetch ${shellQuote(f.url)} ${shellQuote(f.path)}`).join('\n');
+    }
+
+    case 'copy': {
+      // Copy a file or a folder's contents; a missing source is skipped.
+      const from = shellQuote(val(step.from));
+      const to = shellQuote(val(step.to || '.'));
+      return `if [ -d ${from} ]; then mkdir -p ${to}; cp -rf ${from}/. ${to}/; elif [ -e ${from} ]; then mkdir -p "$(dirname ${to})"; cp -f ${from} ${to}; fi`;
+    }
+
+    case 'remove':
+      return `rm -rf ${[].concat(step.path || step.paths || []).map((p) => shellQuote(val(p))).join(' ')}`;
+
+    case 'run': {
+      const command = val(step.command || '').trim();
+      return command ? `${command} || gp_die ${shellQuote(`${step.label || 'The command'} failed`)}` : 'true';
+    }
+
+    case 'extract':
+      return `gp_extract ${shellQuote(val(step.file))} ${shellQuote(val(step.dest || '.'))}${
+        step.deleteArchive ? `\nrm -f ${shellQuote(val(step.file))}` : ''
+      }`;
+
+    case 'writefile': {
+      const content = val(step.content ?? '');
+      const b64 = Buffer.from(content, 'utf8').toString('base64');
+      const dest = shellQuote(val(step.path));
+      return `mkdir -p "$(dirname ${dest})"\nprintf '%s' ${shellQuote(b64)} | base64 -d > ${dest}\ngp_log "Wrote ${val(
+        step.path
+      )}"`;
+    }
+
+    case 'chmod':
+      return `chmod ${shellQuote(val(step.mode || '+x'))} ${shellQuote(val(step.path))} || true`;
+
+    case 'mkdir':
+      return `mkdir -p ${shellQuote(val(step.path))}`;
+
+    case 'script':
+      return val(step.run || step.script || '');
+
+    default:
+      return `gp_warn ${shellQuote(`Unknown install step type: ${step.type}`)}`;
+  }
+}
+
+/**
+ * @param {object} template
+ * @param {Record<string,string|number>} vars fully-resolved template variables
+ * @returns {{script:string, env:Record<string,string>}}
+ */
+function buildInstallScript(template, serverDir, vars, options = {}) {
+  const steps = (template.install || []).map((step, i) => {
+    // Labels are shown in the console, so they get the same {{VAR}} treatment
+    // as the commands themselves.
+    const label = interpolate(step.label || `${step.type} step ${i + 1}`, vars);
+    return `gp_log ${shellQuote(label)}\n${stepToShell(step, vars)}`;
+  });
+
+  const script = [
+    PREAMBLE,
+    ...steps,
+    options.postScript || '',
+    `gp_log "Install complete"`,
+    `exit 0`,
+  ]
+    .filter(Boolean)
+    .join('\n\n');
+
+  const env = {
+    GP_SERVER_DIR: serverDir,
+    GP_STEAMCMD: options.steamcmdDir || config.steamcmdDir,
+  };
+  for (const [k, v] of Object.entries(vars)) {
+    if (/^[A-Z][A-Z0-9_]*$/.test(k)) env[k] = String(v);
+  }
+  return { script, env };
+}
+
+module.exports = { buildInstallScript, parseList };
