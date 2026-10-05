@@ -101,4 +101,4 @@ function remove(serverId, name) {
   return { ok: true };
 }
 
-module.exports = { list, create, restore, remove, resolve, prune };
+module.exports = { list, create, restore, remove, resolve, prune, dirFor: backupDirFor };
