@@ -62,7 +62,7 @@
     "port": "game"
   },
   "logPatterns": {
-    "ready": "Server started|Loaded world",
+    "ready": "Server started|Started server using port|Loaded world",
     "join": "([^ ]+) joined the game",
     "leave": "([^ ]+) left the game"
   },
