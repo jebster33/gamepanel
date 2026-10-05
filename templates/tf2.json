@@ -67,6 +67,11 @@
       "type": "chmod",
       "path": "srcds_run",
       "mode": "+x"
+    },
+    {
+      "type": "chmod",
+      "path": "srcds_run_64",
+      "mode": "+x"
     }
   ],
   "configFiles": [
@@ -76,7 +81,7 @@
       "content": "hostname \"{{SERVER_NAME}}\"\nrcon_password \"{{RCON_PASSWORD}}\"\nsv_lan 0\nmp_timelimit 30\n"
     }
   ],
-  "startCommand": "./srcds_run -game tf -console -norestart -port {{PORT}} +tv_port {{PORT_TV}} +maxplayers {{MAX_PLAYERS}} +map {{MAP}} +sv_setsteamaccount \"{{GSLT}}\"",
+  "startCommand": "./srcds_run_64 -game tf -console -norestart -port {{PORT}} +tv_port {{PORT_TV}} +maxplayers {{MAX_PLAYERS}} +map {{MAP}} +sv_setsteamaccount \"{{GSLT}}\"",
   "stopCommand": "quit",
   "stopTimeout": 45,
   "query": {
