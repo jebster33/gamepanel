@@ -67,7 +67,7 @@
   "install": [
     {
       "type": "steamcmd",
-      "appid": "3017310",
+      "appid": "3017300",
       "label": "Install the Soulmask dedicated server"
     },
     {
