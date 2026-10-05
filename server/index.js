@@ -54,6 +54,8 @@ async function main() {
   function serveStatic(req, res, pathname) {
     let rel = decodeURIComponent(pathname);
     if (rel === '/' || rel === '') rel = '/index.html';
+    // Public status pages: /status/<link id>
+    if (/^\/status\/[A-Za-z0-9_-]+\/?$/.test(rel)) rel = '/status.html';
     const file = path.join(config.publicDir, path.normalize(rel).replace(/^(\.\.[/\\])+/, ''));
     if (!file.startsWith(config.publicDir)) {
       json(res, 400, { error: 'Bad path' });

@@ -171,4 +171,31 @@ module.exports = (router, { store, manager, scheduler }, { requireAdmin, require
     scheduler.remove(server, params.sid);
     return { ok: true };
   });
+
+  /* ------------------------------------------------- public status page -- */
+
+  const statusPage = require('../../features/status-page');
+
+  router.get('/api/status-page', ({ user }) => {
+    requireAdmin(user);
+    return { settings: statusPage.settings(store) };
+  });
+
+  router.patch('/api/status-page', ({ user, body }) => {
+    requireAdmin(user);
+    const settings = statusPage.update(store, body);
+    store.addEvent('settings.status_page', `Public status page ${settings.enabled ? 'on' : 'off'}${body.newLink ? ' (new link)' : ''} (${user.username})`);
+    return { settings };
+  });
+
+  router.get(
+    '/api/public/status/:slug',
+    ({ params, res }) => {
+      const view = statusPage.publicView(store, manager, params.slug);
+      if (!view) fail(404, 'This status page does not exist or is turned off');
+      res.setHeader('Cache-Control', 'no-store');
+      return view;
+    },
+    { public: true }
+  );
 };

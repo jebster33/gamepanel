@@ -1,4 +1,5 @@
 import { api } from '../core/api.js';
+import { copyToClipboard } from '../ui/clipboard.js';
 import { loadTemplates } from '../core/boot.js';
 import { setCrumbs } from '../core/router.js';
 import { state } from '../core/state.js';
@@ -97,6 +98,14 @@ export async function renderSettings(view) {
         Works with Backblaze B2, Cloudflare R2, Amazon S3, Wasabi and MinIO. Use a key that can only reach this one bucket.
       </p>
       <div id="cloud-form" class="faint"><span class="spinner"></span> Loading…</div>
+    </div>
+
+    <div class="card mb-16" id="status-page">
+      <h4>Public status page</h4>
+      <p class="faint" style="margin:0 0 14px;line-height:1.6">
+        A page anyone with the link can open, no sign-in: which servers are up, who is on and the address to join. Good for a Discord channel.
+      </p>
+      <div id="sp-form" class="faint"><span class="spinner"></span> Loading…</div>
     </div>
 
     <div class="card mb-16">
@@ -247,6 +256,77 @@ export async function renderSettings(view) {
   });
 
   renderCloudForm();
+  renderStatusPageForm();
+}
+
+/* ---------------------------------------------------- public status page */
+
+async function renderStatusPageForm() {
+  const host = $('#sp-form');
+  if (!host) return;
+  let sp;
+  try {
+    sp = (await api('/api/status-page')).settings;
+  } catch (err) {
+    host.textContent = err.message;
+    return;
+  }
+  const link = sp.slug ? `${location.origin}/status/${sp.slug}` : '';
+  const picked = new Set(sp.servers);
+  host.classList.remove('faint');
+  host.innerHTML = `
+    <div class="checkbox-row"><input type="checkbox" id="sp-enabled" ${sp.enabled ? 'checked' : ''} /><label for="sp-enabled">Turn on the status page</label></div>
+    ${
+      link
+        ? `<div class="row mt-16"><span class="mono" style="overflow-wrap:anywhere">${esc(link)}</span>
+             <button class="btn btn-sm" id="sp-copy">Copy link</button>
+             <a class="btn btn-sm" href="${esc(link)}" target="_blank" rel="noopener">Open</a>
+             <button class="btn btn-sm btn-ghost" id="sp-new" title="The old link stops working">New link</button></div>`
+        : ''
+    }
+    <div class="form-grid mt-16">
+      <label><span>Title</span><input id="sp-title" value="${esc(sp.title)}" placeholder="${esc(document.title)}" /></label>
+      <label><span>Address players use</span><input id="sp-host" value="${esc(sp.host)}" placeholder="play.example.com or your public IP" /><div class="hint">Shown with each server's port. Empty uses the address the page was opened on.</div></label>
+    </div>
+    <label class="field"><span>Description</span><input id="sp-desc" value="${esc(sp.description)}" placeholder="Optional, e.g. rules or a Discord invite" /></label>
+    <div class="field-label mt-16">Servers on the page</div>
+    <div class="perm-grid" style="gap:2px 14px">${
+      state.servers.length
+        ? state.servers
+            .map((x) => `<label class="perm-row"><input type="checkbox" data-sp-server="${esc(x.id)}" ${picked.has(x.id) ? 'checked' : ''} /><span>${esc(x.templateIcon || '🎮')} ${esc(x.name)}</span></label>`)
+            .join('')
+        : '<span class="faint">No servers yet</span>'
+    }</div>
+    <div class="checkbox-row mt-16"><input type="checkbox" id="sp-players" ${sp.showPlayers ? 'checked' : ''} /><label for="sp-players">Show the names of players who are on</label></div>
+    <div class="checkbox-row"><input type="checkbox" id="sp-address" ${sp.showAddress ? 'checked' : ''} /><label for="sp-address">Show the address to join</label></div>
+    <button class="btn btn-primary mt-16" id="sp-save">Save status page</button>`;
+
+  const save = async (extra = {}) => {
+    try {
+      await api('/api/status-page', {
+        method: 'PATCH',
+        body: {
+          enabled: $('#sp-enabled').checked,
+          title: $('#sp-title').value,
+          description: $('#sp-desc').value,
+          host: $('#sp-host').value,
+          servers: [...document.querySelectorAll('[data-sp-server]')].filter((el) => el.checked).map((el) => el.dataset.spServer),
+          showPlayers: $('#sp-players').checked,
+          showAddress: $('#sp-address').checked,
+          ...extra,
+        },
+      });
+      toast(extra.newLink ? 'New link made. The old one no longer works.' : 'Status page saved');
+      renderStatusPageForm();
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+  };
+  $('#sp-save').addEventListener('click', () => save());
+  $('#sp-copy')?.addEventListener('click', (e) => copyToClipboard(link, e.currentTarget));
+  $('#sp-new')?.addEventListener('click', async () => {
+    if (await confirmModal('New status page link', 'Anyone using the old link will get "not found". Continue?', 'New link')) save({ newLink: true });
+  });
 }
 
 /* --------------------------------------------------------- cloud backups */
