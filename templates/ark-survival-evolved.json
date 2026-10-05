@@ -180,5 +180,11 @@
         "key": "ActiveMods"
       }
     }
+  },
+  "tailFiles": [
+    "ShooterGame/Saved/Logs/ShooterGame.log"
+  ],
+  "ci": {
+    "bootTimeout": 1800
   }
 }
