@@ -6,7 +6,8 @@
  * Mixed into ServerManager (see manager.js).
  */
 
-const { query } = require('../games/query');
+const { query, queryA2SPlayers } = require('../games/query');
+const { setPlayers, playerDetails } = require('../games/players');
 const { sampleProcessTree, cpuPercent, countConnections, directorySize } = require('../features/metrics');
 const { STATUS } = require('./constants');
 
@@ -51,6 +52,8 @@ module.exports = {
         memoryLimit: server.memory * 1024 * 1024,
         players: rt.players,
         maxPlayers: rt.maxPlayers ?? server.maxPlayers,
+        playerList: rt.playerList,
+        playerDetails: playerDetails(rt),
         ping: rt.ping,
         connections: rt.connections,
         networkRx: rt.networkRx || 0,
@@ -99,7 +102,12 @@ module.exports = {
           rt.queryError = null;
           if (typeof result.players === 'number') rt.players = result.players;
           if (typeof result.maxPlayers === 'number' && result.maxPlayers > 0) rt.maxPlayers = result.maxPlayers;
-          if (result.playerList?.length) rt.playerList = result.playerList;
+          if (result.players === 0) setPlayers(rt, []);
+          else if (type === 'a2s' || type === 'source') {
+            const list = await queryA2SPlayers(host, port);
+            // Names still loading in come back blank; the count is still right.
+            if (list) setPlayers(rt, list.filter((p) => p.name));
+          } else if (result.playerList?.length) setPlayers(rt, result.playerList);
           if (result.version) rt.version = result.version;
           if (result.motd) rt.motd = result.motd;
           if (result.map) rt.map = result.map;

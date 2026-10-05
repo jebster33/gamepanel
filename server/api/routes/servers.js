@@ -15,6 +15,13 @@ module.exports = (router, { store, manager, scheduler }, { requireAdmin, require
     return { server: manager.publicServer(server) };
   });
 
+  /** Bring an existing server folder under the panel instead of installing a new one. */
+  router.post('/api/servers/import', async ({ user, body }) => {
+    requireAdmin(user);
+    const server = await manager.importExisting(body, user);
+    return { server: manager.publicServer(server) };
+  });
+
   router.get('/api/servers/:id', ({ user, params }) => {
     const server = serverFor(user, params.id);
     const template = manager.template(server);
@@ -70,6 +77,20 @@ module.exports = (router, { store, manager, scheduler }, { requireAdmin, require
   router.get('/api/servers/:id/console', ({ user, params }) => {
     const server = serverFor(user, params.id, 'console');
     return { lines: manager.getConsole(server.id) };
+  });
+
+  /** Kick or ban someone on the Players tab, through the game's own console command. */
+  router.post('/api/servers/:id/players/action', async ({ user, params, body }) => {
+    const server = serverFor(user, params.id, 'command');
+    const commands = require('../../games/players').playerCommands(manager.template(server));
+    const template = commands[body.action];
+    if (!template) fail(400, `This game has no ${String(body.action || 'such')} command the panel knows`);
+    const name = String(body.name || '');
+    // Only someone actually online, and nothing that could smuggle in a second command.
+    if (!manager.rt(server.id).playerList.includes(name) || /["\r\n\x00-\x1f]/.test(name)) fail(400, 'That player is not online');
+    const result = await manager.sendCommand(server.id, template.replace('{name}', name));
+    store.addEvent(`player.${body.action}`, `${user.username} used ${body.action} on ${name} (${server.name})`, { serverId: server.id });
+    return result;
   });
 
   router.post('/api/servers/:id/command', async ({ user, params, body }) => {

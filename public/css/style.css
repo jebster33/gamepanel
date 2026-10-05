@@ -1852,6 +1852,315 @@ tbody tr:hover {
   border-radius: var(--radius-sm);
 }
 
+/* ------------------------------------------------- two-factor code entry */
+
+/* Pill switch with a lit active half ("Authenticator | Recovery code"). */
+.seg {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  margin-bottom: 18px;
+  background: #0c0d0b;
+  border: 1px solid #2c2d29;
+  border-radius: 999px;
+}
+.seg-item {
+  flex: 1;
+  padding: 7px 10px;
+  font: inherit;
+  font-size: 12.5px;
+  color: #a19f96;
+  background: none;
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.2s var(--ease), color 0.2s var(--ease);
+}
+.seg-item.active {
+  color: var(--lime-ink);
+  background: var(--lime);
+  box-shadow: var(--lime-glow);
+}
+.otp {
+  --otp-surface: #0c0d0b;
+  --otp-border: #2c2d29;
+  --otp-text: #ecebe6;
+}
+.otp-wrap {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 72px;
+  margin-bottom: 14px;
+}
+.otp-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.otp-gap {
+  width: 6px;
+  height: 2px;
+  background: var(--otp-border);
+  border-radius: 2px;
+}
+.otp-digit {
+  width: 44px !important;
+  height: 54px;
+  padding: 0 !important;
+  font-family: var(--mono);
+  font-size: 22px;
+  font-weight: 600;
+  text-align: center;
+  color: var(--otp-text) !important;
+  background: var(--otp-surface) !important;
+  border: 1px solid var(--otp-border) !important;
+  border-radius: 10px !important;
+  caret-color: var(--lime);
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s var(--ease);
+}
+.otp-digit:focus {
+  outline: none;
+  border-color: var(--lime) !important;
+  box-shadow: 0 0 0 3px var(--lime-soft);
+}
+.otp.checking .otp-digit {
+  border-color: var(--lime) !important;
+  animation: otp-wait 0.9s ease-in-out infinite;
+  animation-delay: calc(var(--i) * 70ms);
+}
+.otp.shake .otp-row {
+  animation: otp-shake 0.4s;
+}
+.otp.shake .otp-digit {
+  border-color: var(--red) !important;
+}
+/* Success: the digits spiral into the middle of the row, where a phone ticks. */
+.otp.success .otp-digit {
+  opacity: 0;
+  border-color: var(--lime) !important;
+  box-shadow: var(--lime-glow);
+  transform-origin: calc(50% + var(--dx, 0px)) calc(50% + var(--dy, 0px));
+  animation: otp-swirl 0.75s cubic-bezier(0.55, 0, 0.35, 1) both;
+  animation-delay: calc(var(--i) * 45ms);
+}
+.otp.success .otp-gap,
+.otp.success .seg,
+.otp.success .otp-back {
+  opacity: 0;
+  transition: opacity 0.25s;
+}
+.otp-phone {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 84px;
+  height: 126px;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, -50%) scale(0.4) rotate(-10deg);
+}
+.otp-phone-body {
+  fill: #20211e;
+  stroke: #3a3b36;
+  stroke-width: 1.5;
+}
+.otp-phone-screen {
+  fill: #0c0d0b;
+}
+.otp-phone-notch {
+  fill: #3a3b36;
+}
+.otp-phone-ring,
+.otp-phone-check {
+  fill: none;
+  stroke: var(--lime);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.otp-phone-ring {
+  stroke-dasharray: 88;
+  stroke-dashoffset: 88;
+  transform: rotate(-90deg);
+  transform-origin: 40px 56px;
+}
+.otp-phone-check {
+  stroke-dasharray: 26;
+  stroke-dashoffset: 26;
+}
+.otp.success .otp-phone {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1) rotate(0);
+  animation: otp-phone-in 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) 0.42s both;
+}
+.otp.success .otp-phone-screen {
+  fill: rgba(198, 244, 50, 0.12);
+  transition: fill 0.4s 0.8s;
+}
+.otp.success .otp-phone-ring {
+  stroke-dashoffset: 0;
+  filter: drop-shadow(0 0 4px rgba(198, 244, 50, 0.7));
+  animation: otp-draw-ring 0.45s var(--ease) 0.78s both;
+}
+.otp.success .otp-phone-check {
+  stroke-dashoffset: 0;
+  animation: otp-draw-check 0.35s var(--ease) 1.12s both;
+}
+.otp-recovery label {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.otp-back {
+  display: block;
+  margin: 14px auto 0;
+  font: inherit;
+  font-size: 12.5px;
+  color: #a19f96;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.otp-back:hover {
+  color: #ecebe6;
+}
+@keyframes otp-swirl {
+  0% {
+    opacity: 1;
+    transform: rotate(0) scale(1);
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(320deg) scale(0);
+  }
+}
+@keyframes otp-phone-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.4) rotate(-10deg);
+  }
+}
+@keyframes otp-draw-ring {
+  from {
+    stroke-dashoffset: 88;
+  }
+}
+@keyframes otp-draw-check {
+  from {
+    stroke-dashoffset: 26;
+  }
+}
+@keyframes otp-wait {
+  50% {
+    transform: translateY(-3px);
+  }
+}
+@keyframes otp-shake {
+  20%,
+  60% {
+    transform: translateX(-7px);
+  }
+  40%,
+  80% {
+    transform: translateX(7px);
+  }
+}
+/* Inside the app (two-factor setup) the boxes follow the theme. */
+.card .otp {
+  --otp-surface: var(--inset);
+  --otp-border: var(--border-strong);
+  --otp-text: var(--text);
+}
+:root[data-theme="light"] .card .otp {
+  --otp-surface: var(--surface);
+}
+.qr-box {
+  justify-self: start;
+  display: inline-grid;
+  padding: 10px;
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 0 0 1px var(--border);
+}
+.user-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+  border-radius: var(--radius-sm);
+}
+.user-link:hover .user-name {
+  color: var(--lime-text);
+}
+@media (max-width: 640px) {
+  .tf-setup {
+    grid-template-columns: 1fr !important;
+  }
+}
+.players-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--border);
+}
+.players-count {
+  font-family: var(--mono);
+  font-size: 22px;
+  color: var(--lime-text);
+}
+.players-card th:first-child,
+.players-card td:first-child {
+  padding-left: 18px;
+}
+.players-card th:last-child,
+.players-card td:last-child {
+  padding-right: 18px;
+}
+.player {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 550;
+}
+.player-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--lime);
+  box-shadow: var(--lime-glow);
+}
+.player-avatar {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  font-size: 12px;
+  border-radius: 8px;
+  color: var(--text);
+  background: var(--raised);
+  border: 1px solid var(--border);
+}
+.recovery-codes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 18px;
+  padding: 14px 16px;
+  font-family: var(--mono);
+  font-size: 14px;
+  background: var(--raised);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius);
+}
+
 /* ------------------------------------------------------------ utilities */
 
 .hidden,

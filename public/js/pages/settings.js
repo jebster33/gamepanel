@@ -15,6 +15,8 @@ const EVENT_LABELS = {
   'server.stopped': 'A server stops',
   'backup.created': 'A backup is made',
   'backup.failed': 'A backup fails',
+  'backup.uploaded': 'A backup is copied to the cloud',
+  'backup.upload_failed': 'Copying a backup to the cloud fails',
   'schedule.failed': 'A scheduled task fails',
   'panel.updated': 'The panel updates itself',
   'user.login': 'Someone signs in',
@@ -86,6 +88,15 @@ export async function renderSettings(view) {
         )}" /></label>
       </div>
       <button class="btn mt-16" id="i-save">Save integrations</button>
+    </div>
+
+    <div class="card mb-16" id="cloud">
+      <h4>Cloud backups</h4>
+      <p class="faint" style="margin:0 0 14px;line-height:1.6">
+        Optional. Copies every backup (by hand or scheduled) to an S3-compatible bucket, so a dead disk does not take your worlds with it.
+        Works with Backblaze B2, Cloudflare R2, Amazon S3, Wasabi and MinIO. Use a key that can only reach this one bucket.
+      </p>
+      <div id="cloud-form" class="faint"><span class="spinner"></span> Loading…</div>
     </div>
 
     <div class="card mb-16">
@@ -233,6 +244,94 @@ export async function renderSettings(view) {
     const data = await api('/api/templates/reload', { method: 'POST', body: {} });
     await loadTemplates();
     toast(`${data.count} templates loaded`);
+  });
+
+  renderCloudForm();
+}
+
+/* --------------------------------------------------------- cloud backups */
+
+const CLOUD_PRESETS = {
+  b2: { label: 'Backblaze B2', endpoint: 'https://s3.us-west-004.backblazeb2.com', hint: 'B2: Buckets, then the bucket\'s Endpoint. Keys under Application Keys.' },
+  r2: { label: 'Cloudflare R2', endpoint: 'https://<account id>.r2.cloudflarestorage.com', hint: 'R2: Manage R2 API Tokens gives the endpoint and both keys.' },
+  s3: { label: 'Amazon S3', endpoint: 'https://s3.us-east-1.amazonaws.com', hint: 'Use the region your bucket is in.' },
+  wasabi: { label: 'Wasabi', endpoint: 'https://s3.eu-central-1.wasabisys.com', hint: 'Use the service URL for your bucket\'s region.' },
+  other: { label: 'MinIO or other', endpoint: 'https://minio.example.com', hint: 'Any S3-compatible server.' },
+};
+
+async function renderCloudForm() {
+  const host = $('#cloud-form');
+  if (!host) return;
+  let c;
+  try {
+    c = (await api('/api/cloud-backups')).settings;
+  } catch (err) {
+    host.textContent = err.message;
+    return;
+  }
+  const preset = Object.entries(CLOUD_PRESETS).find(([, p]) => c.endpoint && c.endpoint.includes(p.endpoint.split('.').slice(-2).join('.')))?.[0] || (c.endpoint ? 'other' : 'b2');
+  host.classList.remove('faint');
+  host.innerHTML = `
+    <div class="form-grid">
+      <label><span>Provider</span><select id="c-preset">${Object.entries(CLOUD_PRESETS)
+        .map(([k, p]) => `<option value="${k}" ${k === preset ? 'selected' : ''}>${esc(p.label)}</option>`)
+        .join('')}</select></label>
+      <label><span>Endpoint</span><input id="c-endpoint" value="${esc(c.endpoint)}" placeholder="${esc(CLOUD_PRESETS[preset].endpoint)}" /></label>
+      <label><span>Bucket</span><input id="c-bucket" value="${esc(c.bucket)}" /></label>
+      <label><span>Region</span><input id="c-region" value="${esc(c.region)}" placeholder="${esc(c.regionGuess || 'from the endpoint')}" /></label>
+      <label><span>Access key ID</span><input id="c-key" value="${esc(c.accessKeyId)}" autocomplete="off" /></label>
+      <label><span>Secret access key</span><input id="c-secret" type="password" autocomplete="new-password" placeholder="${c.hasSecret ? 'Saved. Type to replace' : ''}" /></label>
+      <label><span>Folder in the bucket</span><input id="c-prefix" value="${esc(c.prefix)}" placeholder="gamepanel/" /></label>
+      <label><span>Copies to keep per server</span><input id="c-keep" type="number" min="0" value="${Number(c.keep) || 0}" /><div class="hint">0 keeps every copy (or let a bucket lifecycle rule expire them).</div></label>
+    </div>
+    <div class="hint" id="c-hint">${esc(CLOUD_PRESETS[preset].hint)}</div>
+    <div class="checkbox-row mt-16"><input type="checkbox" id="c-path" ${c.pathStyle ? 'checked' : ''} /><label for="c-path">Path-style addresses (leave on unless your provider says otherwise)</label></div>
+    <div class="checkbox-row"><input type="checkbox" id="c-enabled" ${c.enabled ? 'checked' : ''} /><label for="c-enabled">Copy new backups to this bucket</label></div>
+    <div class="row mt-16">
+      <button class="btn" id="c-test">Test connection</button>
+      <button class="btn btn-primary" id="c-save">Save cloud backups</button>
+      <span class="faint" id="c-status"></span>
+    </div>`;
+
+  const values = () => ({
+    endpoint: $('#c-endpoint').value.trim(),
+    bucket: $('#c-bucket').value.trim(),
+    region: $('#c-region').value.trim(),
+    accessKeyId: $('#c-key').value.trim(),
+    secretAccessKey: $('#c-secret').value.trim(),
+    prefix: $('#c-prefix').value.trim(),
+    keep: Number($('#c-keep').value) || 0,
+    pathStyle: $('#c-path').checked,
+  });
+
+  $('#c-preset').addEventListener('change', (event) => {
+    const p = CLOUD_PRESETS[event.target.value];
+    $('#c-endpoint').placeholder = p.endpoint;
+    $('#c-hint').textContent = p.hint;
+    $('#c-path').checked = event.target.value !== 's3';
+  });
+  $('#c-test').addEventListener('click', async (event) => {
+    const btn = event.currentTarget;
+    btn.disabled = true;
+    $('#c-status').innerHTML = '<span class="spinner"></span> Writing a test file…';
+    try {
+      const result = await api('/api/cloud-backups/test', { method: 'POST', body: values() });
+      $('#c-status').textContent = `Works (region ${result.region}).`;
+    } catch (err) {
+      $('#c-status').textContent = err.message;
+    } finally {
+      btn.disabled = false;
+    }
+  });
+  $('#c-save').addEventListener('click', async () => {
+    try {
+      const { settings } = await api('/api/cloud-backups', { method: 'PATCH', body: { ...values(), enabled: $('#c-enabled').checked } });
+      toast(settings.enabled ? 'Cloud backups on. New backups are copied to the bucket.' : 'Cloud backup settings saved');
+      $('#c-secret').value = '';
+      $('#c-secret').placeholder = settings.hasSecret ? 'Saved. Type to replace' : '';
+    } catch (err) {
+      toast(err.message, 'error');
+    }
   });
 }
 

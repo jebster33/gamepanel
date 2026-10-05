@@ -28,6 +28,7 @@ const { config } = require('../core/config');
 const { logger, uid, slugify, fail, sleep } = require('../core/util');
 const { HOST_PLATFORM, isWindows } = require('../core/platform');
 const { variant } = require('../games/templates');
+const { playerCommands, playerDetails } = require('../games/players');
 const { Ring } = require('../features/metrics');
 const { docker } = require('./runtimes/docker-api');
 
@@ -272,6 +273,8 @@ class ServerManager extends EventEmitter {
       players: rt.players,
       maxPlayers: rt.maxPlayers ?? server.maxPlayers ?? null,
       playerList: rt.playerList,
+      playerDetails: playerDetails(rt),
+      playerCommands: Object.keys(playerCommands(tpl)),
       ping: rt.ping,
       queryError: rt.queryError,
       diskBytes: rt.diskBytes,
@@ -355,7 +358,8 @@ class ServerManager extends EventEmitter {
     return out;
   }
 
-  create(input, actor) {
+  /** `dir` is set when importing a server whose files stay where they are. */
+  create(input, actor, { dir = null } = {}) {
     const base = this.templates.require(input.templateId);
     const platform = this.pickPlatform(base);
     const template = variant(base, platform);
@@ -369,7 +373,7 @@ class ServerManager extends EventEmitter {
       name,
       templateId: template.id,
       platform,
-      dir: path.join(config.serversDir, id),
+      dir: dir || path.join(config.serversDir, id),
       ip: input.ip || '0.0.0.0',
       ports: this.assignPorts(template, input.ports || {}),
       vars,
@@ -426,7 +430,10 @@ class ServerManager extends EventEmitter {
     this.servers.splice(this.servers.indexOf(server), 1);
     this.runtime.delete(id);
     this.store.save();
-    if (deleteFiles) {
+    // A server imported in place keeps its folder: those files were never the panel's.
+    if (deleteFiles && server.imported?.inPlace) {
+      fs.rmSync(path.join(config.backupsDir, id), { recursive: true, force: true });
+    } else if (deleteFiles) {
       // Windows can hold file locks for a moment after a process exits.
       await sleep(isWindows ? 1500 : 0);
       try {
@@ -529,6 +536,7 @@ Object.assign(
   require('./console'),
   require('./config-files'),
   require('./install'),
+  require('./import'),
   require('./power'),
   require('./stats'),
   require('./watchers'),

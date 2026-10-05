@@ -41,6 +41,7 @@ module.exports = {
 
     rt.stopping = false;
     rt.playerList = [];
+    rt.playerInfo = new Map();
     rt.players = null;
     rt.version = null;
 
@@ -97,6 +98,8 @@ module.exports = {
       memory: 0,
       connections: 0,
       players: null,
+      playerList: [],
+      playerInfo: new Map(),
       ping: null,
       networkRx: 0,
       networkTx: 0,
