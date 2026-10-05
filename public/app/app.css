@@ -1,0 +1,880 @@
+/*
+ * GamePanel for iPhone: a home-screen web app laid out like the Claude iOS app
+ * (big serif titles, chat-style console, a composer at the bottom) with iOS 26
+ * "Liquid Glass" controls floating over the content.
+ */
+
+:root {
+  color-scheme: dark;
+  --bg: #0d0e0c;
+  --bg-2: #141512;
+  --cell: #1a1b18;
+  --cell-press: #24251f;
+  --sep: rgba(255, 255, 255, 0.07);
+  --text: #f1f0eb;
+  --muted: #a3a197;
+  --faint: #6c6a63;
+  --lime: #c6f432;
+  --lime-ink: #111210;
+  --lime-soft: rgba(198, 244, 50, 0.14);
+  --red: #ff6159;
+  --amber: #ffb340;
+  --serif: "New York", ui-serif, "Iowan Old Style", Georgia, serif;
+  --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", system-ui, sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, monospace;
+  --top: env(safe-area-inset-top, 0px);
+  --bottom: env(safe-area-inset-bottom, 0px);
+  --spring: cubic-bezier(0.32, 0.72, 0, 1);
+
+  /* Liquid Glass */
+  --glass-tint: rgba(38, 40, 35, 0.38);
+  --glass-edge: rgba(255, 255, 255, 0.16);
+  --glass-blur: blur(22px) saturate(1.9) brightness(1.08);
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font: 16px/1.4 var(--sans);
+  -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;
+  overscroll-behavior: none;
+}
+[hidden] {
+  display: none !important;
+}
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+input,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+/* ------------------------------------------------------------------ glass */
+
+.glass {
+  position: relative;
+  isolation: isolate;
+  background: var(--glass-tint);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: 0.5px solid var(--glass-edge);
+  box-shadow:
+    inset 0 1px 0.5px rgba(255, 255, 255, 0.28),
+    inset 0 -0.5px 0.5px rgba(255, 255, 255, 0.08),
+    inset 0 0 18px rgba(255, 255, 255, 0.04),
+    0 6px 22px rgba(0, 0, 0, 0.36),
+    0 1px 3px rgba(0, 0, 0, 0.3);
+}
+/* The specular sheen: a light catching the top-left curve of the glass. */
+.glass::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background:
+    radial-gradient(120% 90% at 18% -10%, rgba(255, 255, 255, 0.2), transparent 55%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.07), transparent 40%, rgba(255, 255, 255, 0.03));
+  pointer-events: none;
+}
+.glass-btn {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  transition: transform 0.35s var(--spring), background 0.2s;
+}
+.glass-btn:active,
+.glass-pill:active {
+  transform: scale(0.9);
+  background: rgba(70, 72, 64, 0.5);
+}
+.glass-btn svg {
+  width: 22px;
+  height: 22px;
+}
+.glass-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 18px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 15px;
+  transition: transform 0.35s var(--spring), background 0.2s;
+}
+
+/* ---------------------------------------------------------------- screens */
+
+#stack {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+}
+.screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  will-change: transform;
+  transition: transform 0.5s var(--spring), filter 0.5s var(--spring);
+}
+.screen.enter {
+  transform: translateX(100%);
+}
+.screen.under {
+  transform: translateX(-28%);
+  filter: brightness(0.6);
+}
+.screen.leaving {
+  transform: translateX(100%);
+}
+.screen.dragging,
+.screen.dragging + .screen {
+  transition: none;
+}
+.scroll {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  padding: calc(var(--top) + 64px) 16px calc(var(--bottom) + 28px);
+}
+.screen.has-composer .scroll {
+  padding-bottom: calc(var(--bottom) + 96px);
+}
+
+/* Floating top bar: back button, title capsule and an action button. */
+.topbar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: 52px 1fr 52px;
+  align-items: center;
+  gap: 8px;
+  padding: calc(var(--top) + 6px) 12px 10px;
+  pointer-events: none;
+}
+.topbar::before {
+  /* A soft fade so content scrolling under the glass stays readable. */
+  content: "";
+  position: absolute;
+  inset: 0 0 -20px;
+  z-index: -1;
+  background: linear-gradient(180deg, rgba(13, 14, 12, 0.92) 0%, rgba(13, 14, 12, 0.6) 55%, transparent 100%);
+  opacity: 0;
+  transition: opacity 0.25s;
+}
+.screen.scrolled .topbar::before {
+  opacity: 1;
+}
+.topbar > * {
+  pointer-events: auto;
+}
+.topbar .right {
+  justify-self: end;
+}
+.title-capsule {
+  justify-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  height: 40px;
+  padding: 0 16px;
+  border-radius: 999px;
+  font-size: 15px;
+  font-weight: 600;
+  opacity: 0;
+  transform: translateY(-6px) scale(0.96);
+  transition: opacity 0.25s, transform 0.4s var(--spring);
+}
+.title-capsule span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.screen.scrolled .title-capsule,
+.title-capsule.always {
+  opacity: 1;
+  transform: none;
+}
+
+.large-title {
+  margin: 4px 4px 18px;
+  font-family: var(--serif);
+  font-size: 34px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+}
+.subtitle {
+  margin: -12px 4px 18px;
+  color: var(--muted);
+  font-size: 15px;
+}
+
+/* ----------------------------------------------------------------- lists */
+
+.section-label {
+  margin: 22px 16px 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--faint);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.group {
+  overflow: hidden;
+  background: var(--cell);
+  border-radius: 22px;
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 56px;
+  padding: 11px 16px;
+  text-align: left;
+  position: relative;
+}
+.row + .row::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 64px;
+  height: 0.5px;
+  background: var(--sep);
+}
+.group.flat .row + .row::before {
+  left: 16px;
+}
+button.row:active,
+a.row:active {
+  background: var(--cell-press);
+}
+.row-main {
+  flex: 1;
+  min-width: 0;
+}
+.row-title {
+  font-size: 16.5px;
+  font-weight: 560;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.row-sub {
+  margin-top: 1px;
+  font-size: 13.5px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.row-value {
+  color: var(--muted);
+  font-size: 15px;
+}
+.chev {
+  width: 8px;
+  height: 14px;
+  color: var(--faint);
+  flex-shrink: 0;
+}
+.tile {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  font-size: 21px;
+  border-radius: 12px;
+  background: var(--bg-2);
+  flex-shrink: 0;
+  position: relative;
+}
+.tile .dot {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  border: 2.5px solid var(--cell);
+}
+.dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--faint);
+  flex-shrink: 0;
+}
+.dot.running {
+  background: var(--lime);
+  box-shadow: 0 0 8px rgba(198, 244, 50, 0.7);
+}
+.dot.starting,
+.dot.stopping,
+.dot.installing {
+  background: var(--amber);
+  animation: pulse 1.2s ease-in-out infinite;
+}
+.dot.crashed,
+.dot.install_failed {
+  background: var(--red);
+}
+@keyframes pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* ------------------------------------------------------- home: servers */
+
+.hero-stats {
+  display: flex;
+  gap: 10px;
+  margin: 0 0 6px;
+}
+.hero-stat {
+  flex: 1;
+  padding: 12px 14px;
+  background: var(--cell);
+  border-radius: 18px;
+}
+.hero-stat b {
+  display: block;
+  font-family: var(--mono);
+  font-size: 20px;
+  font-weight: 600;
+}
+.hero-stat span {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.lime {
+  color: var(--lime);
+}
+.empty {
+  padding: 50px 24px;
+  text-align: center;
+  color: var(--muted);
+}
+
+/* -------------------------------------------------------- server screen */
+
+.seg {
+  position: absolute;
+  z-index: 19;
+  left: 50%;
+  top: calc(var(--top) + 58px);
+  transform: translateX(-50%);
+  display: flex;
+  padding: 4px;
+  border-radius: 999px;
+}
+.seg button {
+  position: relative;
+  z-index: 1;
+  height: 34px;
+  padding: 0 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--muted);
+  border-radius: 999px;
+  transition: color 0.25s;
+}
+.seg button.active {
+  color: var(--lime-ink);
+}
+.seg .thumb {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  border-radius: 999px;
+  background: var(--lime);
+  box-shadow: 0 0 16px rgba(198, 244, 50, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  transition: transform 0.45s var(--spring), width 0.45s var(--spring);
+}
+.server-screen .scroll {
+  padding-top: calc(var(--top) + 112px);
+}
+
+/* Console as a conversation: the game on the left, you on the right. */
+.log {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.log .line {
+  color: #cfcdc5;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.log .line.err {
+  color: var(--red);
+}
+.log .line.warn {
+  color: var(--amber);
+}
+.log .line.system {
+  margin: 8px 0;
+  font-family: var(--sans);
+  font-size: 13px;
+  color: var(--muted);
+  text-align: center;
+}
+.log .line .ts {
+  color: var(--faint);
+}
+.bubble {
+  align-self: flex-end;
+  max-width: 82%;
+  margin: 10px 0 6px;
+  padding: 9px 14px;
+  font-family: var(--sans);
+  font-size: 15px;
+  color: var(--text);
+  background: #2a2b26;
+  border-radius: 20px 20px 6px 20px;
+  overflow-wrap: anywhere;
+}
+.bubble small {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--faint);
+  text-align: right;
+}
+
+/* The composer, like Claude's message box. */
+.composer {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: calc(var(--bottom) + 10px);
+  z-index: 20;
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 6px 6px 6px 18px;
+  border-radius: 28px;
+}
+.composer textarea {
+  flex: 1;
+  max-height: 120px;
+  min-height: 44px;
+  padding: 11px 0;
+  font-size: 16px;
+  line-height: 22px;
+  background: none;
+  border: 0;
+  outline: 0;
+  resize: none;
+}
+.composer textarea::placeholder {
+  color: var(--faint);
+}
+.send {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  margin-bottom: 2px;
+  border-radius: 50%;
+  color: var(--lime-ink);
+  background: var(--lime);
+  transition: transform 0.3s var(--spring), opacity 0.2s;
+}
+.send:disabled {
+  opacity: 0.3;
+}
+.send:active {
+  transform: scale(0.88);
+}
+.send svg {
+  width: 20px;
+  height: 20px;
+}
+.jump {
+  position: absolute;
+  right: 18px;
+  bottom: calc(var(--bottom) + 84px);
+  z-index: 19;
+  opacity: 0;
+  transform: scale(0.8);
+  pointer-events: none;
+  transition: opacity 0.2s, transform 0.3s var(--spring);
+}
+.jump.show {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+
+/* Overview */
+.status-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 26px 16px 22px;
+  margin-bottom: 14px;
+  background: radial-gradient(120% 100% at 50% 0%, rgba(198, 244, 50, 0.1), transparent 60%), var(--cell);
+  border-radius: 26px;
+}
+.status-hero.off {
+  background: var(--cell);
+}
+.power {
+  display: grid;
+  place-items: center;
+  width: 84px;
+  height: 84px;
+  margin-bottom: 8px;
+  border-radius: 50%;
+  color: var(--lime);
+}
+.power svg {
+  width: 34px;
+  height: 34px;
+}
+.power.on {
+  color: var(--lime-ink);
+  background: var(--lime);
+  box-shadow: 0 0 40px rgba(198, 244, 50, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  border-color: transparent;
+}
+.power.busy svg {
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.status-word {
+  font-family: var(--serif);
+  font-size: 26px;
+}
+.status-meta {
+  font-size: 14px;
+  color: var(--muted);
+}
+.stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+.stat {
+  padding: 13px 15px;
+  background: var(--cell);
+  border-radius: 20px;
+}
+.stat span {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.stat b {
+  display: block;
+  margin-top: 2px;
+  font-family: var(--mono);
+  font-size: 21px;
+  font-weight: 600;
+}
+.stat small {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--faint);
+}
+.meter {
+  height: 4px;
+  margin-top: 8px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 4px;
+}
+.meter i {
+  display: block;
+  height: 100%;
+  background: var(--lime);
+  border-radius: inherit;
+  transition: width 0.6s var(--spring);
+}
+.row .action-icon {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  color: var(--lime-ink);
+  background: var(--lime);
+  flex-shrink: 0;
+}
+.row .action-icon svg {
+  width: 17px;
+  height: 17px;
+}
+.row .action-icon.red {
+  color: #fff;
+  background: var(--red);
+}
+.row .action-icon.gray {
+  color: var(--text);
+  background: #3a3b35;
+}
+.row.danger .row-title {
+  color: var(--red);
+}
+
+/* Players */
+.avatar {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  overflow: hidden;
+  font-weight: 650;
+  border-radius: 12px;
+  background: var(--bg-2);
+  flex-shrink: 0;
+}
+.avatar img {
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+}
+
+/* ------------------------------------------------------------ sign in */
+
+.auth {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 100%;
+  padding: calc(var(--top) + 40px) 22px calc(var(--bottom) + 40px);
+  background: radial-gradient(90% 50% at 50% 0%, rgba(198, 244, 50, 0.12), transparent 70%), var(--bg);
+}
+.auth .logo {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 22px;
+  border-radius: 18px;
+}
+.auth h1 {
+  margin: 0 0 6px;
+  font-family: var(--serif);
+  font-size: 32px;
+  font-weight: 500;
+  text-align: center;
+}
+.auth p {
+  margin: 0 0 28px;
+  color: var(--muted);
+  text-align: center;
+}
+.field {
+  display: block;
+  width: 100%;
+  height: 52px;
+  padding: 0 16px;
+  font-size: 17px;
+  background: var(--cell);
+  border: 0;
+  outline: 0;
+}
+.fields {
+  overflow: hidden;
+  border-radius: 18px;
+  margin-bottom: 18px;
+}
+.fields .field + .field {
+  border-top: 0.5px solid var(--sep);
+}
+.field.code {
+  font-family: var(--mono);
+  font-size: 26px;
+  letter-spacing: 0.4em;
+  text-align: center;
+}
+.primary {
+  display: block;
+  width: 100%;
+  height: 54px;
+  font-size: 17px;
+  font-weight: 650;
+  color: var(--lime-ink);
+  background: var(--lime);
+  border-radius: 999px;
+  box-shadow: 0 0 30px rgba(198, 244, 50, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  transition: transform 0.3s var(--spring), opacity 0.2s;
+}
+.primary:active {
+  transform: scale(0.97);
+}
+.primary:disabled {
+  opacity: 0.5;
+}
+.auth .error {
+  min-height: 22px;
+  margin-top: 14px;
+  color: var(--red);
+  font-size: 14px;
+  text-align: center;
+}
+
+/* --------------------------------------------------------- sheets & toast */
+
+#sheets {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  pointer-events: none;
+}
+.backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: auto;
+}
+.backdrop.show {
+  opacity: 1;
+}
+.sheet {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: calc(var(--bottom) + 8px);
+  padding: 8px;
+  border-radius: 34px;
+  transform: translateY(120%);
+  transition: transform 0.5s var(--spring);
+  pointer-events: auto;
+  --glass-tint: rgba(36, 38, 33, 0.72);
+}
+.sheet.show {
+  transform: none;
+}
+.sheet-title {
+  padding: 12px 18px 10px;
+  font-size: 13px;
+  color: var(--muted);
+  text-align: center;
+}
+.sheet-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  height: 54px;
+  font-size: 17px;
+  font-weight: 560;
+  border-radius: 26px;
+}
+.sheet-btn:active {
+  background: rgba(255, 255, 255, 0.08);
+}
+.sheet-btn.danger {
+  color: var(--red);
+}
+.sheet-btn.cancel {
+  margin-top: 4px;
+  font-weight: 650;
+  background: rgba(255, 255, 255, 0.07);
+}
+.sheet-input {
+  width: calc(100% - 16px);
+  height: 48px;
+  margin: 0 8px 8px;
+  padding: 0 16px;
+  font-size: 16px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 0.5px solid var(--glass-edge);
+  border-radius: 16px;
+  outline: 0;
+}
+
+#toasts {
+  position: fixed;
+  top: calc(var(--top) + 8px);
+  left: 0;
+  right: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+}
+.toast {
+  max-width: calc(100% - 32px);
+  padding: 12px 18px;
+  font-size: 14.5px;
+  font-weight: 560;
+  border-radius: 999px;
+  --glass-tint: rgba(36, 38, 33, 0.7);
+  animation: toast-in 0.5s var(--spring);
+}
+.toast.error {
+  color: #ffd6d3;
+}
+.toast.out {
+  opacity: 0;
+  transform: translateY(-12px) scale(0.95);
+  transition: all 0.3s;
+}
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.9);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation: none !important;
+  }
+}
+/* Wider screens (iPad, desktop preview): keep it phone-shaped and centred. */
+@media (min-width: 700px) {
+  .scroll,
+  .auth {
+    padding-left: calc(50% - 320px);
+    padding-right: calc(50% - 320px);
+  }
+  .composer {
+    left: calc(50% - 320px);
+    right: calc(50% - 320px);
+  }
+}

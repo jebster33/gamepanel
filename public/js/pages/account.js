@@ -25,6 +25,19 @@ export async function renderAccount(view) {
       <div id="tf-body"></div>
     </div>
 
+    <div class="card mb-16 row phone-app" style="align-items:center;gap:22px">
+      <div class="qr-box">${qrSvg(`${location.origin}/app/`, { size: 132 })}</div>
+      <div style="flex:1;min-width:220px">
+        <h4 style="margin-top:0">iPhone app</h4>
+        <ol class="faint" style="margin:0 0 10px;padding-left:18px;line-height:1.8">
+          <li>Scan this with your iPhone camera (or open <a class="mono" href="/app/">${esc(location.host)}/app</a> in Safari).</li>
+          <li>Tap <b>Share</b>, then <b>Add to Home Screen</b>.</li>
+          <li>Open GamePanel from your home screen and sign in.</li>
+        </ol>
+        <div class="hint">Works on Android too (Chrome menu, then Install app). Use the panel's HTTPS address if you have one, so it works away from home.</div>
+      </div>
+    </div>
+
     <div class="card mb-16">
       <h4>Change your password</h4>
       <div class="form-grid">
