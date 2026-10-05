@@ -164,7 +164,20 @@ gp_steamcmd() {
   # which newer Docker and systemd hand out; run it in a subshell with a sane one.
   (
     if [ "$(ulimit -n)" = unlimited ] || [ "$(ulimit -n)" -gt 65536 ]; then ulimit -n 65536 2>/dev/null || ulimit -Sn 65536 2>/dev/null || true; fi
-    HOME="$home" "$GP_STEAMCMD/steamcmd.sh" "$@"
+    if [ "$(id -u)" != 0 ]; then
+      HOME="$home" "$GP_STEAMCMD/steamcmd.sh" "$@"
+      exit $?
+    fi
+    # Current SteamCMD refuses to install anything as root ("Missing
+    # configuration", "Disk write failure", "Missing file permissions"), and
+    # installs run as root so apt works. Hand SteamCMD to an ordinary user.
+    local uid="\${GP_UID:-0}" gid="\${GP_GID:-0}" a prev="" dirs=( "$GP_STEAMCMD" )
+    if [ "$uid" = 0 ]; then
+      if id steam >/dev/null 2>&1; then uid=$(id -u steam); gid=$(id -g steam); else uid=65534; gid=65534; fi
+    fi
+    for a in "$@"; do [ "$prev" = +force_install_dir ] && dirs+=( "$a" ); prev="$a"; done
+    mkdir -p "\${dirs[@]}" && chown -R "$uid:$gid" "\${dirs[@]}"
+    HOME="$home" setpriv --reuid "$uid" --regid "$gid" --clear-groups -- "$GP_STEAMCMD/steamcmd.sh" "$@"
   )
 }
 
