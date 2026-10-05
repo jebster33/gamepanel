@@ -216,6 +216,14 @@ module.exports = {
       extraEnv.JAVA_HOME = `${CONTAINER_DIR}/.java`;
     }
 
+    // Source engine servers (srcds) buffer their output unless it goes to a
+    // terminal, so the ready line can sit unseen for minutes. "pty" templates
+    // run under script(1), which gives them one.
+    if (template.pty) {
+      const quoted = `'${command.replace(/'/g, `'\\''`)}'`;
+      command = `if command -v script >/dev/null 2>&1; then exec script -qfec ${quoted} /dev/null; else ${command}; fi`;
+    }
+
     const { exposed, bindings } = this.portBindings(server);
     const memoryBytes = Math.max(64, Number(server.memory) || 1024) * 1024 * 1024;
     const nanoCpus = server.cpuLimit ? Math.round((Number(server.cpuLimit) / 100) * 1e9) : 0;
