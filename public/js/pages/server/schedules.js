@@ -118,7 +118,7 @@ function scheduleRow(s) {
       <label class="switch" title="${s.enabled ? 'On' : 'Off'}"><input type="checkbox" data-enable ${s.enabled ? 'checked' : ''} /><i></i></label>
       <div class="grow">
         <div class="title">${esc(s.name)}</div>
-        <div class="sub">${esc(whenLabel(s.cron))} · ${esc(actionLabel(s.action))}${s.command ? ` <span class="mono">${esc(s.command)}</span>` : ''}</div>
+        <div class="sub">${esc(whenLabel(s.cron))} · ${esc(actionLabel(s.action))}${s.command ? ` <span class="mono">${esc(s.command)}</span>` : ''}${s.warnMinutes ? ` · ${s.warnMinutes} min warning` : ''}</div>
       </div>
       <div class="hide-sm" style="text-align:right;font-size:12px">
         <div class="muted">${s.nextRun ? `Next ${fmtTime(s.nextRun)}` : 'Paused'}</div>
@@ -143,6 +143,12 @@ function openScheduleModal(server, schedule, onSaved) {
       </label>
       <label class="field" id="sch-command-wrap"><span>Console command</span>
         <input id="sch-command" class="mono" value="${esc(schedule?.command || '')}" placeholder="say Restarting in 5 minutes" />
+      </label>
+      <label class="field" id="sch-warn-wrap"><span>Warn players first</span>
+        <select id="sch-warn">${[0, 1, 5, 10, 15]
+          .map((n) => `<option value="${n}" ${Number(schedule?.warnMinutes || 0) === n ? 'selected' : ''}>${n ? `${n} minute countdown in chat` : 'No warning'}</option>`)
+          .join('')}</select>
+        <div class="hint">Posts "Server restarting in 5 minutes", then 1 minute, 30 and 10 seconds. The restart happens when the countdown ends.</div>
       </label>
       <label class="field"><span>When</span>
         <select id="sch-preset">${PRESETS.map(([c, label]) => `<option value="${c}" ${preset === c ? 'selected' : ''}>${label}</option>`).join('')}</select>
@@ -170,6 +176,7 @@ function openScheduleModal(server, schedule, onSaved) {
             command: $('#sch-command').value,
             name: $('#sch-name').value.trim() || ACTIONS.find(([a]) => a === action)[1],
             onlyIfRunning: $('#sch-only-running').checked,
+            warnMinutes: Number($('#sch-warn').value),
           };
           btn.disabled = true;
           try {
@@ -189,6 +196,7 @@ function openScheduleModal(server, schedule, onSaved) {
 
   const sync = () => {
     $('#sch-command-wrap').classList.toggle('hidden', $('#sch-action').value !== 'command');
+    $('#sch-warn-wrap').classList.toggle('hidden', !['restart', 'stop'].includes($('#sch-action').value));
     $('#sch-cron-wrap').classList.toggle('hidden', $('#sch-preset').value !== 'custom');
   };
   $('#sch-action').addEventListener('change', sync);

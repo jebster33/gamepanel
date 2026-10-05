@@ -16,6 +16,7 @@ const TITLES = {
   'server.installed': 'Server installed',
   'server.ready': 'Server is online',
   'server.stopped': 'Server stopped',
+  'server.idle_stopped': 'Stopped while empty',
   'backup.created': 'Backup created',
   'backup.failed': 'Backup failed',
   'backup.uploaded': 'Backup copied to the cloud',

@@ -87,7 +87,28 @@ function validate(input) {
     command: action === 'command' ? String(input.command).trim() : undefined,
     onlyIfRunning: input.onlyIfRunning !== false,
     enabled: input.enabled !== false,
+    // Minutes of in-game countdown before a restart or stop.
+    warnMinutes: ['restart', 'stop'].includes(action) ? Math.max(0, Math.min(30, Math.round(Number(input.warnMinutes) || 0))) : 0,
   };
+}
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/** "Server restarting in 5 minutes" … "in 10 seconds", in game chat. */
+async function countdown(m, server, minutes, verb) {
+  const command = require('../games/players').broadcastCommand(m.template(server));
+  if (!command || !minutes) return false;
+  const say = (text) => m.sendCommand(server.id, command.replace('{msg}', text.replace(/["\r\n]/g, ''))).catch(() => {});
+  const marks = [minutes * 60, 300, 60, 30, 10, 5].filter((s, i, all) => s <= minutes * 60 && all.indexOf(s) === i).sort((a, b) => b - a);
+  let left = minutes * 60;
+  for (const mark of marks) {
+    await sleep((left - mark) * 1000);
+    left = mark;
+    if (!m.isActive(server.id)) return true;
+    await say(`Server ${verb} in ${mark >= 60 ? `${mark / 60} minute${mark === 60 ? '' : 's'}` : `${mark} seconds`}`);
+  }
+  await sleep(left * 1000);
+  return true;
 }
 
 class Scheduler {
@@ -132,7 +153,8 @@ class Scheduler {
     try {
       switch (schedule.action) {
         case 'restart':
-          if (running) await m.restart(server.id);
+          if (running && schedule.warnMinutes) await countdown(m, server, schedule.warnMinutes, 'restarting');
+          if (running && m.isActive(server.id)) await m.restart(server.id);
           else if (!schedule.onlyIfRunning) await m.start(server.id);
           else result = 'skipped (not running)';
           break;
@@ -141,7 +163,8 @@ class Scheduler {
           else result = 'skipped';
           break;
         case 'stop':
-          if (running) await m.stop(server.id);
+          if (running && schedule.warnMinutes) await countdown(m, server, schedule.warnMinutes, 'shutting down');
+          if (running && m.isActive(server.id)) await m.stop(server.id);
           else result = 'skipped (not running)';
           break;
         case 'command':

@@ -113,6 +113,8 @@ module.exports = {
       h.known = online;
       if (online.size) h.dirty = true;
 
+      this.checkIdle(server, rt, online.size, now);
+
       const lastSample = h.samples[h.samples.length - 1];
       if (!lastSample || now - lastSample[0] >= SAMPLE_EVERY_MS) {
         // Offline is recorded as null so the graph shows a gap, not zero players.
@@ -123,6 +125,26 @@ module.exports = {
       }
     }
     if (!this.historySavedAt || now - this.historySavedAt > SAVE_EVERY_MS) this.saveHistories();
+  },
+
+  /** Stop a server nobody has been on for a while, if it is set to (saves RAM and CPU). */
+  checkIdle(server, rt, online, now) {
+    const limit = Number(server.idleStopMinutes) || 0;
+    if (!limit) return;
+    // Only for games that tell us who is on; otherwise "nobody" might just mean "unknown".
+    const knowable = rt.players != null || this.template(server)?.logPatterns?.join;
+    const players = rt.players ?? online;
+    if (!limit || !knowable || rt.status !== STATUS.RUNNING || players > 0) {
+      rt.emptySince = null;
+      return;
+    }
+    rt.emptySince ||= Math.max(now, (rt.startedAt || now));
+    if (now - rt.emptySince < limit * 60_000 || rt.stopping) return;
+    rt.emptySince = null;
+    this.pushConsole(server, `Nobody has been on for ${limit} minutes, so the server is stopping to save resources.`, 'system');
+    this.store.addEvent('server.idle_stopped', `${server.name} stopped after ${limit} minutes with nobody on`, { serverId: server.id });
+    this.logActivity(server.id, { type: 'idle' });
+    this.stop(server.id).catch(() => {});
   },
 
   /** Chat lines from the console, for the activity log. */

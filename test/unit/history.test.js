@@ -47,3 +47,17 @@ test('sessions end when the account signs out everywhere', () => {
   assert.throws(() => auth.setPassword(auth.users[0].id, 'password123'), /attackers try/);
   assert.throws(() => auth.setPassword(auth.users[0].id, 'chris-is-cool'), /username/);
 });
+
+test('an empty server stops after its idle limit', () => {
+  const rt = { status: 'running', playerList: [], players: 0, startedAt: Date.now() - 3600_000 };
+  let stopped = false;
+  const server = { id: 's2', idleStopMinutes: 10 };
+  const m = Object.assign(
+    { servers: [server], rt: () => rt, template: () => ({}), pushConsole() {}, store: { addEvent() {} }, stop: async () => (stopped = true) },
+    history
+  );
+  m.checkIdle(server, rt, 0, Date.now());
+  assert.strictEqual(stopped, false);
+  m.checkIdle(server, rt, 0, Date.now() + 11 * 60_000);
+  assert.strictEqual(stopped, true);
+});

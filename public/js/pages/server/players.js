@@ -355,7 +355,7 @@ const FILTERS = [
   ['sessions', 'Joins & leaves', 'join,leave'],
   ['chat', 'Chat', 'chat'],
   ['admin', 'Moderation', 'kick,ban,unban,whitelist,unwhitelist,op,deop,whitelist-on,whitelist-off'],
-  ['server', 'Server', 'start,stop,crash,version'],
+  ['server', 'Server', 'start,stop,crash,version,idle'],
 ];
 
 const LOG_TEXT = {
@@ -372,6 +372,7 @@ const LOG_TEXT = {
   'whitelist-on': (e) => `Whitelist turned on${e.by ? ` by ${esc(e.by)}` : ''}`,
   'whitelist-off': (e) => `Whitelist turned off${e.by ? ` by ${esc(e.by)}` : ''}`,
   version: (e) => `Switched to <b>${esc(e.text)}</b>${e.by ? ` by ${esc(e.by)}` : ''}`,
+  idle: () => 'Stopped because nobody was on',
   start: () => 'Server started',
   stop: () => 'Server stopped',
   crash: () => '<span class="bad-text">Server crashed</span>',

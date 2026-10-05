@@ -29,6 +29,9 @@ export function renderServerSettingsTab(host, server) {
       <div class="checkbox-row"><input type="checkbox" id="set-autorestart" ${server.autoRestart ? 'checked' : ''} ${
     isAdmin ? '' : 'disabled'
   } /><label for="set-autorestart">Restart automatically after a crash</label></div>
+      <label style="margin-top:12px"><span>Stop when empty for (minutes)</span><input id="set-idle" type="number" min="0" max="1440" value="${server.idleStopMinutes || 0}" ${
+    isAdmin ? '' : 'disabled'
+  } /><div class="hint">Saves RAM and CPU on a server nobody is using. 0 keeps it running.</div></label>
       <label><span>Start command</span><textarea id="set-startcmd" rows="3" ${isAdmin ? '' : 'disabled'}>${esc(
     server.startCommand
   )}</textarea><div class="hint">Runs inside the server directory. Placeholders like {{PORT}} and {{MEMORY}} are substituted at launch.</div></label>
@@ -101,6 +104,7 @@ export function renderServerSettingsTab(host, server) {
           maxPlayers: Number($('#set-maxplayers').value),
           autoStart: $('#set-autostart').checked,
           autoRestart: $('#set-autorestart').checked,
+          idleStopMinutes: Number($('#set-idle').value) || 0,
           startCommand: $('#set-startcmd').value,
           ports,
           vars,
