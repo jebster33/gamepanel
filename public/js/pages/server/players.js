@@ -345,7 +345,7 @@ const FILTERS = [
   ['sessions', 'Joins & leaves', 'join,leave'],
   ['chat', 'Chat', 'chat'],
   ['admin', 'Moderation', 'kick,ban,unban,whitelist,unwhitelist,op,deop,whitelist-on,whitelist-off'],
-  ['server', 'Server', 'start,stop,crash'],
+  ['server', 'Server', 'start,stop,crash,version'],
 ];
 
 const LOG_TEXT = {
@@ -361,11 +361,12 @@ const LOG_TEXT = {
   deop: (e) => `<b>${esc(e.name)}</b> is no longer an operator${e.by ? ` (${esc(e.by)})` : ''}`,
   'whitelist-on': (e) => `Whitelist turned on${e.by ? ` by ${esc(e.by)}` : ''}`,
   'whitelist-off': (e) => `Whitelist turned off${e.by ? ` by ${esc(e.by)}` : ''}`,
+  version: (e) => `Switched to <b>${esc(e.text)}</b>${e.by ? ` by ${esc(e.by)}` : ''}`,
   start: () => 'Server started',
   stop: () => 'Server stopped',
   crash: () => '<span class="bad-text">Server crashed</span>',
 };
-const LOG_ICON = { join: '→', leave: '←', chat: '💬', kick: '⤫', ban: '⛔', unban: '✓', whitelist: '＋', unwhitelist: '−', op: '★', deop: '☆', start: '▶', stop: '■', crash: '⚠' };
+const LOG_ICON = { join: '→', leave: '←', chat: '💬', kick: '⤫', ban: '⛔', unban: '✓', whitelist: '＋', unwhitelist: '−', op: '★', deop: '☆', start: '▶', stop: '■', crash: '⚠', version: '⇅' };
 
 function logRow(e) {
   const text = (LOG_TEXT[e.type] || ((x) => esc(x.type)))(e);

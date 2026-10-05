@@ -1,5 +1,6 @@
 import { api } from '../../core/api.js';
 import { esc, toast } from '../../core/util.js';
+import { renderVersionCard } from './version.js';
 
 /* ---------------------------------------------------- game settings tab */
 
@@ -9,7 +10,10 @@ import { esc, toast } from '../../core/util.js';
  * never rewritten.
  */
 
-export async function renderGameTab(host, server) {
+export async function renderGameTab(root, server) {
+  root.innerHTML = '<div id="gv-card"></div><div id="gs-body"></div>';
+  renderVersionCard(root.querySelector('#gv-card'), server);
+  const host = root.querySelector('#gs-body');
   host.innerHTML = '<div class="card"><span class="spinner"></span> Reading the game\'s settings…</div>';
   let data;
   try {
@@ -95,7 +99,7 @@ export async function renderGameTab(host, server) {
     });
   });
 
-  host.querySelector('#gs-discard').addEventListener('click', () => renderGameTab(host, server));
+  host.querySelector('#gs-discard').addEventListener('click', () => renderGameTab(root, server));
   host.querySelector('#gs-save').addEventListener('click', async (event) => {
     const btn = event.currentTarget;
     btn.disabled = true;
@@ -103,14 +107,14 @@ export async function renderGameTab(host, server) {
       const result = await api(`/api/servers/${server.id}/game-settings`, { method: 'PUT', body: { values: Object.fromEntries(changes) } });
       if (result.restartNeeded) {
         toast('Saved. Restart the server to apply.', 'info', 7000);
-        await renderGameTab(host, server);
+        await renderGameTab(root, server);
         host.querySelector('.row')?.insertAdjacentHTML(
           'afterend',
           `<div class="card mb-16 row" style="justify-content:space-between"><span>Saved. The server is running the old settings until it restarts.</span><button class="btn btn-primary btn-sm" data-power="restart" data-id="${esc(server.id)}">Restart now</button></div>`
         );
       } else {
         toast('Game settings saved');
-        renderGameTab(host, server);
+        renderGameTab(root, server);
       }
     } catch (err) {
       toast(err.message, 'error');

@@ -2457,6 +2457,54 @@ tbody tr:hover {
   align-items: center;
   gap: 14px;
 }
+.version-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+}
+.version-icon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  font-size: 21px;
+  background: var(--raised);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.version-now {
+  font-family: var(--mono);
+  font-size: 17px;
+  font-weight: 600;
+}
+.type-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+  gap: 8px;
+  margin: 6px 0 16px;
+}
+.type-tile {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--text);
+  text-align: left;
+  background: var(--raised);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+}
+.type-tile:hover {
+  border-color: var(--border-strong);
+}
+.type-tile.active {
+  border-color: var(--lime);
+  box-shadow: 0 0 0 1px var(--lime) inset;
+}
 .recovery-codes {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

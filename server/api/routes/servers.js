@@ -107,6 +107,17 @@ module.exports = (router, { store, manager, scheduler }, { requireAdmin, require
     return result;
   });
 
+  /** Game version and (Minecraft Java) server type switching. */
+  router.get('/api/servers/:id/version', ({ user, params }) => {
+    const server = serverFor(user, params.id, 'settings');
+    return manager.versionInfo(server);
+  });
+
+  router.post('/api/servers/:id/version', async ({ user, params, body }) => {
+    const server = serverFor(user, params.id, 'settings');
+    return manager.switchVersion(server.id, { templateId: body?.templateId, vars: body?.vars, backup: body?.backup !== false, stopFirst: Boolean(body?.stopFirst) }, user);
+  });
+
   /** Whitelist, operators and bans (Minecraft). */
   router.get('/api/servers/:id/player-lists', ({ user, params }) => {
     const server = serverFor(user, params.id, 'command');
