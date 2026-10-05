@@ -184,5 +184,8 @@
     "join": "Player \\[([^\\]]+)\\] joined",
     "leave": "Dropping client ([^ ]+)"
   },
-  "resolve": "fivem"
+  "resolve": "fivem",
+  "ci": {
+    "installOnly": "a Cfx.re license key is required to boot"
+  }
 }

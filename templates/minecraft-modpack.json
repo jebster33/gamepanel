@@ -182,5 +182,10 @@
     "join": "([A-Za-z0-9_]{3,16}) joined the game",
     "leave": "([A-Za-z0-9_]{3,16}) left the game"
   },
-  "modpacks": true
+  "modpacks": true,
+  "ci": {
+    "vars": {
+      "MODPACK": "adrenaserver"
+    }
+  }
 }

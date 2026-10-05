@@ -70,5 +70,10 @@
     "ca-certificates",
     "unzip",
     "xz-utils"
-  ]
+  ],
+  "ci": {
+    "vars": {
+      "INSTALL_SCRIPT": "printf '#!/bin/sh\\necho Server started\\nexec sleep 100000\\n' > start.sh && chmod +x start.sh"
+    }
+  }
 }

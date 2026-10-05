@@ -87,5 +87,12 @@
     "type": "a2s",
     "port": "query"
   },
-  "image": "cm2network/steamcmd:root"
+  "image": "cm2network/steamcmd:root",
+  "ci": {
+    "vars": {
+      "STEAM_APPID": "232330",
+      "LAUNCH_BINARY": "./srcds_run",
+      "LAUNCH_ARGS": "-game cstrike -console -port {{PORT}} +map de_dust2"
+    }
+  }
 }
