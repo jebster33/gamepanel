@@ -116,7 +116,7 @@
       "content": "hostname \"{{SERVER_NAME}}\"\nrcon_password \"{{RCON_PASSWORD}}\"\nsv_password \"{{SERVER_PASSWORD}}\"\nsv_lan 0\nsv_cheats 0\n"
     }
   ],
-  "startCommand": "./game/bin/linuxsteamrt64/cs2 -dedicated -console -usercon -port {{PORT}} +tv_port {{PORT_TV}} +game_type {{GAME_TYPE}} +game_mode {{GAME_MODE}} +map {{MAP}} +sv_visiblemaxplayers {{MAX_PLAYERS}} +rcon_password \"{{RCON_PASSWORD}}\" +sv_setsteamaccount \"{{GSLT}}\" +exec gamepanel.cfg",
+  "startCommand": "LD_LIBRARY_PATH=\"$PWD/game/bin/linuxsteamrt64:$LD_LIBRARY_PATH\" ./game/bin/linuxsteamrt64/cs2 -dedicated -console -usercon -port {{PORT}} +tv_port {{PORT_TV}} +game_type {{GAME_TYPE}} +game_mode {{GAME_MODE}} +map {{MAP}} +sv_visiblemaxplayers {{MAX_PLAYERS}} +rcon_password \"{{RCON_PASSWORD}}\" +sv_setsteamaccount \"{{GSLT}}\" +exec gamepanel.cfg",
   "stopCommand": "quit",
   "stopTimeout": 45,
   "query": {

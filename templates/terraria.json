@@ -186,6 +186,11 @@
       {
         "type": "mkdir",
         "path": "worlds"
+      },
+      {
+        "type": "powershell",
+        "label": "Install the XNA Framework 4.0 that Terraria needs",
+        "run": "$gac = Join-Path $env:WINDIR 'Microsoft.NET\\assembly\\GAC_32\\Microsoft.Xna.Framework'\nif (Test-Path $gac) { GP-Log 'XNA Framework 4.0 already installed'; exit 0 }\n$msi = Join-Path $env:TEMP 'xnafx40_redist.msi'\nGP-Fetch 'https://download.microsoft.com/download/A/C/2/AC2C903B-E6E8-42C2-9FD7-BEBAC362A930/xnafx40_redist.msi' $msi\nGP-Log 'Installing the XNA Framework 4.0'\n$p = Start-Process msiexec.exe -ArgumentList @('/i', \"`\"$msi`\"\", '/qn', '/norestart') -Wait -PassThru\nif ($p.ExitCode -ne 0 -and $p.ExitCode -ne 3010) { throw \"The XNA Framework failed to install (code $($p.ExitCode))\" }\n"
       }
     ],
     "startCommand": "TerrariaServer.exe -config serverconfig.txt"

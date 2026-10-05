@@ -87,6 +87,10 @@
       {
         "type": "vcredist",
         "label": "Install the Visual C++ runtime"
+      },
+      {
+        "type": "directx",
+        "label": "Install the DirectX runtime"
       }
     ],
     "startCommand": "WS\\Binaries\\Win64\\WSServer-Win64-Shipping.exe Level01_Main -server -log -UTF8Output -MULTIHOME=0.0.0.0 -Port={{PORT}} -QueryPort={{PORT_QUERY}} -EchoPort={{PORT_ECHO}} -forcepassthrough -SteamServerName=\"{{SERVER_NAME}}\" -MaxPlayers={{MAX_PLAYERS}} -PSW=\"{{SERVER_PASSWORD}}\" -adminpsw=\"{{ADMIN_PASSWORD}}\" {{MODE}}",
