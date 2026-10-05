@@ -284,15 +284,19 @@ async function checkTemplate(file) {
   for (const port of tpl.ports || []) vars[`PORT_${port.name.toUpperCase()}`] = String(port.default);
   vars.PORT = String((tpl.ports || [])[0]?.default || 25565);
 
-  const { script } = buildInstallScript(tpl, '/srv/test', vars);
+  if (!platformsOf(tpl).includes('linux')) {
+    if (!LIVE) return;
+  } else {
+  const { script } = buildInstallScript(variant(tpl, 'linux'), '/srv/test', vars);
   const parsed = bashParses(script);
   if (parsed.ok) pass(`${id}: install script parses`);
   else fail(`${id}: install script is not valid bash`, parsed.error);
 
   // The start command is run through bash -lc, so it must parse too.
-  const startParsed = bashParses(require(path.join(ROOT, 'server/core/util')).interpolate(tpl.startCommand, vars));
+  const startParsed = bashParses(require(path.join(ROOT, 'server/core/util')).interpolate(variant(tpl, 'linux').startCommand, vars));
   if (startParsed.ok) pass(`${id}: start command parses`);
   else fail(`${id}: start command is not valid bash`, startParsed.error);
+  }
 
   /* --- live checks --- */
   if (!LIVE) return;

@@ -1,0 +1,107 @@
+{
+  "id": "soulmask",
+  "name": "Soulmask",
+  "category": "Survival",
+  "icon": "🎭",
+  "description": "Tribal survival in an ancient jungle. Lead a tribe, tame beasts, raid ruins.",
+  "platforms": [
+    "linux",
+    "windows"
+  ],
+  "defaultMemory": 10240,
+  "variables": [
+    {
+      "name": "MAX_PLAYERS",
+      "label": "Max players",
+      "default": 20,
+      "type": "number"
+    },
+    {
+      "name": "SERVER_PASSWORD",
+      "label": "Join password",
+      "default": "",
+      "description": "Leave empty for an open server."
+    },
+    {
+      "name": "ADMIN_PASSWORD",
+      "label": "Admin password",
+      "default": "",
+      "generate": "password"
+    },
+    {
+      "name": "MODE",
+      "label": "Mode",
+      "default": "-pve",
+      "options": [
+        {
+          "value": "-pve",
+          "label": "PvE"
+        },
+        {
+          "value": "-pvp",
+          "label": "PvP"
+        }
+      ]
+    }
+  ],
+  "ports": [
+    {
+      "name": "game",
+      "default": 8777,
+      "protocol": "udp"
+    },
+    {
+      "name": "query",
+      "default": 27015,
+      "protocol": "udp",
+      "offset": 18238
+    },
+    {
+      "name": "echo",
+      "default": 18888,
+      "protocol": "tcp",
+      "offset": 10111
+    }
+  ],
+  "image": "cm2network/steamcmd:root",
+  "install": [
+    {
+      "type": "steamcmd",
+      "appid": "3017310",
+      "label": "Install the Soulmask dedicated server"
+    },
+    {
+      "type": "chmod",
+      "path": "WSServer.sh",
+      "mode": "+x"
+    }
+  ],
+  "startCommand": "./WSServer.sh Level01_Main -server -log -UTF8Output -MULTIHOME=0.0.0.0 -Port={{PORT}} -QueryPort={{PORT_QUERY}} -EchoPort={{PORT_ECHO}} -forcepassthrough -SteamServerName=\"{{SERVER_NAME}}\" -MaxPlayers={{MAX_PLAYERS}} -PSW=\"{{SERVER_PASSWORD}}\" -adminpsw=\"{{ADMIN_PASSWORD}}\" {{MODE}}",
+  "windows": {
+    "install": [
+      {
+        "type": "steamcmd",
+        "appid": "3017310",
+        "label": "Install the Soulmask dedicated server"
+      },
+      {
+        "type": "vcredist",
+        "label": "Install the Visual C++ runtime"
+      }
+    ],
+    "startCommand": "WS\\Binaries\\Win64\\WSServer-Win64-Shipping.exe Level01_Main -server -log -UTF8Output -MULTIHOME=0.0.0.0 -Port={{PORT}} -QueryPort={{PORT_QUERY}} -EchoPort={{PORT_ECHO}} -forcepassthrough -SteamServerName=\"{{SERVER_NAME}}\" -MaxPlayers={{MAX_PLAYERS}} -PSW=\"{{SERVER_PASSWORD}}\" -adminpsw=\"{{ADMIN_PASSWORD}}\" {{MODE}}",
+    "tailFiles": [
+      "WS/Saved/Logs/WS.log"
+    ],
+    "readyOnPort": "game"
+  },
+  "stopSignal": "SIGINT",
+  "stopTimeout": 90,
+  "query": {
+    "type": "a2s",
+    "port": "query"
+  },
+  "logPatterns": {
+    "ready": "Create Dungeon Successed|LogOnline.*Session"
+  }
+}
