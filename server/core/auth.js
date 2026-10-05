@@ -7,6 +7,7 @@
 
 const crypto = require('crypto');
 const { uid, fail, timingSafeEqual } = require('./util');
+const totp = require('./totp');
 
 /**
  * What a non-admin account is allowed to do, on the servers assigned to it.
@@ -40,6 +41,8 @@ const DEFAULT_PERMISSIONS = ['power', 'console', 'command', 'files', 'backups'];
 const SCRYPT_PARAMS = { N: 16384, r: 8, p: 1, keylen: 64 };
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const COOKIE_NAME = 'gp_session';
+// How long the second step of a two-factor sign-in may take.
+const TICKET_TTL_MS = 5 * 60 * 1000;
 
 function hashPassword(password) {
   const salt = crypto.randomBytes(16);
@@ -162,22 +165,69 @@ class Auth {
     this.store.save();
   }
 
-  /** Rate-limited credential check. Returns a session token. */
-  login(username, password, ip = 'unknown') {
+  checkLockout(ip) {
     const entry = this.failures.get(ip);
     if (entry && entry.until > Date.now()) {
       fail(429, `Too many failed attempts. Try again in ${Math.ceil((entry.until - Date.now()) / 1000)}s`);
     }
+  }
+
+  recordFailure(ip, message) {
+    const entry = this.failures.get(ip);
+    const next = { count: (entry?.count || 0) + 1, until: 0 };
+    if (next.count >= 5) {
+      next.until = Date.now() + Math.min(15 * 60_000, 2 ** (next.count - 5) * 30_000);
+    }
+    this.failures.set(ip, next);
+    fail(401, message);
+  }
+
+  /**
+   * Rate-limited credential check. Returns a session token, or — when the
+   * account has two-factor sign-in — a short-lived ticket for the code step.
+   */
+  login(username, password, ip = 'unknown') {
+    this.checkLockout(ip);
     const user = this.findByUsername(username);
     const ok = user && verifyPassword(password, user.password);
-    if (!ok) {
-      const next = { count: (entry?.count || 0) + 1, until: 0 };
-      if (next.count >= 5) {
-        next.until = Date.now() + Math.min(15 * 60_000, 2 ** (next.count - 5) * 30_000);
-      }
-      this.failures.set(ip, next);
-      fail(401, 'Incorrect username or password');
+    if (!ok) this.recordFailure(ip, 'Incorrect username or password');
+    if (user.totp?.secret) {
+      return { twoFactor: true, ticket: signToken(this.secret, { sub: user.id, purpose: '2fa', exp: Date.now() + TICKET_TTL_MS }) };
     }
+    return this.startSession(user, ip);
+  }
+
+  /** Second step: the code from the authenticator app, or a recovery code. */
+  loginSecondFactor(ticket, code, ip = 'unknown') {
+    this.checkLockout(ip);
+    const payload = verifyToken(this.secret, ticket);
+    if (!payload || payload.purpose !== '2fa') fail(401, 'That sign-in took too long. Enter your password again.');
+    const user = this.users.find((u) => u.id === payload.sub);
+    if (!user?.totp?.secret) fail(401, 'That sign-in took too long. Enter your password again.');
+    const how = this.checkSecondFactor(user, code);
+    if (!how) this.recordFailure(ip, 'That code is not right');
+    return { ...this.startSession(user, ip), usedRecoveryCode: how === 'recovery', recoveryCodesLeft: (user.totp.recovery || []).length };
+  }
+
+  /** 'totp' or 'recovery' when the code is good (a recovery code is used up), otherwise null. */
+  checkSecondFactor(user, code) {
+    const step = totp.verify(user.totp.secret, code, { lastStep: user.totp.lastStep ?? -1 });
+    if (step >= 0) {
+      user.totp.lastStep = step; // the same code cannot be used twice
+      this.store.save();
+      return 'totp';
+    }
+    const hash = totp.hashRecoveryCode(code);
+    const idx = (user.totp.recovery || []).indexOf(hash);
+    if (String(code || '').replace(/\W/g, '').length >= 8 && idx !== -1) {
+      user.totp.recovery.splice(idx, 1);
+      this.store.save();
+      return 'recovery';
+    }
+    return null;
+  }
+
+  startSession(user, ip) {
     this.failures.delete(ip);
     user.lastLogin = Date.now();
     this.store.save();
@@ -185,6 +235,49 @@ class Auth {
       token: signToken(this.secret, { sub: user.id, exp: Date.now() + SESSION_TTL_MS }),
       user: this.publicUser(user),
     };
+  }
+
+  /* ---------------------------------------------------- two-factor setup -- */
+
+  /** A fresh secret to scan. Nothing changes until it is confirmed with a code. */
+  beginTwoFactor(userId) {
+    const user = this.users.find((u) => u.id === userId);
+    if (!user) fail(404, 'User not found');
+    const secret = totp.generateSecret();
+    user.totpPending = { secret, at: Date.now() };
+    this.store.save();
+    const issuer = this.store.state.settings.panelName || 'GamePanel';
+    return { secret, url: totp.otpauthUrl(secret, user.username, issuer) };
+  }
+
+  confirmTwoFactor(userId, code) {
+    const user = this.users.find((u) => u.id === userId);
+    const pending = user?.totpPending;
+    if (!pending || Date.now() - pending.at > 30 * 60_000) fail(400, 'Start the setup again, the QR code expired');
+    const step = totp.verify(pending.secret, code);
+    if (step < 0) fail(400, 'That code is not right. Check the time on your phone and try the newest code.');
+    const codes = totp.recoveryCodes();
+    user.totp = { secret: pending.secret, enabledAt: Date.now(), lastStep: step, recovery: codes.map(totp.hashRecoveryCode) };
+    delete user.totpPending;
+    this.store.save();
+    return { recoveryCodes: codes };
+  }
+
+  disableTwoFactor(userId) {
+    const user = this.users.find((u) => u.id === userId);
+    if (!user) fail(404, 'User not found');
+    delete user.totp;
+    delete user.totpPending;
+    this.store.save();
+  }
+
+  newRecoveryCodes(userId) {
+    const user = this.users.find((u) => u.id === userId);
+    if (!user?.totp) fail(400, 'Two-factor sign-in is not on');
+    const codes = totp.recoveryCodes();
+    user.totp.recovery = codes.map(totp.hashRecoveryCode);
+    this.store.save();
+    return { recoveryCodes: codes };
   }
 
   /** Resolve a request to a user, via cookie or `Authorization: Bearer`. */
@@ -202,7 +295,8 @@ class Auth {
 
   userFromToken(token) {
     const payload = verifyToken(this.secret, token);
-    if (!payload) return null;
+    // A half-finished two-factor sign-in is not a session.
+    if (!payload || payload.purpose) return null;
     const user = this.users.find((u) => u.id === payload.sub);
     return user || null;
   }
@@ -216,6 +310,8 @@ class Auth {
       permissions: user.role === 'admin' ? CAPABILITY_IDS : sanitizePermissions(user.permissions),
       createdAt: user.createdAt,
       lastLogin: user.lastLogin || null,
+      twoFactor: Boolean(user.totp?.secret),
+      recoveryCodesLeft: user.totp ? (user.totp.recovery || []).length : undefined,
     };
   }
 

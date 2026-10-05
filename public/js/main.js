@@ -15,6 +15,7 @@ import { $, esc, toast } from './core/util.js';
 import { drawHostCharts } from './pages/dashboard.js';
 import { drawServerCharts } from './pages/server/metrics.js';
 import { copyToClipboard } from './ui/clipboard.js';
+import { wireOtp } from './ui/otp.js';
 import { closeSidebar } from './ui/sidebar.js';
 import { applyTheme } from './ui/theme.js';
 
@@ -55,12 +56,89 @@ $('#auth-form').addEventListener('submit', async (event) => {
       await api('/api/setup', { method: 'POST', body: { username, password } });
     }
     const data = await api('/api/auth/login', { method: 'POST', body: { username, password } });
-    state.user = data.user;
     $('#auth-password').value = '';
+    if (data.twoFactor) return showOtpStep(data.ticket);
+    state.user = data.user;
     await enterApp();
   } catch (err) {
     error.textContent = err.message;
     error.classList.remove('hidden');
+  }
+});
+
+/* ------------------------------------------------- two-factor sign-in */
+
+let otpTicket = null;
+
+async function submitSecondFactor(code) {
+  const error = $('#otp-error');
+  error.classList.add('hidden');
+  try {
+    const data = await api('/api/auth/login/2fa', { method: 'POST', body: { ticket: otpTicket, code } });
+    state.user = data.user;
+    return data;
+  } catch (err) {
+    error.textContent = err.message;
+    error.classList.remove('hidden');
+    // The ticket ran out: back to the password.
+    if (/took too long/.test(err.message)) setTimeout(hideOtpStep, 1600);
+    return null;
+  }
+}
+
+const otp = wireOtp($('#otp-form'), async (code) => {
+  const data = await submitSecondFactor(code);
+  if (!data) return false;
+  $('#auth-subtitle').textContent = 'Verified. Signing you in…';
+  await otp.success();
+  finishOtp(data);
+  return true;
+});
+
+async function finishOtp(data) {
+  hideOtpStep();
+  await enterApp();
+  if (data.usedRecoveryCode) toast(`Recovery code used. ${data.recoveryCodesLeft} left. Make new ones under Account.`, 'warn', 10000);
+}
+
+function showOtpStep(ticket) {
+  otpTicket = ticket;
+  otp.reset();
+  setOtpMode('app');
+  $('#auth-form').classList.add('hidden');
+  $('#otp-form').classList.remove('hidden');
+  $('#auth-title').textContent = 'Two-step verification';
+  $('#auth-subtitle').textContent = 'Enter the 6-digit code from your authenticator app';
+  otp.focus();
+}
+
+function hideOtpStep() {
+  otpTicket = null;
+  $('#otp-form').classList.add('hidden');
+  $('#otp-error').classList.add('hidden');
+  $('#auth-form').classList.remove('hidden');
+  $('#auth-title').textContent = 'Welcome back';
+  $('#auth-subtitle').textContent = 'Sign in to manage your game servers';
+}
+
+function setOtpMode(mode) {
+  document.querySelectorAll('[data-otp-mode]').forEach((el) => el.classList.toggle('active', el.dataset.otpMode === mode));
+  document.querySelectorAll('#otp-form [data-otp-pane]').forEach((el) => el.classList.toggle('hidden', el.dataset.otpPane !== mode));
+  $('#auth-subtitle').textContent = mode === 'app' ? 'Enter the 6-digit code from your authenticator app' : 'Enter one of the recovery codes you saved';
+  if (mode === 'app') otp.focus();
+  else $('#otp-recovery').focus();
+}
+
+document.querySelectorAll('[data-otp-mode]').forEach((el) => el.addEventListener('click', () => setOtpMode(el.dataset.otpMode)));
+$('#otp-back').addEventListener('click', hideOtpStep);
+$('#otp-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const code = $('#otp-recovery').value.trim();
+  if (!code) return;
+  const data = await submitSecondFactor(code);
+  if (data) {
+    $('#otp-recovery').value = '';
+    finishOtp(data);
   }
 });
 

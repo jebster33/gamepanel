@@ -1,6 +1,7 @@
 import { wsUnsubscribe } from './live.js';
 import { state } from './state.js';
 import { $, $$ } from './util.js';
+import { renderAccount } from '../pages/account.js';
 import { renderActivity } from '../pages/activity.js';
 import { renderDashboard } from '../pages/dashboard.js';
 import { renderServerDetail } from '../pages/server/detail.js';
@@ -22,6 +23,7 @@ const ROUTES = [
   { pattern: /^\/servers\/([^/]+)(?:\/([^/]+))?$/, name: 'server', keys: ['id', 'tab'], page: renderServerDetail },
   { pattern: /^\/(?:templates|deploy)$/, name: 'templates', page: renderTemplates },
   { pattern: /^\/activity$/, name: 'activity', page: renderActivity },
+  { pattern: /^\/account$/, name: 'account', page: renderAccount },
   { pattern: /^\/users$/, name: 'users', page: renderUsers },
   { pattern: /^\/settings(?:\/([^/]+))?$/, name: 'settings', keys: ['section'], page: renderSettings },
 ];

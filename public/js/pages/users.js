@@ -22,7 +22,7 @@ export async function renderUsers(view) {
           ${data.users
             .map(
               (u) => `<tr>
-                <td><strong>${esc(u.username)}</strong></td>
+                <td><strong>${esc(u.username)}</strong>${u.twoFactor ? ' <span class="badge" title="Signs in with an authenticator code">2FA</span>' : ''}</td>
                 <td><span class="badge ${u.role === 'admin' ? 'admin' : ''}">${esc(u.role)}</span></td>
                 <td class="faint">${u.role === 'admin' ? 'All servers' : (u.servers || []).length + ' assigned'}</td>
                 <td class="faint">${
@@ -32,6 +32,7 @@ export async function renderUsers(view) {
                 }</td>
                 <td class="faint nowrap">${fmtTime(u.lastLogin)}</td>
                 <td style="text-align:right" class="nowrap">
+                  ${u.twoFactor && u.id !== state.user.id ? `<button class="btn btn-sm" data-reset-tf="${esc(u.id)}" title="For someone who lost their phone and recovery codes">Reset 2FA</button>` : ''}
                   <button class="btn btn-sm" data-edit-user="${esc(u.id)}">Edit</button>
                   ${u.id !== state.user.id ? `<button class="btn btn-sm btn-danger" data-del-user="${esc(u.id)}">${icon('trash',12)}</button>` : ''}
                 </td></tr>`
@@ -46,6 +47,19 @@ export async function renderUsers(view) {
     el.addEventListener('click', () =>
       openUserModal(data.users.find((u) => u.id === el.dataset.editUser), data.capabilities, data.defaults)
     )
+  );
+  view.querySelectorAll('[data-reset-tf]').forEach((el) =>
+    el.addEventListener('click', async () => {
+      const target = data.users.find((u) => u.id === el.dataset.resetTf);
+      if (!(await confirmModal('Reset two-factor sign-in', `${target.username} will sign in with only their password until they turn it on again.`, 'Reset'))) return;
+      try {
+        await api(`/api/users/${target.id}`, { method: 'PATCH', body: { resetTwoFactor: true } });
+        toast(`Two-factor sign-in reset for ${target.username}`);
+        renderUsers(view);
+      } catch (err) {
+        toast(err.message, 'error');
+      }
+    })
   );
   view.querySelectorAll('[data-del-user]').forEach((el) =>
     el.addEventListener('click', async () => {
