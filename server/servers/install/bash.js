@@ -194,9 +194,15 @@ gp_steam_probe() {
 }
 
 gp_steam_app() {
-  local appid="$1" login="\${2:-anonymous}" branch="\${3:-}" n
+  local appid="$1" login="\${2:-anonymous}" branch="\${3:-}" prefetch="\${4:-}" n
   gp_ensure_steamcmd
   local args=( +@ShutdownOnFailedCommand 1 +@NoPromptForPassword 1 +force_install_dir "$GP_SERVER_DIR" +login $login )
+  # Some apps (Left 4 Dead 2) answer "Invalid platform" for Linux until the
+  # files of another platform have been fetched once; do that first.
+  if [ -n "$prefetch" ]; then
+    gp_log "Fetching the $prefetch files of app $appid first (Steam needs them for this game)"
+    args+=( +@sSteamCmdForcePlatformType "$prefetch" +app_update "$appid" validate +@sSteamCmdForcePlatformType linux )
+  fi
   if [ -n "$branch" ]; then args+=( +app_update "$appid" -beta "$branch" validate )
   else args+=( +app_update "$appid" validate ); fi
   args+=( +quit )
@@ -265,7 +271,7 @@ function stepToShell(step, vars) {
     case 'steamcmd':
       return `gp_steam_app ${shellQuote(val(step.appid))} ${shellQuote(val(step.login || 'anonymous'))} ${shellQuote(
         val(step.branch || '')
-      )}`;
+      )} ${shellQuote(val(step.prefetchPlatform || ''))}`;
 
     case 'workshop':
       return `gp_workshop_item ${shellQuote(val(step.appid))} ${shellQuote(val(step.item))} ${shellQuote(val(step.dest))}`;
