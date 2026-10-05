@@ -56,7 +56,7 @@
     "port": "game"
   },
   "logPatterns": {
-    "ready": "Server is ready|Game state is now|SocketSubsystem"
+    "ready": "Server is ready|Game state is now|Bringing World /Game/FactoryGame/Map/DedicatedserverEntry[^ ]* up for play"
   },
   "image": "cm2network/steamcmd:root",
   "platforms": [
