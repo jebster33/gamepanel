@@ -6,12 +6,12 @@
 <service>
   <id>GamePanel</id>
   <name>GamePanel</name>
-  <description>Game server control panel (http://localhost:8080)</description>
+  <description>Game server control panel (http://localhost:8420)</description>
   <executable>%BASE%\node\node.exe</executable>
   <arguments>"%BASE%\server\index.js"</arguments>
   <workingdirectory>%BASE%</workingdirectory>
   <env name="GP_SERVICE" value="1" />
-  <env name="GP_PORT" value="8080" />
+  <env name="GP_PORT" value="8420" />
   <startmode>Automatic</startmode>
   <delayedAutoStart>true</delayedAutoStart>
   <!-- The panel exits with code 1 to load an update; WinSW brings it back. -->

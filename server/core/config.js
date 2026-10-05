@@ -59,7 +59,7 @@ const config = {
   steamcmdDir: path.join(dataDir, 'steamcmd'),
 
   host: process.env.GP_HOST || '0.0.0.0',
-  port: Number(process.env.GP_PORT || 8080),
+  port: Number(process.env.GP_PORT || 8420),
   behindProxy: ['1', 'true'].includes(String(process.env.GP_BEHIND_PROXY)),
   dockerSocket: process.env.GP_DOCKER_SOCKET || (isWindows ? '\\\\.\\pipe\\docker_engine' : '/var/run/docker.sock'),
 

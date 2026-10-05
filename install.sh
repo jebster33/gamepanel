@@ -13,7 +13,7 @@ BRANCH="${GP_BRANCH:-main}"
 INSTALL_DIR="${GP_INSTALL_DIR:-/opt/gamepanel}"
 DATA_DIR="${GP_DATA_DIR:-/var/lib/gamepanel}"
 SERVICE_USER="${GP_USER:-gamepanel}"
-PANEL_PORT="${GP_PORT:-8080}"
+PANEL_PORT="${GP_PORT:-8420}"
 NODE_MAJOR=20
 
 BOLD=$'\033[1m'; GREEN=$'\033[32m'; YELLOW=$'\033[33m'; RED=$'\033[31m'; CYAN=$'\033[36m'; RESET=$'\033[0m'

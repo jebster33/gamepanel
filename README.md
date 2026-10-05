@@ -39,7 +39,7 @@ curl -fsSL https://raw.githubusercontent.com/jebster33/gamepanel/main/install.sh
   irm https://raw.githubusercontent.com/jebster33/gamepanel/main/windows/install.ps1 | iex
   ```
 
-Then open **http://localhost:8080** (or `http://<server-ip>:8080`) and create your admin account.
+Then open **http://localhost:8420** (or `http://<server-ip>:8420`) and create your admin account.
 The installers set up everything else: Node.js, the background service, the firewall rule and, on Linux, Docker.
 
 <details>
@@ -159,14 +159,14 @@ Linux and runs games as normal processes on Windows.
 
 | Variable | Default | |
 |---|---|---|
-| `GP_PORT` | `8080` | Panel port |
+| `GP_PORT` | `8420` | Panel port |
 | `GP_HOST` | `0.0.0.0` | Address to listen on |
 | `GP_DATA_DIR` | see above | Where servers and settings live |
 | `GP_BEHIND_PROXY` | `0` | Trust `X-Forwarded-*` headers behind a reverse proxy |
 | `GP_DOCKER_SOCKET` | `/var/run/docker.sock` | Docker socket |
 | `GP_LOG_LEVEL` | `info` | `debug`, `info`, `warn`, `error` |
 
-**HTTPS:** put it behind Caddy (`panel.example.com { reverse_proxy 127.0.0.1:8080 }`) and set `GP_BEHIND_PROXY=1`.
+**HTTPS:** put it behind Caddy (`panel.example.com { reverse_proxy 127.0.0.1:8420 }`) and set `GP_BEHIND_PROXY=1`.
 
 ## More
 

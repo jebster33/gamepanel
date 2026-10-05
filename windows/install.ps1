@@ -7,7 +7,7 @@
 
   Options are environment variables, set before the line above:
 
-    $env:GP_PORT = 9000                       panel port (default 8080)
+    $env:GP_PORT = 9000                       panel port (default 8420)
     $env:GP_INSTALL_DIR = 'D:\GamePanel'      program folder (default C:\Program Files\GamePanel)
     $env:GP_BRANCH = 'main'                   install this branch instead of the latest release
 
@@ -20,7 +20,7 @@ $ProgressPreference = 'SilentlyContinue'   # Invoke-WebRequest is many times fas
 [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
 
 $Repo       = if ($env:GP_REPO) { $env:GP_REPO } else { 'jebster33/gamepanel' }
-$Port       = if ($env:GP_PORT) { [int]$env:GP_PORT } else { 8080 }
+$Port       = if ($env:GP_PORT) { [int]$env:GP_PORT } else { 8420 }
 $InstallDir = if ($env:GP_INSTALL_DIR) { $env:GP_INSTALL_DIR } else { Join-Path $env:ProgramFiles 'GamePanel' }
 $Branch     = $env:GP_BRANCH
 $NodeMajor  = 22

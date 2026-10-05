@@ -32,7 +32,7 @@ CloseApplications=no
 Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion
 
 [INI]
-Filename: "{app}\GamePanel.url"; Section: "InternetShortcut"; Key: "URL"; String: "http://localhost:8080"
+Filename: "{app}\GamePanel.url"; Section: "InternetShortcut"; Key: "URL"; String: "http://localhost:8420"
 
 [Icons]
 Name: "{autoprograms}\GamePanel"; Filename: "{app}\GamePanel.url"; IconFilename: "{app}\windows\gamepanel.ico"
@@ -41,9 +41,9 @@ Name: "{autoprograms}\GamePanel"; Filename: "{app}\GamePanel.url"; IconFilename:
 Filename: "{app}\GamePanel-Service.exe"; Parameters: "install"; Flags: runhidden waituntilterminated; StatusMsg: "Registering the GamePanel service..."; Check: not ServiceExists
 Filename: "{app}\GamePanel-Service.exe"; Parameters: "refresh"; Flags: runhidden waituntilterminated; Check: ServiceExists
 Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""GamePanel"""; Flags: runhidden waituntilterminated
-Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall add rule name=""GamePanel"" dir=in action=allow protocol=TCP localport=8080"; Flags: runhidden waituntilterminated; StatusMsg: "Allowing the panel through Windows Firewall..."
+Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall add rule name=""GamePanel"" dir=in action=allow protocol=TCP localport=8420"; Flags: runhidden waituntilterminated; StatusMsg: "Allowing the panel through Windows Firewall..."
 Filename: "{app}\GamePanel-Service.exe"; Parameters: "start"; Flags: runhidden waituntilterminated; StatusMsg: "Starting GamePanel..."
-Filename: "http://localhost:8080"; Description: "Open GamePanel in your browser"; Flags: shellexec postinstall nowait skipifsilent
+Filename: "http://localhost:8420"; Description: "Open GamePanel in your browser"; Flags: shellexec postinstall nowait skipifsilent
 
 [UninstallRun]
 Filename: "{app}\GamePanel-Service.exe"; Parameters: "stop"; Flags: runhidden waituntilterminated; RunOnceId: "StopService"
@@ -54,7 +54,7 @@ Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=
 Type: files; Name: "{app}\GamePanel.url"
 
 [Messages]
-FinishedLabel=GamePanel is running as a Windows service and starts with Windows.%n%nOpen http://localhost:8080 and create your administrator account. Servers, backups and settings are kept in C:\ProgramData\GamePanel.
+FinishedLabel=GamePanel is running as a Windows service and starts with Windows.%n%nOpen http://localhost:8420 and create your administrator account. Servers, backups and settings are kept in C:\ProgramData\GamePanel.
 
 [Code]
 function ServiceExists: Boolean;
