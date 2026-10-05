@@ -130,10 +130,16 @@ gp_ensure_java() {
 }
 
 gp_ensure_steamcmd() {
-  # Container images often ship SteamCMD already; reuse it when present.
+  # Container images often ship SteamCMD already. Copy it next to the server
+  # instead of running it in place: the image's own folder sits on Docker's
+  # overlay filesystem, whose 64-bit inode numbers make 32-bit SteamCMD fail
+  # every install with "Disk write failure".
   if [ ! -x "$GP_STEAMCMD/steamcmd.sh" ]; then
     for candidate in /home/steam/steamcmd /usr/games/steamcmd /opt/steamcmd; do
-      if [ -x "$candidate/steamcmd.sh" ]; then GP_STEAMCMD="$candidate"; break; fi
+      [ -x "$candidate/steamcmd.sh" ] || continue
+      mkdir -p "$GP_STEAMCMD"
+      if cp -a "$candidate/." "$GP_STEAMCMD/" 2>/dev/null; then rm -rf "$GP_STEAMCMD/home"; else GP_STEAMCMD="$candidate"; fi
+      break
     done
   fi
   if [ ! -x "$GP_STEAMCMD/steamcmd.sh" ]; then
@@ -176,7 +182,8 @@ gp_steam_logs() {
 # When an install fails, say whether SteamCMD can write anywhere at all: a
 # tiny app into a scratch folder, and the same into the server folder.
 gp_steam_probe() {
-  gp_warn "Checking where SteamCMD can install (user $(id -u):$(id -g), open-file limit $(ulimit -n))"
+  gp_warn "Checking where SteamCMD can install (user $(id -u):$(id -g), open-file limit $(ulimit -n), SteamCMD in $GP_STEAMCMD)"
+  stat -c '  inode %i  %n' "$GP_STEAMCMD" "$GP_STEAMCMD/home" "$GP_SERVER_DIR" /tmp 2>/dev/null
   df -h "$GP_SERVER_DIR" /tmp 2>/dev/null | sed 's/^/  /'
   local dir
   for dir in /tmp/gp-steam-probe "$GP_SERVER_DIR/.gp-steam-probe"; do
