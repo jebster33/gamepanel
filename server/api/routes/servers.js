@@ -15,6 +15,13 @@ module.exports = (router, { store, manager, scheduler }, { requireAdmin, require
     return { server: manager.publicServer(server) };
   });
 
+  /** Bring an existing server folder under the panel instead of installing a new one. */
+  router.post('/api/servers/import', async ({ user, body }) => {
+    requireAdmin(user);
+    const server = await manager.importExisting(body, user);
+    return { server: manager.publicServer(server) };
+  });
+
   router.get('/api/servers/:id', ({ user, params }) => {
     const server = serverFor(user, params.id);
     const template = manager.template(server);

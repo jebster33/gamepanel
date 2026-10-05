@@ -16,7 +16,7 @@ export function renderServerCards() {
       <img src="/img/empty-rack.png" alt="" width="140" height="135" />
       <h3>No servers yet</h3>
       <p>Pick a game and the panel installs it, opens the ports and starts it for you.</p>
-      ${state.user?.role === 'admin' ? '<a class="btn btn-primary" href="#/templates">Pick a game</a>' : ''}
+      ${state.user?.role === 'admin' ? '<div class="row" style="justify-content:center"><a class="btn btn-primary" href="#/templates">Pick a game</a><button class="btn" data-import>Import existing</button></div>' : ''}
     </div>`;
   }
   return `
@@ -114,7 +114,7 @@ export function renderServers(view) {
     <div class="page-head">
       <h1>Servers</h1>
       <div class="spacer"></div>
-      ${state.user.role === 'admin' ? '<a class="btn btn-primary" href="#/templates">New server</a>' : ''}
+      ${state.user.role === 'admin' ? '<button class="btn" data-import>Import existing</button><a class="btn btn-primary" href="#/templates">New server</a>' : ''}
     </div>
     ${renderServerCards()}`;
 }

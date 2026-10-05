@@ -13,6 +13,7 @@ import { handleRoute } from './core/router.js';
 import { state } from './core/state.js';
 import { $, esc, toast } from './core/util.js';
 import { drawHostCharts } from './pages/dashboard.js';
+import { openImportModal } from './pages/deploy.js';
 import { drawServerCharts } from './pages/server/metrics.js';
 import { copyToClipboard } from './ui/clipboard.js';
 import { wireOtp } from './ui/otp.js';
@@ -36,6 +37,8 @@ document.addEventListener('click', async (event) => {
     }
     return;
   }
+
+  if (event.target.closest('[data-import]')) return openImportModal();
 
   const copy = event.target.closest('[data-copy]');
   if (copy) copyToClipboard(copy.dataset.copy, copy);
