@@ -156,5 +156,10 @@
     "consoleInput": false,
     "stopCommand": null,
     "stopRconCommand": "quit"
+  },
+  "ci": {
+    "windows": {
+      "skip": "about 35 GB, more than the Windows CI runner has free"
+    }
   }
 }
