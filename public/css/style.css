@@ -2149,6 +2149,75 @@ tbody tr:hover {
   background: var(--raised);
   border: 1px solid var(--border);
 }
+/* Game settings tab: one row per key, label left and control right. */
+.gs-field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(180px, 280px);
+  align-items: center;
+  gap: 8px 24px;
+  padding: 12px 0;
+  border-top: 1px solid var(--border);
+}
+.gs-field:first-child {
+  border-top: 0;
+}
+.gs-field.is-bool .gs-control {
+  display: flex;
+  justify-content: flex-end;
+}
+.gs-field.changed .gs-label::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 8px;
+  vertical-align: middle;
+  border-radius: 50%;
+  background: var(--amber);
+}
+.gs-label {
+  font-weight: 550;
+}
+.gs-key {
+  margin-left: 6px;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--faint);
+}
+.gs-control select,
+.gs-control input:not([type="checkbox"]) {
+  width: 100%;
+}
+.warn-card {
+  line-height: 1.6;
+  background: var(--amber-soft);
+  border-color: rgba(255, 179, 64, 0.35);
+}
+.save-bar {
+  position: sticky;
+  bottom: 16px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px 10px 18px;
+  background: var(--raised);
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  box-shadow: var(--shadow);
+  animation: rise 0.25s var(--ease) both;
+}
+.save-bar .spacer {
+  flex: 1;
+}
+@media (max-width: 640px) {
+  .gs-field {
+    grid-template-columns: 1fr;
+  }
+  .gs-field.is-bool {
+    grid-template-columns: 1fr auto;
+  }
+}
 .recovery-codes {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

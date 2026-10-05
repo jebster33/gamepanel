@@ -79,6 +79,19 @@ module.exports = (router, { store, manager, scheduler }, { requireAdmin, require
     return { lines: manager.getConsole(server.id) };
   });
 
+  /** The game's own config file as a form (Minecraft's server.properties and friends). */
+  router.get('/api/servers/:id/game-settings', ({ user, params }) => {
+    const server = serverFor(user, params.id, 'settings');
+    return require('../../games/settings').readGameSettings(manager, server);
+  });
+
+  router.put('/api/servers/:id/game-settings', ({ user, params, body }) => {
+    const server = serverFor(user, params.id, 'settings');
+    const result = require('../../games/settings').writeGameSettings(manager, server, body.values);
+    if (result.changed) store.addEvent('server.settings', `${user.username} changed ${result.changed} game setting${result.changed === 1 ? '' : 's'} on ${server.name}`, { serverId: server.id });
+    return { ...result, restartNeeded: manager.isActive(server.id) };
+  });
+
   /** Kick or ban someone on the Players tab, through the game's own console command. */
   router.post('/api/servers/:id/players/action', async ({ user, params, body }) => {
     const server = serverFor(user, params.id, 'command');

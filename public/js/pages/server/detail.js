@@ -4,6 +4,7 @@ import { $, can, esc, fmtBytes, fmtDuration, fmtRate, icon, statusPill } from '.
 import { renderBackupsTab } from './backups.js';
 import { renderConsoleTab } from './console.js';
 import { renderFilesTab } from './files.js';
+import { renderGameTab } from './game.js';
 import { drawServerCharts, renderMetricsTab } from './metrics.js';
 import { renderModpacksTab } from './modpacks.js';
 import { renderModsTab } from './mods.js';
@@ -24,6 +25,7 @@ function serverTabs(server) {
     server.hasMods && can('mods') && ['mods', 'Mods'],
     can('backups') && ['backups', 'Backups'],
     can('schedules') && ['schedules', 'Schedules'],
+    can('settings') && ['game', 'Game settings'],
     can('settings') && ['settings', 'Settings'],
   ].filter(Boolean);
 }
@@ -154,6 +156,9 @@ function renderServerTab(server, tab) {
       break;
     case 'players':
       renderPlayersTab(host, server);
+      break;
+    case 'game':
+      renderGameTab(host, server);
       break;
     case 'files':
       renderFilesTab(host, server, '');
