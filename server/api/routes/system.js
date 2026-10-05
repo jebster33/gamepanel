@@ -110,6 +110,12 @@ module.exports = (router, { store, auth, manager, hostMetrics, notifier }, { req
       const { curseforgeKey, steamApiKey, factorio } = body.integrations;
       if (curseforgeKey !== undefined) s.integrations.curseforgeKey = String(curseforgeKey).trim();
       if (steamApiKey !== undefined) s.integrations.steamApiKey = String(steamApiKey).trim();
+      const { cloudflare } = body.integrations;
+      if (cloudflare !== undefined) {
+        const domain = String(cloudflare.domain || '').trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+        if (domain && !/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(domain)) fail(400, 'Enter the domain like example.com');
+        s.integrations.cloudflare = { token: String(cloudflare.token || '').trim(), domain };
+      }
       if (factorio !== undefined) {
         s.integrations.factorio = { username: String(factorio.username || '').trim(), token: String(factorio.token || '').trim() };
       }

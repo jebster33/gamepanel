@@ -53,6 +53,7 @@ function publicView(store, manager, slug) {
         maxPlayers: p.maxPlayers,
         playerNames: s.showPlayers && running ? p.playerList.slice(0, 100) : undefined,
         port: s.showAddress ? p.ports?.game ?? Object.values(p.ports || {})[0] : undefined,
+        address: s.showAddress ? require('./dns').playerAddress(server) || undefined : undefined,
         version: p.gameVersion || null,
         uptime: running ? p.uptime : 0,
         joinNote: s.showAddress ? p.joinNote : null,

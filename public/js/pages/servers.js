@@ -6,6 +6,8 @@ import { revealChildren } from '../ui/fx.js';
 /* --------------------------------------------------------- server cards */
 
 export function serverAddress(server) {
+  const sub = server.subdomain;
+  if (sub) return sub.srv || !sub.port ? sub.host : `${sub.host}:${sub.port}`;
   const port = server.ports?.game ?? Object.values(server.ports || {})[0];
   return `${location.hostname}:${port}`;
 }

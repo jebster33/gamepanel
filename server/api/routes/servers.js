@@ -139,6 +139,20 @@ module.exports = (router, { store, manager, scheduler }, { requireAdmin, require
     return manager.cloneServer(params.id, { name: body?.name, copyFiles: body?.copyFiles !== false }, user);
   });
 
+  /** A friendly address (play.example.com) through Cloudflare DNS. */
+  router.put('/api/servers/:id/subdomain', async ({ user, params, body }) => {
+    requireAdmin(user);
+    const server = manager.require(params.id);
+    const result = await require('../../features/dns').assign(store, server, body?.name, { ip: body?.ip });
+    store.addEvent('server.settings', `${user.username} pointed ${result.host} at ${server.name}`, { serverId: server.id });
+    return { subdomain: result, address: require('../../features/dns').playerAddress(server) };
+  });
+
+  router.delete('/api/servers/:id/subdomain', async ({ user, params }) => {
+    requireAdmin(user);
+    return require('../../features/dns').release(store, manager.require(params.id));
+  });
+
   /** Minecraft worlds. */
   router.get('/api/servers/:id/worlds', async ({ user, params }) => manager.listWorlds(serverFor(user, params.id, 'files')));
 

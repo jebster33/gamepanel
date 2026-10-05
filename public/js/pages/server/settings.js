@@ -49,6 +49,25 @@ export function renderServerSettingsTab(host, server) {
       ${isAdmin ? '<button class="btn mt-16" id="al-save">Save alerts</button>' : ''}
     </div>
 
+    ${
+      isOwner
+        ? `<div class="card mb-16" id="address-card">
+      <h4 style="margin:0 0 6px">Address</h4>
+      ${
+        server.subdomain
+          ? `<p style="margin:0 0 12px">Players connect to <b class="mono">${esc(server.subdomain.srv || !server.subdomain.port ? server.subdomain.host : `${server.subdomain.host}:${server.subdomain.port}`)}</b>${server.subdomain.srv ? ' (no port needed)' : ''}. It points at ${esc(server.subdomain.ip)}.</p>
+             <button class="btn" id="dns-remove">Remove address</button>`
+          : `<p class="faint" style="margin:0 0 12px">Give it a name like play.yourdomain.com through Cloudflare. Minecraft Java players then do not need the port.</p>
+             <div class="row" style="gap:8px;flex-wrap:wrap">
+               <input id="dns-name" placeholder="play" maxlength="63" style="max-width:200px" />
+               <button class="btn" id="dns-save">Create address</button>
+             </div>
+             <div class="hint">Needs a Cloudflare token and domain under Settings, Integrations. Uses this machine's public IP; if it changes, create the address again.</div>`
+      }
+    </div>`
+        : ''
+    }
+
     <div class="card mb-16" id="network-card">
       <h4 style="margin:0 0 6px">Reachability</h4>
       <p class="faint" style="margin:0 0 12px">Checking the firewall and your router…</p>
@@ -144,6 +163,29 @@ export function renderServerSettingsTab(host, server) {
   });
 
   if (!isOwner) return; // the danger zone below is not rendered for non-admins
+
+  $('#dns-save')?.addEventListener('click', async (event) => {
+    const btn = event.currentTarget;
+    btn.disabled = true;
+    try {
+      const r = await api(`/api/servers/${server.id}/subdomain`, { method: 'PUT', body: { name: $('#dns-name').value } });
+      toast(`Players can now use ${r.address}. DNS can take a few minutes to reach everyone.`, 'info', 7000);
+      await loadServers();
+      render();
+    } catch (err) {
+      toast(err.message, 'error');
+      btn.disabled = false;
+    }
+  });
+  $('#dns-remove')?.addEventListener('click', async () => {
+    try {
+      await api(`/api/servers/${server.id}/subdomain`, { method: 'DELETE' });
+      await loadServers();
+      render();
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+  });
 
   $('#set-clone').addEventListener('click', () => {
     openModal({

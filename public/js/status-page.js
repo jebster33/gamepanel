@@ -52,7 +52,7 @@ function render(data) {
   }
   $('cards').innerHTML = data.servers
     .map((s, i) => {
-      const address = s.port ? `${host}:${s.port}` : null;
+      const address = s.address || (s.port ? `${host}:${s.port}` : null);
       const pct = s.maxPlayers ? Math.min(100, (s.players / s.maxPlayers) * 100) : 0;
       return `
       <article class="card ${esc(s.status)}" style="${first ? `animation-delay:${i * 50}ms` : 'animation:none'}">

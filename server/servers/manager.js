@@ -442,6 +442,8 @@ class ServerManager extends EventEmitter {
     this.servers.splice(this.servers.indexOf(server), 1);
     this.runtime.delete(id);
     this.deleteHistory(id);
+    // Free play.example.com so the name can be reused.
+    if (server.subdomain) require('../features/dns').release(this.store, server).catch(() => {});
     this.store.save();
     // A server imported in place keeps its folder: those files were never the panel's.
     if (deleteFiles && server.imported?.inPlace) {
