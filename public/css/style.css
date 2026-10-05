@@ -2549,6 +2549,116 @@ tbody tr:hover {
   font-size: 13.5px;
   line-height: 1.55;
 }
+/* Minecraft multiplayer list preview */
+.mc-list {
+  padding: 10px;
+  margin-bottom: 16px;
+  background: #0f0f0f url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'%3E%3Crect width='4' height='4' fill='%23171512'/%3E%3Crect x='4' y='4' width='4' height='4' fill='%23171512'/%3E%3C/svg%3E");
+  border-radius: 6px;
+}
+.mc-entry {
+  display: flex;
+  gap: 8px;
+  max-width: 560px;
+  padding: 4px;
+  border: 2px solid #808080;
+  background: rgba(0, 0, 0, 0.5);
+  font: 15px/1.3 "Minecraft", "Minecraftia", ui-monospace, "SF Mono", Menlo, monospace;
+  text-shadow: 2px 2px 0 #3f3f3f;
+}
+.mc-icon {
+  width: 64px;
+  height: 64px;
+  image-rendering: pixelated;
+  flex-shrink: 0;
+}
+.mc-text {
+  flex: 1;
+  min-width: 0;
+}
+.mc-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+.mc-name {
+  color: #fff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mc-count {
+  color: #aaa;
+  white-space: nowrap;
+}
+.mc-bars {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 1px;
+  height: 12px;
+  margin-left: 4px;
+}
+.mc-bars i {
+  width: 2px;
+  background: #55ff55;
+  box-shadow: 1px 1px 0 #164216;
+}
+.mc-bars i:nth-child(1) { height: 4px; }
+.mc-bars i:nth-child(2) { height: 6px; }
+.mc-bars i:nth-child(3) { height: 8px; }
+.mc-bars i:nth-child(4) { height: 10px; }
+.mc-bars i:nth-child(5) { height: 12px; }
+.mc-motd {
+  margin-top: 2px;
+  min-height: 40px;
+  overflow-wrap: anywhere;
+}
+.mc-obf {
+  animation: mc-obf 0.15s steps(2) infinite;
+}
+@keyframes mc-obf {
+  50% {
+    opacity: 0.4;
+    filter: blur(1px);
+  }
+}
+.ap-grid {
+  display: grid;
+  grid-template-columns: minmax(160px, 220px) 1fr;
+  gap: 18px;
+}
+@media (max-width: 640px) {
+  .ap-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.mc-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+.mc-swatch,
+.mc-fmt {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  font: 700 12px var(--mono);
+  color: var(--text);
+  background: var(--raised);
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.mc-swatch:hover,
+.mc-fmt:hover {
+  transform: translateY(-1px);
+  border-color: var(--lime);
+}
+#ap-motd {
+  width: 100%;
+  resize: vertical;
+}
 .recovery-codes {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

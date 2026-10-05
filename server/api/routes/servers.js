@@ -107,6 +107,32 @@ module.exports = (router, { store, manager, scheduler }, { requireAdmin, require
     return result;
   });
 
+  /** Minecraft's server-icon.png (64×64), shown next to the name in the server list. */
+  router.get('/api/servers/:id/icon', ({ user, params, res }) => {
+    const server = serverFor(user, params.id);
+    const fs = require('fs');
+    let png;
+    try {
+      png = fs.readFileSync(require('../../features/files').containedPath(server.dir, 'server-icon.png'));
+    } catch {
+      fail(404, 'No icon yet');
+    }
+    res.writeHead(200, { 'Content-Type': 'image/png', 'Content-Length': png.length, 'Cache-Control': 'no-cache' });
+    res.end(png);
+    return undefined;
+  });
+
+  router.put('/api/servers/:id/icon', ({ user, params, body }) => {
+    const server = serverFor(user, params.id, 'settings');
+    const png = Buffer.from(String(body?.png || '').replace(/^data:image\/png;base64,/, ''), 'base64');
+    // A real PNG, exactly 64×64 (the IHDR width and height), and small.
+    const isPng = png.length > 24 && png.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+    if (!isPng || png.readUInt32BE(16) !== 64 || png.readUInt32BE(20) !== 64 || png.length > 256 * 1024) fail(400, 'The icon must be a 64×64 PNG');
+    require('fs').writeFileSync(require('../../features/files').containedPath(server.dir, 'server-icon.png'), png);
+    store.addEvent('server.settings', `${user.username} changed the server icon of ${server.name}`, { serverId: server.id });
+    return { ok: true };
+  });
+
   /** Crash doctor: what went wrong, and a fix where there is a safe one. */
   router.get('/api/servers/:id/diagnose', ({ user, params }) => {
     const server = serverFor(user, params.id, 'console');

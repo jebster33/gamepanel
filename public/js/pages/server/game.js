@@ -1,6 +1,7 @@
 import { api } from '../../core/api.js';
 import { esc, toast } from '../../core/util.js';
 import { renderVersionCard } from './version.js';
+import { renderAppearance } from './appearance.js';
 
 /* ---------------------------------------------------- game settings tab */
 
@@ -42,6 +43,7 @@ export async function renderGameTab(root, server) {
       <input class="search-input" id="gs-search" placeholder="Find a setting…" style="max-width:240px" />
     </div>
     <div id="gs-warning"></div>
+    <div id="gs-appearance"></div>
     ${data.groups.map(groupCard).join('')}
     <div class="save-bar hidden" id="gs-bar">
       <span id="gs-count"></span>
@@ -49,6 +51,13 @@ export async function renderGameTab(root, server) {
       <button class="btn btn-ghost" id="gs-discard">Discard</button>
       <button class="btn btn-primary" id="gs-save">Save</button>
     </div>`;
+
+  const java = String(server.templateId || '').startsWith('minecraft') && server.templateId !== 'minecraft-bedrock';
+  if (java && fields.has('motd')) {
+    renderAppearance(host.querySelector('#gs-appearance'), server, fields);
+    // Edited in the preview card above instead.
+    host.querySelector('[data-gs="motd"]')?.closest('.gs-field')?.remove();
+  }
 
   const bar = host.querySelector('#gs-bar');
   const refresh = () => {
