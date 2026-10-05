@@ -71,7 +71,7 @@
     "port": "rcon"
   },
   "logPatterns": {
-    "ready": "Server started|LogSquad: PostLogin"
+    "ready": "Server started|LogSquad: PostLogin|Session 'GameSession' is being set as 'listening'"
   },
   "image": "cm2network/steamcmd:root",
   "platforms": [
