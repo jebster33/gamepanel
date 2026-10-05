@@ -149,11 +149,24 @@ async function steamApp({ appid, login = 'anonymous', branch = '', dir, log, tra
     log(`SteamCMD: installing app ${appid}${branch ? ` (branch ${branch})` : ''}${attempt > 1 ? ` — attempt ${attempt}` : ''}`);
     const code = await streamProcess(binary, args, { cwd: path.dirname(binary), log, track });
     // 0 = done. 7 is "restart after self-update"; anything else is worth one more go.
-    if (code === 0 && fs.existsSync(path.join(dir, 'steamapps'))) return;
-    if (code === 0) return;
+    if (code === 0) return copySteamClient(path.dirname(binary), dir);
     log(`SteamCMD exited with code ${code}`);
   }
   die(`SteamCMD could not install app ${appid}. Check the disk space and that the app can be downloaded anonymously.`);
+}
+
+/**
+ * Older Source servers on Windows (Left 4 Dead 2) only look for the Steam
+ * client next to their own executable and drop to LAN-only mode without it.
+ * SteamCMD ships those DLLs; put copies beside the game where none exist.
+ */
+async function copySteamClient(steamcmdDir, dir) {
+  if (!isWindows) return;
+  for (const name of ['steamclient.dll', 'steamclient64.dll', 'tier0_s.dll', 'tier0_s64.dll', 'vstdlib_s.dll', 'vstdlib_s64.dll']) {
+    const from = path.join(steamcmdDir, name);
+    const to = path.join(dir, name);
+    if (fs.existsSync(from) && !fs.existsSync(to)) await fsp.copyFile(from, to).catch(() => {});
+  }
 }
 
 /** Download one Workshop item into `dest` (replacing what was there). */
