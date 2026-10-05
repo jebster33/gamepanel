@@ -52,7 +52,7 @@
       "mode": "+x"
     }
   ],
-  "startCommand": "./DedicatedServer -name \"{{SERVER_NAME}}\" -port {{PORT}} -queryport {{PORT_QUERY}} -maxplayers {{MAX_PLAYERS}} -password \"{{SERVER_PASSWORD}}\" -public",
+  "startCommand": "./DedicatedServer -name \"{{SERVER_NAME}}\" -port {{PORT}} -queryport {{PORT_QUERY}} -maxplayers {{MAX_PLAYERS}} -password \"{{SERVER_PASSWORD}}\" -public true",
   "windows": {
     "install": [
       {
@@ -65,7 +65,7 @@
         "label": "Install the Visual C++ runtime"
       }
     ],
-    "startCommand": "DedicatedServer.exe -name \"{{SERVER_NAME}}\" -port {{PORT}} -queryport {{PORT_QUERY}} -maxplayers {{MAX_PLAYERS}} -password \"{{SERVER_PASSWORD}}\" -public"
+    "startCommand": "DedicatedServer.exe -name \"{{SERVER_NAME}}\" -port {{PORT}} -queryport {{PORT_QUERY}} -maxplayers {{MAX_PLAYERS}} -password \"{{SERVER_PASSWORD}}\" -public true"
   },
   "stopCommand": "quit",
   "stopTimeout": 30,
