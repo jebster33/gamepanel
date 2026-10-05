@@ -13,6 +13,7 @@
  *   stats.js           CPU, memory, players, ping, disk
  *   history.js         player history and the activity log
  *   versions.js        switching game version / Minecraft server type
+ *   doctor.js          crash doctor and log sharing
  *   watchers.js        tailing game log files, port-based readiness
  *   runtimes/container.js   running a server in Docker (Linux isolation)
  *   runtimes/process.js     running a server as a plain process (Linux or Windows)
@@ -295,6 +296,7 @@ class ServerManager extends EventEmitter {
       modProviders: tpl?.mods?.providers || [],
       gameVersion: this.gameVersion(server),
       joinNote: tpl?.joinNote || null,
+      diagnosis: rt.diagnosis || null,
     };
   }
 
@@ -548,6 +550,7 @@ Object.assign(
   require('./stats'),
   require('./history'),
   require('./versions'),
+  require('./doctor'),
   require('./watchers'),
   require('./runtimes/container'),
   require('./runtimes/process')

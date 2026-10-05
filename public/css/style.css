@@ -2505,6 +2505,50 @@ tbody tr:hover {
   border-color: var(--lime);
   box-shadow: 0 0 0 1px var(--lime) inset;
 }
+.console-tools {
+  display: flex;
+  justify-content: flex-end;
+  margin: -6px 0 8px;
+}
+.doctor-card {
+  border-color: rgba(255, 179, 64, 0.35);
+  background: linear-gradient(180deg, rgba(255, 179, 64, 0.07), transparent 70%), var(--surface);
+}
+.doctor-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+.doctor-head .icon-btn {
+  margin-left: auto;
+}
+.doctor-badge {
+  padding: 3px 9px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #111210;
+  background: var(--amber, #ffb340);
+  border-radius: 99px;
+}
+.doctor-item {
+  padding: 12px 0 2px;
+}
+.doctor-item + .doctor-item {
+  border-top: 1px solid var(--border);
+}
+.doctor-title {
+  font-weight: 650;
+  font-size: 15px;
+}
+.doctor-detail {
+  margin: 4px 0 10px;
+  color: var(--muted);
+  font-size: 13.5px;
+  line-height: 1.55;
+}
 .recovery-codes {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

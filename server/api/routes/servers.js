@@ -107,6 +107,26 @@ module.exports = (router, { store, manager, scheduler }, { requireAdmin, require
     return result;
   });
 
+  /** Crash doctor: what went wrong, and a fix where there is a safe one. */
+  router.get('/api/servers/:id/diagnose', ({ user, params }) => {
+    const server = serverFor(user, params.id, 'console');
+    return manager.runDiagnosis(server) || { findings: [] };
+  });
+
+  router.post('/api/servers/:id/diagnose/fix', async ({ user, params, body }) => {
+    const action = String(body?.action || '');
+    const cap = ['disable-mod', 'disable-plugin', 'eula'].includes(action) ? 'files.write' : 'settings';
+    const server = serverFor(user, params.id, cap);
+    if (action === 'memory') requireAdmin(user);
+    return manager.applyFix(server.id, body || {}, user);
+  });
+
+  /** Upload the console to mclo.gs so it can be shown to someone helping. */
+  router.post('/api/servers/:id/share-log', async ({ user, params }) => {
+    const server = serverFor(user, params.id, 'console');
+    return manager.shareLog(server.id);
+  });
+
   /** Game version and (Minecraft Java) server type switching. */
   router.get('/api/servers/:id/version', ({ user, params }) => {
     const server = serverFor(user, params.id, 'settings');

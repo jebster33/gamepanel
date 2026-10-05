@@ -2,7 +2,7 @@ import { setCrumbs } from '../../core/router.js';
 import { state } from '../../core/state.js';
 import { $, can, esc, fmtBytes, fmtDuration, fmtRate, icon, statusPill } from '../../core/util.js';
 import { renderBackupsTab } from './backups.js';
-import { renderConsoleTab } from './console.js';
+import { patchDoctor, renderConsoleTab } from './console.js';
 import { renderFilesTab } from './files.js';
 import { renderGameTab } from './game.js';
 import { drawServerCharts, renderMetricsTab } from './metrics.js';
@@ -123,6 +123,7 @@ export function patchServerHeader() {
   if (status) status.innerHTML = statusPill(server.status);
   const power = $('#detail-power');
   if (power) power.innerHTML = powerButtons(server);
+  if ((state.route.params.tab || 'console') === 'console') patchDoctor(server);
 }
 
 export function patchServerDetail() {

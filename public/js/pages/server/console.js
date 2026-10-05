@@ -1,12 +1,18 @@
 import { api } from '../../core/api.js';
 import { wsSubscribe } from '../../core/live.js';
 import { state } from '../../core/state.js';
-import { $, esc, toast } from '../../core/util.js';
+import { $, can, esc, toast } from '../../core/util.js';
+import { copyToClipboard } from '../../ui/clipboard.js';
+import { confirmModal, openModal } from '../../ui/modal.js';
 
 /* -------------------------------------------------------------- console */
 
 export function renderConsoleTab(host, server) {
   host.innerHTML = `
+    <div id="doctor"></div>
+    <div class="console-tools">
+      <button class="btn btn-sm btn-ghost" id="share-log" title="Upload the console to mclo.gs so someone can help">Share log</button>
+    </div>
     <div class="console-wrap">
       <div class="console" id="console"></div>
       <form class="console-form" id="console-form">
@@ -29,6 +35,10 @@ export function renderConsoleTab(host, server) {
       }
     })
     .catch(() => {});
+
+  patchDoctor(server);
+  $('#doctor').addEventListener('click', (event) => onDoctorClick(event, server));
+  $('#share-log').addEventListener('click', () => shareLog(server));
 
   $('#console-form').addEventListener('submit', async (event) => {
     event.preventDefault();
@@ -98,4 +108,78 @@ export function appendConsoleLines(lines, replace = false) {
   el.insertAdjacentHTML('beforeend', html);
   while (el.childElementCount > 600) el.firstElementChild.remove();
   if (atBottom || replace) el.scrollTop = el.scrollHeight;
+}
+
+/* --------------------------------------------------------- crash doctor */
+
+// Fixes that are just "go to the right place".
+const NAVIGATE = { settings: 'settings', mods: 'mods', files: 'files', backups: 'backups' };
+
+export function patchDoctor(server) {
+  const box = document.getElementById('doctor');
+  if (!box) return;
+  const findings = server.diagnosis?.findings || [];
+  const key = JSON.stringify(findings.map((f) => f.id));
+  if (box.dataset.key === key) return;
+  box.dataset.key = key;
+  box.innerHTML = findings.length
+    ? `<div class="card doctor-card mb-16">
+        <div class="doctor-head"><span class="doctor-badge">Crash doctor</span><span class="faint">Why ${esc(server.name)} stopped</span>
+          <button class="icon-btn" data-doctor-close aria-label="Dismiss">✕</button></div>
+        ${findings
+          .map(
+            (f, i) => `<div class="doctor-item">
+              <div class="doctor-title">${esc(f.title)}</div>
+              <div class="doctor-detail">${esc(f.detail).replace(/\n/g, '<br>')}</div>
+              ${f.fix ? `<button class="btn btn-sm ${i === 0 ? 'btn-primary' : ''}" data-fix="${i}">${esc(f.fix.label)}</button>` : ''}
+            </div>`
+          )
+          .join('')}
+      </div>`
+    : '';
+}
+
+async function onDoctorClick(event, server) {
+  if (event.target.closest('[data-doctor-close]')) {
+    document.getElementById('doctor').innerHTML = '';
+    return;
+  }
+  const btn = event.target.closest('[data-fix]');
+  if (!btn) return;
+  const live = state.servers.find((s) => s.id === server.id) || server;
+  const fix = live.diagnosis?.findings?.[Number(btn.dataset.fix)]?.fix;
+  if (!fix) return;
+  if (NAVIGATE[fix.action]) {
+    location.hash = `#/servers/${server.id}/${NAVIGATE[fix.action]}`;
+    return;
+  }
+  if (fix.action === 'share') return shareLog(server);
+  if (fix.action === 'eula' && !(await confirmModal('Accept the Minecraft EULA', 'By accepting you agree to the Minecraft End User License Agreement (aka.ms/MinecraftEULA).', 'Accept'))) return;
+  btn.disabled = true;
+  try {
+    const result = await api(`/api/servers/${server.id}/diagnose/fix`, { method: 'POST', body: fix });
+    toast(`${result.message}. ${['java', 'reinstall'].includes(fix.action) ? 'Start it again once the install finishes.' : 'Start the server again.'}`, 'info', 7000);
+    document.getElementById('doctor').innerHTML = '';
+  } catch (err) {
+    toast(err.message, 'error');
+    btn.disabled = false;
+  }
+}
+
+async function shareLog(server) {
+  if (!can('console')) return;
+  if (!(await confirmModal('Share the console log', 'The console is uploaded to mclo.gs, where anyone with the link can read it. mclo.gs hides IP addresses and the panel hides passwords from the server settings.', 'Upload'))) return;
+  try {
+    const { url } = await api(`/api/servers/${server.id}/share-log`, { method: 'POST' });
+    openModal({
+      title: 'Log shared',
+      width: 460,
+      body: `<p class="faint" style="margin-top:0">Send this link to whoever is helping you.</p>
+        <div class="input-row"><input class="mono" readonly value="${esc(url)}" /><button class="btn btn-primary" data-copy-url>Copy</button></div>
+        <p style="margin-bottom:0"><a href="${esc(url)}" target="_blank" rel="noopener">Open it</a></p>`,
+    });
+    document.querySelector('[data-copy-url]')?.addEventListener('click', () => copyToClipboard(url));
+  } catch (err) {
+    toast(err.message, 'error');
+  }
 }
