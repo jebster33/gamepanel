@@ -148,10 +148,25 @@ module.exports = {
         },
       });
       rt.docker = { ...(rt.docker || {}), installId: created.Id };
-      const stopLogs = await docker.logs(created.Id, (payload, kind) => this.pushConsole(server, payload.toString('utf8'), kind));
+      // Attach before starting: following logs of a container that has not
+      // started yet returns an empty stream, and the output would be lost.
+      let seen = 0;
+      const attachment = await docker.attach(created.Id, { stdin: false });
+      attachment.on('output', (payload, kind) => {
+        seen += payload.length;
+        this.pushConsole(server, payload.toString('utf8'), kind);
+      });
       await docker.start(created.Id);
       const code = await docker.wait(created.Id);
-      stopLogs();
+      await new Promise((r) => setTimeout(r, 300)); // let the last output drain
+      attachment.close();
+      if (!seen) {
+        // Belt and braces: read whatever the container logged.
+        const stop = await docker.logs(created.Id, (payload, kind) => this.pushConsole(server, payload.toString('utf8'), kind), { follow: false }).catch(() => null);
+        await new Promise((r) => setTimeout(r, 500));
+        stop?.();
+      }
+      if (code !== 0) this.pushConsole(server, `The ${label} container exited with code ${code} (image ${image}).`, 'system');
       await docker.remove(created.Id).catch(() => {});
       return { code };
     } catch (err) {
