@@ -32,4 +32,10 @@ if ($templates.templates.Count -lt 20) { throw 'Too few templates loaded' }
 if ($system.dataDir -notlike "$env:ProgramData*") { throw "Service data should live in ProgramData, not $($system.dataDir)" }
 $page = Invoke-WebRequest "$base/" -UseBasicParsing
 if ($page.Content -notmatch 'main.js') { throw 'The dashboard page did not load' }
+foreach ($asset in @(@('/css/style.css', 'text/css'), @('/js/main.js', 'text/javascript'), @('/js/core/boot.js', 'text/javascript'))) {
+  $r = Invoke-WebRequest "$base$($asset[0])" -UseBasicParsing
+  $type = $r.Headers['Content-Type']
+  Write-Host "$($asset[0]): $($r.StatusCode) $type, $($r.RawContentLength) bytes"
+  if ($type -notlike "$($asset[1])*" -or $r.RawContentLength -lt 200) { throw "$($asset[0]) was not served properly" }
+}
 Write-Host 'Install looks good'
