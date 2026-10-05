@@ -106,7 +106,8 @@
     {
       "type": "steamcmd",
       "appid": "222860",
-      "label": "Install Left 4 Dead 2 dedicated server"
+      "label": "Install Left 4 Dead 2 dedicated server",
+      "prefetchPlatform": "windows"
     },
     {
       "type": "chmod",
