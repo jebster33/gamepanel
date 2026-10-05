@@ -1,6 +1,16 @@
 # HTTP API
 
-Everything the UI does is a REST call. Authenticate with the session cookie or `Authorization: Bearer <token>` from `POST /api/auth/login`.
+Everything the UI does is a REST call. Authenticate with the session cookie, `Authorization: Bearer <token>` from `POST /api/auth/login`, or an API key.
+
+## API keys
+
+Create one on the Account page (or `POST /api/auth/api-keys {"name","readOnly"}`; the key is shown once). Send it as `Authorization: Bearer gp_…`. A key acts as your account, with two limits: read-only keys can only `GET`, and no key can change accounts (passwords, two-factor, keys, users). Keys are stored hashed.
+
+```
+curl -H "Authorization: Bearer gp_…" http://panel:8420/api/servers
+curl -H "Authorization: Bearer gp_…" -H "Content-Type: application/json" \
+     -d '{"action":"restart"}' http://panel:8420/api/servers/<id>/power
+```
 
 ```
 GET    /api/servers                      list servers
@@ -24,6 +34,19 @@ POST   /api/servers/:id/mods/:key/toggle enable or disable
 GET    /api/servers/:id/schedules        scheduled tasks
 POST   /api/servers/:id/schedules        {"name","action","cron","command?"}
 GET    /api/servers/:id/backups          backups
+GET    /api/servers/:id/player-history   players, sessions, peaks
+GET    /api/servers/:id/activity         joins, leaves, chat, kicks (?types=&q=&before=)
+GET    /api/servers/:id/player-lists     whitelist, ops, bans (Minecraft)
+POST   /api/servers/:id/player-lists     {"list","action":"add|remove","name"}
+GET    /api/servers/:id/version          version fields and server types
+POST   /api/servers/:id/version          {"templateId?","vars","backup","stopFirst"}
+GET    /api/servers/:id/worlds           worlds and which one loads
+POST   /api/servers/:id/worlds/use       {"name"}
+POST   /api/servers/:id/worlds/reset     {"name","seed?","backup"}
+GET    /api/servers/:id/worlds/download  ?name= (a .tar.gz)
+POST   /api/servers/:id/clone            {"name","copyFiles"} (admins)
+GET    /api/servers/:id/diagnose         crash doctor findings
+POST   /api/servers/:id/share-log        upload the console to mclo.gs
 GET    /api/system                       host metrics
 GET    /api/system/runtime               Docker status
 GET    /api/system/update                pending panel updates
