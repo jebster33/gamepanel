@@ -6,3 +6,4 @@ data/
 .env
 .idea/
 .vscode/
+smoke-output/
