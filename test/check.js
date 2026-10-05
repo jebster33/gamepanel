@@ -89,11 +89,11 @@ function bashParses(script) {
 
 /* --------------------------------------------------------------- checks -- */
 
-const { buildInstallScript } = require(path.join(ROOT, 'server/lib/installer'));
-const { RESOLVERS } = require(path.join(ROOT, 'server/lib/resolvers'));
-const { SOURCES } = require(path.join(ROOT, 'server/lib/options'));
-const { QUERY_TYPES } = require(path.join(ROOT, 'server/lib/query'));
-const { PROVIDERS: MOD_PROVIDERS } = require(path.join(ROOT, 'server/lib/mods'));
+const { buildInstallScript } = require(path.join(ROOT, 'server/servers/install/bash'));
+const { RESOLVERS } = require(path.join(ROOT, 'server/games/resolvers'));
+const { SOURCES } = require(path.join(ROOT, 'server/games/options'));
+const { QUERY_TYPES } = require(path.join(ROOT, 'server/games/query'));
+const { PROVIDERS: MOD_PROVIDERS } = require(path.join(ROOT, 'server/features/mods'));
 
 const VALID_STEP_TYPES = ['apt', 'java', 'steamcmd', 'download', 'extract', 'writefile', 'mkdir', 'chmod', 'script'];
 
@@ -269,7 +269,7 @@ async function checkTemplate(file) {
   else fail(`${id}: install script is not valid bash`, parsed.error);
 
   // The start command is run through bash -lc, so it must parse too.
-  const startParsed = bashParses(require(path.join(ROOT, 'server/lib/util')).interpolate(tpl.startCommand, vars));
+  const startParsed = bashParses(require(path.join(ROOT, 'server/core/util')).interpolate(tpl.startCommand, vars));
   if (startParsed.ok) pass(`${id}: start command parses`);
   else fail(`${id}: start command is not valid bash`, startParsed.error);
 
@@ -326,7 +326,7 @@ async function checkTemplate(file) {
 async function checkOptionSources() {
   if (!LIVE) return;
   console.log(c.bold('\n▸ Option sources (dropdown data)'));
-  const { getOptions } = require(path.join(ROOT, 'server/lib/options'));
+  const { getOptions } = require(path.join(ROOT, 'server/games/options'));
   for (const source of SOURCES) {
     const query = source === 'modrinth-modpack-version' ? 'fabulously-optimized' : '';
     const data = await getOptions(source, query);
@@ -340,17 +340,22 @@ async function checkOptionSources() {
 
 function checkModules() {
   console.log(c.bold('\n▸ Panel modules'));
-  const dir = path.join(ROOT, 'server/lib');
-  for (const file of fs.readdirSync(dir).filter((f) => f.endsWith('.js'))) {
+  const walk = (dir) =>
+    fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(path.join(dir, e.name)) : e.name.endsWith('.js') ? [path.join(dir, e.name)] : []));
+  const serverDir = path.join(ROOT, 'server');
+  for (const full of walk(serverDir)) {
+    const rel = path.relative(ROOT, full).replace(/\\/g, '/');
+    if (rel === 'server/index.js') continue;
     try {
-      require(path.join(dir, file));
-      pass(`server/lib/${file} loads`);
+      require(full);
+      pass(`${rel} loads`);
     } catch (err) {
-      fail(`server/lib/${file} failed to load`, err.message);
+      fail(`${rel} failed to load`, err.message);
     }
   }
-  // index.js starts listening on import, so only check that it parses.
-  for (const file of ['server/index.js', 'public/js/app.js']) {
+  // index.js starts listening on import, and the UI is ES modules, so only check that they parse.
+  const publicJs = walk(path.join(ROOT, 'public/js')).map((f) => path.relative(ROOT, f));
+  for (const file of ['server/index.js', ...publicJs]) {
     try {
       execFileSync(process.execPath, ['--check', path.join(ROOT, file)], { stdio: 'pipe' });
       pass(`${file} parses`);

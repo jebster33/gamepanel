@@ -13,7 +13,11 @@
  * tens of gigabytes of disk.
  *
  * Templates can tune it with a "ci" block:
- *   { "ci": { "skip": "why", "installOnly": true, "vars": {}, "bootTimeout": 900 } }
+ *   { "ci": { "skip": "why", "installOnly": true, "vars": {}, "bootTimeout": 900,
+ *             "mods": [{ "provider": "modrinth", "projectId": "ledger", "expectAtLeast": 3 }] } }
+ *
+ * "mods" are installed through the one-click installer before the first
+ * boot, so a passing run proves they resolved, downloaded and loaded.
  */
 
 const fs = require('fs');
@@ -159,6 +163,42 @@ async function main() {
       return 1;
     }
     log('Install finished');
+    // 1b. one-click mods, dependencies included
+    for (const mod of ci.mods || []) {
+      const label = `${mod.provider}:${mod.projectId || mod.input}`;
+      if (mod.provider === 'workshop') {
+        const res = await api('POST', `/api/servers/${serverId}/mods/install`, { provider: 'workshop', input: mod.input || mod.projectId });
+        log(`mods: ${label} → ${res.message}`);
+        if (res.queued) {
+          const until = Date.now() + 30 * 60_000;
+          let found = false;
+          let failed = false;
+          while (!found && !failed && Date.now() < until) {
+            await sleep(5000);
+            const { installed } = await api('GET', `/api/servers/${serverId}/mods`);
+            found = installed.items.some((i) => i.provider === 'workshop');
+            const { lines } = await api('GET', `/api/servers/${serverId}/console`);
+            failed = lines.some((l) => /Workshop install failed/.test(l.line));
+          }
+          if (!found) throw new Error(`Workshop item ${label} did not install`);
+        }
+        continue;
+      }
+      const plan = await api('POST', `/api/servers/${serverId}/mods/plan`, { provider: mod.provider, projectId: mod.projectId });
+      log(`mods: ${label} plan → ${plan.steps.map((st) => `${st.name} ${st.version}${st.dependency ? ' (dep)' : ''}`).join(', ')}`);
+      const res = await api('POST', `/api/servers/${serverId}/mods/install`, { provider: mod.provider, projectId: mod.projectId });
+      if (res.installed.length < Number(mod.expectAtLeast || 1)) {
+        throw new Error(`${label} installed ${res.installed.length} file(s), expected at least ${mod.expectAtLeast}`);
+      }
+      log(`mods: installed ${res.installed.map((i) => i.file).join(', ')}`);
+    }
+    if ((ci.mods || []).length) {
+      const { installed } = await api('GET', `/api/servers/${serverId}/mods`);
+      log(`mods: ${installed.items.length} item(s) in ${installed.dir} (${installed.filter})`);
+      const { updates } = await api('GET', `/api/servers/${serverId}/mods/updates`);
+      if (updates.length) log(`mods: note: update check reports ${updates.length} newer release(s) right after install: ${updates.map((u) => u.name).join(', ')}`);
+    }
+
     if (ci.installOnly) {
       log(`PASS ${TEMPLATE} (install only: ${ci.installOnly === true ? 'needs credentials to boot' : ci.installOnly})`);
       await dumpConsole();

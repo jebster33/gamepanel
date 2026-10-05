@@ -9,15 +9,18 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
-const { config, ensureDirs, loadSecret } = require('./lib/config');
-const { logger, json, HttpError } = require('./lib/util');
-const { Store } = require('./lib/store');
-const { Auth } = require('./lib/auth');
-const { WebSocketServer } = require('./lib/ws');
-const { TemplateRegistry } = require('./lib/templates');
-const { ServerManager } = require('./lib/gameserver');
-const { HostMetrics } = require('./lib/metrics');
-const { createApi, VERSION } = require('./lib/api');
+const { config, ensureDirs, loadSecret } = require('./core/config');
+const { logger, json, HttpError } = require('./core/util');
+const { describeHost } = require('./core/platform');
+const { Store } = require('./core/store');
+const { Auth } = require('./core/auth');
+const { WebSocketServer } = require('./core/ws');
+const { TemplateRegistry } = require('./games/templates');
+const { ServerManager } = require('./servers/manager');
+const { HostMetrics, stopSampler } = require('./features/metrics');
+const { Scheduler } = require('./features/scheduler');
+const { Notifier } = require('./features/notify');
+const { createApi, VERSION } = require('./api');
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -27,6 +30,7 @@ const MIME = {
   '.svg': 'image/svg+xml',
   '.png': 'image/png',
   '.jpg': 'image/jpeg',
+  '.webp': 'image/webp',
   '.ico': 'image/x-icon',
   '.woff2': 'font/woff2',
   '.webmanifest': 'application/manifest+json',
@@ -41,7 +45,9 @@ async function main() {
   const wss = new WebSocketServer();
   const hostMetrics = new HostMetrics();
   const manager = new ServerManager(store, templates, wss);
-  const api = createApi({ store, auth, manager, templates, hostMetrics });
+  const scheduler = new Scheduler(manager, store);
+  const notifier = new Notifier(store);
+  const api = createApi({ store, auth, manager, templates, hostMetrics, scheduler, notifier });
 
   /* ------------------------------------------------------ static assets -- */
 
@@ -169,10 +175,11 @@ async function main() {
   await new Promise((resolve) => server.listen(config.port, config.host, resolve));
 
   logger.info(`GamePanel ${VERSION} listening on http://${config.host}:${config.port}`);
-  logger.info(`Data directory: ${config.dataDir}`);
+  logger.info(`Host: ${describeHost()} — data in ${config.dataDir}`);
   if (auth.needsSetup()) logger.info('No users yet — open the panel in a browser to create the first administrator.');
 
   await manager.init();
+  scheduler.start();
 
   let shuttingDown = false;
   const shutdown = async (signal) => {
@@ -180,6 +187,8 @@ async function main() {
     shuttingDown = true;
     logger.info(`Received ${signal}, shutting down…`);
     clearInterval(systemTimer);
+    scheduler.stop();
+    stopSampler();
     wss.close();
     server.close();
     try {
@@ -193,6 +202,9 @@ async function main() {
 
   process.on('SIGINT', () => shutdown('SIGINT'));
   process.on('SIGTERM', () => shutdown('SIGTERM'));
+  // Windows services and consoles send these instead of SIGTERM.
+  process.on('SIGBREAK', () => shutdown('SIGBREAK'));
+  process.on('SIGHUP', () => shutdown('SIGHUP'));
   process.on('uncaughtException', (err) => logger.error('Uncaught exception:', err));
   process.on('unhandledRejection', (err) => logger.error('Unhandled rejection:', err));
 }
