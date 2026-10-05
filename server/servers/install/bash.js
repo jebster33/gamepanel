@@ -147,15 +147,40 @@ gp_ensure_steamcmd() {
   fi
 }
 
+# SteamCMD keeps its own files (~/Steam) under HOME. Give it a home of its own
+# instead of the server folder, so the client never sits inside the game's
+# install directory.
+gp_steamcmd() {
+  local home="$GP_STEAMCMD/home"
+  mkdir -p "$home"
+  HOME="$home" "$GP_STEAMCMD/steamcmd.sh" "$@"
+}
+
+# Print the end of SteamCMD's own logs: they hold the real reason behind
+# vague errors like "Disk write failure".
+gp_steam_logs() {
+  local f
+  for f in "$GP_STEAMCMD/home/Steam/logs/content_log.txt" "$GP_STEAMCMD/logs/content_log.txt" "$GP_STEAMCMD/home/Steam/logs/stderr.txt"; do
+    [ -s "$f" ] || continue
+    gp_warn "Last lines of $(basename "$f"):"
+    tail -n 25 "$f"
+  done
+}
+
 gp_steam_app() {
-  local appid="$1" login="\${2:-anonymous}" branch="\${3:-}"
+  local appid="$1" login="\${2:-anonymous}" branch="\${3:-}" n
   gp_ensure_steamcmd
-  gp_log "Installing Steam app $appid (this can take a while)"
-  local args=( +@sSteamCmdForcePlatformBitness 64 +force_install_dir "$GP_SERVER_DIR" +login "$login" )
+  local args=( +@ShutdownOnFailedCommand 1 +@NoPromptForPassword 1 +force_install_dir "$GP_SERVER_DIR" +login $login )
   if [ -n "$branch" ]; then args+=( +app_update "$appid" -beta "$branch" validate )
   else args+=( +app_update "$appid" validate ); fi
   args+=( +quit )
-  "$GP_STEAMCMD/steamcmd.sh" "\${args[@]}" || gp_die "SteamCMD failed for app $appid"
+  # SteamCMD often stops early right after updating itself, so give it a few goes.
+  for n in 1 2 3; do
+    gp_log "Installing Steam app $appid (attempt $n, this can take a while)"
+    gp_steamcmd "\${args[@]}" && [ -d "$GP_SERVER_DIR/steamapps" ] && break
+    [ "$n" = 3 ] && { gp_steam_logs; gp_die "SteamCMD failed for app $appid"; }
+    sleep 3
+  done
   # SteamCMD ships its own runtime libs; make them discoverable for the server.
   mkdir -p "$GP_SERVER_DIR/.steam/sdk64" "$GP_SERVER_DIR/.steam/sdk32"
   cp -f "$GP_STEAMCMD/linux64/steamclient.so" "$GP_SERVER_DIR/.steam/sdk64/" 2>/dev/null || true
@@ -170,7 +195,7 @@ gp_workshop_item() {
   mkdir -p "$stage"
   for n in 1 2 3; do
     gp_log "SteamCMD: downloading Workshop item $item (attempt $n)"
-    "$GP_STEAMCMD/steamcmd.sh" +force_install_dir "$stage" +login anonymous +workshop_download_item "$appid" "$item" validate +quit
+    gp_steamcmd +force_install_dir "$stage" +login anonymous +workshop_download_item "$appid" "$item" validate +quit
     [ -d "$stage/steamapps/workshop/content/$appid/$item" ] && break
   done
   local src="$stage/steamapps/workshop/content/$appid/$item"
