@@ -3,14 +3,8 @@ name: Game servers
 # Deploys every template on a real machine: install, boot until the game says
 # it is ready, then stop it cleanly. This is the "does it actually work" check.
 
+# Manual and weekly only: a full run takes hours, so it does not gate pushes.
 on:
-  push:
-    paths:
-      - 'templates/**'
-      - 'server/**'
-      - 'test/smoke.js'
-      - 'test/ci-matrix.js'
-      - '.github/workflows/games.yml'
   schedule:
     - cron: '17 4 * * 1' # weekly, to catch upstream download changes
   workflow_dispatch:
