@@ -2,6 +2,7 @@ import { wsUnsubscribe } from './live.js';
 import { state } from './state.js';
 import { $, $$ } from './util.js';
 import { renderActivity } from '../pages/activity.js';
+import { renderConnections } from '../pages/connections.js';
 import { renderDashboard } from '../pages/dashboard.js';
 import { renderServerDetail } from '../pages/server/detail.js';
 import { renderServers } from '../pages/servers.js';
@@ -23,6 +24,7 @@ const ROUTES = [
   { pattern: /^\/(?:templates|deploy)$/, name: 'templates', page: renderTemplates },
   { pattern: /^\/activity$/, name: 'activity', page: renderActivity },
   { pattern: /^\/users$/, name: 'users', page: renderUsers },
+  { pattern: /^\/connections$/, name: 'connections', page: renderConnections },
   { pattern: /^\/settings(?:\/([^/]+))?$/, name: 'settings', keys: ['section'], page: renderSettings },
 ];
 

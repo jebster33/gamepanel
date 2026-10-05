@@ -8,3 +8,4 @@ data/
 .vscode/
 smoke-output/
 dist/
+bridge/bin/

@@ -15,6 +15,8 @@ const DEFAULT_STATE = {
   users: [],
   servers: [],
   events: [],
+  // People who reach servers through the bridge client (features/bridge).
+  bridge: { connections: [] },
   settings: {
     panelName: 'GamePanel',
     portRangeStart: 27000,
@@ -27,6 +29,8 @@ const DEFAULT_STATE = {
     geoLookup: true,
     // Where to post alerts (crashes, installs, backups…).
     notifications: { discordWebhook: '', events: ['server.crashed', 'server.install_failed', 'backup.failed', 'panel.updated'] },
+    // Bridge: reach servers through the panel's own port instead of opening theirs.
+    bridge: { enabled: false, publicUrl: '' },
     integrations: {
       curseforgeKey: '',
       steamApiKey: '',
@@ -52,7 +56,7 @@ class Store extends EventEmitter {
       const raw = fs.readFileSync(this.file, 'utf8');
       const parsed = JSON.parse(raw);
       this.state = { ...structuredClone(DEFAULT_STATE), ...parsed };
-      this.state.settings = { ...DEFAULT_STATE.settings, ...(parsed.settings || {}) };
+      this.state.settings = { ...structuredClone(DEFAULT_STATE.settings), ...(parsed.settings || {}) };
     } catch (err) {
       if (err.code !== 'ENOENT') {
         logger.error('Could not read state file, starting fresh:', err.message);

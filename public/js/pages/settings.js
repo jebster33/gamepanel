@@ -4,6 +4,7 @@ import { setCrumbs } from '../core/router.js';
 import { state } from '../core/state.js';
 import { $, esc, fmtBytes, fmtDuration, fmtTime, toast } from '../core/util.js';
 import { confirmModal } from '../ui/modal.js';
+import { setBridgeNav } from '../ui/sidebar.js';
 
 /* -------------------------------------------------------------- settings */
 
@@ -46,6 +47,16 @@ export async function renderSettings(view) {
         )
         .join('')}</div>
       <button class="btn btn-primary mt-16" id="n-save">Save alerts</button>
+    </div>
+
+    <div class="card mb-16" id="bridge">
+      <h4>GamePanel Bridge</h4>
+      <p class="faint" style="margin:0 0 14px;line-height:1.6">
+        Let people reach your servers without opening ports for each game, like a private VPN for your panel. Each person gets a personal client
+        that connects through this panel's own address; you choose which servers and ports it carries on the Connections page.
+      </p>
+      <div class="checkbox-row"><input type="checkbox" id="b-enabled" ${s.bridge?.enabled ? 'checked' : ''} /><label for="b-enabled">Turn on GamePanel Bridge (adds the Connections page)</label></div>
+      <div class="hint">Turning it off disconnects everyone right away. Connections are kept for when it comes back on.</div>
     </div>
 
     <div class="card mb-16" id="updates">
@@ -188,6 +199,24 @@ export async function renderSettings(view) {
       });
       toast('Integrations saved');
     } catch (err) {
+      toast(err.message, 'error');
+    }
+  });
+
+  $('#b-enabled').addEventListener('change', async (event) => {
+    const enabled = event.target.checked;
+    try {
+      const body = { enabled };
+      // A sensible first guess at the address clients use: the one in the browser now.
+      if (enabled && !s.bridge?.publicUrl) body.publicUrl = location.origin;
+      const result = await api('/api/bridge/settings', { method: 'PATCH', body });
+      s.bridge = { enabled: result.enabled, publicUrl: result.publicUrl };
+      state.bridgeEnabled = result.enabled;
+      setBridgeNav(result.enabled);
+      toast(enabled ? 'Bridge is on. Add people on the Connections page.' : 'Bridge is off');
+      if (enabled) location.hash = '#/connections';
+    } catch (err) {
+      event.target.checked = !enabled;
       toast(err.message, 'error');
     }
   });

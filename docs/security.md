@@ -46,3 +46,10 @@ Templates that need extra runtime packages declare them in `packages`, and the p
   Docker Desktop is not used for Windows game builds.
 - The panel opens only its own port (8420 by default) in Windows Firewall at
   install. Game ports are opened from each server's Settings tab, never on their own.
+
+## Bridge
+
+The bridge (Settings → GamePanel Bridge) is off until an administrator turns it
+on. While it is on, `/bridge/tunnel` accepts WebSocket connections that run
+TLS 1.3 pinned to the panel's own key, and each connection may reach only the
+ports it was given. See [bridge.md](bridge.md) for the full model.

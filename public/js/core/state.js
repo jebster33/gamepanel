@@ -7,6 +7,7 @@ export const state = {
   categories: [],
   host: null,
   overview: null,
+  bridgeEnabled: false,
   route: { name: 'dashboard', params: {} },
   consoles: new Map(),
   hostHistory: { cpu: [], mem: [], net: [] },

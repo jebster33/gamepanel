@@ -20,6 +20,8 @@ const { ServerManager } = require('./servers/manager');
 const { HostMetrics, stopSampler } = require('./features/metrics');
 const { Scheduler } = require('./features/scheduler');
 const { Notifier } = require('./features/notify');
+const { Bridge } = require('./features/bridge');
+const { clientIp } = require('./api/helpers');
 const { createApi, VERSION } = require('./api');
 
 const MIME = {
@@ -47,7 +49,9 @@ async function main() {
   const manager = new ServerManager(store, templates, wss);
   const scheduler = new Scheduler(manager, store);
   const notifier = new Notifier(store);
-  const api = createApi({ store, auth, manager, templates, hostMetrics, scheduler, notifier });
+  const bridge = new Bridge({ store, manager, secret });
+  if (bridge.enabled) bridge.identity();
+  const api = createApi({ store, auth, manager, templates, hostMetrics, scheduler, notifier, bridge });
 
   /* ------------------------------------------------------ static assets -- */
 
@@ -116,6 +120,11 @@ async function main() {
 
   server.on('upgrade', (req, socket, head) => {
     const url = new URL(req.url, 'http://localhost');
+    // Bridge clients authenticate inside their own pinned TLS, not with a cookie.
+    if (url.pathname === '/bridge/tunnel') {
+      bridge.handleUpgrade(req, socket, head, clientIp(req));
+      return;
+    }
     if (url.pathname !== '/ws') {
       socket.write('HTTP/1.1 404 Not Found\r\n\r\n');
       socket.destroy();
@@ -188,6 +197,7 @@ async function main() {
     logger.info(`Received ${signal}, shutting down…`);
     clearInterval(systemTimer);
     scheduler.stop();
+    bridge.stop();
     stopSampler();
     wss.close();
     server.close();

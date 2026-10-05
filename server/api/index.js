@@ -12,6 +12,7 @@
  *   network     firewall and router port forwarding
  *   backups     backups and restores
  *   users       accounts and permissions
+ *   bridge      Manage connections: bridge clients, their servers and ports
  */
 
 const { json, readJson, HttpError } = require('../core/util');
@@ -19,9 +20,9 @@ const { Router } = require('./router');
 const { createHelpers } = require('./helpers');
 
 const VERSION = require('../../package.json').version;
-const ROUTES = ['auth', 'system', 'templates', 'servers', 'files', 'mods', 'network', 'backups', 'users'];
+const ROUTES = ['auth', 'system', 'templates', 'servers', 'files', 'mods', 'network', 'backups', 'users', 'bridge'];
 
-/** @param {{store, auth, manager, templates, hostMetrics, scheduler, notifier}} app */
+/** @param {{store, auth, manager, templates, hostMetrics, scheduler, notifier, bridge}} app */
 function createApi(app) {
   const router = new Router();
   const h = createHelpers(app);
