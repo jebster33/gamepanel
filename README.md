@@ -94,6 +94,7 @@ Your servers, backups and settings stay through updates and uninstalls:
 ## Games
 
 ✓ = installs and boots in CI on every change. Games marked † need your own key or token to boot, so CI checks the install only.
+Games marked ‡ are too big for the CI machines on that system, so CI skips them there.
 
 | Game | Linux | Windows | Mods |
 |---|:-:|:-:|---|
@@ -101,7 +102,7 @@ Your servers, backups and settings stay through updates and uninstalls:
 | **Minecraft** Fabric · Quilt · Forge · NeoForge | ✓ | ✓ | Modrinth, CurseForge |
 | **Minecraft** any Modrinth modpack | ✓ | ✓ | the pack, plus extra mods |
 | **Minecraft** Vanilla · Bedrock | ✓ | ✓ | |
-| Counter-Strike 2 · Team Fortress 2 · Left 4 Dead 2 | ✓ | ✓ | |
+| Counter-Strike 2 ‡ (Windows) · Team Fortress 2 · Left 4 Dead 2 | ✓ | ✓ | |
 | Squad · Insurgency: Sandstorm · Arma Reforger | ✓ | ✓ | |
 | Rust | ✓ | ✓ | uMod / Oxide |
 | ARK: Survival Evolved | ✓ | ✓ | Steam Workshop |
