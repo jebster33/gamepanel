@@ -66,10 +66,17 @@ module.exports = {
     const dockerfile = [
       `FROM ${base}`,
       'USER root',
-      'RUN set -eux; \\',
+      // Package names differ between Debian releases (libcurl4 became
+      // libcurl4t64), so templates may list both: install what exists.
+      'ENV DEBIAN_FRONTEND=noninteractive',
+      'RUN set -eu; \\',
       '    if command -v apt-get >/dev/null; then \\',
       '      apt-get update -qq; \\',
-      `      DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends ${packages.join(' ')}; \\`,
+      `      if ! apt-get install -y --no-install-recommends ${packages.join(' ')}; then \\`,
+      `        for p in ${packages.join(' ')}; do \\`,
+      '          apt-get install -y --no-install-recommends "$p" || echo "[gamepanel] $p is not available in this image, skipped"; \\',
+      '        done; \\',
+      '      fi; \\',
       '      rm -rf /var/lib/apt/lists/*; \\',
       '    fi',
       '',

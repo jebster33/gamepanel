@@ -1,0 +1,159 @@
+{
+  "id": "minecraft-purpur",
+  "name": "Minecraft: Purpur",
+  "category": "Minecraft",
+  "icon": "🟪",
+  "description": "A Paper fork with hundreds of extra gameplay settings. Runs every Paper, Spigot and Bukkit plugin.",
+  "defaultMemory": 4096,
+  "variables": [
+    {
+      "name": "MC_VERSION",
+      "label": "Minecraft version",
+      "default": "latest",
+      "description": "Pick a version, or leave it on the newest.",
+      "source": "purpur-version"
+    },
+    {
+      "name": "MAX_PLAYERS",
+      "label": "Max players",
+      "type": "number",
+      "default": 20
+    },
+    {
+      "name": "MOTD",
+      "label": "Server MOTD",
+      "default": "A GamePanel server"
+    },
+    {
+      "name": "DIFFICULTY",
+      "label": "Difficulty",
+      "default": "normal",
+      "options": [
+        "peaceful",
+        "easy",
+        "normal",
+        "hard"
+      ]
+    },
+    {
+      "name": "GAMEMODE",
+      "label": "Game mode",
+      "default": "survival",
+      "options": [
+        "survival",
+        "creative",
+        "adventure",
+        "spectator"
+      ]
+    },
+    {
+      "name": "JAVA_ARGS",
+      "label": "Extra JVM flags",
+      "default": "-XX:+UseG1GC -XX:+ParallelRefProcEnabled -XX:MaxGCPauseMillis=200"
+    },
+    {
+      "name": "RCON_PASSWORD",
+      "label": "RCON password",
+      "generate": "password",
+      "default": ""
+    }
+  ],
+  "ports": [
+    {
+      "name": "game",
+      "default": 25565,
+      "protocol": "tcp"
+    },
+    {
+      "name": "rcon",
+      "default": 25575,
+      "protocol": "tcp",
+      "offset": 10
+    }
+  ],
+  "install": [
+    {
+      "type": "java",
+      "version": "{{JAVA_VERSION}}",
+      "label": "Install the Java the game needs"
+    },
+    {
+      "type": "download",
+      "label": "Download Purpur {{RESOLVED_VERSION}} build {{RESOLVED_BUILD}}",
+      "url": "{{DOWNLOAD_URL}}",
+      "dest": "server.jar"
+    },
+    {
+      "type": "writeFile",
+      "path": "eula.txt",
+      "content": "# Accepted through GamePanel on install\neula=true\n"
+    }
+  ],
+  "configFiles": [
+    {
+      "path": "server.properties",
+      "mode": "create",
+      "content": "server-port={{PORT}}\nquery.port={{PORT}}\nenable-rcon=true\nrcon.port={{PORT_RCON}}\nrcon.password={{RCON_PASSWORD}}\nmotd={{MOTD}}\nmax-players={{MAX_PLAYERS}}\ndifficulty={{DIFFICULTY}}\ngamemode={{GAMEMODE}}\nonline-mode=true\nspawn-protection=0\nview-distance=10\n"
+    }
+  ],
+  "patchProperties": [
+    {
+      "path": "server.properties",
+      "format": "properties",
+      "createIfMissing": true,
+      "set": {
+        "server-port": "{{PORT}}",
+        "enable-rcon": "true",
+        "rcon.port": "{{PORT_RCON}}",
+        "rcon.password": "{{RCON_PASSWORD}}",
+        "max-players": "{{MAX_PLAYERS}}",
+        "motd": "{{MOTD}}"
+      }
+    }
+  ],
+  "startCommand": "java -Xms{{MEMORY}}M -Xmx{{MEMORY}}M {{JAVA_ARGS}} -jar server.jar nogui",
+  "stopCommand": "stop",
+  "stopTimeout": 60,
+  "query": {
+    "type": "minecraft",
+    "port": "game"
+  },
+  "rcon": {
+    "type": "source",
+    "port": "rcon"
+  },
+  "logPatterns": {
+    "ready": "Done \\([0-9.]+s\\)!",
+    "join": "([A-Za-z0-9_]{3,16}) joined the game",
+    "leave": "([A-Za-z0-9_]{3,16}) left the game"
+  },
+  "image": "eclipse-temurin:{{JAVA_VERSION}}-jre",
+  "mods": {
+    "providers": [
+      "modrinth",
+      "curseforge"
+    ],
+    "dir": "plugins",
+    "loader": "purpur",
+    "projectType": "plugin",
+    "gameVersionVar": "MC_VERSION"
+  },
+  "resolve": "purpur",
+  "packages": [
+    "curl",
+    "ca-certificates"
+  ],
+  "platforms": [
+    "linux",
+    "windows"
+  ],
+  "ci": {
+    "mods": [
+      {
+        "provider": "modrinth",
+        "projectId": "luckperms",
+        "expectAtLeast": 1
+      }
+    ]
+  }
+}

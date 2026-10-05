@@ -96,6 +96,38 @@ const PROVIDERS = {
     };
   },
 
+  'purpur-version': async () => {
+    const data = await getJson('https://api.purpurmc.org/v2/purpur');
+    const stable = (data.versions || []).filter((v) => !isPrerelease(v)).sort(compareVersions);
+    return { options: stable.slice(0, 60).map((v, i) => ({ value: v, label: v, recommended: i === 0 })), recommended: stable[0] };
+  },
+
+  /** Minecraft versions Forge has a promoted build for. */
+  'forge-game-version': async () => {
+    const promos = (await getJson('https://files.minecraftforge.net/net/minecraftforge/forge/promotions_slim.json')).promos || {};
+    const games = [...new Set(Object.keys(promos).map((k) => k.replace(/-(latest|recommended)$/, '')))].sort(compareVersions);
+    return {
+      options: games.slice(0, 60).map((v, i) => ({ value: v, label: v, recommended: i === 0, note: promos[`${v}-recommended`] ? undefined : 'No recommended build yet' })),
+      recommended: games[0],
+    };
+  },
+
+  /** Minecraft versions NeoForge supports, read from its version numbers. */
+  'neoforge-game-version': async () => {
+    const data = await getJson('https://maven.neoforged.net/api/maven/versions/releases/net/neoforged/neoforge');
+    const games = [...new Set((data.versions || []).filter((v) => /^\d+\.\d+\./.test(v)).map((v) => {
+      const [major, minor] = v.split('.');
+      return minor === '0' ? `1.${major}` : `1.${major}.${minor}`;
+    }))].sort(compareVersions);
+    return { options: games.slice(0, 40).map((v, i) => ({ value: v, label: v, recommended: i === 0 })), recommended: games[0] };
+  },
+
+  'quilt-game-version': async () => {
+    const data = await getJson('https://meta.quiltmc.org/v3/versions/game');
+    const stable = data.filter((v) => v.stable).map((v) => v.version);
+    return { options: stable.slice(0, 60).map((v, i) => ({ value: v, label: v, recommended: i === 0 })), recommended: stable[0] };
+  },
+
   /**
    * Bedrock dedicated server builds. Mojang publishes no index, so this uses
    * the community-maintained Bedrock-OSS list, which tracks the same CDN the

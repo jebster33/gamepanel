@@ -27,6 +27,38 @@ async function getJson(url) {
 const isPrerelease = (version) => /-(rc|pre|snapshot|exp)/i.test(String(version));
 const wantsLatest = (value) => !value || String(value).toLowerCase() === 'latest';
 
+/** Sort versions newest first ("1.21.11" before "1.21.9"). */
+function newestFirst(a, b) {
+  const pa = String(a).split(/[.\-+]/);
+  const pb = String(b).split(/[.\-+]/);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const na = Number(pa[i]);
+    const nb = Number(pb[i]);
+    if (Number.isFinite(na) && Number.isFinite(nb)) {
+      if (na !== nb) return nb - na;
+    } else if ((pa[i] ?? '') !== (pb[i] ?? '')) return (pa[i] ?? '') < (pb[i] ?? '') ? 1 : -1;
+  }
+  return 0;
+}
+
+/** Template variables for a loader installed by loaderInstallScript (Forge, NeoForge, Quilt). */
+async function loaderVars(loader, game, label) {
+  const pieces = await loaderInstallScript(loader, game);
+  return {
+    RESOLVED_VERSION: label,
+    GAME_VERSION: game,
+    LOADER: loader.name,
+    LOADER_VERSION_RESOLVED: loader.version,
+    LOADER_URL: pieces.url,
+    LOADER_FILE: pieces.file,
+    LOADER_RUN: pieces.run,
+    START_SCRIPT: pieces.start,
+    START_CMD: pieces.startCmd,
+    DOWNLOAD_URL: pieces.url,
+    JAVA_VERSION: String((await javaForMinecraft(game)) || 21),
+  };
+}
+
 const javaCache = new Map();
 
 /**
@@ -122,6 +154,69 @@ const RESOLVERS = {
       LOADER: 'fabric',
       JAVA_VERSION: String((await javaForMinecraft(game)) || 21),
     };
+  },
+
+  /** Purpur: a Paper fork with extra gameplay settings; same plugins. */
+  async purpur(vars) {
+    let version = vars.MC_VERSION;
+    if (wantsLatest(version)) {
+      const project = await getJson('https://api.purpurmc.org/v2/purpur');
+      version = [...(project.versions || [])].filter((v) => !isPrerelease(v)).sort(newestFirst)[0];
+    }
+    if (!version) throw new Error('could not work out which Minecraft version to install');
+    const build = await getJson(`https://api.purpurmc.org/v2/purpur/${encodeURIComponent(version)}/latest`);
+    return {
+      DOWNLOAD_URL: `https://api.purpurmc.org/v2/purpur/${encodeURIComponent(version)}/latest/download`,
+      RESOLVED_VERSION: version,
+      RESOLVED_BUILD: String(build.build || ''),
+      GAME_VERSION: version,
+      LOADER: 'purpur',
+      JAVA_VERSION: String((await javaForMinecraft(version)) || 21),
+    };
+  },
+
+  /** Forge: the promoted (recommended, else latest) build for a Minecraft version. */
+  async forge(vars) {
+    const promos = (await getJson('https://files.minecraftforge.net/net/minecraftforge/forge/promotions_slim.json')).promos || {};
+    let game = vars.MC_VERSION;
+    if (wantsLatest(game)) game = [...new Set(Object.keys(promos).map((k) => k.replace(/-(latest|recommended)$/, '')))].sort(newestFirst)[0];
+    let version = vars.LOADER_VERSION;
+    if (wantsLatest(version)) version = promos[`${game}-recommended`] || promos[`${game}-latest`];
+    if (!game || !version) throw new Error(`Forge has no build for Minecraft ${game}`);
+    return loaderVars({ name: 'forge', version }, game, `${game} (Forge ${version})`);
+  },
+
+  /** NeoForge: versions are numbered after the game ("21.1.x" is Minecraft 1.21.1). */
+  async neoforge(vars) {
+    const data = await getJson('https://maven.neoforged.net/api/maven/versions/releases/net/neoforged/neoforge');
+    const all = (data.versions || []).filter((v) => /^\d+\.\d+\.\d+/.test(v));
+    const gameOf = (v) => {
+      const [major, minor] = v.split('.');
+      return minor === '0' ? `1.${major}` : `1.${major}.${minor}`;
+    };
+    const stable = all.filter((v) => !/beta|alpha/i.test(v));
+    let game = vars.MC_VERSION;
+    if (wantsLatest(game)) game = gameOf((stable.length ? stable : all).sort(newestFirst)[0] || '');
+    let version = vars.LOADER_VERSION;
+    if (wantsLatest(version)) {
+      const forGame = all.filter((v) => gameOf(v) === game);
+      version = (forGame.filter((v) => !/beta|alpha/i.test(v)).sort(newestFirst)[0]) || forGame.sort(newestFirst)[0];
+    }
+    if (!version) throw new Error(`NeoForge has no build for Minecraft ${game}`);
+    return loaderVars({ name: 'neoforge', version }, game, `${game} (NeoForge ${version})`);
+  },
+
+  /** Quilt: Fabric-compatible loader, installed with its own installer. */
+  async quilt(vars) {
+    let game = vars.MC_VERSION;
+    if (wantsLatest(game)) game = (await getJson('https://meta.quiltmc.org/v3/versions/game')).find((v) => v.stable)?.version;
+    let version = vars.LOADER_VERSION;
+    if (wantsLatest(version)) {
+      const loaders = await getJson('https://meta.quiltmc.org/v3/versions/loader');
+      version = (loaders.find((v) => !/beta|pre/i.test(v.version)) || loaders[0])?.version;
+    }
+    if (!game || !version) throw new Error('could not resolve the Quilt version combination');
+    return loaderVars({ name: 'quilt', version }, game, `${game} (Quilt ${version})`);
   },
 
   /** Bedrock dedicated server zip from Mojang's CDN. */
