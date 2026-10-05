@@ -110,7 +110,7 @@
     "port": "game"
   },
   "logPatterns": {
-    "ready": "gameserver Steam ID|VAC secure mode",
+    "ready": "gameserver Steam ID|VAC secure mode|Using map cycle file",
     "join": "Client \"([^\"]+)\" connected",
     "leave": "Dropped ([^ ]+) from server"
   },

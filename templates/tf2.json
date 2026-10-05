@@ -88,7 +88,7 @@
     "port": "game"
   },
   "logPatterns": {
-    "ready": "VAC secure mode|gameserver Steam ID",
+    "ready": "VAC secure mode|gameserver Steam ID|Using map cycle file",
     "join": "\"([^<]+)<[0-9]+><[^>]*><>\" entered the game",
     "leave": "\"([^<]+)<[0-9]+><[^>]*><[^>]*>\" disconnected"
   },
