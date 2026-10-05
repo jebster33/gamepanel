@@ -7,6 +7,7 @@ import { renderFilesTab } from './files.js';
 import { drawServerCharts, renderMetricsTab } from './metrics.js';
 import { renderModpacksTab } from './modpacks.js';
 import { renderModsTab } from './mods.js';
+import { patchPlayersTab, renderPlayersTab } from './players.js';
 import { renderSchedulesTab } from './schedules.js';
 import { renderServerSettingsTab } from './settings.js';
 import { serverAddress } from '../servers.js';
@@ -16,6 +17,7 @@ import { serverAddress } from '../servers.js';
 function serverTabs(server) {
   return [
     can('console') && ['console', 'Console'],
+    ['players', 'Players'],
     ['metrics', 'Metrics'],
     can('files') && ['files', 'Files'],
     server.hasModpacks && can('mods') && ['modpacks', 'Modpack'],
@@ -72,7 +74,7 @@ export function renderServerDetail(view) {
     <div class="metrics compact" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr))">
       ${tile('CPU', 'cpu', `${(server.cpu || 0).toFixed(1)}<span class="unit">%</span>`)}
       ${tile('Memory', 'mem', `${fmtBytes(server.memory)}<span class="unit">/ ${fmtBytes(server.memoryLimit)}</span>`)}
-      ${tile('Players', 'players', `${server.players ?? '—'}<span class="unit">${server.maxPlayers ? '/ ' + server.maxPlayers : ''}</span>`)}
+      ${tile('Players', 'players', `${server.players ?? (server.playerList?.length || '—')}<span class="unit">${server.maxPlayers ? '/ ' + server.maxPlayers : ''}</span>`)}
       ${tile('Ping', 'ping', server.ping != null ? server.ping + '<span class="unit">ms</span>' : '—')}
       ${tile(
         'Network',
@@ -132,7 +134,7 @@ export function patchServerDetail() {
   set('mem', `${fmtBytes(server.memory)}<span class="unit">/ ${fmtBytes(server.memoryLimit)}</span>`);
   set(
     'players',
-    `${server.players ?? '—'}<span class="unit">${server.maxPlayers ? '/ ' + server.maxPlayers : ''}</span>`
+    `${server.players ?? (server.playerList?.length || '—')}<span class="unit">${server.maxPlayers ? '/ ' + server.maxPlayers : ''}</span>`
   );
   set('ping', server.ping != null ? `${server.ping}<span class="unit">ms</span>` : '—');
   set('conns', String(server.connections ?? 0));
@@ -141,6 +143,7 @@ export function patchServerDetail() {
   const uptime = $('#detail-uptime');
   if (uptime) uptime.textContent = server.status === 'running' ? 'up ' + fmtDuration(server.uptime) : '';
   if (state.route.params.tab === 'metrics') drawServerCharts(server.id);
+  if (state.route.params.tab === 'players') patchPlayersTab(server);
 }
 
 function renderServerTab(server, tab) {
@@ -148,6 +151,9 @@ function renderServerTab(server, tab) {
   switch (tab) {
     case 'metrics':
       renderMetricsTab(host, server);
+      break;
+    case 'players':
+      renderPlayersTab(host, server);
       break;
     case 'files':
       renderFilesTab(host, server, '');

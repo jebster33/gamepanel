@@ -40,3 +40,34 @@ Two things usually sit between a player and your server, and each server's
   rules to enter by hand, including the LAN address to forward to.
 
 Nothing is opened unless you ask, and the same buttons close it all again.
+
+## Locked out by two-factor sign-in
+
+Lost the phone? Sign in with one of the recovery codes you saved (the "Recovery code" side of the sign-in
+step), then make new ones under **Account**. Another administrator can also press **Reset 2FA** for you on
+the Users page.
+
+If nobody can sign in, turn it off from the machine itself. Stop the panel first, or it writes its own copy
+back over the change:
+
+```bash
+sudo systemctl stop gamepanel
+sudo node /opt/gamepanel/server/reset-2fa.js <username>
+sudo systemctl start gamepanel
+```
+
+On Windows, in PowerShell opened as Administrator:
+
+```powershell
+Stop-Service GamePanel; $env:GP_SERVICE = 1
+& "$env:ProgramFiles\GamePanel\node\node.exe" "$env:ProgramFiles\GamePanel\server\reset-2fa.js" <username>
+Start-Service GamePanel
+```
+
+## Cloud backups
+
+**Settings → Cloud backups → Test connection** writes, lists and deletes a small file, so the error you get
+there is the bucket's own. The usual ones: `SignatureDoesNotMatch` (wrong secret key, or the region does not
+match the endpoint), `NoSuchBucket` (bucket name typo), `AccessDenied` (the key is not allowed to write or
+list that bucket). Uploads that fail are retried with the **Copy** button on the server's Backups tab and are
+posted to Discord when that alert is ticked.

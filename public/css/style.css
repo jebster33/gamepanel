@@ -2104,6 +2104,51 @@ tbody tr:hover {
     grid-template-columns: 1fr !important;
   }
 }
+.players-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--border);
+}
+.players-count {
+  font-family: var(--mono);
+  font-size: 22px;
+  color: var(--lime-text);
+}
+.players-card th:first-child,
+.players-card td:first-child {
+  padding-left: 18px;
+}
+.players-card th:last-child,
+.players-card td:last-child {
+  padding-right: 18px;
+}
+.player {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 550;
+}
+.player-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--lime);
+  box-shadow: var(--lime-glow);
+}
+.player-avatar {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  font-size: 12px;
+  border-radius: 8px;
+  color: var(--text);
+  background: var(--raised);
+  border: 1px solid var(--border);
+}
 .recovery-codes {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

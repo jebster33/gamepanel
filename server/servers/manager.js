@@ -28,6 +28,7 @@ const { config } = require('../core/config');
 const { logger, uid, slugify, fail, sleep } = require('../core/util');
 const { HOST_PLATFORM, isWindows } = require('../core/platform');
 const { variant } = require('../games/templates');
+const { playerCommands, playerDetails } = require('../games/players');
 const { Ring } = require('../features/metrics');
 const { docker } = require('./runtimes/docker-api');
 
@@ -272,6 +273,8 @@ class ServerManager extends EventEmitter {
       players: rt.players,
       maxPlayers: rt.maxPlayers ?? server.maxPlayers ?? null,
       playerList: rt.playerList,
+      playerDetails: playerDetails(rt),
+      playerCommands: Object.keys(playerCommands(tpl)),
       ping: rt.ping,
       queryError: rt.queryError,
       diskBytes: rt.diskBytes,

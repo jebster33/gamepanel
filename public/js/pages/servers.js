@@ -63,7 +63,7 @@ function serverRow(server) {
     </span>
 
     <span class="srv-metric hide-md hide-sm" data-field="players">${
-      server.players ?? '—'
+      server.players ?? (server.playerList?.length || '—')
     }${server.maxPlayers ? ` <span class="faint">/ ${server.maxPlayers}</span>` : ''}</span>
 
     <span class="srv-metric hide-md hide-sm" data-field="ping">${server.ping != null ? server.ping + ' ms' : '—'}</span>
@@ -99,7 +99,7 @@ export function patchServerCards() {
     set('mem', fmtBytes(server.memory));
     set(
       'players',
-      `${server.players ?? '—'}${server.maxPlayers ? ` <span class="faint">/ ${server.maxPlayers}</span>` : ''}`
+      `${server.players ?? (server.playerList?.length || '—')}${server.maxPlayers ? ` <span class="faint">/ ${server.maxPlayers}</span>` : ''}`
     );
     set('ping', server.ping != null ? `${server.ping} ms` : '—');
     const memBar = card.querySelector('[data-field="mem-bar"]');

@@ -79,6 +79,20 @@ module.exports = (router, { store, manager, scheduler }, { requireAdmin, require
     return { lines: manager.getConsole(server.id) };
   });
 
+  /** Kick or ban someone on the Players tab, through the game's own console command. */
+  router.post('/api/servers/:id/players/action', async ({ user, params, body }) => {
+    const server = serverFor(user, params.id, 'command');
+    const commands = require('../../games/players').playerCommands(manager.template(server));
+    const template = commands[body.action];
+    if (!template) fail(400, `This game has no ${String(body.action || 'such')} command the panel knows`);
+    const name = String(body.name || '');
+    // Only someone actually online, and nothing that could smuggle in a second command.
+    if (!manager.rt(server.id).playerList.includes(name) || /["\r\n\x00-\x1f]/.test(name)) fail(400, 'That player is not online');
+    const result = await manager.sendCommand(server.id, template.replace('{name}', name));
+    store.addEvent(`player.${body.action}`, `${user.username} used ${body.action} on ${name} (${server.name})`, { serverId: server.id });
+    return result;
+  });
+
   router.post('/api/servers/:id/command', async ({ user, params, body }) => {
     const server = serverFor(user, params.id, 'command');
     if (!body.command || !String(body.command).trim()) fail(400, 'Type a command first');
