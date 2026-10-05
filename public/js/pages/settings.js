@@ -75,9 +75,14 @@ export async function renderSettings(view) {
       <div class="hint">Applies the next time a server starts. Without Docker the panel falls back to plain processes.</div>
     </div>
 
+    <div class="card mb-16" id="discord-bot">
+      <h4>Discord bot</h4>
+      <div id="db-body" class="faint">Loading…</div>
+    </div>
+
     <div class="card mb-16" id="integrations">
       <h4>Integrations</h4>
-      <p class="faint" style="margin:0 0 14px">Optional API keys for the mod browser. Modrinth and uMod work without any key.</p>
+      <p class="faint" style="margin:0 0 14px">Optional keys for the mod browser and Cloudflare addresses. Modrinth, Hangar and uMod work without any key.</p>
       <div class="form-grid">
         <label><span>CurseForge API key</span><input id="i-curseforge" type="password" value="${esc(
           integrations.curseforgeKey || ''
@@ -202,6 +207,8 @@ export async function renderSettings(view) {
       toast(err.message, 'error');
     }
   });
+
+  renderDiscordBot();
 
   $('#i-save').addEventListener('click', async () => {
     try {
@@ -501,4 +508,40 @@ function waitForPanel(attempt = 0) {
       else toast('The panel did not come back. Check: journalctl -u gamepanel -n 50', 'error', 15000);
     }
   }, 2000);
+}
+
+/** Slash commands in Discord: /status, /players, /start, /stop, /restart. */
+async function renderDiscordBot() {
+  const host = $('#db-body');
+  if (!host) return;
+  const st = await api('/api/settings/discord-bot').catch(() => null);
+  if (!st || !host.isConnected) return;
+  const pill = { online: `<span class="badge accent">Online as ${esc(st.user || 'bot')}</span>`, connecting: '<span class="badge warn">Connecting…</span>', error: '<span class="badge bad">Not connected</span>', off: '<span class="badge">Off</span>' }[st.status] || '';
+  host.classList.remove('faint');
+  host.innerHTML = `
+    <p class="faint" style="margin:0 0 12px">Lets your Discord use <span class="mono">/status</span>, <span class="mono">/players</span>, <span class="mono">/start</span>, <span class="mono">/stop</span> and <span class="mono">/restart</span>. It connects out to Discord, so no port needs opening.</p>
+    <div style="margin-bottom:12px">${pill}${st.error ? ` <span class="faint">${esc(st.error)}</span>` : ''}${st.invite ? ` <a href="${esc(st.invite)}" target="_blank" rel="noopener">Add the bot to your Discord</a>` : ''}</div>
+    <div class="form-grid">
+      <label><span>Bot token</span><input id="db-token" type="password" placeholder="${st.configured ? 'Saved (leave empty to keep)' : 'From discord.com/developers'}" autocomplete="off" /></label>
+      <label><span>Who can start/stop (Discord user IDs)</span><input id="db-controllers" value="${esc(st.controllers)}" placeholder="123456789012345678, …" /></label>
+    </div>
+    <div class="hint">Create an application at discord.com/developers, add a Bot, copy its token here. Everyone in your Discord can use /status and /players. Only the user IDs listed can start, stop or restart (right-click a user with Developer Mode on, then Copy User ID).</div>
+    <div class="row mt-16" style="gap:8px">
+      <button class="btn" id="db-save">Save</button>
+      ${st.configured ? '<button class="btn btn-ghost" id="db-off">Turn off</button>' : ''}
+    </div>`;
+  const save = async (body) => {
+    try {
+      await api('/api/settings/discord-bot', { method: 'PUT', body });
+      toast(body.token === '' ? 'Discord bot turned off' : 'Saved. Connecting to Discord…');
+      setTimeout(renderDiscordBot, 2500);
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+  };
+  $('#db-save').addEventListener('click', () => {
+    const token = $('#db-token').value.trim();
+    save({ controllers: $('#db-controllers').value, ...(token ? { token } : {}) });
+  });
+  $('#db-off')?.addEventListener('click', () => save({ token: '', controllers: $('#db-controllers').value }));
 }

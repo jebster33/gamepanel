@@ -132,4 +132,26 @@ module.exports = (router, { store, auth, manager, hostMetrics, notifier }, { req
       return fail(400, `Discord did not accept the message: ${err.message}`);
     }
   });
+
+  /** The Discord bot (slash commands). */
+  const discordBot = require('../../features/discord-bot').init({ store, manager });
+
+  router.get('/api/settings/discord-bot', ({ user }) => {
+    requireAdmin(user);
+    return discordBot.status();
+  });
+
+  router.put('/api/settings/discord-bot', ({ user, body }) => {
+    requireAdmin(user);
+    const s = store.state.settings;
+    const controllers = String(body?.controllers || '')
+      .split(/[\s,]+/)
+      .filter((id) => /^\d{15,22}$/.test(id))
+      .join(',');
+    const token = body?.token === undefined ? s.integrations?.discordBot?.token || '' : String(body.token).trim();
+    s.integrations = { ...(s.integrations || {}), discordBot: { token, controllers } };
+    store.save();
+    discordBot.reload();
+    return discordBot.status();
+  });
 };
