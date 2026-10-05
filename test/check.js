@@ -379,15 +379,36 @@ function checkModules() {
     }
   }
   // index.js starts listening on import, and the UI is ES modules, so only check that they parse.
-  const publicJs = walk(path.join(ROOT, 'public/js')).map((f) => path.relative(ROOT, f));
-  for (const file of ['server/index.js', ...publicJs]) {
+  try {
+    execFileSync(process.execPath, ['--check', path.join(ROOT, 'server/index.js')], { stdio: 'pipe' });
+    pass('server/index.js parses');
+  } catch (err) {
+    fail('server/index.js has a syntax error', String(err.stderr || err.message).split('\n')[0]);
+  }
+  const publicJs = walk(path.join(ROOT, 'public/js'));
+  const exportsOf = new Map();
+  for (const full of publicJs) {
+    const rel = path.relative(ROOT, full).replace(/\\/g, '/');
+    const source = fs.readFileSync(full, 'utf8');
     try {
-      execFileSync(process.execPath, ['--check', path.join(ROOT, file)], { stdio: 'pipe' });
-      pass(`${file} parses`);
+      execFileSync(process.execPath, ['--input-type=module', '--check'], { input: source, stdio: 'pipe' });
+      pass(`${rel} parses`);
     } catch (err) {
-      fail(`${file} has a syntax error`, String(err.stderr || err.message).split('\n')[0]);
+      fail(`${rel} has a syntax error`, String(err.stderr || err.message).split('\n').slice(0, 3).join(' '));
+    }
+    exportsOf.set(full, new Set([...source.matchAll(/^export\s+(?:async\s+)?(?:function\s*\*?\s*|const\s+|let\s+|class\s+)([\w$]+)/gm)].map((m) => m[1])));
+  }
+  // The browser refuses the whole app when one import names something its module does not export.
+  for (const full of publicJs) {
+    const rel = path.relative(ROOT, full).replace(/\\/g, '/');
+    for (const m of fs.readFileSync(full, 'utf8').matchAll(/^import \{([^}]*)\} from '([^']+)'/gm)) {
+      const target = path.resolve(path.dirname(full), m[2].split('?')[0]);
+      const names = m[1].split(',').map((n) => n.trim()).filter(Boolean);
+      if (!exportsOf.has(target)) fail(`${rel} imports a missing file`, m[2]);
+      else for (const name of names) if (!exportsOf.get(target).has(name)) fail(`${rel} imports ${name}`, `${m[2]} does not export it`);
     }
   }
+  pass(`UI imports resolve across ${publicJs.length} modules`);
   for (const script of ['install.sh', 'update.sh', 'uninstall.sh']) {
     const parsed = bashParses(fs.readFileSync(path.join(ROOT, script), 'utf8'));
     if (parsed.ok) pass(`${script} parses`);
