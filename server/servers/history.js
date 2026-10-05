@@ -182,6 +182,31 @@ module.exports = {
     fs.rmSync(fileFor(id), { force: true });
   },
 
+  /**
+   * Uptime from the 5-minute samples: one bar per day (share of samples
+   * online, null where nothing was recorded) and the 24h/7d/30d totals.
+   */
+  uptime(id, days = 30) {
+    const h = this.history(id);
+    const now = Date.now();
+    const DAY = 86400_000;
+    const start = new Date(now);
+    start.setHours(0, 0, 0, 0);
+    const first = start.getTime() - (days - 1) * DAY;
+    const bins = Array.from({ length: days }, () => [0, 0]);
+    for (const [t, n] of h.samples) {
+      if (t < first) continue;
+      const bin = bins[Math.min(days - 1, Math.floor((t - first) / DAY))];
+      bin[1]++;
+      if (n != null) bin[0]++;
+    }
+    const share = (ms) => {
+      const list = h.samples.filter(([t]) => now - t <= ms);
+      return list.length ? list.filter(([, n]) => n != null).length / list.length : null;
+    };
+    return { days: bins.map(([on, all]) => (all ? on / all : null)), day: share(DAY), week: share(7 * DAY), month: share(30 * DAY) };
+  },
+
   /** Everyone the server has seen, with totals, plus the players-online graph. */
   playerHistory(id) {
     const h = this.history(id);

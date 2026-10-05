@@ -184,6 +184,36 @@
         border-radius: 4px;
         transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1);
       }
+      .uptime {
+        margin-top: 14px;
+      }
+      .bars {
+        display: grid;
+        grid-template-columns: repeat(30, 1fr);
+        gap: 2px;
+        height: 26px;
+      }
+      .bars i {
+        border-radius: 2px;
+        background: var(--border);
+      }
+      .bars i.up {
+        background: var(--lime);
+      }
+      .bars i.some {
+        background: var(--amber);
+      }
+      .bars i.down {
+        background: var(--red);
+      }
+      .uptime-legend {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 6px;
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--faint);
+      }
       .row {
         display: flex;
         flex-wrap: wrap;

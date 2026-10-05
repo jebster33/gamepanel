@@ -57,6 +57,7 @@ function publicView(store, manager, slug) {
         version: p.gameVersion || null,
         uptime: running ? p.uptime : 0,
         joinNote: s.showAddress ? p.joinNote : null,
+        uptime30: manager.uptime ? manager.uptime(server.id) : null,
       };
     });
   return {

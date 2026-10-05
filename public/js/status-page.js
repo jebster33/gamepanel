@@ -32,6 +32,20 @@ async function copy(text, button) {
   setTimeout(() => (button.textContent = 'Copy'), 1500);
 }
 
+/** 30 small bars, one per day, like a classic status page. */
+function uptimeBars(u) {
+  if (!u || !u.days.some((d) => d != null)) return '';
+  const pct = (v) => (v == null ? '–' : `${(v * 100).toFixed(v === 1 ? 0 : 1)}%`);
+  const bars = u.days
+    .map((d, i) => {
+      const date = new Date(Date.now() - (u.days.length - 1 - i) * 86400000).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+      const cls = d == null ? 'none' : d >= 0.99 ? 'up' : d >= 0.9 ? 'some' : 'down';
+      return `<i class="${cls}" title="${esc(date)}: ${d == null ? 'no data' : `${pct(d)} online`}"></i>`;
+    })
+    .join('');
+  return `<div class="uptime"><div class="bars">${bars}</div><div class="uptime-legend"><span>30 days ago</span><span>${pct(u.month)} uptime</span><span>Today</span></div></div>`;
+}
+
 let first = true;
 
 function render(data) {
@@ -75,6 +89,7 @@ function render(data) {
         }
         ${address ? `<div class="row"><span class="address">${esc(address)} <button data-copy="${esc(address)}">Copy</button></span></div>` : ''}
         ${s.joinNote ? `<div class="meta" style="margin-top:8px">${esc(s.joinNote)}</div>` : ''}
+        ${uptimeBars(s.uptime30)}
         ${s.playerNames?.length ? `<div class="names">${s.playerNames.map((n) => `<span>${esc(n)}</span>`).join('')}</div>` : ''}
       </article>`;
     })
