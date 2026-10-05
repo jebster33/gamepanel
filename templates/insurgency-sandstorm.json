@@ -3,6 +3,7 @@
   "name": "Insurgency: Sandstorm",
   "category": "Shooter",
   "icon": "🏜️",
+  "storeAppId": 581320,
   "description": "Insurgency: Sandstorm dedicated server. A GSLT token is required for internet play.",
   "defaultMemory": 8192,
   "variables": [

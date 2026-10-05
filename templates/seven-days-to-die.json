@@ -3,6 +3,7 @@
   "name": "7 Days to Die",
   "category": "Survival",
   "icon": "🧟",
+  "storeAppId": 251570,
   "description": "7 Days to Die dedicated server with the web control panel and telnet disabled in favour of GamePanel's console.",
   "defaultMemory": 8192,
   "variables": [

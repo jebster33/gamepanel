@@ -3,6 +3,7 @@
   "name": "Team Fortress 2",
   "category": "Shooter",
   "icon": "🎩",
+  "storeAppId": 440,
   "description": "Team Fortress 2 dedicated server.",
   "defaultMemory": 2048,
   "variables": [

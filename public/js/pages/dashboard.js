@@ -137,7 +137,7 @@ async function renderChecklist() {
   const done = data.items.filter((i) => i.done).length;
   box.innerHTML = `
     <div class="card checklist">
-      <img src="/img/empty-rack.png" alt="" width="150" height="145" />
+      <img class="line-art" src="/img/empty-rack.png" alt="" width="150" height="145" />
       <div>
         <div class="row mb-16">
           <h3 style="font-size:16px">Get your panel ready</h3>

@@ -3,6 +3,7 @@
   "name": "Valheim",
   "category": "Survival",
   "icon": "🪓",
+  "storeAppId": 892970,
   "description": "Valheim dedicated server. Remember that the join password must be at least 5 characters and cannot appear in the server name.",
   "defaultMemory": 4096,
   "variables": [

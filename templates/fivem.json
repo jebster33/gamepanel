@@ -3,6 +3,7 @@
   "name": "FiveM (GTA V roleplay)",
   "category": "Roleplay",
   "icon": "🚔",
+  "storeAppId": 271590,
   "description": "FiveM / Cfx.re server with txAdmin built in. The wizard walks you through your license key, framework and database — a full ESX or QBox roleplay server is a few clicks after the first boot.",
   "defaultMemory": 8192,
   "image": "debian:bookworm-slim",

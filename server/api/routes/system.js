@@ -94,6 +94,14 @@ module.exports = (router, { store, auth, manager, hostMetrics, notifier }, { req
     if (body.maxCrashRestarts !== undefined) s.maxCrashRestarts = clamp(body.maxCrashRestarts, 0, 100);
     if (body.containerize !== undefined) s.containerize = Boolean(body.containerize);
     if (body.geoLookup !== undefined) s.geoLookup = Boolean(body.geoLookup);
+    if (body.limits) {
+      const n = (v, max) => Math.max(0, Math.min(max, Number(v) || 0));
+      const l = { ...(s.limits || {}) };
+      if (body.limits.memoryMb !== undefined) l.memoryMb = Math.round(n(body.limits.memoryMb, 4 * 1024 * 1024));
+      if (body.limits.cpuCores !== undefined) l.cpuCores = +n(body.limits.cpuCores, 1024).toFixed(2);
+      if (body.limits.diskGb !== undefined) l.diskGb = Math.round(n(body.limits.diskGb, 1024 * 1024));
+      s.limits = l;
+    }
     if (body.checklistDismissed !== undefined) s.checklistDismissed = Boolean(body.checklistDismissed);
     if (body.notifications) {
       const n = { ...(s.notifications || {}) };

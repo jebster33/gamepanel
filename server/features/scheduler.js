@@ -157,6 +157,7 @@ class Scheduler {
           }
           break;
         case 'backup': {
+          m.checkDiskRoom('make a backup');
           await backups.create(server, 'auto');
           const pruned = backups.prune(server.id, server.backupRetention);
           this.store.addEvent('backup.created', `Scheduled backup of ${server.name}${pruned.length ? ` (removed ${pruned.length} old)` : ''}`, { serverId: server.id });

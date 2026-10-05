@@ -12,6 +12,7 @@ module.exports = (router, { store, manager }, { requireAdmin, requireCap, server
 
   router.post('/api/servers/:id/backups', async ({ user, params, body }) => {
     const server = serverFor(user, params.id, 'backups');
+    manager.checkDiskRoom('make a backup');
     let backup;
     try {
       backup = await backups.create(server, body.label || '');

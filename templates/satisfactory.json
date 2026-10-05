@@ -3,6 +3,7 @@
   "name": "Satisfactory",
   "category": "Sandbox",
   "icon": "🏭",
+  "storeAppId": 526870,
   "description": "Satisfactory dedicated server. After the first start, claim the server from the in-game server manager (Server Manager → Add Server).",
   "defaultMemory": 8192,
   "variables": [

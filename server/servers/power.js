@@ -22,6 +22,7 @@ module.exports = {
     if (rt.status === STATUS.INSTALLING) fail(409, 'The server is still installing');
     if (!server.installedAt) fail(409, 'The server is not installed yet');
     if (!require('fs').existsSync(server.dir)) fail(500, 'The server directory is missing — reinstall the server');
+    this.checkCanStart(server);
 
     // Optional: pull the newest game build first, like LinuxGSM/AMP do.
     if (server.updateOnStart && updateSteps(template).length && !rt.task) {

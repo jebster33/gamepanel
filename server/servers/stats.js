@@ -72,6 +72,7 @@ module.exports = {
       for (const server of this.servers) {
         this.rt(server.id).diskBytes = await directorySize(server.dir).catch(() => 0);
       }
+      await this.refreshBackupUsage();
     } finally {
       this.diskBusy = false;
     }

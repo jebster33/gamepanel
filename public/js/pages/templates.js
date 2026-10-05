@@ -1,10 +1,20 @@
 import { render, setCrumbs } from '../core/router.js';
 import { state } from '../core/state.js';
-import { $, can, esc, icon, toast } from '../core/util.js';
+import { $, can, esc, gameArt, icon, toast } from '../core/util.js';
 import { openCreateServerModal } from './deploy.js';
 import { revealChildren } from '../ui/fx.js';
 
 /* ------------------------------------------------------------- templates */
+
+const fmtRam = (mb) => (mb >= 1024 ? `${+(mb / 1024).toFixed(1)} GB` : `${mb} MB`);
+
+/** The first couple of default ports, with the rest folded into "+N" so long lists fit. */
+function portBadge(ports) {
+  if (!ports.length) return '';
+  const all = ports.map((p) => p.default);
+  const shown = all.slice(0, 2).join(' · ') + (all.length > 2 ? ` +${all.length - 2}` : '');
+  return `<span class="badge mono" title="Default ports: ${esc(all.join(', '))}">${esc(shown)}</span>`;
+}
 
 let templateFilter = { category: 'all', search: '' };
 
@@ -44,20 +54,21 @@ export function renderTemplates(view) {
           ? filtered
               .map(
                 (tpl) => `
-        <div class="tile-card spot" data-template="${esc(tpl.id)}">
+        <div class="tile-card spot game-card" data-template="${esc(tpl.id)}">
+          <div class="g-art">${gameArt(tpl, { wide: true })}</div>
           <div class="t-head">
-            <span class="t-icon">${esc(tpl.icon || '🎮')}</span>
-            <div>
+            <div class="min-w-0">
               <h3>${esc(tpl.name)}</h3>
               <div class="t-meta">${esc(tpl.category || 'Other')}${tpl.custom ? ' · custom' : ''}</div>
             </div>
           </div>
           <p>${esc(tpl.description || '')}</p>
           <div class="t-foot">
-            <span class="badge mono" title="Default ports">${(tpl.ports || []).map((p) => p.default).join(' · ')}</span>
+            ${tpl.defaultMemory ? `<span class="badge" title="Recommended memory for this game">${fmtRam(tpl.defaultMemory)} RAM</span>` : ''}
+            ${portBadge(tpl.ports || [])}
             ${
               state.user.role === 'admin'
-                ? '<button class="btn btn-sm" style="margin-left:auto">Deploy</button>'
+                ? '<button class="btn btn-sm t-deploy">Deploy</button>'
                 : ''
             }
           </div>

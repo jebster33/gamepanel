@@ -34,6 +34,7 @@ module.exports = {
     const rt = this.rt(id);
     if (this.isActive(id)) fail(409, 'Stop the server before installing');
     if (rt.status === STATUS.INSTALLING) fail(409, 'An install is already running');
+    this.checkDiskRoom('install');
 
     fs.mkdirSync(server.dir, { recursive: true });
     this.setStatus(server, STATUS.INSTALLING);
@@ -185,6 +186,7 @@ module.exports = {
     if (this.isActive(id)) fail(409, 'Stop the server before updating it');
     const rt = this.rt(id);
     if (rt.status === STATUS.INSTALLING) fail(409, 'An install is already running');
+    this.checkDiskRoom('update');
 
     this.setTask(server, 'Updating');
     if (!quiet) this.pushConsole(server, `Checking for ${template.name} updates…`, 'system');

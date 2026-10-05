@@ -3,6 +3,7 @@
   "name": "Minecraft: Vanilla",
   "category": "Minecraft",
   "icon": "🟫",
+  "logo": "/img/games/minecraft.svg",
   "description": "The official Mojang Java Edition server — unmodified gameplay, no plugin support.",
   "defaultMemory": 4096,
   "variables": [

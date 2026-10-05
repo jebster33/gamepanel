@@ -3,6 +3,7 @@
   "name": "Don't Starve Together",
   "category": "Survival",
   "icon": "🔥",
+  "storeAppId": 322330,
   "description": "Klei's co-op survival game. Needs a free cluster token from accounts.klei.com (Games > Game Servers).",
   "platforms": [
     "linux",

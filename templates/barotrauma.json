@@ -3,6 +3,7 @@
   "name": "Barotrauma",
   "category": "Survival",
   "icon": "🐙",
+  "storeAppId": 602960,
   "description": "2D co-op submarine survival on Europa. Up to 16 players.",
   "platforms": [
     "linux",

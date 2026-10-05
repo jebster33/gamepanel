@@ -35,7 +35,7 @@ export async function renderFilesTab(host, server, dirPath) {
       <input type="file" id="file-input" class="hidden" multiple />
     </div>
 
-    <div class="card dropzone" id="file-dropzone" style="padding:0">
+    <div class="card card-flush dropzone" id="file-dropzone">
       <div class="dropzone-hint" id="dropzone-hint">Drop files here to upload into <span class="mono">${esc(
         data.path || '/'
       )}</span></div>

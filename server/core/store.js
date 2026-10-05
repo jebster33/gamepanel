@@ -25,6 +25,8 @@ const DEFAULT_STATE = {
     containerize: true,
     // Resolve sign-in IPs to a city for the activity log (uses ipwho.is).
     geoLookup: true,
+    // Panel-wide caps (0 = none): see servers/limits.js.
+    limits: { memoryMb: 0, cpuCores: 0, diskGb: 0 },
     // Where to post alerts (crashes, installs, backups…).
     notifications: { discordWebhook: '', events: ['server.crashed', 'server.install_failed', 'backup.failed', 'panel.updated'] },
     integrations: {

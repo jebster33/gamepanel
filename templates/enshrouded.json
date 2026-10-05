@@ -3,6 +3,7 @@
   "name": "Enshrouded",
   "category": "Survival",
   "icon": "🌫️",
+  "storeAppId": 1203620,
   "description": "Enshrouded dedicated server. The Windows binary runs under Proton/Wine, which the installer sets up for you.",
   "defaultMemory": 16384,
   "variables": [
