@@ -54,7 +54,7 @@
       "content": "world = {{WORLD_NAME}}\nport = {{PORT}}\nslots = {{MAX_PLAYERS}}\npassword = {{SERVER_PASSWORD}}\nmotd = Welcome to {{SERVER_NAME}}\npausewhenempty = true\n"
     }
   ],
-  "startCommand": "java -Xmx{{MEMORY}}M -jar Server.jar -nogui -port {{PORT}} -world \"{{WORLD_NAME}}\" -slots {{MAX_PLAYERS}}",
+  "startCommand": "java -Xmx{{MEMORY}}M -Duser.home={{SERVER_DIR}} -jar Server.jar -nogui -port {{PORT}} -world \"{{WORLD_NAME}}\" -slots {{MAX_PLAYERS}}",
   "stopCommand": "stop",
   "stopTimeout": 45,
   "query": {
