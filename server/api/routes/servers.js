@@ -133,6 +133,12 @@ module.exports = (router, { store, manager, scheduler }, { requireAdmin, require
     return { ok: true };
   });
 
+  /** Duplicate a server onto fresh ports, optionally with its files. */
+  router.post('/api/servers/:id/clone', async ({ user, params, body }) => {
+    requireAdmin(user);
+    return manager.cloneServer(params.id, { name: body?.name, copyFiles: body?.copyFiles !== false }, user);
+  });
+
   /** Minecraft worlds. */
   router.get('/api/servers/:id/worlds', async ({ user, params }) => manager.listWorlds(serverFor(user, params.id, 'files')));
 

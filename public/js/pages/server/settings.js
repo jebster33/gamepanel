@@ -3,7 +3,7 @@ import { loadServers } from '../../core/boot.js';
 import { render } from '../../core/router.js';
 import { state } from '../../core/state.js';
 import { $, can, esc, toast } from '../../core/util.js';
-import { confirmModal } from '../../ui/modal.js';
+import { confirmModal, openModal } from '../../ui/modal.js';
 
 /* ------------------------------------------------- server settings tab -- */
 
@@ -88,8 +88,9 @@ export function renderServerSettingsTab(host, server) {
       isOwner
         ? `<div class="card">
              <h4 style="margin:0 0 6px">Danger zone</h4>
-             <p class="faint" style="margin:0 0 14px">Reinstalling re-runs the template installer in place. Deleting removes the server and all of its files.</p>
+             <p class="faint" style="margin:0 0 14px">Duplicating makes a copy on new ports. Reinstalling re-runs the template installer in place. Deleting removes the server and all of its files.</p>
              <div class="row">
+               <button class="btn" id="set-clone">Duplicate</button>
                <button class="btn" id="set-reinstall">Reinstall</button>
                <button class="btn btn-danger" id="set-delete">Delete server</button>
              </div>
@@ -144,6 +145,43 @@ export function renderServerSettingsTab(host, server) {
 
   if (!isOwner) return; // the danger zone below is not rendered for non-admins
 
+  $('#set-clone').addEventListener('click', () => {
+    openModal({
+      title: 'Duplicate server',
+      width: 460,
+      body: `
+        <label class="field"><span>Name</span><input id="cl-name" value="${esc(`${server.name} copy`)}" maxlength="60" /></label>
+        <div class="checkbox-row"><input type="checkbox" id="cl-files" checked /><label for="cl-files">Copy worlds, mods and configs</label></div>
+        <div class="hint">Unticked, the copy is a fresh install of the same game and version. The copy gets its own ports and does not start by itself.</div>`,
+      actions: [
+        { label: 'Cancel', close: true },
+        {
+          label: 'Duplicate',
+          primary: true,
+          onClick: async (btn, m) => {
+            const root = document.querySelector('.modal-backdrop:last-child');
+            btn.disabled = true;
+            btn.textContent = 'Copying…';
+            try {
+              const r = await api(`/api/servers/${server.id}/clone`, {
+                method: 'POST',
+                body: { name: root.querySelector('#cl-name').value.trim(), copyFiles: root.querySelector('#cl-files').checked },
+              });
+              m.close();
+              await loadServers();
+              toast(`Created ${r.server.name}`);
+              location.hash = `#/servers/${r.server.id}/console`;
+            } catch (err) {
+              toast(err.message, 'error');
+              btn.disabled = false;
+              btn.textContent = 'Duplicate';
+            }
+          },
+        },
+      ],
+    });
+  });
+
   $('#set-reinstall').addEventListener('click', async () => {
     if (!(await confirmModal('Reinstall server', 'Re-run the installer for this server? Game files may be overwritten; worlds and configs are normally kept.')))
       return;
@@ -182,6 +220,7 @@ async function renderNetworkCard(server) {
     )}</p>`;
     return;
   }
+  if (!card.isConnected) return; // left the page while it loaded
 
   const dot = (ok, label, title) =>
     `<span class="status ${ok ? 'running' : 'crashed'}" title="${esc(title || '')}"><span class="dot"></span>${esc(

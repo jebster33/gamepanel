@@ -16,6 +16,7 @@
  *   doctor.js          crash doctor and log sharing
  *   worlds.js          Minecraft worlds: switch, import, download, reset
  *   alerts.js          CPU, memory and disk alerts
+ *   clone.js           duplicating a server
  *   watchers.js        tailing game log files, port-based readiness
  *   runtimes/container.js   running a server in Docker (Linux isolation)
  *   runtimes/process.js     running a server as a plain process (Linux or Windows)
@@ -556,6 +557,7 @@ Object.assign(
   require('./doctor'),
   require('./worlds'),
   require('./alerts'),
+  require('./clone'),
   require('./watchers'),
   require('./runtimes/container'),
   require('./runtimes/process')
