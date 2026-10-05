@@ -54,9 +54,21 @@ export async function renderAccount(view) {
         <div class="faint">Signed in somewhere you shouldn't be, like a friend's computer? End every session except this one.</div>
       </div>
       <button class="btn" id="a-revoke">Sign out other devices</button>
+    </div>
+
+    <div class="card mb-16" id="api-keys">
+      <h4>API keys</h4>
+      <div class="faint" style="margin-bottom:12px">For scripts and Discord bots. Send it as <span class="mono">Authorization: Bearer gp_…</span>. A key can do what your account can, except change accounts. Read-only keys can only look.</div>
+      <div id="ak-list"></div>
+      <div class="row mt-16" style="gap:8px;flex-wrap:wrap">
+        <input id="ak-name" placeholder="What is it for? (e.g. Discord bot)" maxlength="40" style="flex:1;min-width:200px" />
+        <label class="checkbox-row" style="margin:0"><input type="checkbox" id="ak-ro" checked /><span>Read-only</span></label>
+        <button class="btn" id="ak-create">Create key</button>
+      </div>
     </div>`;
 
   renderTwoFactor(me);
+  renderApiKeys();
 
   $('#a-revoke').addEventListener('click', async () => {
     try {
@@ -77,6 +89,43 @@ export async function renderAccount(view) {
       toast(err.message, 'error');
     }
   });
+}
+
+async function renderApiKeys() {
+  const host = $('#ak-list');
+  if (!host) return;
+  const { keys } = await api('/api/auth/api-keys').catch(() => ({ keys: [] }));
+  host.innerHTML = keys.length
+    ? `<div class="table-wrap"><table><tbody>${keys
+        .map(
+          (k) => `<tr><td><b>${esc(k.name)}</b> <span class="badge ${k.readOnly ? '' : 'warn'}">${k.readOnly ? 'Read-only' : 'Full access'}</span><div class="faint mono" style="font-size:12px">${esc(k.prefix)}…</div></td>
+            <td class="faint nowrap">${k.lastUsed ? `Used ${esc(fmtTime(k.lastUsed))}` : 'Never used'}</td>
+            <td style="text-align:right"><button class="btn btn-sm btn-ghost" data-ak="${esc(k.id)}">Delete</button></td></tr>`
+        )
+        .join('')}</tbody></table></div>`
+    : '<div class="faint">No keys yet.</div>';
+  host.querySelectorAll('[data-ak]').forEach((btn) =>
+    btn.addEventListener('click', async () => {
+      await api(`/api/auth/api-keys/${btn.dataset.ak}`, { method: 'DELETE' }).catch((err) => toast(err.message, 'error'));
+      renderApiKeys();
+    })
+  );
+  const create = $('#ak-create');
+  create.onclick = async () => {
+    try {
+      const made = await api('/api/auth/api-keys', { method: 'POST', body: { name: $('#ak-name').value, readOnly: $('#ak-ro').checked } });
+      $('#ak-name').value = '';
+      openModal({
+        title: 'Your new API key',
+        width: 520,
+        body: `<p style="margin-top:0">Copy it now. It is not shown again.</p><pre class="share-box mono" style="white-space:pre-wrap;word-break:break-all">${esc(made.key)}</pre>`,
+        actions: [{ label: 'Copy', primary: true, onClick: () => copyToClipboard(made.key) }, { label: 'Done', close: true }],
+      });
+      renderApiKeys();
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+  };
 }
 
 function renderTwoFactor(me) {

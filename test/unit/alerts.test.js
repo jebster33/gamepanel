@@ -65,3 +65,21 @@ test('worlds: list, switch and reset with a new seed', async () => {
   assert.match(fs.readFileSync(path.join(dir, 'server.properties'), 'utf8'), /^level-seed=42$/m);
   await assert.rejects(m.useWorld('s1', '../etc'), /World names/);
 });
+
+test('API keys: read-only keys only read, and no key changes accounts', () => {
+  const { Auth } = require('../../server/core/auth');
+  const auth = new Auth({ state: { users: [] }, save() {}, addEvent() {} }, 'x'.repeat(32));
+  auth.createUser({ username: 'chris', password: 'correct horse battery', role: 'admin' });
+  const id = auth.users[0].id;
+  const ro = auth.createApiKey(id, { name: 'bot', readOnly: true }).key;
+  const full = auth.createApiKey(id, { name: 'script' }).key;
+  const req = (method, url, key) => ({ method, url, headers: { authorization: `Bearer ${key}` } });
+  assert.ok(auth.userFromRequest(req('GET', '/api/servers', ro)));
+  assert.strictEqual(auth.userFromRequest(req('POST', '/api/servers/a/power', ro)), null);
+  assert.ok(auth.userFromRequest(req('POST', '/api/servers/a/power', full)));
+  assert.strictEqual(auth.userFromRequest(req('POST', '/api/auth/password', full)), null);
+  assert.strictEqual(auth.userFromRequest(req('PATCH', '/api/users/x', full)), null);
+  assert.ok(!JSON.stringify(auth.listApiKeys(id)).includes(full.slice(8)));
+  auth.deleteApiKey(id, auth.listApiKeys(id)[1].id);
+  assert.strictEqual(auth.userFromRequest(req('GET', '/api/servers', full)), null);
+});

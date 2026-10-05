@@ -119,6 +119,9 @@ function parseCookies(header) {
   return out;
 }
 
+const hashKey = (key) => crypto.createHash('sha256').update(String(key)).digest('hex');
+const publicKey = (k) => ({ id: k.id, name: k.name, readOnly: k.readOnly, prefix: k.prefix, createdAt: k.createdAt, lastUsed: k.lastUsed });
+
 class Auth {
   constructor(store, secret) {
     this.store = store;
@@ -322,7 +325,59 @@ class Auth {
       const url = new URL(req.url, 'http://localhost');
       token = url.searchParams.get('token');
     }
+    if (token && token.startsWith('gp_')) {
+      // Account changes (passwords, 2FA, keys, users) need a person signed in, not a script.
+      const path = new URL(req.url, 'http://localhost').pathname;
+      if (req.method !== 'GET' && /^\/api\/(auth|users)(\/|$)/.test(path)) return null;
+      return this.userFromApiKey(token, req.method);
+    }
     return this.userFromToken(token);
+  }
+
+  /* API keys: for scripts and bots. Stored hashed; read-only keys can only GET. */
+
+  createApiKey(userId, { name, readOnly = false } = {}) {
+    const user = this.users.find((u) => u.id === userId);
+    if (!user) fail(404, 'User not found');
+    const label = String(name || '').trim().slice(0, 40);
+    if (!label) fail(400, 'Give the key a name so you know what uses it');
+    user.apiKeys = user.apiKeys || [];
+    if (user.apiKeys.length >= 20) fail(400, 'An account can have at most 20 keys');
+    const key = `gp_${crypto.randomBytes(24).toString('base64url')}`;
+    const record = { id: crypto.randomBytes(6).toString('hex'), name: label, readOnly: Boolean(readOnly), hash: hashKey(key), prefix: key.slice(0, 7), createdAt: Date.now(), lastUsed: null };
+    user.apiKeys.push(record);
+    this.store.save();
+    return { key, ...publicKey(record) };
+  }
+
+  listApiKeys(userId) {
+    const user = this.users.find((u) => u.id === userId);
+    return (user?.apiKeys || []).map(publicKey);
+  }
+
+  deleteApiKey(userId, keyId) {
+    const user = this.users.find((u) => u.id === userId);
+    if (!user) fail(404, 'User not found');
+    const before = (user.apiKeys || []).length;
+    user.apiKeys = (user.apiKeys || []).filter((k) => k.id !== keyId);
+    if (user.apiKeys.length === before) fail(404, 'No such key');
+    this.store.save();
+  }
+
+  userFromApiKey(key, method = 'GET') {
+    const hash = hashKey(key);
+    for (const user of this.users) {
+      const record = (user.apiKeys || []).find((k) => k.hash.length === hash.length && crypto.timingSafeEqual(Buffer.from(k.hash), Buffer.from(hash)));
+      if (!record) continue;
+      if (record.readOnly && !['GET', 'HEAD'].includes(String(method).toUpperCase())) return null;
+      // Remember use at most once a minute, so busy scripts do not rewrite the state file.
+      if (!record.lastUsed || Date.now() - record.lastUsed > 60_000) {
+        record.lastUsed = Date.now();
+        this.store.save();
+      }
+      return user;
+    }
+    return null;
   }
 
   userFromToken(token) {

@@ -20,6 +20,7 @@ const TITLES = {
   'server.world_reset': 'World reset',
   'server.resource_alert': 'Resource alert',
   'panel.disk_low': 'Disk almost full',
+  'user.api_key': 'API key created',
   'backup.created': 'Backup created',
   'backup.failed': 'Backup failed',
   'backup.uploaded': 'Backup copied to the cloud',

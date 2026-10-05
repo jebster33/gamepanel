@@ -86,6 +86,20 @@ module.exports = (router, app) => {
   });
 
   /** Sign out every other device, e.g. after using a shared computer. */
+  /** API keys for scripts and bots (Authorization: Bearer gp_…). */
+  router.get('/api/auth/api-keys', ({ user }) => ({ keys: auth.listApiKeys(user.id) }));
+
+  router.post('/api/auth/api-keys', ({ user, req, body }) => {
+    const created = auth.createApiKey(user.id, { name: body?.name, readOnly: Boolean(body?.readOnly) });
+    store.addEvent('user.api_key', `${user.username} created the API key "${created.name}"${created.readOnly ? ' (read-only)' : ''}`, { ip: clientIp(req) });
+    return created;
+  });
+
+  router.delete('/api/auth/api-keys/:keyId', ({ user, params }) => {
+    auth.deleteApiKey(user.id, params.keyId);
+    return { ok: true };
+  });
+
   router.post('/api/auth/sessions/revoke', ({ user, req, res }) => {
     const record = auth.users.find((u) => u.id === user.id);
     auth.revokeSessions(user.id);
