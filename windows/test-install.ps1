@@ -22,7 +22,7 @@ Write-Host "Panel $($status.version) answers on $base"
 
 $headers = @{ Origin = $base }
 $session = New-Object Microsoft.PowerShell.Commands.WebRequestSession
-$body = @{ username = 'ci'; password = 'ci-test-password-123' } | ConvertTo-Json
+$body = @{ username = 'ci-admin'; password = 'ci-test-password-123' } | ConvertTo-Json
 if ($status.setupRequired) { Invoke-RestMethod "$base/api/setup" -Method Post -Body $body -ContentType 'application/json' -Headers $headers -WebSession $session | Out-Null }
 Invoke-RestMethod "$base/api/auth/login" -Method Post -Body $body -ContentType 'application/json' -Headers $headers -WebSession $session | Out-Null
 $templates = Invoke-RestMethod "$base/api/templates" -WebSession $session -Headers $headers
