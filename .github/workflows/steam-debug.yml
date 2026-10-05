@@ -1,0 +1,31 @@
+# Temporary: find which container setting breaks SteamCMD on the runner.
+name: SteamCMD debug
+on:
+  push:
+    paths: ['.github/workflows/steam-debug.yml']
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [default, seccomp, apparmor, privileged, steamuser, host, appinfo]
+    steps:
+      - name: Try SteamCMD
+        run: |
+          set -x
+          docker pull -q cm2network/steamcmd:root >/dev/null
+          cmd='/home/steam/steamcmd/steamcmd.sh +force_install_dir /tmp/t +login anonymous +app_update 1963720 validate +quit'
+          case "${{ matrix.variant }}" in
+            default)    docker run --rm cm2network/steamcmd:root bash -c "$cmd" ;;
+            seccomp)    docker run --rm --security-opt seccomp=unconfined cm2network/steamcmd:root bash -c "$cmd" ;;
+            apparmor)   docker run --rm --security-opt apparmor=unconfined cm2network/steamcmd:root bash -c "$cmd" ;;
+            privileged) docker run --rm --privileged cm2network/steamcmd:root bash -c "$cmd" ;;
+            steamuser)  docker run --rm cm2network/steamcmd:latest bash -c "${cmd/\/tmp\/t//home/steam/t}" ;;
+            appinfo)    docker run --rm cm2network/steamcmd:root bash -c "/home/steam/steamcmd/steamcmd.sh +force_install_dir /tmp/t +login anonymous +app_info_update 1 +app_info_print 1963720 +app_update 1963720 validate +quit | tail -60" ;;
+            host)
+              sudo dpkg --add-architecture i386 && sudo apt-get update -qq && sudo apt-get install -y -qq lib32gcc-s1 >/dev/null
+              mkdir -p ~/sc && curl -sL https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz | tar xz -C ~/sc
+              ~/sc/steamcmd.sh +force_install_dir ~/t +login anonymous +app_update 1963720 validate +quit ;;
+          esac 2>&1 | tail -40
+          echo "exit ${PIPESTATUS[0]}"
