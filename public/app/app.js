@@ -27,6 +27,13 @@ const ICON = {
   user: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>',
 };
 
+/** What players type: the Cloudflare name when there is one (no port with SRV). */
+function addressOf(server) {
+  const sub = server.subdomain;
+  if (sub) return sub.srv || !sub.port ? sub.host : `${sub.host}:${sub.port}`;
+  return `${location.hostname}:${server.ports?.game ?? Object.values(server.ports || {})[0]}`;
+}
+
 function fmtDuration(ms) {
   const m = Math.floor((ms || 0) / 60000);
   if (m < 1) return 'just now';
@@ -637,7 +644,7 @@ function serverScreen(el, id) {
     const on = s.status === 'running';
     const busy = ['starting', 'stopping', 'installing'].includes(s.status);
     const mem = s.memoryLimit ? Math.min(100, ((s.memory || 0) / s.memoryLimit) * 100) : 0;
-    const address = `${location.hostname}:${s.ports?.game ?? Object.values(s.ports || {})[0]}`;
+    const address = addressOf(s);
     body.innerHTML = `
       <div class="status-hero ${on ? '' : 'off'}">
         ${can('power') ? `<button class="glass power ${on ? 'on' : ''} ${busy ? 'busy' : ''}" id="o-power" aria-label="Power">${busy ? ICON.restart : ICON.power}</button>` : ''}
@@ -753,7 +760,7 @@ function powerSheet(server) {
     if (on) actions.push({ label: 'Restart', run: () => power(server, 'restart') }, { label: 'Stop', danger: true, run: () => power(server, 'stop') });
     else actions.push({ label: 'Start', run: () => power(server, 'start') });
   }
-  actions.push({ label: 'Copy address', run: () => copy(`${location.hostname}:${server.ports?.game ?? Object.values(server.ports || {})[0]}`) });
+  actions.push({ label: 'Copy address', run: () => copy(addressOf(server)) });
   sheet({ title: server.name, actions });
 }
 
