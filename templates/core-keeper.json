@@ -37,6 +37,7 @@
       "type": "apt",
       "packages": [
         "xvfb",
+        "xauth",
         "libxi6"
       ],
       "label": "Install headless display dependencies"
@@ -64,6 +65,7 @@
   "image": "cm2network/steamcmd:root",
   "packages": [
     "xvfb",
+    "xauth",
     "libxi6"
   ],
   "platforms": [
