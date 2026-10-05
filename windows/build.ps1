@@ -63,7 +63,7 @@ Set-Content (Join-Path $Stage 'start.cmd') -Encoding ASCII -Value @'
 rem Portable GamePanel: runs in this window, keeps its data in .\data.
 rem Install Setup.exe instead to run it as a service that starts with Windows.
 cd /d "%~dp0"
-echo GamePanel is starting. Open http://localhost:8080 in your browser. Close this window to stop it.
+echo GamePanel is starting. Open http://localhost:8420 in your browser. Close this window to stop it.
 "%~dp0node\node.exe" "%~dp0server\index.js"
 pause
 '@

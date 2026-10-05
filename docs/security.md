@@ -44,5 +44,5 @@ Templates that need extra runtime packages declare them in `packages`, and the p
 - Windows has no container isolation for game servers yet: they are normal
   processes with their own folders under `C:\ProgramData\GamePanel\servers`.
   Docker Desktop is not used for Windows game builds.
-- The panel opens only its own port (8080 by default) in Windows Firewall at
+- The panel opens only its own port (8420 by default) in Windows Firewall at
   install. Game ports are opened from each server's Settings tab, never on their own.

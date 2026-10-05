@@ -40,7 +40,7 @@ jobs:
           $setup = Get-ChildItem dist -Filter 'GamePanel-Setup-*.exe' | Select-Object -First 1
           Start-Process $setup.FullName -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/LOG=setup.log' -Wait
           Get-Content setup.log -Tail 20
-          ./windows/test-install.ps1 -Port 8080
+          ./windows/test-install.ps1 -Port 8420
 
       - name: Uninstall Setup.exe
         shell: pwsh

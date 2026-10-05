@@ -2,7 +2,7 @@
   CI check for an installed GamePanel: the service runs, the panel answers,
   first-run setup and sign-in work, and the templates load.
 #>
-param([int]$Port = 8080)
+param([int]$Port = 8420)
 $ErrorActionPreference = 'Stop'
 
 $svc = Get-Service GamePanel -ErrorAction SilentlyContinue
