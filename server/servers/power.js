@@ -65,7 +65,7 @@ module.exports = {
    */
   makeOutputHandler(server, template) {
     const ready = template.logPatterns?.ready ? new RegExp(template.logPatterns.ready) : null;
-    if (!ready) {
+    if (!ready && !template.readyOnPort) {
       // No marker: call it running once it has survived a few seconds.
       setTimeout(() => {
         if (this.rt(server.id).status === STATUS.STARTING) this.setStatus(server, STATUS.RUNNING);
@@ -105,6 +105,7 @@ module.exports = {
     clearTimeout(rt.stopTimer);
     rt.stopTimer = null;
     this.clearPid(server.id);
+    this.stopWatchers(server.id);
     this.closeLogStream(server.id);
     this.cleanupAfterExit?.(server);
 

@@ -95,6 +95,7 @@ module.exports = {
     for (const [k, v] of Object.entries(vars)) {
       if (/^[A-Z][A-Z0-9_]*$/.test(k) && v !== undefined && v !== null) env[k] = String(v);
     }
+    for (const [k, v] of Object.entries(this.template(server)?.env || {})) env[k] = interpolate(String(v), vars);
     Object.assign(env, extra);
     return Object.entries(env).map(([k, v]) => `${k}=${v}`);
   },
@@ -248,6 +249,7 @@ module.exports = {
     await docker.start(created.Id);
     this.attachStats(server, created.Id);
     this.watchContainer(server, created.Id);
+    this.startWatchers(server, template, onOutput);
   },
 
   watchContainer(server, containerId) {
@@ -402,6 +404,7 @@ module.exports = {
         this.openLogStream(server);
         this.attachStats(server, container.Id);
         this.watchContainer(server, container.Id);
+        this.startWatchers(server, template, onOutput);
         this.pushConsole(server, 'The panel reconnected to the running server.', 'system');
         logger.info(`Re-attached to the running container for ${server.name}`);
       } catch (err) {

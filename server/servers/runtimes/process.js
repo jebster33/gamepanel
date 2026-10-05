@@ -10,7 +10,7 @@ const fs = require('fs');
 const path = require('path');
 
 const { config } = require('../../core/config');
-const { logger, fail } = require('../../core/util');
+const { logger, fail, interpolate } = require('../../core/util');
 const { isWindows, spawnShell, signalTree, killTree, exe } = require('../../core/platform');
 
 /** A Java runtime the installer fetched for this server, if it needed one. */
@@ -54,6 +54,8 @@ module.exports = {
     for (const [k, v] of Object.entries(vars)) {
       if (/^[A-Z][A-Z0-9_]*$/.test(k) && v !== undefined && v !== null) env[k] = String(v);
     }
+    // The template's own variables, e.g. SteamAppId for games that need it.
+    for (const [k, v] of Object.entries(this.template(server)?.env || {})) env[k] = interpolate(String(v), vars);
     return env;
   },
 
@@ -85,6 +87,7 @@ module.exports = {
     proc.stdin?.on('error', () => {}); // a closed stdin must never take the panel down
     proc.on('error', (err) => this.pushConsole(server, `Process error: ${err.message}`, 'system'));
     proc.on('exit', (code, signal) => this.handleExit(server, code, signal));
+    this.startWatchers(server, template, onOutput);
   },
 
   signalProcess(id, sig) {

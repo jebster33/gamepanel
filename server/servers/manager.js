@@ -11,6 +11,7 @@
  *   install.js         installing, reinstalling and updating games
  *   power.js           start / stop / restart / kill, crashes and auto-restart
  *   stats.js           CPU, memory, players, ping, disk
+ *   watchers.js        tailing game log files, port-based readiness
  *   runtimes/container.js   running a server in Docker (Linux isolation)
  *   runtimes/process.js     running a server as a plain process (Linux or Windows)
  *
@@ -530,6 +531,7 @@ Object.assign(
   require('./install'),
   require('./power'),
   require('./stats'),
+  require('./watchers'),
   require('./runtimes/container'),
   require('./runtimes/process')
 );
