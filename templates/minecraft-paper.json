@@ -78,9 +78,10 @@
       "label": "Install the Java the game needs"
     },
     {
-      "type": "script",
+      "type": "download",
       "label": "Download the latest Paper build",
-      "run": "gp_log \"Paper {{RESOLVED_VERSION}} build {{RESOLVED_BUILD}}\"\ngp_fetch \"{{DOWNLOAD_URL}}\" server.jar"
+      "url": "{{DOWNLOAD_URL}}",
+      "dest": "server.jar"
     },
     {
       "type": "writeFile",
@@ -141,5 +142,18 @@
   "packages": [
     "curl",
     "ca-certificates"
-  ]
+  ],
+  "platforms": [
+    "linux",
+    "windows"
+  ],
+  "ci": {
+    "mods": [
+      {
+        "provider": "modrinth",
+        "projectId": "luckperms",
+        "expectAtLeast": 1
+      }
+    ]
+  }
 }

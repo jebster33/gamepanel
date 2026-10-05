@@ -1,0 +1,118 @@
+{
+  "id": "dont-starve-together",
+  "name": "Don't Starve Together",
+  "category": "Survival",
+  "icon": "🔥",
+  "description": "Klei's co-op survival game. Needs a free cluster token from accounts.klei.com (Games > Game Servers).",
+  "platforms": [
+    "linux",
+    "windows"
+  ],
+  "defaultMemory": 2048,
+  "variables": [
+    {
+      "name": "CLUSTER_TOKEN",
+      "label": "Klei cluster token",
+      "default": "",
+      "description": "Create one at accounts.klei.com under Games > Game Servers."
+    },
+    {
+      "name": "MAX_PLAYERS",
+      "label": "Max players",
+      "default": 6,
+      "type": "number"
+    },
+    {
+      "name": "SERVER_PASSWORD",
+      "label": "Join password",
+      "default": "",
+      "description": "Leave empty for an open server."
+    },
+    {
+      "name": "GAME_MODE",
+      "label": "Game mode",
+      "default": "survival",
+      "options": [
+        "survival",
+        "endless",
+        "wilderness"
+      ]
+    }
+  ],
+  "ports": [
+    {
+      "name": "game",
+      "default": 10999,
+      "protocol": "udp"
+    },
+    {
+      "name": "steam",
+      "default": 27016,
+      "protocol": "udp",
+      "offset": 16017
+    },
+    {
+      "name": "auth",
+      "default": 8766,
+      "protocol": "udp",
+      "offset": -2233
+    }
+  ],
+  "image": "cm2network/steamcmd:root",
+  "packages": [
+    "libcurl3-gnutls",
+    "libcurl3t64-gnutls"
+  ],
+  "install": [
+    {
+      "type": "steamcmd",
+      "appid": "343050",
+      "label": "Install the Don't Starve Together server"
+    }
+  ],
+  "configFiles": [
+    {
+      "path": "dst/Cluster_1/cluster.ini",
+      "mode": "create",
+      "content": "[GAMEPLAY]\ngame_mode = {{GAME_MODE}}\nmax_players = {{MAX_PLAYERS}}\npvp = false\npause_when_empty = true\n\n[NETWORK]\ncluster_name = {{SERVER_NAME}}\ncluster_password = {{SERVER_PASSWORD}}\ncluster_description = Powered by GamePanel\nlan_only_cluster = false\n\n[MISC]\nconsole_enabled = true\n\n[SHARD]\nshard_enabled = false\n"
+    },
+    {
+      "path": "dst/Cluster_1/cluster_token.txt",
+      "mode": "overwrite",
+      "content": "{{CLUSTER_TOKEN}}"
+    },
+    {
+      "path": "dst/Cluster_1/Master/server.ini",
+      "mode": "overwrite",
+      "content": "[NETWORK]\nserver_port = {{PORT}}\n\n[SHARD]\nis_master = true\n\n[STEAM]\nmaster_server_port = {{PORT_STEAM}}\nauthentication_port = {{PORT_AUTH}}\n"
+    }
+  ],
+  "startCommand": "cd bin64 && ./dontstarve_dedicated_server_nullrenderer_x64 -persistent_storage_root \"{{SERVER_DIR}}\" -conf_dir dst -cluster Cluster_1 -shard Master",
+  "windows": {
+    "install": [
+      {
+        "type": "steamcmd",
+        "appid": "343050",
+        "label": "Install the Don't Starve Together server"
+      },
+      {
+        "type": "vcredist",
+        "label": "Install the Visual C++ runtime"
+      }
+    ],
+    "startCommand": "cd bin64 && dontstarve_dedicated_server_nullrenderer_x64.exe -persistent_storage_root \"{{SERVER_DIR}}\" -conf_dir dst -cluster Cluster_1 -shard Master"
+  },
+  "stopCommand": "c_shutdown(true)",
+  "stopTimeout": 60,
+  "query": {
+    "type": "none"
+  },
+  "logPatterns": {
+    "ready": "Sim paused|Server registered via geo",
+    "join": "\\[Join Announcement\\] (.+)",
+    "leave": "\\[Leave Announcement\\] (.+)"
+  },
+  "ci": {
+    "installOnly": "needs a Klei cluster token to boot"
+  }
+}

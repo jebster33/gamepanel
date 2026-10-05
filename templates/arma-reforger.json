@@ -1,0 +1,117 @@
+{
+  "id": "arma-reforger",
+  "name": "Arma Reforger",
+  "category": "Shooter",
+  "icon": "🪖",
+  "description": "Military sandbox on Everon. Crossplay with Xbox and PlayStation is on by default.",
+  "platforms": [
+    "linux",
+    "windows"
+  ],
+  "defaultMemory": 8192,
+  "variables": [
+    {
+      "name": "MAX_PLAYERS",
+      "label": "Max players",
+      "default": 64,
+      "type": "number"
+    },
+    {
+      "name": "SERVER_PASSWORD",
+      "label": "Join password",
+      "default": "",
+      "description": "Leave empty for an open server."
+    },
+    {
+      "name": "ADMIN_PASSWORD",
+      "label": "Admin password",
+      "default": "",
+      "generate": "password"
+    },
+    {
+      "name": "SCENARIO",
+      "label": "Scenario",
+      "default": "{ECC61978EDCC2B5A}Missions/23_Campaign.conf",
+      "allowCustom": true,
+      "options": [
+        {
+          "value": "{ECC61978EDCC2B5A}Missions/23_Campaign.conf",
+          "label": "Conflict: Everon"
+        },
+        {
+          "value": "{59AD59368755F41A}Missions/21_GM_Eden.conf",
+          "label": "Game Master: Everon"
+        },
+        {
+          "value": "{C700DB41F0C546E1}Missions/23_Campaign_NorthCentral.conf",
+          "label": "Conflict: Northern Everon"
+        },
+        {
+          "value": "{2BBBE828037C6F4B}Missions/22_GM_Arland.conf",
+          "label": "Game Master: Arland"
+        }
+      ]
+    }
+  ],
+  "ports": [
+    {
+      "name": "game",
+      "default": 2001,
+      "protocol": "udp"
+    },
+    {
+      "name": "query",
+      "default": 17777,
+      "protocol": "udp",
+      "offset": 15776
+    }
+  ],
+  "image": "cm2network/steamcmd:root",
+  "packages": [
+    "libcurl4",
+    "libcurl4t64"
+  ],
+  "install": [
+    {
+      "type": "steamcmd",
+      "appid": "1874900",
+      "label": "Install the Arma Reforger server"
+    },
+    {
+      "type": "chmod",
+      "path": "ArmaReforgerServer",
+      "mode": "+x"
+    }
+  ],
+  "configFiles": [
+    {
+      "path": "config.json",
+      "mode": "overwrite",
+      "content": "{\n  \"bindAddress\": \"0.0.0.0\",\n  \"bindPort\": {{PORT}},\n  \"publicPort\": {{PORT}},\n  \"a2s\": { \"address\": \"0.0.0.0\", \"port\": {{PORT_QUERY}} },\n  \"game\": {\n    \"name\": \"{{SERVER_NAME}}\",\n    \"password\": \"{{SERVER_PASSWORD}}\",\n    \"passwordAdmin\": \"{{ADMIN_PASSWORD}}\",\n    \"admins\": [],\n    \"scenarioId\": \"{{SCENARIO}}\",\n    \"maxPlayers\": {{MAX_PLAYERS}},\n    \"visible\": true,\n    \"crossPlatform\": true,\n    \"gameProperties\": { \"serverMaxViewDistance\": 2500, \"networkViewDistance\": 1000, \"disableThirdPerson\": false, \"fastValidation\": true, \"battlEye\": true },\n    \"mods\": []\n  }\n}\n"
+    }
+  ],
+  "startCommand": "./ArmaReforgerServer -config ./config.json -profile ./profile -maxFPS 60",
+  "windows": {
+    "install": [
+      {
+        "type": "steamcmd",
+        "appid": "1874900",
+        "label": "Install the Arma Reforger server"
+      },
+      {
+        "type": "vcredist",
+        "label": "Install the Visual C++ runtime"
+      }
+    ],
+    "startCommand": "ArmaReforgerServer.exe -config .\\config.json -profile .\\profile -maxFPS 60"
+  },
+  "stopSignal": "SIGINT",
+  "stopTimeout": 60,
+  "query": {
+    "type": "a2s",
+    "port": "query"
+  },
+  "logPatterns": {
+    "ready": "Game successfully created|Entered online game state|Server registered"
+  }
+}

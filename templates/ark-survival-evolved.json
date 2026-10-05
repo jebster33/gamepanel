@@ -92,9 +92,21 @@
       "type": "chmod",
       "path": "ShooterGame/Binaries/Linux/ShooterGameServer",
       "mode": "+x"
+    },
+    {
+      "type": "download",
+      "label": "Fetch the SteamCMD ARK uses for its own mod downloads",
+      "url": "https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz",
+      "dest": "Engine/Binaries/ThirdParty/SteamCMD/Linux/steamcmd_linux.tar.gz"
+    },
+    {
+      "type": "extract",
+      "file": "Engine/Binaries/ThirdParty/SteamCMD/Linux/steamcmd_linux.tar.gz",
+      "dest": "Engine/Binaries/ThirdParty/SteamCMD/Linux",
+      "deleteArchive": true
     }
   ],
-  "startCommand": "./ShooterGame/Binaries/Linux/ShooterGameServer \"{{MAP}}?listen?SessionName={{SERVER_NAME}}?MaxPlayers={{MAX_PLAYERS}}?ServerPassword={{SERVER_PASSWORD}}?ServerAdminPassword={{ADMIN_PASSWORD}}?Port={{PORT}}?QueryPort={{PORT_QUERY}}?RCONEnabled=True?RCONPort={{PORT_RCON}}\" -server -log -NoBattlEye",
+  "startCommand": "./ShooterGame/Binaries/Linux/ShooterGameServer \"{{MAP}}?listen?SessionName={{SERVER_NAME}}?MaxPlayers={{MAX_PLAYERS}}?ServerPassword={{SERVER_PASSWORD}}?ServerAdminPassword={{ADMIN_PASSWORD}}?Port={{PORT}}?QueryPort={{PORT_QUERY}}?RCONEnabled=True?RCONPort={{PORT_RCON}}\" -server -log -NoBattlEye -automanagedmods",
   "stopTimeout": 120,
   "query": {
     "type": "a2s",
@@ -116,6 +128,63 @@
       "workshop"
     ],
     "dir": "ShooterGame/Content/Mods",
-    "appId": 346110
+    "appId": 346110,
+    "workshop": {
+      "strategy": "list",
+      "file": "ShooterGame/Saved/Config/LinuxServer/GameUserSettings.ini",
+      "section": "ServerSettings",
+      "key": "ActiveMods"
+    }
+  },
+  "platforms": [
+    "linux",
+    "windows"
+  ],
+  "windows": {
+    "install": [
+      {
+        "type": "steamcmd",
+        "appid": "376030",
+        "label": "Install ARK dedicated server (~15 GB)"
+      },
+      {
+        "type": "vcredist",
+        "label": "Install the Visual C++ runtime"
+      },
+      {
+        "type": "directx",
+        "label": "Install the DirectX runtime"
+      },
+      {
+        "type": "download",
+        "label": "Fetch the SteamCMD ARK uses for its own mod downloads",
+        "url": "https://steamcdn-a.akamaihd.net/client/installer/steamcmd.zip",
+        "dest": "Engine/Binaries/ThirdParty/SteamCMD/Win64/steamcmd.zip"
+      },
+      {
+        "type": "extract",
+        "file": "Engine/Binaries/ThirdParty/SteamCMD/Win64/steamcmd.zip",
+        "dest": "Engine/Binaries/ThirdParty/SteamCMD/Win64",
+        "deleteArchive": true
+      }
+    ],
+    "startCommand": "ShooterGame\\Binaries\\Win64\\ShooterGameServer.exe \"{{MAP}}?listen?SessionName={{SERVER_NAME}}?MaxPlayers={{MAX_PLAYERS}}?ServerPassword={{SERVER_PASSWORD}}?ServerAdminPassword={{ADMIN_PASSWORD}}?Port={{PORT}}?QueryPort={{PORT_QUERY}}?RCONEnabled=True?RCONPort={{PORT_RCON}}\" -server -log -automanagedmods -NoBattlEye",
+    "tailFiles": [
+      "ShooterGame/Saved/Logs/ShooterGame.log"
+    ],
+    "mods": {
+      "workshop": {
+        "strategy": "list",
+        "file": "ShooterGame/Saved/Config/WindowsServer/GameUserSettings.ini",
+        "section": "ServerSettings",
+        "key": "ActiveMods"
+      }
+    }
+  },
+  "tailFiles": [
+    "ShooterGame/Saved/Logs/ShooterGame.log"
+  ],
+  "ci": {
+    "bootTimeout": 1800
   }
 }

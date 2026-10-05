@@ -1,371 +1,182 @@
-# 🎮 GamePanel
+<p align="center">
+  <img src="docs/brand/wordmark-on-dark.png#gh-dark-mode-only" alt="GamePanel" height="64" />
+  <img src="docs/brand/wordmark-on-light.png#gh-light-mode-only" alt="GamePanel" height="64" />
+</p>
 
-A self-hosted game server control panel for Ubuntu — Pterodactyl-style isolation and features, without Docker Compose files, MySQL, PHP, Redis, a separate daemon or a two-hour setup guide.
+<p align="center">
+  <b>Run game servers from your browser, on Linux or Windows.</b><br />
+  One install command. 41 games. Mods that only list what fits your server.
+</p>
 
-**One command to install. One web UI to run every game server on your box.**
+<p align="center">
+  <a href="#install">Install</a> ·
+  <a href="#games">Games</a> ·
+  <a href="#one-click-mods">Mods</a> ·
+  <a href="docs/templates.md">Add a game</a> ·
+  <a href="docs/troubleshooting.md">Help</a>
+</p>
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/jebster33/gamepanel/main/install.sh | sudo bash
-```
-
-Then open `http://your-server-ip:8080` and create your admin account. That's the whole setup — Docker, Node.js, the service and the firewall rules are handled for you.
+<p align="center">
+  <img src="docs/screenshots/dashboard.png" alt="The GamePanel dashboard" width="900" />
+</p>
 
 ---
 
-## Why this exists
+## Install
 
-Pterodactyl is excellent, but it needs Docker, MySQL, Redis, PHP-FPM, nginx, a queue worker, a separate Wings daemon and a domain with SSL before you can boot a single Minecraft server. GamePanel is **one Node.js process with zero npm dependencies** that talks to the Docker Engine API directly. No build step, no database server, no compose files.
-
-You still get the thing that actually matters: **every game server runs in its own container**, with its own filesystem view, process table, network namespace and hard memory/CPU limits. One server crashing, leaking memory or eating CPU cannot touch the others.
-
-## Features
-
-**Isolation (containers)**
-- Each server runs in its own Docker container with a hard memory cap, optional CPU quota and its own private network
-- Companion containers on demand — a FiveM server can get its own private MariaDB with one click
-- Accurate **per-server network usage**, which is only possible with a network namespace
-- Containers keep running when the panel restarts or updates; the panel re-attaches to them, consoles and all
-- No Docker on the box? Everything still works as supervised child processes, minus the isolation
-
-**Dashboard**
-- Live CPU, memory, disk and network for the host, and CPU/RAM/players/ping/network/connections per server
-- Streams over WebSockets, with an automatic polling fallback for proxies that block them
-- Crash detection with counters, an activity log and exponential-backoff auto-restart
-
-**Server management**
-- Start / stop / restart / force-kill, and a live console you can type into (stdin or RCON)
-- One-click `.tar.gz` backups with restore and download
-- Auto-start on boot, per-server memory limits, port allocation and template variables
-
-**File explorer**
-- Browse, edit, rename, move, delete, multi-select
-- **Drag and drop upload** straight into any folder
-- **Unpack** `.zip` / `.tar.gz` / `.tar.xz` archives in place, or compress a selection into an archive
-- Everything is sandboxed to the server's own directory
-
-**Modpacks**
-- Deploy any Modrinth modpack as a server, or switch an existing one to a
-  different pack or version from its **Modpacks** tab
-- The panel installs the loader, every mod and the pack's own configs, and
-  gives you the exact link to send players for the matching client install
-- Client-only mods are filtered out — by the pack's metadata where it exists,
-  and by hashing what actually landed where it does not, since one client mod
-  aborts a Forge/NeoForge server at boot
-- Mod and pack listings say plainly whether players need a local install too
-- Fabric, Quilt, NeoForge and Forge packs are all handled — the loader and the
-  Java version come from the pack's own metadata
-- The pack index is read out of the .mrpack by the panel, so the container
-  never needs a JSON parser
-
-**Mod manager**
-- Browse and install mods without leaving the panel:
-  | Source | Games | Key needed |
-  |---|---|---|
-  | **Modrinth** | Minecraft mods, plugins, datapacks | no |
-  | **CurseForge** | Minecraft | free key |
-  | **uMod / Oxide** | Rust (and other Oxide games) | no |
-  | **Steam Workshop** | Garry's Mod, ARK, Unturned… | only for searching |
-  | **Factorio Mod Portal** | Factorio | only for downloading |
-- Searches are filtered automatically by the server's loader and game version
-- Installed mods can be disabled (renamed to `.disabled`) or deleted from the same screen
-
-**Updates**
-- Settings → Panel updates shows exactly which commits you are missing and updates in place
-- Containerised game servers **stay online** through a panel update
-- Or from the shell: `sudo /opt/gamepanel/update.sh`
-
-**Users & permissions**
-- Assign specific servers to a user, then tick exactly what they may do on them:
-  power, console, send commands, edit settings, browse files, write files,
-  manage mods, create backups, restore backups — plus panel-level access to the
-  activity log and template catalogue
-- Anything not granted is hidden in the UI *and* refused by the API
-- Activity log records sign-ins with IP and (optionally) their location
-- scrypt password hashing, HMAC-signed session cookies, login rate limiting
-
-## Included templates
-
-| Category | Games |
-|---|---|
-| **Minecraft** | Paper · Vanilla · Fabric · Bedrock · **Modpacks (any Modrinth pack)** |
-| **Roleplay** | **FiveM** (guided setup with txAdmin) |
-| **Survival** | Rust (with uMod) · Valheim · Palworld · ARK · 7 Days to Die · Project Zomboid · Enshrouded · V Rising · Unturned · Core Keeper |
-| **Shooter** | Counter-Strike 2 · Team Fortress 2 · Left 4 Dead 2 · Squad · Insurgency: Sandstorm |
-| **Sandbox** | Garry's Mod · Terraria · Factorio · Satisfactory · Necesse |
-| **Universal** | Any Steam game (by App ID) · Custom server (any install script + start command) |
-
-Missing a game? The two universal templates cover it today, and a real template is ~30 lines of JSON (see below).
-
-### FiveM
-
-The FiveM template runs a step-by-step wizard instead of one big form:
-
-1. **Server basics** — name, slots, tags
-2. **License key** — with instructions for generating one at keymaster.fivem.net
-3. **Framework** — txAdmin (recommended: deploy ESX/QBox from its web UI) or plain cfx-server-data
-4. **Database** — optionally start a private MariaDB container for this server, reachable as host `db`
-
-It downloads the recommended Cfx.re artifacts, clones `cfx-server-data`, writes a `server.cfg` with your key and RCON password, and exposes txAdmin on its own port. Resources go in `server-data/resources` — drag a zip into the file explorer and hit Unpack.
-
-## Requirements
-
-- Ubuntu 22.04 / 24.04 (Debian 12 works too)
-- Root access for the installer
-- Docker — installed automatically, and optional (see isolation notes below)
-- Node.js 18+ — installed automatically if missing
-- Enough RAM and disk for the games you plan to run (Rust and ARK want 8–16 GB and tens of gigabytes of disk)
-
-## Installation
+**Ubuntu or Debian**
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/jebster33/gamepanel/main/install.sh | sudo bash
 ```
 
-The installer:
-1. installs base packages, Node.js 20 and Docker Engine if they are missing,
-2. creates the `gamepanel` system user and adds it to the `docker` group,
-3. clones the panel to `/opt/gamepanel` and creates `/var/lib/gamepanel`,
-4. grants that user a narrow passwordless sudo rule (`apt-get`, `dpkg`, and restarting its own service),
-5. installs and starts the `gamepanel` systemd service,
-6. opens the panel and default game ports in `ufw` if it is active.
+**Windows 10, 11 or Server 2016 and newer** — pick one:
 
-Re-running the same command updates an existing installation.
+- Download **GamePanel-Setup.exe** from [Releases](https://github.com/jebster33/gamepanel/releases) and run it, or
+- paste this into PowerShell opened as Administrator:
 
-**Options**
+  ```powershell
+  irm https://raw.githubusercontent.com/jebster33/gamepanel/main/windows/install.ps1 | iex
+  ```
 
-```bash
-# custom port
-curl -fsSL .../install.sh | sudo GP_PORT=9000 bash
+Then open **http://localhost:8080** (or `http://<server-ip>:8080`) and create your admin account.
+The installers set up everything else: Node.js, the background service, the firewall rule and, on Linux, Docker.
 
-# skip Docker entirely (plain processes, no isolation)
-curl -fsSL .../install.sh | sudo GP_SKIP_DOCKER=1 bash
-```
+<details>
+<summary>Install options</summary>
 
-### Manual install
-
-```bash
-git clone https://github.com/jebster33/gamepanel.git
-cd gamepanel
-node server/index.js
-```
-
-No `npm install` — there are no dependencies. The panel listens on `:8080` and stores state in `./data` when it cannot write to `/var/lib/gamepanel`.
-
-## Updating
-
-| How | What happens |
-|---|---|
-| **Settings → Panel updates** | Shows the pending commits, updates and restarts the panel |
-| `sudo /opt/gamepanel/update.sh` | Same thing from the shell |
-| Re-run `install.sh` | Also refreshes Docker/Node/systemd bits |
-
-With containers, an update is invisible to your players: the panel stops, pulls the new code, restarts and re-attaches to the still-running game containers. Servers running as plain processes are children of the panel, so those *are* restarted.
-
-## How isolation works
-
-Each server gets:
-
-- a container from the template's image (`eclipse-temurin` for Java games, `cm2network/steamcmd` for Steam games, and so on), with the server directory bind-mounted at `/home/container`
-- `Memory` and `MemorySwap` set to the server's limit — a leaking server gets OOM-killed instead of taking the host down
-- `NanoCpus` from the optional CPU limit
-- its own bridge network `gp-net-<id>`; companion containers join it with a DNS alias (`db`), so one server's database is unreachable from another
-- `no-new-privileges`, a non-root uid matching the panel user, and dropped capabilities
-
-Templates that need extra runtime packages declare them in `packages`, and the panel builds a small cached layer on top of the base image (installing packages during a game *install* would not survive, since the install container is thrown away).
-
-**Not using Docker?** The panel falls back to supervised child processes in their own process groups. Everything works, but servers share the host's filesystem, RAM and network, and per-server bandwidth is not available. The toggle lives in Settings → Runtime.
-
-## Making a server reachable
-
-Two things usually sit between a player and your server, and each server's
-**Settings → Reachability** card handles both:
-
-- **The host firewall** — one click opens exactly that server's ports in `ufw`
-  (the installer grants the panel a narrow sudo rule for it). The card shows
-  each port as open, closed, or unfiltered.
-- **Your router** — if it speaks UPnP, one click forwards the same ports to this
-  machine and shows your public IP. If it does not, the card prints the exact
-  rules to enter by hand, including the LAN address to forward to.
-
-Nothing is opened unless you ask, and the same buttons close it all again.
-
-## Testing
-
-```bash
-npm test           # every template: schema, placeholders, ports, bash syntax
-npm run test:live  # also: real download URLs, container images, dropdown sources
-```
-
-The live run resolves an actual download for each game, confirms every container
-image exists on Docker Hub, and calls every dropdown provider — so an upstream
-that moved or sunset its API shows up here rather than half way through a deploy.
-
-## Everyday use
-
-| What | Command |
-|---|---|
-| Service status | `systemctl status gamepanel` |
-| Restart the panel | `sudo systemctl restart gamepanel` |
-| Follow panel logs | `journalctl -u gamepanel -f` |
-| See the containers | `docker ps --filter label=gamepanel.managed=true` |
-| Update | `sudo /opt/gamepanel/update.sh` |
-| Uninstall (keep game data) | `sudo /opt/gamepanel/uninstall.sh` |
-| Uninstall everything | `sudo /opt/gamepanel/uninstall.sh --purge` |
-
-**Layout**
-
-```
-/opt/gamepanel            panel source (a git checkout — this is what updates)
-/var/lib/gamepanel/
-├── panel.json            all panel state (users, servers, settings)
-├── secret.key            session signing key
-├── servers/<id>/         one directory per game server (mounted into its container)
-├── backups/<id>/         .tar.gz backups
-├── templates/            your custom templates
-└── logs/                 per-server console logs
-```
-
-## Configuration
-
-| Variable | Default | Purpose |
+| | Linux | Windows |
 |---|---|---|
-| `GP_PORT` | `8080` | Panel HTTP port |
-| `GP_HOST` | `0.0.0.0` | Bind address |
-| `GP_DATA_DIR` | `/var/lib/gamepanel` | Where everything is stored |
-| `GP_DOCKER_SOCKET` | `/var/run/docker.sock` | Docker Engine socket |
-| `GP_BEHIND_PROXY` | `0` | Trust `X-Forwarded-For` / `X-Forwarded-Proto` |
-| `GP_METRICS_INTERVAL` | `2000` | Metrics sampling interval (ms) |
-| `GP_QUERY_INTERVAL` | `15000` | Player-count query interval (ms) |
+| Different port | `curl … \| sudo GP_PORT=9000 bash` | `$env:GP_PORT=9000; irm … \| iex` |
+| No Docker | `curl … \| sudo GP_SKIP_DOCKER=1 bash` | not used on Windows |
+| Portable, no service | `git clone` then `node server/index.js` | unzip `GamePanel-…-windows-x64.zip`, run `start.cmd` |
+| Update | Settings → Panel updates, or run the installer again | same |
+| Uninstall | `sudo /opt/gamepanel/uninstall.sh` | Apps → GamePanel, or `windows\uninstall.ps1` |
+
+Your servers, backups and settings stay through updates and uninstalls:
+`/var/lib/gamepanel` on Linux, `C:\ProgramData\GamePanel` on Windows.
+</details>
+
+## What you get
+
+| | |
+|---|---|
+| **Create a server in a minute** | Pick a game, the panel downloads it, gives it free ports and starts it. |
+| **Live console** | Colour-coded output you can type into, with RCON where the game has it. |
+| **One-click mods** | Modrinth, CurseForge, uMod, Steam Workshop and the Factorio portal, filtered to your loader and version. |
+| **Schedules** | Nightly restarts, backups every few hours, a console message on the hour. |
+| **Backups** | One click, scheduled, downloadable, restorable. |
+| **Files** | Browse, edit, drag-and-drop upload, unzip in place. |
+| **Alerts** | Crashes and failed backups posted to Discord. |
+| **Sharing** | Give friends access to one server and only the buttons you choose. |
+| **Reachability** | Opens the server's ports in the firewall and on your router (UPnP), or tells you exactly what to forward. |
+| **Isolation on Linux** | Every server in its own Docker container with hard memory and CPU limits. |
+
+<table>
+  <tr>
+    <td><img src="docs/screenshots/console.png" alt="Console" /></td>
+    <td><img src="docs/screenshots/schedules.png" alt="Schedules" /></td>
+  </tr>
+  <tr>
+    <td align="center">Console</td>
+    <td align="center">Schedules</td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/games.png" alt="Games" /></td>
+    <td><img src="docs/screenshots/dashboard-light.png" alt="Light theme" /></td>
+  </tr>
+  <tr>
+    <td align="center">Pick a game</td>
+    <td align="center">Light theme</td>
+  </tr>
+</table>
+
+## Games
+
+✓ = installs and boots in CI on every change. Games marked † need your own key or token to boot, so CI checks the install only.
+Games marked ‡ are too big for the CI machines on that system, so CI skips them there.
+
+| Game | Linux | Windows | Mods |
+|---|:-:|:-:|---|
+| **Minecraft** Paper · Purpur | ✓ | ✓ | Modrinth, CurseForge (plugins) |
+| **Minecraft** Fabric · Quilt · Forge · NeoForge | ✓ | ✓ | Modrinth, CurseForge |
+| **Minecraft** any Modrinth modpack | ✓ | ✓ | the pack, plus extra mods |
+| **Minecraft** Vanilla · Bedrock | ✓ | ✓ | |
+| Counter-Strike 2 ‡ (Windows) · Team Fortress 2 · Left 4 Dead 2 | ✓ | ✓ | |
+| Squad · Insurgency: Sandstorm · Arma Reforger | ✓ | ✓ | |
+| Rust | ✓ | ✓ | uMod / Oxide |
+| ARK: Survival Evolved | ✓ | ✓ | Steam Workshop |
+| ARK: Survival Ascended | | ✓ | |
+| Valheim · Palworld · Enshrouded · V Rising · Soulmask | ✓ | ✓ | |
+| 7 Days to Die · Core Keeper · Barotrauma | ✓ | ✓ | |
+| Project Zomboid · Unturned | ✓ | ✓ | Steam Workshop |
+| Garry's Mod | ✓ | ✓ | Steam Workshop |
+| Terraria · Satisfactory · Necesse | ✓ | ✓ | |
+| Factorio | ✓ | | Factorio mod portal |
+| Sons of the Forest · Conan Exiles · Space Engineers · Abiotic Factor | | ✓ | |
+| FiveM (GTA V roleplay) † · Don't Starve Together † | ✓ | ✓ | |
+| Any Steam game by App ID · any custom command | ✓ | ✓ | |
+
+Missing one? A template is a short JSON file: see [docs/templates.md](docs/templates.md).
+
+## One-click mods
+
+<img src="docs/screenshots/mods.png" alt="Mods tab" width="900" />
+
+- **Only compatible mods are listed.** A Fabric 1.21.1 server sees Fabric builds for 1.21.1; a Forge
+  server never sees Fabric mods. Paper and Purpur get plugins, and NeoForge 1.20.1 also gets Forge builds, since that version loads them.
+- **You see the plan first.** Installing shows the mod and every dependency it pulls in, then downloads them together.
+- **Client-only mods are refused**, because one of them stops a Forge server from booting. Mods that players need too are labelled.
+- **Updates stay compatible.** "Updates" only offers newer releases for the same loader and version.
+- **Removing cleans up.** Dependencies nothing else needs are removed with the mod; disabling is a switch.
+- **Steam Workshop works per game**: Garry's Mod addons are unpacked, Unturned and ARK get the item added to their own mod lists, Project Zomboid gets `WorkshopItems` and `Mods` written for you.
+
+<img src="docs/screenshots/mod-install.png" alt="Install plan with dependencies" width="700" />
+
+## Compared with other panels
+
+| | GamePanel | Pterodactyl / Pelican | AMP | WindowsGSM | LinuxGSM |
+|---|---|---|---|---|---|
+| Price | free | free | paid licence | free | free |
+| Runs on | Linux, Windows | Linux | Linux, Windows | Windows | Linux |
+| Setup | one command | web server, PHP, database, Redis, daemon | installer | desktop app | per game, CLI |
+| Web UI | ✓ | ✓ | ✓ | | |
+| Mods filtered by loader | ✓ | via add-ons | some games | | |
+
+GamePanel is one Node.js process with no dependencies and no database. It talks to Docker directly on
+Linux and runs games as normal processes on Windows.
+
+## Everyday commands
+
+| | Linux | Windows (PowerShell) |
+|---|---|---|
+| Status | `systemctl status gamepanel` | `Get-Service GamePanel` |
+| Restart | `sudo systemctl restart gamepanel` | `Restart-Service GamePanel` |
+| Logs | `journalctl -u gamepanel -f` | `C:\ProgramData\GamePanel\logs` |
+| Update | `sudo /opt/gamepanel/update.sh` | run the installer again |
+
+## Settings from the environment
+
+| Variable | Default | |
+|---|---|---|
+| `GP_PORT` | `8080` | Panel port |
+| `GP_HOST` | `0.0.0.0` | Address to listen on |
+| `GP_DATA_DIR` | see above | Where servers and settings live |
+| `GP_BEHIND_PROXY` | `0` | Trust `X-Forwarded-*` headers behind a reverse proxy |
+| `GP_DOCKER_SOCKET` | `/var/run/docker.sock` | Docker socket |
 | `GP_LOG_LEVEL` | `info` | `debug`, `info`, `warn`, `error` |
 
-### Putting it behind HTTPS
+**HTTPS:** put it behind Caddy (`panel.example.com { reverse_proxy 127.0.0.1:8080 }`) and set `GP_BEHIND_PROXY=1`.
 
-```
-panel.example.com {
-    reverse_proxy 127.0.0.1:8080
-}
-```
+## More
 
-That is the whole Caddy config. Then set `GP_BEHIND_PROXY=1` and restart. nginx works too — remember `proxy_set_header Upgrade`/`Connection` so the WebSocket console keeps working.
+- [Add a game (templates)](docs/templates.md)
+- [Security and isolation](docs/security.md), please read before exposing the panel to the internet
+- [Troubleshooting](docs/troubleshooting.md)
+- [HTTP API](docs/api.md)
 
-## Writing your own template
+**Developing:** `node server/index.js` runs the panel from a checkout. `npm test` checks every template and
+the UI modules; `node test/smoke.js --template=valheim` installs and boots a real server. The UI is plain
+ES modules in `public/js` (`core/`, `ui/`, `pages/`), with no build step.
 
-Drop a JSON file into `/var/lib/gamepanel/templates/` and hit *Reload templates* in Settings.
-
-```json
-{
-  "id": "my-game",
-  "name": "My Game",
-  "category": "Shooter",
-  "icon": "🎯",
-  "image": "cm2network/steamcmd:root",
-  "packages": ["libsdl2-2.0-0"],
-  "defaultMemory": 4096,
-  "variables": [
-    { "name": "MAX_PLAYERS", "label": "Max players", "type": "number", "default": 16 },
-    { "name": "RCON_PASSWORD", "label": "RCON password", "generate": "password", "default": "" }
-  ],
-  "ports": [
-    { "name": "game",  "default": 27015, "protocol": "udp" },
-    { "name": "query", "default": 27016, "protocol": "udp", "offset": 1 }
-  ],
-  "install": [
-    { "type": "steamcmd", "appid": "123456", "label": "Install the server" },
-    { "type": "chmod", "path": "./srcds_run", "mode": "+x" }
-  ],
-  "startCommand": "./srcds_run -port {{PORT}} +maxplayers {{MAX_PLAYERS}}",
-  "stopCommand": "quit",
-  "query": { "type": "a2s", "port": "query" },
-  "rcon": { "type": "source", "port": "rcon" },
-  "mods": { "providers": ["workshop"], "dir": "addons", "appId": 123456 },
-  "logPatterns": { "ready": "Server started", "join": "(\\w+) connected", "leave": "(\\w+) disconnected" }
-}
-```
-
-**Install steps:** `apt`, `java`, `steamcmd`, `download`, `extract`, `writeFile`, `mkdir`, `chmod`, `script` (raw bash).
-Helpers available in `script` steps: `gp_fetch URL DEST`, `gp_extract FILE`, `gp_apt PKG…`, `gp_ensure_java 21`, `gp_steam_app APPID`, `gp_log`, `gp_die`.
-
-**Placeholders:** `{{PORT}}`, `{{PORT_<NAME>}}`, `{{MEMORY}}`, `{{SERVER_NAME}}`, `{{SERVER_DIR}}`, `{{SERVER_ID}}`, `{{MAX_PLAYERS}}`, plus every variable you declare.
-
-**Container fields:** `image` (base image), `packages` (runtime apt packages baked into a cached layer), `container: false` (force plain process), `sidecars` (companion containers), `protocol: "both"` (publish TCP *and* UDP on one port).
-
-**Config handling:** `configFiles` writes files on install (`mode: "create"` keeps user edits, `"overwrite"` replaces). `patchProperties` re-applies only the listed keys before every start — that is how port changes reach `server.properties` without clobbering the rest. Formats: `properties`, `ini`, `json`.
-
-**Wizards:** add a `wizard` array of `{ title, description, fields: ["VAR_NAME", …] }` to walk users through setup in steps instead of one long form (see `templates/fivem.json`).
-
-**Mods:** `mods: { providers, dir, loader, gameVersionVar, appId, projectType }`. Providers: `modrinth`, `curseforge`, `umod`, `workshop`, `factorio`.
-
-## Security notes
-
-Please read this before exposing the panel to the internet.
-
-- **Put it behind HTTPS.** Sessions are cookie-based; over plain HTTP on a hostile network they can be sniffed.
-- **The panel user is in the `docker` group, which is equivalent to root on the host.** That is how it manages containers. Anyone who can run code as `gamepanel` (i.e. any panel administrator) can therefore reach root. Give the admin role only to people you trust with the machine; use the restricted role for everyone else.
-- Game servers themselves run unprivileged, in containers, as a non-root uid, with `no-new-privileges` — so *players* and game exploits are contained.
-- The `gamepanel` user has passwordless sudo for `apt-get`, `dpkg` and restarting its own service only. Remove `/etc/sudoers.d/gamepanel` if you would rather do those by hand.
-- Passwords are hashed with scrypt; sessions are HMAC-SHA256 signed and expire after 7 days. Failed logins are rate limited per IP.
-- The file manager resolves symlinks before every operation, so a link inside a
-  server directory cannot be used to reach the rest of the machine — and archives
-  containing symlinks, absolute paths or `..` are refused rather than unpacked.
-- `panel.json` is written `0600`; it holds password hashes, RCON passwords and any
-  API keys you add.
-- Secrets substituted into a start command are masked in the console and log file.
-- State-changing requests are refused if they carry a foreign `Origin`, on top of
-  the SameSite=Lax session cookie.
-- The **settings** capability lets a user change variables that are handed to the
-  game process, so treat it as trusted. Only administrators can edit the raw start
-  command.
-- API keys you add under Integrations are stored in plain text in `panel.json` (mode 0600 directory). They are per-panel, not per-user.
-
-## About the metrics
-
-In container mode, CPU, memory and **network** come from the Docker stats stream, so per-server bandwidth is real. CPU is normalised the way `docker stats` does it, and memory excludes page cache.
-
-Without Docker, CPU and memory are read per process group from `/proc` (so a launcher script that forks the real binary is still measured correctly, `top`-style where 100% = one core), but **per-server bandwidth is not available** — Linux has no per-process byte counters without a network namespace. The host-wide graph and per-server connection counts still work.
-
-## Troubleshooting
-
-**The panel will not start**
-```bash
-journalctl -u gamepanel -n 50 --no-pager
-```
-
-**"Docker not found" in Settings → Runtime** — check `systemctl status docker`, and that the panel user is in the `docker` group (`id gamepanel`). Group changes need a service restart.
-
-**A game server will not install** — open its console; the installer streams every command. Usual causes: wrong App ID, a game with no anonymous SteamCMD access, or no disk space.
-
-**A container exits immediately** — `docker logs gp-<server-id>` shows what the game printed. A missing runtime library is the usual cause; add it to the template's `packages`.
-
-**Players cannot connect** — check the port in Settings, then confirm it is open in both `ufw` *and* your provider's firewall (Oracle, AWS and Hetzner all have their own). UDP games need UDP rules.
-
-**Console empty for a Unity/Unreal game** — some engines only log to a file. Read it in the file explorer, or add `-logfile /dev/stdout` to the start command.
-
-## API
-
-Everything the UI does is a REST call. Authenticate with the session cookie or `Authorization: Bearer <token>` from `POST /api/auth/login`.
-
-```
-GET    /api/servers                      list servers
-POST   /api/servers                      create + install
-POST   /api/servers/:id/power            {"action":"start|stop|restart|kill"}
-POST   /api/servers/:id/command          {"command":"say hello"}
-GET    /api/servers/:id/console          scrollback
-GET    /api/servers/:id/history          metrics history
-GET    /api/servers/:id/files?path=      file explorer
-POST   /api/servers/:id/files/extract    unpack an archive
-POST   /api/servers/:id/files/compress   pack a selection
-GET    /api/servers/:id/mods             providers + installed mods
-GET    /api/servers/:id/mods/search      search a provider
-POST   /api/servers/:id/mods/install     install a mod
-GET    /api/servers/:id/backups          backups
-GET    /api/system                       host metrics
-GET    /api/system/runtime               Docker status
-GET    /api/system/update                pending panel updates
-POST   /api/system/update                update and restart
-```
-
-`WS /ws` streams `servers`, `stats`, `system`, `server:status` and `console:<id>`.
-
-## License
-
-MIT — see [LICENSE](LICENSE). Do whatever you want with it.
+MIT licence. See [LICENSE](LICENSE).

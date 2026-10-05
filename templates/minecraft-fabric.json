@@ -63,9 +63,14 @@
       "label": "Install the Java the game needs"
     },
     {
-      "type": "script",
+      "type": "download",
       "label": "Install the Fabric server launcher",
-      "run": "gp_log \"Fabric for Minecraft {{RESOLVED_VERSION}}\"\ngp_fetch \"{{DOWNLOAD_URL}}\" server.jar\nmkdir -p mods"
+      "url": "{{DOWNLOAD_URL}}",
+      "dest": "server.jar"
+    },
+    {
+      "type": "mkdir",
+      "path": "mods"
     },
     {
       "type": "writeFile",
@@ -126,5 +131,21 @@
   "packages": [
     "curl",
     "ca-certificates"
-  ]
+  ],
+  "platforms": [
+    "linux",
+    "windows"
+  ],
+  "ci": {
+    "mods": [
+      {
+        "provider": "modrinth",
+        "projectId": "ledger",
+        "expectAtLeast": 3
+      }
+    ],
+    "vars": {
+      "MC_VERSION": "1.21.1"
+    }
+  }
 }

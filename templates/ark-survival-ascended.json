@@ -1,0 +1,98 @@
+{
+  "id": "ark-survival-ascended",
+  "name": "ARK: Survival Ascended",
+  "category": "Survival",
+  "icon": "🦖",
+  "description": "The Unreal Engine 5 remake of ARK. Windows only: Studio Wildcard ships no Linux server.",
+  "platforms": [
+    "windows"
+  ],
+  "defaultMemory": 16384,
+  "variables": [
+    {
+      "name": "MAP",
+      "label": "Map",
+      "default": "TheIsland_WP",
+      "options": [
+        "TheIsland_WP",
+        "ScorchedEarth_WP",
+        "TheCenter_WP",
+        "Aberration_WP",
+        "Extinction_WP",
+        "Ragnarok_WP"
+      ],
+      "allowCustom": true
+    },
+    {
+      "name": "MAX_PLAYERS",
+      "label": "Max players",
+      "default": 70,
+      "type": "number"
+    },
+    {
+      "name": "SERVER_PASSWORD",
+      "label": "Join password",
+      "default": "",
+      "description": "Leave empty for an open server."
+    },
+    {
+      "name": "RCON_PASSWORD",
+      "label": "Admin and RCON password",
+      "default": "",
+      "generate": "password"
+    }
+  ],
+  "ports": [
+    {
+      "name": "game",
+      "default": 7777,
+      "protocol": "udp"
+    },
+    {
+      "name": "rcon",
+      "default": 27020,
+      "protocol": "tcp",
+      "offset": 19243
+    }
+  ],
+  "windows": {
+    "install": [
+      {
+        "type": "steamcmd",
+        "appid": "2430930",
+        "label": "Install the ARK: Survival Ascended server (about 13 GB)"
+      },
+      {
+        "type": "vcredist",
+        "label": "Install the Visual C++ runtime"
+      },
+      {
+        "type": "directx",
+        "label": "Install the DirectX runtime"
+      }
+    ]
+  },
+  "startCommand": "ShooterGame\\Binaries\\Win64\\ArkAscendedServer.exe {{MAP}}?listen?SessionName=\"{{SERVER_NAME}}\"?Port={{PORT}}?RCONEnabled=True?RCONPort={{PORT_RCON}}?ServerPassword={{SERVER_PASSWORD}}?ServerAdminPassword={{RCON_PASSWORD}} -WinLiveMaxPlayers={{MAX_PLAYERS}} -log",
+  "tailFiles": [
+    "ShooterGame/Saved/Logs/ShooterGame.log"
+  ],
+  "consoleInput": false,
+  "rcon": {
+    "type": "source",
+    "port": "rcon"
+  },
+  "stopRconCommand": "DoExit",
+  "stopTimeout": 120,
+  "query": {
+    "type": "none"
+  },
+  "readyOnPort": "game",
+  "logPatterns": {
+    "ready": "has completed startup|advertising for join",
+    "join": "([^ ]+) joined this ARK",
+    "leave": "([^ ]+) left this ARK"
+  },
+  "ci": {
+    "bootTimeout": 1800
+  }
+}

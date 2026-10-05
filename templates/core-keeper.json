@@ -37,6 +37,7 @@
       "type": "apt",
       "packages": [
         "xvfb",
+        "xauth",
         "libxi6"
       ],
       "label": "Install headless display dependencies"
@@ -52,7 +53,7 @@
       "mode": "+x"
     }
   ],
-  "startCommand": "xvfb-run -a ./CoreKeeperServer -batchmode -nographics -logfile /dev/stdout -world {{WORLD_INDEX}} -worldseed {{WORLD_SEED}} -maxplayers {{MAX_PLAYERS}} -servername \"{{SERVER_NAME}}\"",
+  "startCommand": "xvfb-run -a ./CoreKeeperServer -batchmode -logfile /dev/stdout -world {{WORLD_INDEX}} -worldseed {{WORLD_SEED}} -maxplayers {{MAX_PLAYERS}} -servername \"{{SERVER_NAME}}\"",
   "stopTimeout": 45,
   "query": {
     "type": "udp",
@@ -64,6 +65,28 @@
   "image": "cm2network/steamcmd:root",
   "packages": [
     "xvfb",
+    "xauth",
     "libxi6"
-  ]
+  ],
+  "platforms": [
+    "linux",
+    "windows"
+  ],
+  "windows": {
+    "install": [
+      {
+        "type": "steamcmd",
+        "appid": "1963720",
+        "label": "Install Core Keeper dedicated server"
+      },
+      {
+        "type": "vcredist",
+        "label": "Install the Visual C++ runtime"
+      }
+    ],
+    "startCommand": "CoreKeeperServer.exe -batchmode -world {{WORLD_INDEX}} -worldseed {{WORLD_SEED}} -maxplayers {{MAX_PLAYERS}} -servername \"{{SERVER_NAME}}\" -logFile \"CoreKeeperServerLog.txt\"",
+    "tailFiles": [
+      "CoreKeeperServerLog.txt"
+    ]
+  }
 }

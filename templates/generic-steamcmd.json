@@ -87,5 +87,40 @@
     "type": "a2s",
     "port": "query"
   },
-  "image": "cm2network/steamcmd:root"
+  "image": "cm2network/steamcmd:root",
+  "ci": {
+    "vars": {
+      "STEAM_APPID": "232330",
+      "LAUNCH_BINARY": "./srcds_run",
+      "LAUNCH_ARGS": "-game cstrike -console -port {{PORT}} +map de_dust2"
+    },
+    "windows": {
+      "vars": {
+        "STEAM_APPID": "232330",
+        "LAUNCH_BINARY": "srcds.exe",
+        "LAUNCH_ARGS": "-console -game cstrike -port {{PORT}} +map de_dust2"
+      }
+    }
+  },
+  "platforms": [
+    "linux",
+    "windows"
+  ],
+  "windows": {
+    "install": [
+      {
+        "type": "steamcmd",
+        "appid": "{{STEAM_APPID}}",
+        "branch": "{{STEAM_BRANCH}}",
+        "login": "{{STEAM_LOGIN}}",
+        "label": "Install Steam app {{STEAM_APPID}}"
+      }
+    ],
+    "variables": [
+      {
+        "name": "LAUNCH_BINARY",
+        "default": "srcds.exe"
+      }
+    ]
+  }
 }

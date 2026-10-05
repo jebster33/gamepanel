@@ -1,0 +1,88 @@
+{
+  "id": "sons-of-the-forest",
+  "name": "Sons of the Forest",
+  "category": "Survival",
+  "icon": "🌲",
+  "description": "Co-op survival horror for up to 8 players. Windows only.",
+  "platforms": [
+    "windows"
+  ],
+  "defaultMemory": 8192,
+  "variables": [
+    {
+      "name": "MAX_PLAYERS",
+      "label": "Max players",
+      "default": 8,
+      "type": "number"
+    },
+    {
+      "name": "SERVER_PASSWORD",
+      "label": "Join password",
+      "default": "",
+      "description": "Leave empty for an open server."
+    },
+    {
+      "name": "GAME_MODE",
+      "label": "Difficulty",
+      "default": "Normal",
+      "options": [
+        "Peaceful",
+        "Normal",
+        "Hard",
+        "HardSurvival"
+      ]
+    }
+  ],
+  "ports": [
+    {
+      "name": "game",
+      "default": 8766,
+      "protocol": "udp"
+    },
+    {
+      "name": "query",
+      "default": 27016,
+      "protocol": "udp",
+      "offset": 18250
+    },
+    {
+      "name": "blobsync",
+      "default": 9700,
+      "protocol": "udp",
+      "offset": 934
+    }
+  ],
+  "windows": {
+    "install": [
+      {
+        "type": "steamcmd",
+        "appid": "2465200",
+        "label": "Install the Sons of the Forest server"
+      },
+      {
+        "type": "vcredist",
+        "label": "Install the Visual C++ runtime"
+      }
+    ]
+  },
+  "configFiles": [
+    {
+      "path": "userdata/dedicatedserver.cfg",
+      "mode": "overwrite",
+      "content": "{\n  \"IpAddress\": \"0.0.0.0\",\n  \"GamePort\": {{PORT}},\n  \"QueryPort\": {{PORT_QUERY}},\n  \"BlobSyncPort\": {{PORT_BLOBSYNC}},\n  \"ServerName\": \"{{SERVER_NAME}}\",\n  \"MaxPlayers\": {{MAX_PLAYERS}},\n  \"Password\": \"{{SERVER_PASSWORD}}\",\n  \"LanOnly\": false,\n  \"SaveSlot\": 1,\n  \"SaveMode\": \"Continue\",\n  \"GameMode\": \"{{GAME_MODE}}\",\n  \"SaveInterval\": 600,\n  \"IdleDayCycleSpeed\": 0.0,\n  \"IdleTargetFramerate\": 5,\n  \"ActiveTargetFramerate\": 60,\n  \"LogFilesEnabled\": true,\n  \"TimestampLogFilenames\": false,\n  \"TimestampLogEntries\": true,\n  \"SkipNetworkAccessibilityTest\": true,\n  \"GameSettings\": {},\n  \"CustomGameModeSettings\": {}\n}\n"
+    }
+  ],
+  "startCommand": "SonsOfTheForestDS.exe -userdatapath \"{{SERVER_DIR}}\\userdata\" -batchmode -nographics",
+  "tailFiles": [
+    "userdata/logs/sotf_log.txt"
+  ],
+  "query": {
+    "type": "a2s",
+    "port": "query"
+  },
+  "readyOnPort": "game",
+  "logPatterns": {
+    "ready": "Server is ready|Dedicated server loaded"
+  },
+  "stopTimeout": 60
+}

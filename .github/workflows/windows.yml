@@ -1,0 +1,75 @@
+name: Windows build
+
+# Builds GamePanel-Setup.exe and the portable zip, then installs both ways on a
+# clean Windows runner (Setup.exe and the PowerShell one-liner) and checks the
+# service answers. A v* tag publishes the files to a GitHub release.
+
+on:
+  push:
+    branches: ['**']
+    tags: ['v*']
+    paths: ['windows/**', 'server/**', 'public/**', 'package.json', '.github/workflows/windows.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: windows-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Setup.exe and the portable zip
+        shell: pwsh
+        run: ./windows/build.ps1
+
+      - name: Install with Setup.exe
+        shell: pwsh
+        run: |
+          $setup = Get-ChildItem dist -Filter 'GamePanel-Setup-*.exe' | Select-Object -First 1
+          Start-Process $setup.FullName -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/LOG=setup.log' -Wait
+          Get-Content setup.log -Tail 20
+          ./windows/test-install.ps1 -Port 8080
+
+      - name: Uninstall Setup.exe
+        shell: pwsh
+        run: |
+          Start-Process "$env:ProgramFiles\GamePanel\unins000.exe" -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES' -Wait
+          Start-Sleep 3
+          if (Get-Service GamePanel -ErrorAction SilentlyContinue) { throw 'The service is still registered after uninstall' }
+          if (Test-Path "$env:ProgramFiles\GamePanel\node\node.exe") { throw 'Program files were left behind' }
+          Write-Host 'Uninstalled cleanly'
+
+      - name: Install with the PowerShell one-liner
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        shell: pwsh
+        env:
+          GP_BRANCH: ${{ github.ref_name }}
+          GP_REPO: ${{ github.repository }}
+          GP_PORT: '8090'
+          GP_NO_BROWSER: '1'
+        run: |
+          Get-Content windows/install.ps1 -Raw | Invoke-Expression
+          ./windows/test-install.ps1 -Port 8090
+          powershell -ExecutionPolicy Bypass -File "$env:ProgramFiles\GamePanel\windows\uninstall.ps1"
+          if (Get-Service GamePanel -ErrorAction SilentlyContinue) { throw 'uninstall.ps1 left the service behind' }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gamepanel-windows
+          path: |
+            dist/GamePanel-Setup-*.exe
+            dist/GamePanel-*-windows-x64.zip
+
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/GamePanel-Setup-*.exe
+            dist/GamePanel-*-windows-x64.zip

@@ -116,7 +116,7 @@
       "content": "hostname \"{{SERVER_NAME}}\"\nrcon_password \"{{RCON_PASSWORD}}\"\nsv_password \"{{SERVER_PASSWORD}}\"\nsv_lan 0\nsv_cheats 0\n"
     }
   ],
-  "startCommand": "./game/bin/linuxsteamrt64/cs2 -dedicated -console -usercon -port {{PORT}} +tv_port {{PORT_TV}} +game_type {{GAME_TYPE}} +game_mode {{GAME_MODE}} +map {{MAP}} +sv_visiblemaxplayers {{MAX_PLAYERS}} +rcon_password \"{{RCON_PASSWORD}}\" +sv_setsteamaccount \"{{GSLT}}\" +exec gamepanel.cfg",
+  "startCommand": "LD_LIBRARY_PATH=\"$PWD/game/bin/linuxsteamrt64:$LD_LIBRARY_PATH\" ./game/bin/linuxsteamrt64/cs2 -dedicated -console -usercon -port {{PORT}} +tv_port {{PORT_TV}} +game_type {{GAME_TYPE}} +game_mode {{GAME_MODE}} +map {{MAP}} +sv_visiblemaxplayers {{MAX_PLAYERS}} +rcon_password \"{{RCON_PASSWORD}}\" +sv_setsteamaccount \"{{GSLT}}\" +exec gamepanel.cfg",
   "stopCommand": "quit",
   "stopTimeout": 45,
   "query": {
@@ -132,5 +132,34 @@
     "join": "\"([^<]+)<[0-9]+><\\[?U?:?[0-9:]+\\]?><>\" entered the game",
     "leave": "\"([^<]+)<[0-9]+><\\[?U?:?[0-9:]+\\]?><[^>]*>\" disconnected"
   },
-  "image": "cm2network/steamcmd:root"
+  "image": "cm2network/steamcmd:root",
+  "platforms": [
+    "linux",
+    "windows"
+  ],
+  "windows": {
+    "install": [
+      {
+        "type": "steamcmd",
+        "appid": "730",
+        "label": "Install Counter-Strike 2 (~35 GB)"
+      },
+      {
+        "type": "vcredist",
+        "label": "Install the Visual C++ runtime"
+      }
+    ],
+    "startCommand": "game\\bin\\win64\\cs2.exe -dedicated -console -usercon -condebug -port {{PORT}} +tv_port {{PORT_TV}} +game_type {{GAME_TYPE}} +game_mode {{GAME_MODE}} +map {{MAP}} +sv_visiblemaxplayers {{MAX_PLAYERS}} +rcon_password \"{{RCON_PASSWORD}}\" +sv_setsteamaccount \"{{GSLT}}\" +exec gamepanel.cfg",
+    "tailFiles": [
+      "game/csgo/console.log"
+    ],
+    "consoleInput": false,
+    "stopCommand": null,
+    "stopRconCommand": "quit"
+  },
+  "ci": {
+    "windows": {
+      "skip": "about 35 GB, more than the Windows CI runner has free"
+    }
+  }
 }

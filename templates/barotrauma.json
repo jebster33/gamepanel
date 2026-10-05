@@ -1,0 +1,81 @@
+{
+  "id": "barotrauma",
+  "name": "Barotrauma",
+  "category": "Survival",
+  "icon": "🐙",
+  "description": "2D co-op submarine survival on Europa. Up to 16 players.",
+  "platforms": [
+    "linux",
+    "windows"
+  ],
+  "defaultMemory": 2048,
+  "variables": [
+    {
+      "name": "MAX_PLAYERS",
+      "label": "Max players",
+      "default": 16,
+      "type": "number"
+    },
+    {
+      "name": "SERVER_PASSWORD",
+      "label": "Join password",
+      "default": "",
+      "description": "Leave empty for an open server."
+    }
+  ],
+  "ports": [
+    {
+      "name": "game",
+      "default": 27015,
+      "protocol": "udp"
+    },
+    {
+      "name": "query",
+      "default": 27016,
+      "protocol": "udp",
+      "offset": 1
+    }
+  ],
+  "image": "cm2network/steamcmd:root",
+  "env": {
+    "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT": "1"
+  },
+  "install": [
+    {
+      "type": "steamcmd",
+      "appid": "1026340",
+      "label": "Install the Barotrauma dedicated server"
+    },
+    {
+      "type": "chmod",
+      "path": "DedicatedServer",
+      "mode": "+x"
+    }
+  ],
+  "startCommand": "./DedicatedServer -name \"{{SERVER_NAME}}\" -port {{PORT}} -queryport {{PORT_QUERY}} -maxplayers {{MAX_PLAYERS}} -password \"{{SERVER_PASSWORD}}\" -public true",
+  "windows": {
+    "install": [
+      {
+        "type": "steamcmd",
+        "appid": "1026340",
+        "label": "Install the Barotrauma dedicated server"
+      },
+      {
+        "type": "vcredist",
+        "label": "Install the Visual C++ runtime"
+      }
+    ],
+    "startCommand": "DedicatedServer.exe -name \"{{SERVER_NAME}}\" -port {{PORT}} -queryport {{PORT_QUERY}} -maxplayers {{MAX_PLAYERS}} -password \"{{SERVER_PASSWORD}}\" -public true"
+  },
+  "stopCommand": "quit",
+  "stopTimeout": 30,
+  "query": {
+    "type": "a2s",
+    "port": "query"
+  },
+  "logPatterns": {
+    "ready": "Server started|Started the server",
+    "join": "(.+) has joined the server",
+    "leave": "(.+) has left the server"
+  }
+}

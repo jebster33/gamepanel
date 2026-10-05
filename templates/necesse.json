@@ -54,7 +54,7 @@
       "content": "world = {{WORLD_NAME}}\nport = {{PORT}}\nslots = {{MAX_PLAYERS}}\npassword = {{SERVER_PASSWORD}}\nmotd = Welcome to {{SERVER_NAME}}\npausewhenempty = true\n"
     }
   ],
-  "startCommand": "java -Xmx{{MEMORY}}M -jar Server.jar -nogui -port {{PORT}} -world \"{{WORLD_NAME}}\" -slots {{MAX_PLAYERS}}",
+  "startCommand": "java -Xmx{{MEMORY}}M -Duser.home={{SERVER_DIR}} -jar Server.jar -nogui -port {{PORT}} -world \"{{WORLD_NAME}}\" -slots {{MAX_PLAYERS}}",
   "stopCommand": "stop",
   "stopTimeout": 45,
   "query": {
@@ -62,7 +62,7 @@
     "port": "game"
   },
   "logPatterns": {
-    "ready": "Server started|Loaded world",
+    "ready": "Server started|Started server using port|Loaded world",
     "join": "([^ ]+) joined the game",
     "leave": "([^ ]+) left the game"
   },
@@ -70,5 +70,23 @@
   "packages": [
     "curl",
     "ca-certificates"
-  ]
+  ],
+  "platforms": [
+    "linux",
+    "windows"
+  ],
+  "windows": {
+    "install": [
+      {
+        "type": "java",
+        "version": "17",
+        "label": "Install Java 17"
+      },
+      {
+        "type": "steamcmd",
+        "appid": "1169370",
+        "label": "Install Necesse dedicated server"
+      }
+    ]
+  }
 }

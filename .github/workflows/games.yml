@@ -1,0 +1,90 @@
+name: Game servers
+
+# Deploys every template on a real machine: install, boot until the game says
+# it is ready, then stop it cleanly. This is the "does it actually work" check.
+
+# Manual and weekly only: a full run takes hours, so it does not gate pushes.
+on:
+  schedule:
+    - cron: '17 4 * * 1' # weekly, to catch upstream download changes
+  workflow_dispatch:
+    inputs:
+      only:
+        description: 'Comma-separated template ids (blank = all)'
+        required: false
+        default: ''
+
+concurrency:
+  group: games-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      linux: ${{ steps.matrix.outputs.linux }}
+      windows: ${{ steps.matrix.outputs.windows }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: matrix
+        run: node test/ci-matrix.js --only=${{ github.event.inputs.only }}
+
+  linux:
+    needs: plan
+    if: needs.plan.outputs.linux != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      max-parallel: 20
+      matrix:
+        template: ${{ fromJson(needs.plan.outputs.linux) }}
+    steps:
+      - name: Free disk space for big Steam games
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL /usr/local/share/boost || true
+          df -h /
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Deploy, boot and stop ${{ matrix.template }}
+        env:
+          GP_SMOKE_ROOT: ${{ runner.temp }}
+        run: node test/smoke.js --template=${{ matrix.template }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: linux-${{ matrix.template }}
+          path: smoke-output/
+          if-no-files-found: ignore
+
+  windows:
+    needs: plan
+    if: needs.plan.outputs.windows != '[]'
+    runs-on: windows-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      max-parallel: 20
+      matrix:
+        template: ${{ fromJson(needs.plan.outputs.windows) }}
+    steps:
+      - name: Show free disk space
+        run: Get-PSDrive -PSProvider FileSystem | Format-Table Name, @{n='FreeGB';e={[math]::Round($_.Free/1GB)}}
+      - run: New-Item -ItemType Directory -Force C:/gp-smoke | Out-Null
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # D: (runner.temp) is small on Windows runners; C: has room for big games.
+      - name: Deploy, boot and stop ${{ matrix.template }}
+        env:
+          GP_SMOKE_ROOT: C:/gp-smoke
+        run: node test/smoke.js --template=${{ matrix.template }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-${{ matrix.template }}
+          path: smoke-output/
+          if-no-files-found: ignore

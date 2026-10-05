@@ -74,7 +74,7 @@
       }
     }
   ],
-  "startCommand": "ZOMBOID_HOME={{SERVER_DIR}}/Zomboid ./start-server.sh -cachedir={{SERVER_DIR}}/Zomboid -adminpassword \"{{ADMIN_PASSWORD}}\" -port {{PORT}}",
+  "startCommand": "sed -i -E \"s/-Xmx[0-9]+[mMgG]/-Xmx{{SERVER_MEMORY}}m/\" ProjectZomboid64.json; ZOMBOID_HOME={{SERVER_DIR}}/Zomboid ./start-server.sh -cachedir={{SERVER_DIR}}/Zomboid -adminpassword \"{{ADMIN_PASSWORD}}\" -port {{PORT}}",
   "stopCommand": "quit",
   "stopTimeout": 90,
   "query": {
@@ -87,7 +87,38 @@
     "leave": "Disconnected player \"([^\"]+)\""
   },
   "image": "cm2network/steamcmd:root",
-  "packages": [
-    "openjdk-17-jre-headless"
-  ]
+  "platforms": [
+    "linux",
+    "windows"
+  ],
+  "windows": {
+    "install": [
+      {
+        "type": "steamcmd",
+        "appid": "380870",
+        "label": "Install Project Zomboid dedicated server"
+      },
+      {
+        "type": "vcredist",
+        "label": "Install the Visual C++ runtime"
+      },
+      {
+        "type": "powershell",
+        "label": "Prepare the start script",
+        "run": "# The stock script passes only two arguments on and ends with PAUSE,\n# which would keep a stopped server hanging. Write a copy without both.\n(Get-Content 'StartServer64.bat') -replace '%1 %2', '%*' | Where-Object { $_ -notmatch '^\\s*PAUSE\\s*$' } | Set-Content 'StartServer64-gamepanel.bat'"
+      }
+    ],
+    "startCommand": "StartServer64-gamepanel.bat -cachedir=\"{{SERVER_DIR}}\\Zomboid\" -adminpassword \"{{ADMIN_PASSWORD}}\" -port {{PORT}}"
+  },
+  "mods": {
+    "providers": [
+      "workshop"
+    ],
+    "dir": "Zomboid/mods",
+    "appId": 108600,
+    "workshop": {
+      "strategy": "zomboid",
+      "file": "Zomboid/Server/servertest.ini"
+    }
+  }
 }
