@@ -1,6 +1,6 @@
 import { api } from '../../core/api.js';
 import { can, esc, fmtDuration, fmtTime, toast } from '../../core/util.js';
-import { confirmModal, openModal } from '../../ui/modal.js';
+import { confirmModal, openModal, promptModal } from '../../ui/modal.js';
 
 /* --------------------------------------------------------------- players */
 
@@ -20,7 +20,7 @@ let current = { view: 'online', server: null, timer: null };
 
 export function renderPlayersTab(host, server) {
   clearInterval(current.timer);
-  current = { view: current.server === server.id ? current.view : 'online', server: server.id, templateId: server.templateId, timer: null };
+  current = { view: current.server === server.id ? current.view : 'online', server: server.id, templateId: server.templateId, lists: (server.playerLists || []).includes('bans'), timer: null };
   const views = [...VIEWS];
   if (server.playerLists?.length && can('command')) views.push(['lists', 'Whitelist & bans']);
   host.innerHTML = `
@@ -345,7 +345,31 @@ async function openProfile(serverId, name) {
           : '<div class="faint">No finished sessions yet.</div>'
       }</div>
       ${p.log.length ? `<h4 style="margin:18px 0 6px">Activity</h4><div class="act-list act-compact">${p.log.slice(0, 60).map(logRow).join('')}</div>` : ''}`,
+    actions:
+      can('command') && current.lists
+        ? [
+            { label: 'Unban everywhere', onClick: () => banEverywhere(p.name, true) },
+            { label: 'Ban on all servers', danger: true, onClick: () => banEverywhere(p.name, false) },
+          ]
+        : [],
   });
+}
+
+/** BattleMetrics-style network ban: every Minecraft server this account moderates. */
+async function banEverywhere(name, unban) {
+  let reason = '';
+  if (!unban) {
+    reason = await promptModal(`Ban ${name} on every server`, 'Reason players see', 'Banned from the network');
+    if (reason === null) return;
+  }
+  try {
+    const { results } = await api('/api/players/ban-everywhere', { method: 'POST', body: { name, reason, unban } });
+    const ok = results.filter((r) => r.ok).length;
+    const failed = results.filter((r) => !r.ok);
+    toast(`${unban ? 'Unbanned' : 'Banned'} ${name} on ${ok} server${ok === 1 ? '' : 's'}${failed.length ? `. Failed on ${failed.map((r) => r.server).join(', ')}: ${failed[0].error}` : ''}`, failed.length ? 'warn' : 'info', 7000);
+  } catch (err) {
+    toast(err.message, 'error');
+  }
 }
 
 /* --------------------------------------------------------- activity log */

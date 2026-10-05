@@ -45,6 +45,9 @@ POST   /api/servers/:id/worlds/use       {"name"}
 POST   /api/servers/:id/worlds/reset     {"name","seed?","backup"}
 GET    /api/servers/:id/worlds/download  ?name= (a .tar.gz)
 POST   /api/servers/:id/clone            {"name","copyFiles"} (admins)
+POST   /api/servers/:id/crossplay        {"enabled"} Geyser + Floodgate (Paper/Purpur)
+PUT    /api/servers/:id/subdomain        {"name"} Cloudflare A (+ SRV) record (admins)
+POST   /api/players/ban-everywhere       {"name","reason","unban?"} every Minecraft server
 GET    /api/servers/:id/diagnose         crash doctor findings
 POST   /api/servers/:id/share-log        upload the console to mclo.gs
 GET    /api/system                       host metrics

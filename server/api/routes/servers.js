@@ -220,6 +220,27 @@ module.exports = (router, { store, manager, scheduler }, { requireAdmin, require
     return manager.switchVersion(server.id, { templateId: body?.templateId, vars: body?.vars, backup: body?.backup !== false, stopFirst: Boolean(body?.stopFirst) }, user);
   });
 
+  /** Ban (or unban) one player on every Minecraft server this account can moderate. */
+  router.post('/api/players/ban-everywhere', async ({ user, body }) => {
+    requireCap(user, 'command');
+    const lists = require('../../games/player-lists');
+    const unban = Boolean(body?.unban);
+    const results = [];
+    for (const server of manager.servers) {
+      if (user.role !== 'admin' && !(user.servers || []).includes(server.id)) continue;
+      if (!lists.listsFor(manager.template(server))?.bans) continue;
+      try {
+        await lists.changeList(manager, server, { list: 'bans', action: unban ? 'remove' : 'add', name: body?.name, reason: body?.reason }, user.username);
+        results.push({ server: server.name, ok: true });
+      } catch (err) {
+        results.push({ server: server.name, ok: false, error: err.message });
+      }
+    }
+    if (!results.length) fail(400, 'No Minecraft Java servers you can moderate');
+    store.addEvent(unban ? 'player.unban' : 'player.ban', `${user.username} ${unban ? 'unbanned' : 'banned'} ${String(body?.name || '')} on ${results.filter((r) => r.ok).length} server(s)`);
+    return { results };
+  });
+
   /** Whitelist, operators and bans (Minecraft). */
   router.get('/api/servers/:id/player-lists', ({ user, params }) => {
     const server = serverFor(user, params.id, 'command');
