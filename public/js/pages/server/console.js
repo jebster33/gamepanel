@@ -11,6 +11,7 @@ export function renderConsoleTab(host, server) {
   host.innerHTML = `
     <div id="doctor"></div>
     <div class="console-tools">
+      <input class="search-input console-find" id="console-find" placeholder="Filter lines (e.g. error, a player's name)" />
       <button class="btn btn-sm btn-ghost" id="share-log" title="Upload the console to mclo.gs so someone can help">Share log</button>
     </div>
     <div class="console-wrap">
@@ -35,6 +36,15 @@ export function renderConsoleTab(host, server) {
       }
     })
     .catch(() => {});
+
+  consoleFilter = '';
+  $('#console-find').addEventListener('input', (event) => {
+    consoleFilter = event.target.value.trim().toLowerCase();
+    const el = $('#console');
+    [...el.children].forEach(applyFilter);
+    el.classList.toggle('filtered', Boolean(consoleFilter));
+    el.scrollTop = el.scrollHeight;
+  });
 
   patchDoctor(server);
   $('#doctor').addEventListener('click', (event) => onDoctorClick(event, server));
@@ -144,6 +154,9 @@ function consoleLineHtml(entry) {
   return `<div class="l ${esc(tone)}">${prefix ? `<span class="ts">${esc(prefix)}</span>` : ''}${esc(body)}</div>`;
 }
 
+let consoleFilter = '';
+const applyFilter = (line) => line.classList.toggle('hidden', Boolean(consoleFilter) && !line.textContent.toLowerCase().includes(consoleFilter));
+
 export function appendConsoleLines(lines, replace = false) {
   const el = $('#console');
   if (lines.length) {
@@ -153,7 +166,9 @@ export function appendConsoleLines(lines, replace = false) {
   if (!el) return;
   const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 60;
   const html = lines.map(consoleLineHtml).join('');
+  const before = el.childElementCount;
   el.insertAdjacentHTML('beforeend', html);
+  if (consoleFilter) [...el.children].slice(before).forEach(applyFilter);
   while (el.childElementCount > 600) el.firstElementChild.remove();
   if (atBottom || replace) el.scrollTop = el.scrollHeight;
 }

@@ -2508,7 +2508,12 @@ tbody tr:hover {
 .console-tools {
   display: flex;
   justify-content: flex-end;
+  gap: 8px;
   margin: -6px 0 8px;
+}
+.console-find {
+  flex: 1;
+  max-width: 320px;
 }
 .doctor-card {
   border-color: rgba(255, 179, 64, 0.35);

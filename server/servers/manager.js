@@ -492,7 +492,7 @@ class ServerManager extends EventEmitter {
     for (const server of this.servers) {
       const rt = this.rt(server.id);
       if (rt.status === STATUS.RUNNING) running++;
-      players += rt.players || 0;
+      players += rt.players ?? rt.playerList?.length ?? 0;
       cpu += rt.cpu;
       memory += rt.memory;
     }

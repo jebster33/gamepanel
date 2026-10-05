@@ -27,6 +27,9 @@ const ICON = {
   user: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>',
 };
 
+/** Games that answer a query report a count; others only a name list from the log. */
+const playerCount = (s) => s.players ?? s.playerList?.length ?? 0;
+
 /** What players type: the Cloudflare name when there is one (no port with SRV). */
 function addressOf(server) {
   const sub = server.subdomain;
@@ -455,7 +458,7 @@ function homeScreen(el) {
   const update = () => {
     const servers = state.servers;
     const running = servers.filter((s) => s.status === 'running');
-    const players = running.reduce((n, s) => n + (s.players || 0), 0);
+    const players = running.reduce((n, s) => n + playerCount(s), 0);
     $('#h-sub', el).textContent = servers.length ? `${running.length} of ${servers.length} running` : '';
     $('#h-stats', el).innerHTML = servers.length
       ? `<div class="hero-stat"><b class="${players ? 'lime' : ''}">${players}</b><span>players online</span></div>
@@ -466,7 +469,7 @@ function homeScreen(el) {
           .map((s) => {
             const sub =
               s.status === 'running'
-                ? `${s.players ?? 0}${s.maxPlayers ? `/${s.maxPlayers}` : ''} players · up ${fmtDuration(s.uptime)}`
+                ? `${playerCount(s)}${s.maxPlayers ? `/${s.maxPlayers}` : ''} players · up ${fmtDuration(s.uptime)}`
                 : `${STATUS_WORD[s.status] || s.status} · ${esc(s.templateName)}`;
             return `<button class="row" data-server="${esc(s.id)}">
               <span class="tile">${esc(s.templateIcon || '🎮')}<span class="dot ${esc(s.status)}"></span></span>
@@ -654,7 +657,7 @@ function serverScreen(el, id) {
       <div class="stats">
         <div class="stat"><span>CPU</span><b>${on ? (s.cpu ?? 0).toFixed(0) : 0}<small>%</small></b><div class="meter"><i style="width:${Math.min(100, s.cpu || 0)}%"></i></div></div>
         <div class="stat"><span>Memory</span><b>${on ? fmtBytes(s.memory) : '0 MB'}</b><div class="meter"><i style="width:${on ? mem : 0}%"></i></div></div>
-        <div class="stat"><span>Players</span><b>${on ? (s.players ?? 0) : 0}<small>/${s.maxPlayers || '—'}</small></b></div>
+        <div class="stat"><span>Players</span><b>${on ? playerCount(s) : 0}<small>/${s.maxPlayers || '—'}</small></b></div>
         <div class="stat"><span>Ping</span><b>${s.ping != null && on ? s.ping : '—'}<small>${s.ping != null && on ? 'ms' : ''}</small></b></div>
       </div>
       <div class="section-label">Connect</div>
@@ -876,6 +879,7 @@ function openFromHash(hash = location.hash) {
   history.replaceState(null, '', '/app/');
   push((s) => serverScreen(s, m[1]));
 }
+window.addEventListener('hashchange', () => state.user && openFromHash());
 navigator.serviceWorker?.addEventListener('message', (event) => {
   if (event.data?.type === 'open' && state.user) openFromHash(new URL(event.data.url, location.origin).hash);
 });
