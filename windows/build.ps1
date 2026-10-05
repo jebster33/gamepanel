@@ -41,7 +41,10 @@ $w.Write($png); $w.Flush()
 [IO.File]::WriteAllBytes((Join-Path $Stage 'windows\gamepanel.ico'), $ico.ToArray())
 
 Write-Host "==> Bundling Node.js $NodeMajor"
-$node = Invoke-RestMethod 'https://nodejs.org/dist/index.json' | Where-Object { $_.version -like "v$NodeMajor.*" -and $_.files -contains 'win-x64-zip' } | Select-Object -First 1
+# Store the list first: piping Invoke-RestMethod straight on passes the whole array as one object.
+$index = Invoke-RestMethod 'https://nodejs.org/dist/index.json'
+$node = $index | Where-Object { $_.version -like "v$NodeMajor.*" -and $_.files -contains 'win-x64-zip' } | Select-Object -First 1
+if (-not $node) { throw "Could not find a Node.js $NodeMajor build for win-x64." }
 $nodeZip = Join-Path $OutDir "node-$($node.version).zip"
 if (-not (Test-Path $nodeZip)) { Invoke-WebRequest "https://nodejs.org/dist/$($node.version)/node-$($node.version)-win-x64.zip" -OutFile $nodeZip -UseBasicParsing }
 $nodeTmp = Join-Path $OutDir 'stage\node'
