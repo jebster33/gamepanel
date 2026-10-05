@@ -83,3 +83,9 @@ test('API keys: read-only keys only read, and no key changes accounts', () => {
   auth.deleteApiKey(id, auth.listApiKeys(id)[1].id);
   assert.strictEqual(auth.userFromRequest(req('GET', '/api/servers', full)), null);
 });
+
+test('crossplay: Geyser port is patched only inside the bedrock block', () => {
+  const { patchGeyserPort } = require('../../server/servers/crossplay');
+  const text = 'bedrock:\n  address: 0.0.0.0\n  port: 19132\nremote:\n  port: 25565\n';
+  assert.strictEqual(patchGeyserPort(text, 19133), 'bedrock:\n  address: 0.0.0.0\n  port: 19133\nremote:\n  port: 25565\n');
+});

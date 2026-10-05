@@ -153,6 +153,14 @@ module.exports = (router, { store, manager, scheduler }, { requireAdmin, require
     return require('../../features/dns').release(store, manager.require(params.id));
   });
 
+  /** Bedrock crossplay (Geyser + Floodgate) on Paper and Purpur. */
+  router.get('/api/servers/:id/crossplay', ({ user, params }) => manager.crossplayInfo(serverFor(user, params.id, 'settings')));
+
+  router.post('/api/servers/:id/crossplay', async ({ user, params, body }) => {
+    const server = serverFor(user, params.id, 'settings');
+    return body?.enabled === false ? manager.disableCrossplay(server.id, user) : manager.enableCrossplay(server.id, user);
+  });
+
   /** Minecraft worlds. */
   router.get('/api/servers/:id/worlds', async ({ user, params }) => manager.listWorlds(serverFor(user, params.id, 'files')));
 

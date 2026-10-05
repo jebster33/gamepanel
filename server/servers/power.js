@@ -31,6 +31,7 @@ module.exports = {
 
     this.writeConfigFiles(server, template);
     this.applyPropertyPatches(server, template);
+    this.patchCrossplay(server);
 
     const vars = this.vars(server);
     const command = interpolate(server.startCommand || template.startCommand, vars);

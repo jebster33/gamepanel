@@ -3,6 +3,7 @@ import { esc, toast } from '../../core/util.js';
 import { renderVersionCard } from './version.js';
 import { renderAppearance } from './appearance.js';
 import { renderWorldsCard } from './worlds.js';
+import { renderCrossplayCard } from './crossplay.js';
 
 /* ---------------------------------------------------- game settings tab */
 
@@ -13,8 +14,9 @@ import { renderWorldsCard } from './worlds.js';
  */
 
 export async function renderGameTab(root, server) {
-  root.innerHTML = '<div id="gv-card"></div><div id="gw-card"></div><div id="gs-body"></div>';
+  root.innerHTML = '<div id="gv-card"></div><div id="gc-card"></div><div id="gw-card"></div><div id="gs-body"></div>';
   renderVersionCard(root.querySelector('#gv-card'), server);
+  renderCrossplayCard(root.querySelector('#gc-card'), server);
   renderWorldsCard(root.querySelector('#gw-card'), server);
   const host = root.querySelector('#gs-body');
   host.innerHTML = '<div class="card"><span class="spinner"></span> Reading the game\'s settings…</div>';
