@@ -74,12 +74,29 @@ module.exports = (router, { store, auth }) => {
 
   router.get('/api/auth/me', ({ user }) => ({ user: auth.publicUser(user) }));
 
-  router.post('/api/auth/password', async ({ user, body }) => {
+  router.post('/api/auth/password', async ({ user, body, req, res }) => {
     const record = auth.users.find((u) => u.id === user.id);
     if (!verifyPassword(body.currentPassword, record.password)) fail(403, 'Your current password is not right');
     auth.setPassword(user.id, body.newPassword);
+    // Every other device is signed out; this one gets a fresh session.
+    keepThisDevice(req, res, record);
+    store.addEvent('user.password', `${user.username} changed their password (other devices signed out)`, { ip: clientIp(req) });
     return { ok: true };
   });
+
+  /** Sign out every other device, e.g. after using a shared computer. */
+  router.post('/api/auth/sessions/revoke', ({ user, req, res }) => {
+    const record = auth.users.find((u) => u.id === user.id);
+    auth.revokeSessions(user.id);
+    keepThisDevice(req, res, record);
+    store.addEvent('user.sessions_revoked', `${user.username} signed out of all other devices`, { ip: clientIp(req) });
+    return { ok: true };
+  });
+
+  function keepThisDevice(req, res, record) {
+    const { token } = auth.startSession(record, clientIp(req));
+    res.setHeader('Set-Cookie', auth.cookieHeader(token, isSecure(req)));
+  }
   /* ------------------------------------------------- two-factor sign-in -- */
 
   const requirePassword = (user, password) => {

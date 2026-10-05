@@ -34,3 +34,16 @@ test('player history records sessions, chat and restarts', () => {
 test('offline UUIDs match what Minecraft generates', () => {
   assert.strictEqual(offlineUuid('Notch'), 'b50ad385-829d-3141-a216-7e7d7539ba7f');
 });
+
+test('sessions end when the account signs out everywhere', () => {
+  const { Auth } = require('../../server/core/auth');
+  const store = { state: { users: [] }, save() {}, addEvent() {} };
+  const auth = new Auth(store, 'x'.repeat(32));
+  auth.createUser({ username: 'chris', password: 'correct horse battery', role: 'admin' });
+  const { token } = auth.login('chris', 'correct horse battery', '1.1.1.1');
+  assert.ok(auth.userFromToken(token));
+  auth.revokeSessions(auth.users[0].id);
+  assert.strictEqual(auth.userFromToken(token), null);
+  assert.throws(() => auth.setPassword(auth.users[0].id, 'password123'), /attackers try/);
+  assert.throws(() => auth.setPassword(auth.users[0].id, 'chris-is-cool'), /username/);
+});

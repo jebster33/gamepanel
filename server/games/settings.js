@@ -10,7 +10,8 @@
  */
 
 const fs = require('fs');
-const { fail, safeJoin, interpolate } = require('../core/util');
+const { fail, interpolate } = require('../core/util');
+const { containedPath } = require('../features/files');
 const { patchKeyValue } = require('../servers/config-files');
 
 const bool = (key, label, description, extra = {}) => ({ key, label, type: 'bool', description, ...extra });
@@ -243,7 +244,7 @@ module.exports = {
     if (!template) fail(400, 'The template this server was created from is no longer available');
     const file = settingsFileFor(template);
     if (!file) return { supported: false };
-    const target = safeJoin(server.dir, interpolate(file.path, manager.vars(server)));
+    const target = containedPath(server.dir, interpolate(file.path, manager.vars(server)));
     let raw;
     try {
       raw = fs.readFileSync(target, 'utf8');
@@ -325,7 +326,7 @@ module.exports = {
     }
     if (!Object.keys(toWrite).length) return { ok: true, changed: 0 };
 
-    const target = safeJoin(server.dir, interpolate(file.path, manager.vars(server)));
+    const target = containedPath(server.dir, interpolate(file.path, manager.vars(server)));
     const raw = fs.readFileSync(target, 'utf8');
     let next;
     if (file.format === 'json') {

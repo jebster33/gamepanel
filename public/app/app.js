@@ -113,10 +113,19 @@ function avatar(server, name) {
   const java = String(server.templateId || '').startsWith('minecraft') && server.templateId !== 'minecraft-bedrock';
   const letter = esc(String(name).slice(0, 1).toUpperCase());
   if (java && /^[A-Za-z0-9_]{3,16}$/.test(name)) {
-    return `<span class="avatar"><img src="https://mc-heads.net/avatar/${esc(name)}/80" alt="" loading="lazy" onerror="this.replaceWith(document.createTextNode('${letter}'))"/></span>`;
+    return `<span class="avatar"><img src="https://mc-heads.net/avatar/${esc(name)}/80" alt="" loading="lazy" data-fallback="${letter}"/></span>`;
   }
   return `<span class="avatar">${letter}</span>`;
 }
+
+document.addEventListener(
+  'error',
+  (event) => {
+    const img = event.target;
+    if (img?.tagName === 'IMG' && img.dataset.fallback) img.replaceWith(document.createTextNode(img.dataset.fallback));
+  },
+  true
+);
 
 /* ---------------------------------------------------------------- sheets */
 

@@ -8,7 +8,7 @@
 
 const { logger } = require('../core/util');
 
-const COLORS = { crashed: 0xff5f57, failed: 0xff5f57, install_failed: 0xff5f57, ready: 0xc6f432, installed: 0xc6f432, created: 0xc6f432, uploaded: 0xc6f432, upload_failed: 0xff5f57, updated: 0xffb340 };
+const COLORS = { lockout: 0xff5f57, '2fa_disabled': 0xffb340, crashed: 0xff5f57, failed: 0xff5f57, install_failed: 0xff5f57, ready: 0xc6f432, installed: 0xc6f432, created: 0xc6f432, uploaded: 0xc6f432, upload_failed: 0xff5f57, updated: 0xffb340 };
 
 const TITLES = {
   'server.crashed': 'Server crashed',
@@ -23,6 +23,10 @@ const TITLES = {
   'schedule.failed': 'Scheduled task failed',
   'panel.updated': 'Panel updated',
   'user.login': 'Sign-in',
+  'user.lockout': 'Repeated failed sign-ins',
+  'user.password': 'Password changed',
+  'user.2fa_disabled': 'Two-factor sign-in turned off',
+  'user.sessions_revoked': 'Signed out of other devices',
 };
 
 const EVENT_CHOICES = Object.keys(TITLES);

@@ -45,9 +45,27 @@ export async function renderAccount(view) {
         <label><span>New password</span><input id="a-new" type="password" autocomplete="new-password" /></label>
       </div>
       <button class="btn mt-16" id="a-save">Update password</button>
+      <div class="hint">Changing it signs you out on every other device.</div>
+    </div>
+
+    <div class="card mb-16 row" style="align-items:center;gap:16px">
+      <div style="flex:1;min-width:220px">
+        <h4 style="margin-top:0">Other devices</h4>
+        <div class="faint">Signed in somewhere you shouldn't be, like a friend's computer? End every session except this one.</div>
+      </div>
+      <button class="btn" id="a-revoke">Sign out other devices</button>
     </div>`;
 
   renderTwoFactor(me);
+
+  $('#a-revoke').addEventListener('click', async () => {
+    try {
+      await api('/api/auth/sessions/revoke', { method: 'POST' });
+      toast('Signed out of every other device');
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+  });
 
   $('#a-save').addEventListener('click', async () => {
     try {

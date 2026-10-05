@@ -240,6 +240,22 @@ class WebSocketServer extends EventEmitter {
       socket.destroy();
       return null;
     }
+    // Cross-site WebSocket hijacking: a page on another origin (even another
+    // port on this host, like a game's web map) must not ride the session cookie.
+    const origin = req.headers.origin;
+    if (origin) {
+      let host = null;
+      try {
+        host = new URL(origin).host;
+      } catch {
+        /* malformed: refuse below */
+      }
+      if (host !== req.headers.host) {
+        socket.write('HTTP/1.1 403 Forbidden\r\n\r\n');
+        socket.destroy();
+        return null;
+      }
+    }
     const accept = crypto.createHash('sha1').update(key + GUID).digest('base64');
     socket.write(
       'HTTP/1.1 101 Switching Protocols\r\n' +

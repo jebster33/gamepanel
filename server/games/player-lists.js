@@ -13,7 +13,8 @@
 const fs = require('fs');
 const net = require('net');
 const crypto = require('crypto');
-const { fail, safeJoin } = require('../core/util');
+const { fail } = require('../core/util');
+const { containedPath } = require('../features/files');
 const { getJson } = require('../features/mods/http');
 
 const JAVA = {
@@ -60,7 +61,7 @@ function offlineUuid(name) {
 
 function readProperty(server, key) {
   try {
-    const raw = fs.readFileSync(safeJoin(server.dir, 'server.properties'), 'utf8');
+    const raw = fs.readFileSync(containedPath(server.dir, 'server.properties'), 'utf8');
     const line = raw.split(/\r?\n/).find((l) => l.startsWith(`${key}=`));
     return line ? line.slice(key.length + 1).trim() : null;
   } catch {
@@ -70,7 +71,7 @@ function readProperty(server, key) {
 
 function readJson(server, file) {
   try {
-    const data = JSON.parse(fs.readFileSync(safeJoin(server.dir, file), 'utf8'));
+    const data = JSON.parse(fs.readFileSync(containedPath(server.dir, file), 'utf8'));
     return Array.isArray(data) ? data : [];
   } catch {
     return [];
@@ -78,7 +79,7 @@ function readJson(server, file) {
 }
 
 function writeJson(server, file, data) {
-  fs.writeFileSync(safeJoin(server.dir, file), `${JSON.stringify(data, null, 2)}\n`);
+  fs.writeFileSync(containedPath(server.dir, file), `${JSON.stringify(data, null, 2)}\n`);
 }
 
 function cleanName(def, raw) {
@@ -190,7 +191,7 @@ module.exports = {
       await sleep(800);
     } else {
       const { patchKeyValue } = require('../servers/config-files');
-      const file = safeJoin(server.dir, 'server.properties');
+      const file = containedPath(server.dir, 'server.properties');
       const raw = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
       fs.writeFileSync(file, patchKeyValue(raw, { [def.toggle.property]: String(Boolean(on)) }));
     }

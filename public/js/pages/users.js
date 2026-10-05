@@ -33,6 +33,7 @@ export async function renderUsers(view) {
                 <td class="faint nowrap">${fmtTime(u.lastLogin)}</td>
                 <td style="text-align:right" class="nowrap">
                   ${u.twoFactor && u.id !== state.user.id ? `<button class="btn btn-sm" data-reset-tf="${esc(u.id)}" title="For someone who lost their phone and recovery codes">Reset 2FA</button>` : ''}
+                  ${u.id !== state.user.id ? `<button class="btn btn-sm" data-revoke="${esc(u.id)}" title="Ends their sessions on every device">Sign out</button>` : ''}
                   <button class="btn btn-sm" data-edit-user="${esc(u.id)}">Edit</button>
                   ${u.id !== state.user.id ? `<button class="btn btn-sm btn-danger" data-del-user="${esc(u.id)}">${icon('trash',12)}</button>` : ''}
                 </td></tr>`
@@ -56,6 +57,18 @@ export async function renderUsers(view) {
         await api(`/api/users/${target.id}`, { method: 'PATCH', body: { resetTwoFactor: true } });
         toast(`Two-factor sign-in reset for ${target.username}`);
         renderUsers(view);
+      } catch (err) {
+        toast(err.message, 'error');
+      }
+    })
+  );
+  view.querySelectorAll('[data-revoke]').forEach((el) =>
+    el.addEventListener('click', async () => {
+      const target = data.users.find((u) => u.id === el.dataset.revoke);
+      if (!(await confirmModal('Sign out everywhere', `${target.username} is signed out on every device and has to sign in again.`, 'Sign out'))) return;
+      try {
+        await api(`/api/users/${target.id}`, { method: 'PATCH', body: { revokeSessions: true } });
+        toast(`${target.username} was signed out everywhere`);
       } catch (err) {
         toast(err.message, 'error');
       }

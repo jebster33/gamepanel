@@ -29,6 +29,7 @@ module.exports = (router, { store, auth }, { requireAdmin }) => {
     if (body.password) auth.setPassword(target.id, body.password);
     // For someone who lost their phone and their recovery codes.
     if (body.resetTwoFactor) auth.disableTwoFactor(target.id);
+    if (body.revokeSessions) auth.revokeSessions(target.id);
     store.save();
     store.addEvent('user.updated', `${target.username} updated by ${user.username}`);
     return { user: auth.publicUser(target) };

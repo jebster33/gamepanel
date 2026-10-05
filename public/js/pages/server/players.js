@@ -50,12 +50,22 @@ function showView(box, server) {
   else if (current.view === 'lists') import('./player-lists.js').then((m) => m.renderLists(box, server));
 }
 
+// A head that fails to load (offline, blocked) turns back into the letter tile.
+document.addEventListener(
+  'error',
+  (event) => {
+    const img = event.target;
+    if (img?.tagName === 'IMG' && img.dataset.fallback) img.replaceWith(document.createTextNode(img.dataset.fallback));
+  },
+  true
+);
+
 /** Minecraft heads where the game has them, a letter tile everywhere else. */
 export function avatar(server, name, size = 26) {
   const letter = esc(String(name).slice(0, 1).toUpperCase());
   const java = String(server.templateId || '').startsWith('minecraft') && server.templateId !== 'minecraft-bedrock';
   if (java && /^[A-Za-z0-9_]{3,16}$/.test(name)) {
-    return `<span class="player-avatar" style="width:${size}px;height:${size}px"><img src="https://mc-heads.net/avatar/${esc(name)}/${size * 2}" alt="" loading="lazy" onerror="this.replaceWith(document.createTextNode('${letter}'))" /></span>`;
+    return `<span class="player-avatar" style="width:${size}px;height:${size}px"><img src="https://mc-heads.net/avatar/${esc(name)}/${size * 2}" alt="" loading="lazy" data-fallback="${letter}" /></span>`;
   }
   return `<span class="player-avatar" style="width:${size}px;height:${size}px">${letter}</span>`;
 }
