@@ -73,6 +73,8 @@ const RESOLVERS = {
       DOWNLOAD_URL: url,
       RESOLVED_VERSION: version,
       RESOLVED_BUILD: String(build.id ?? ''),
+      GAME_VERSION: version,
+      LOADER: 'paper',
       JAVA_VERSION: String((await javaForMinecraft(version)) || 21),
     };
   },
@@ -89,6 +91,8 @@ const RESOLVERS = {
     return {
       DOWNLOAD_URL: url,
       RESOLVED_VERSION: id,
+      GAME_VERSION: id,
+      LOADER: 'vanilla',
       JAVA_VERSION: String(detail.javaVersion?.majorVersion || 21),
     };
   },
@@ -114,20 +118,24 @@ const RESOLVERS = {
         loader
       )}/${encodeURIComponent(installer)}/server/jar`,
       RESOLVED_VERSION: `${game} (loader ${loader})`,
+      GAME_VERSION: game,
+      LOADER: 'fabric',
       JAVA_VERSION: String((await javaForMinecraft(game)) || 21),
     };
   },
 
   /** Bedrock dedicated server zip from Mojang's CDN. */
-  async bedrock(vars) {
+  async bedrock(vars, platform) {
+    const os = platform === 'windows' ? 'windows' : 'linux';
     let version = vars.BEDROCK_VERSION;
     if (wantsLatest(version)) {
       const index = await getJson('https://raw.githubusercontent.com/Bedrock-OSS/BDS-Versions/main/versions.json');
-      version = index.linux?.stable;
+      version = index[os]?.stable;
     }
     if (!version) throw new Error('could not work out the current Bedrock version');
     return {
-      DOWNLOAD_URL: `https://www.minecraft.net/bedrockdedicatedserver/bin-linux/bedrock-server-${version}.zip`,
+      DOWNLOAD_URL: `https://www.minecraft.net/bedrockdedicatedserver/bin-${os === 'windows' ? 'win' : 'linux'}/bedrock-server-${version}.zip`,
+      GAME_VERSION: version,
       RESOLVED_VERSION: version,
     };
   },
@@ -181,15 +189,15 @@ const RESOLVERS = {
     const wanted = await filterServerFiles(index.files || []);
     const skipped = (index.files || []).length - wanted.length;
 
-    const downloads = wanted
+    const files = wanted
       .map((entry) => {
         const target = String(entry.path).replace(/^[/\\]+/, '');
-        if (target.includes('..')) return null;
-        const url = entry.downloads?.[0];
-        if (!url) return null;
-        return `mkdir -p "$(dirname ${shq(target)})"\ngp_fetch ${shq(url)} ${shq(target)}`;
+        const url = entry.downloads?.find((u) => /^https:\/\//.test(u));
+        if (!url || target.split(/[\\/]/).includes('..')) return null;
+        return { url, path: target };
       })
       .filter(Boolean);
+    const downloads = files.map((f) => `gp_fetch ${shq(f.url)} ${shq(f.path)}`);
 
     const loaderInstall = await loaderInstallScript(loader, game);
 
@@ -213,15 +221,22 @@ const RESOLVERS = {
       PACK_DOWNLOADS:
         (downloads.join('\n') || 'gp_log "This pack ships no separate downloads"') +
         (skipped ? `\ngp_log "Skipped ${skipped} client-only mod(s) — they would crash a dedicated server"` : ''),
+      PACK_FILES: JSON.stringify(files),
       LOADER_INSTALL: loaderInstall.install,
+      LOADER_URL: loaderInstall.url,
+      LOADER_FILE: loaderInstall.file,
+      LOADER_RUN: loaderInstall.run,
       START_SCRIPT: loaderInstall.start,
+      START_CMD: loaderInstall.startCmd,
+      GAME_VERSION: game,
+      LOADER: loader.name,
       JAVA_VERSION: String((await javaForMinecraft(game)) || 21),
     };
   },
 
   /** Cfx.re server artifacts for the chosen channel. */
-  async fivem(vars) {
-    const data = await getJson('https://changelogs-live.fivem.net/api/changelog/versions/linux/server');
+  async fivem(vars, platform) {
+    const data = await getJson(`https://changelogs-live.fivem.net/api/changelog/versions/${platform === 'windows' ? 'win32' : 'linux'}/server`);
     const latest = String(vars.FIVEM_BUILD || 'recommended').toLowerCase() === 'latest';
     const url = latest ? data.latest_download : data.recommended_download;
     if (!url) throw new Error('Cfx.re did not return an artifact download');
@@ -234,11 +249,11 @@ const RESOLVERS = {
  * @param {object} vars  the server's resolved template variables
  * @returns {Promise<Record<string,string>>} extra variables for the install script
  */
-async function resolveDownload(name, vars) {
+async function resolveDownload(name, vars, { platform = 'linux' } = {}) {
   const resolver = RESOLVERS[name];
   if (!resolver) fail(400, `Template refers to an unknown resolver: ${name}`);
   try {
-    const extra = await resolver(vars);
+    const extra = await resolver(vars, platform);
     logger.info(`Resolved ${name} download: ${extra.RESOLVED_VERSION || ''} ${extra.DOWNLOAD_URL}`);
     return extra;
   } catch (err) {
@@ -375,56 +390,84 @@ function detectLoader(dependencies = {}) {
 }
 
 /**
- * Shell to install a loader's server, plus the start script that suits it.
- * Fabric and Quilt publish a ready-made launcher jar; Forge and NeoForge ship
- * an installer that generates run.sh.
+ * How to install a loader's server, as pieces both installers understand:
+ * a file to download, an optional command to run, and start scripts for
+ * Linux (start.sh) and Windows (start.cmd). Fabric and Quilt publish a
+ * ready-made launcher jar; Forge and NeoForge ship an installer.
+ *
+ * The Windows script calls java directly instead of Forge's run.bat, which
+ * ends in "pause" and would keep a stopped server hanging.
  */
 async function loaderInstallScript(loader, game) {
   const memory = '${MEMORY:-2048}';
+  const jvmArgsSh = `printf -- '-Xms%sM\\n-Xmx%sM\\n' "${memory}" "${memory}" > user_jvm_args.txt`;
+  const jvmArgsCmd = '(echo -Xms%MEMORY%M& echo -Xmx%MEMORY%M)> user_jvm_args.txt';
+  const cmd = (...lines) => ['@echo off', 'if "%MEMORY%"=="" set MEMORY=2048', ...lines].join('\r\n') + '\r\n';
+  const sh = (...lines) => ['#!/usr/bin/env bash', ...lines].join('\n') + '\n';
+  const piece = ({ url, file, run = '', start, startCmd }) => ({
+    url,
+    file,
+    run,
+    start,
+    startCmd,
+    // The old all-in-one bash snippet, kept for templates written against it.
+    install: [`gp_fetch ${shq(url)} ${shq(file)}`, run ? `${run} || gp_die "The loader installer failed"` : '', run ? `rm -f ${shq(file)}` : '']
+      .filter(Boolean)
+      .join('\n'),
+  });
 
   if (loader.name === 'fabric' || loader.name === 'quilt') {
     const base = loader.name === 'fabric' ? 'https://meta.fabricmc.net/v2' : 'https://meta.quiltmc.org/v3';
     const installers = await getJson(`${base}/versions/installer`);
     const installer = (installers.find((v) => v.stable) || installers[0])?.version;
-    const url = `${base}/versions/loader/${encodeURIComponent(game)}/${encodeURIComponent(
-      loader.version
-    )}/${encodeURIComponent(installer)}/server/jar`;
-    return {
-      install: `gp_fetch ${shq(url)} server.jar`,
-      start: `#!/usr/bin/env bash\nexec java -Xms${memory}M -Xmx${memory}M \${JAVA_ARGS:-} -jar server.jar nogui\n`,
-    };
+    if (loader.name === 'quilt') {
+      // Quilt has no prebuilt server jar endpoint; its installer writes one.
+      const url = `https://maven.quiltmc.org/repository/release/org/quiltmc/quilt-installer/${installer}/quilt-installer-${installer}.jar`;
+      return piece({
+        url,
+        file: 'loader-installer.jar',
+        run: `java -jar loader-installer.jar install server ${game} ${loader.version} --install-dir=. --download-server`,
+        start: sh(`exec java -Xms${memory}M -Xmx${memory}M \${JAVA_ARGS:-} -jar quilt-server-launch.jar nogui`),
+        startCmd: cmd('java -Xms%MEMORY%M -Xmx%MEMORY%M %JAVA_ARGS% -jar quilt-server-launch.jar nogui'),
+      });
+    }
+    return piece({
+      url: `${base}/versions/loader/${encodeURIComponent(game)}/${encodeURIComponent(loader.version)}/${encodeURIComponent(installer)}/server/jar`,
+      file: 'server.jar',
+      start: sh(`exec java -Xms${memory}M -Xmx${memory}M \${JAVA_ARGS:-} -jar server.jar nogui`),
+      startCmd: cmd('java -Xms%MEMORY%M -Xmx%MEMORY%M %JAVA_ARGS% -jar server.jar nogui'),
+    });
   }
 
   if (loader.name === 'neoforge') {
-    const url = `https://maven.neoforged.net/releases/net/neoforged/neoforge/${loader.version}/neoforge-${loader.version}-installer.jar`;
-    return {
-      install: [
-        `gp_fetch ${shq(url)} loader-installer.jar`,
-        'gp_log "Running the NeoForge installer"',
-        'java -jar loader-installer.jar --installServer || gp_die "The NeoForge installer failed"',
-        'rm -f loader-installer.jar',
-        `printf -- '-Xms%sM\\n-Xmx%sM\\n' "\${MEMORY:-2048}" "\${MEMORY:-2048}" > user_jvm_args.txt`,
-      ].join('\n'),
-      start: `#!/usr/bin/env bash\nprintf -- '-Xms%sM\\n-Xmx%sM\\n' "\${MEMORY:-2048}" "\${MEMORY:-2048}" > user_jvm_args.txt\nexec ./run.sh nogui\n`,
-    };
+    const v = loader.version;
+    return piece({
+      url: `https://maven.neoforged.net/releases/net/neoforged/neoforge/${v}/neoforge-${v}-installer.jar`,
+      file: 'loader-installer.jar',
+      run: 'java -jar loader-installer.jar --installServer',
+      start: sh(jvmArgsSh, 'exec ./run.sh nogui'),
+      startCmd: cmd(jvmArgsCmd, `java @user_jvm_args.txt @libraries/net/neoforged/neoforge/${v}/win_args.txt nogui`),
+    });
   }
 
-  // Forge
+  // Forge. 1.17+ installs a run script and an args file; older ones a jar.
   const full = `${game}-${loader.version}`;
-  const url = `https://maven.minecraftforge.net/net/minecraftforge/forge/${full}/forge-${full}-installer.jar`;
-  return {
-    install: [
-      `gp_fetch ${shq(url)} loader-installer.jar`,
-      'gp_log "Running the Forge installer"',
-      'java -jar loader-installer.jar --installServer || gp_die "The Forge installer failed"',
-      'rm -f loader-installer.jar',
-    ].join('\n'),
-    start:
-      `#!/usr/bin/env bash\n` +
-      `printf -- '-Xms%sM\\n-Xmx%sM\\n' "\${MEMORY:-2048}" "\${MEMORY:-2048}" > user_jvm_args.txt\n` +
-      `if [ -f run.sh ]; then exec ./run.sh nogui; fi\n` +
-      `exec java -Xms\${MEMORY:-2048}M -Xmx\${MEMORY:-2048}M -jar "$(ls forge-*.jar | head -1)" nogui\n`,
-  };
+  return piece({
+    url: `https://maven.minecraftforge.net/net/minecraftforge/forge/${full}/forge-${full}-installer.jar`,
+    file: 'loader-installer.jar',
+    run: 'java -jar loader-installer.jar --installServer',
+    start: sh(jvmArgsSh, 'if [ -f run.sh ]; then exec ./run.sh nogui; fi', `exec java -Xms${memory}M -Xmx${memory}M -jar "$(ls forge-*.jar | grep -v installer | head -1)" nogui`),
+    startCmd: cmd(
+      jvmArgsCmd,
+      `if exist "libraries\\net\\minecraftforge\\forge\\${full}\\win_args.txt" (`,
+      `  java @user_jvm_args.txt @libraries/net/minecraftforge/forge/${full}/win_args.txt nogui`,
+      '  exit /b %errorlevel%',
+      ')',
+      'for %%f in (forge-*.jar) do (',
+      '  echo %%f | find /i "installer" >nul || (java -Xms%MEMORY%M -Xmx%MEMORY%M -jar "%%f" nogui & exit /b)',
+      ')'
+    ),
+  });
 }
 
-module.exports = { resolveDownload, RESOLVERS, readMrpackIndex, detectLoader };
+module.exports = { resolveDownload, RESOLVERS, readMrpackIndex, detectLoader, loaderInstallScript };

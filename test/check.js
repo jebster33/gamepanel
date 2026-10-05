@@ -95,7 +95,13 @@ const { SOURCES } = require(path.join(ROOT, 'server/games/options'));
 const { QUERY_TYPES } = require(path.join(ROOT, 'server/games/query'));
 const { PROVIDERS: MOD_PROVIDERS } = require(path.join(ROOT, 'server/features/mods'));
 
-const VALID_STEP_TYPES = ['apt', 'java', 'steamcmd', 'download', 'extract', 'writefile', 'mkdir', 'chmod', 'script'];
+const { variant, platformsOf } = require(path.join(ROOT, 'server/games/templates'));
+
+const COMMON_STEP_TYPES = ['apt', 'java', 'steamcmd', 'workshop', 'download', 'fetchlist', 'extract', 'copy', 'remove', 'run', 'writefile', 'mkdir', 'chmod'];
+const STEP_TYPES = {
+  linux: [...COMMON_STEP_TYPES, 'script'],
+  windows: [...COMMON_STEP_TYPES, 'powershell', 'vcredist', 'directx'],
+};
 
 /** Every {{VAR}} a template references. */
 function placeholdersIn(value) {
@@ -141,6 +147,13 @@ const BUILTIN_VARS = new Set([
   'PACK_DOWNLOADS',
   'LOADER_INSTALL',
   'START_SCRIPT',
+  'PACK_FILES',
+  'LOADER_URL',
+  'LOADER_FILE',
+  'LOADER_RUN',
+  'START_CMD',
+  'GAME_VERSION',
+  'LOADER',
 ]);
 
 async function checkTemplate(file) {
@@ -195,29 +208,37 @@ async function checkTemplate(file) {
     if (v.default === undefined && !v.generate) warn(`${id}: variable ${v.name} has no default`);
   }
 
-  /* --- placeholders resolve --- */
-  const used = placeholdersIn({
-    start: tpl.startCommand,
-    install: tpl.install,
-    config: tpl.configFiles,
-    patch: tpl.patchProperties,
-    image: tpl.image,
-    sidecars: tpl.sidecars,
-  });
-  for (const name of used) {
-    const isPort = name.startsWith('PORT_') && portNames.has(name.slice(5).toLowerCase());
-    if (!varNames.has(name) && !BUILTIN_VARS.has(name) && !isPort) {
-      fail(`${id}: uses {{${name}}} but nothing defines it`);
+  /* --- every platform: placeholders and install steps --- */
+  for (const platform of platformsOf(tpl)) {
+    const t = variant(tpl, platform);
+    const tag = platform === 'linux' ? id : `${id} (${platform})`;
+    const names = new Set((t.variables || []).map((v) => v.name));
+    const used = placeholdersIn({
+      start: t.startCommand,
+      install: t.install,
+      config: t.configFiles,
+      patch: t.patchProperties,
+      image: t.image,
+      sidecars: t.sidecars,
+      tail: t.tailFiles,
+      env: t.env,
+    });
+    for (const name of used) {
+      const isPort = name.startsWith('PORT_') && portNames.has(name.slice(5).toLowerCase());
+      if (!names.has(name) && !BUILTIN_VARS.has(name) && !isPort) fail(`${tag}: uses {{${name}}} but nothing defines it`);
     }
-  }
-  pass(`${id}: placeholders`);
-
-  /* --- install steps --- */
-  for (const step of tpl.install || []) {
-    if (!VALID_STEP_TYPES.includes(String(step.type).toLowerCase())) {
-      fail(`${id}: unknown install step type "${step.type}"`);
+    for (const step of t.install || []) {
+      if (!STEP_TYPES[platform].includes(String(step.type).toLowerCase())) fail(`${tag}: install step type "${step.type}" does not run on ${platform}`);
+      if (step.type === 'steamcmd' && !step.appid) fail(`${tag}: a steamcmd step has no appid`);
     }
-    if (step.type === 'steamcmd' && !step.appid) fail(`${id}: a steamcmd step has no appid`);
+    for (const file of t.tailFiles || []) {
+      if (/^[\\/]|^[a-z]:|\.\./i.test(file)) fail(`${tag}: tailFiles entry "${file}" leaves the server folder`);
+    }
+    if (platform === 'windows' && /(^|[;&|]\s*)(\.\/|exec |export )|\$\(/.test(t.startCommand || '')) {
+      fail(`${tag}: start command looks like bash, but Windows runs it with cmd.exe`);
+    }
+    if (t.readyOnPort && typeof t.readyOnPort === 'string' && !portNames.has(t.readyOnPort)) fail(`${tag}: readyOnPort names an unknown port`);
+    pass(`${tag}: placeholders and install steps`);
   }
 
   /* --- query and rcon point at real ports --- */

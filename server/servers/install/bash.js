@@ -50,10 +50,11 @@ gp_apt() {
 gp_have() { command -v "$1" >/dev/null 2>&1; }
 
 gp_fetch() {
-  local url="$1" dest="$2"
+  local url="$1" dest="$2" ua="\${3:-GamePanel/2}"
   gp_log "Downloading $url"
-  if gp_have curl; then curl -fL -sS --retry 3 --connect-timeout 20 -o "$dest" "$url" || gp_die "Download failed: $url"
-  elif gp_have wget; then wget -q -O "$dest" "$url" || gp_die "Download failed: $url"
+  mkdir -p "$(dirname "$dest")"
+  if gp_have curl; then curl -fL -sS -A "$ua" --retry 3 --connect-timeout 20 -o "$dest" "$url" || gp_die "Download failed: $url"
+  elif gp_have wget; then wget -q -U "$ua" -O "$dest" "$url" || gp_die "Download failed: $url"
   else gp_die "Neither curl nor wget is installed"; fi
 }
 
@@ -167,6 +168,19 @@ gp_steam_logs() {
   done
 }
 
+# When an install fails, say whether SteamCMD can write anywhere at all: a
+# tiny app into a scratch folder, and the same into the server folder.
+gp_steam_probe() {
+  gp_warn "Checking where SteamCMD can install (user $(id -u):$(id -g))"
+  df -h "$GP_SERVER_DIR" /tmp 2>/dev/null | sed 's/^/  /'
+  local dir
+  for dir in /tmp/gp-steam-probe "$GP_SERVER_DIR/.gp-steam-probe"; do
+    mkdir -p "$dir"
+    if gp_steamcmd +force_install_dir "$dir" +login anonymous +app_update 1007 +quit 2>&1 | grep -E "Success|ERROR" ; then :; fi
+    rm -rf "$dir"
+  done
+}
+
 gp_steam_app() {
   local appid="$1" login="\${2:-anonymous}" branch="\${3:-}" n
   gp_ensure_steamcmd
@@ -178,7 +192,7 @@ gp_steam_app() {
   for n in 1 2 3; do
     gp_log "Installing Steam app $appid (attempt $n, this can take a while)"
     gp_steamcmd "\${args[@]}" && [ -d "$GP_SERVER_DIR/steamapps" ] && break
-    [ "$n" = 3 ] && { gp_steam_logs; gp_die "SteamCMD failed for app $appid"; }
+    [ "$n" = 3 ] && { gp_steam_logs; gp_steam_probe; gp_die "SteamCMD failed for app $appid"; }
     sleep 3
   done
   # SteamCMD ships its own runtime libs; make them discoverable for the server.
@@ -208,6 +222,19 @@ gp_workshop_item() {
 cd "$GP_SERVER_DIR" || gp_die "Server directory is missing"
 `;
 
+/** A resolver's JSON file list; entries that would leave the server folder are dropped. */
+function parseList(value) {
+  let list = [];
+  try {
+    list = JSON.parse(value || '[]');
+  } catch {
+    return [];
+  }
+  return (Array.isArray(list) ? list : []).filter(
+    (f) => f && typeof f.url === 'string' && /^https:\/\//.test(f.url) && typeof f.path === 'string' && !f.path.split(/[\\/]/).includes('..') && !/^[\\/]|^[a-z]:/i.test(f.path)
+  );
+}
+
 function shellQuote(value) {
   return `'${String(value).replace(/'/g, `'\\''`)}'`;
 }
@@ -232,7 +259,31 @@ function stepToShell(step, vars) {
       return `gp_workshop_item ${shellQuote(val(step.appid))} ${shellQuote(val(step.item))} ${shellQuote(val(step.dest))}`;
 
     case 'download':
-      return `gp_fetch ${shellQuote(val(step.url))} ${shellQuote(val(step.dest || 'download.bin'))}`;
+      return `gp_fetch ${shellQuote(val(step.url))} ${shellQuote(val(step.dest || 'download.bin'))}${
+        step.userAgent ? ` ${shellQuote(val(step.userAgent))}` : ''
+      }`;
+
+    case 'fetchlist': {
+      // A JSON list of {url, path} worked out by a resolver (e.g. a modpack's mods).
+      const list = parseList(val(step.list));
+      if (!list.length) return `gp_log ${shellQuote('Nothing to download')}`;
+      return list.map((f) => `gp_fetch ${shellQuote(f.url)} ${shellQuote(f.path)}`).join('\n');
+    }
+
+    case 'copy': {
+      // Copy a file or a folder's contents; a missing source is skipped.
+      const from = shellQuote(val(step.from));
+      const to = shellQuote(val(step.to || '.'));
+      return `if [ -d ${from} ]; then mkdir -p ${to}; cp -rf ${from}/. ${to}/; elif [ -e ${from} ]; then mkdir -p "$(dirname ${to})"; cp -f ${from} ${to}; fi`;
+    }
+
+    case 'remove':
+      return `rm -rf ${[].concat(step.path || step.paths || []).map((p) => shellQuote(val(p))).join(' ')}`;
+
+    case 'run': {
+      const command = val(step.command || '').trim();
+      return command ? `${command} || gp_die ${shellQuote(`${step.label || 'The command'} failed`)}` : 'true';
+    }
 
     case 'extract':
       return `gp_extract ${shellQuote(val(step.file))} ${shellQuote(val(step.dest || '.'))}${
@@ -295,4 +346,4 @@ function buildInstallScript(template, serverDir, vars, options = {}) {
   return { script, env };
 }
 
-module.exports = { buildInstallScript };
+module.exports = { buildInstallScript, parseList };

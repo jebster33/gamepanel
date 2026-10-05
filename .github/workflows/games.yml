@@ -76,13 +76,17 @@ jobs:
       matrix:
         template: ${{ fromJson(needs.plan.outputs.windows) }}
     steps:
+      - name: Show free disk space
+        run: Get-PSDrive -PSProvider FileSystem | Format-Table Name, @{n='FreeGB';e={[math]::Round($_.Free/1GB)}}
+      - run: New-Item -ItemType Directory -Force C:/gp-smoke | Out-Null
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      # D: (runner.temp) is small on Windows runners; C: has room for big games.
       - name: Deploy, boot and stop ${{ matrix.template }}
         env:
-          GP_SMOKE_ROOT: ${{ runner.temp }}
+          GP_SMOKE_ROOT: C:/gp-smoke
         run: node test/smoke.js --template=${{ matrix.template }}
       - uses: actions/upload-artifact@v4
         if: always()

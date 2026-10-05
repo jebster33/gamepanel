@@ -58,5 +58,26 @@
   "logPatterns": {
     "ready": "Server is ready|Game state is now|SocketSubsystem"
   },
-  "image": "cm2network/steamcmd:root"
+  "image": "cm2network/steamcmd:root",
+  "platforms": [
+    "linux",
+    "windows"
+  ],
+  "windows": {
+    "install": [
+      {
+        "type": "steamcmd",
+        "appid": "1690800",
+        "label": "Install Satisfactory dedicated server"
+      },
+      {
+        "type": "vcredist",
+        "label": "Install the Visual C++ runtime"
+      }
+    ],
+    "startCommand": "FactoryServer.exe -Port={{PORT}} -log -unattended",
+    "tailFiles": [
+      "FactoryGame/Saved/Logs/FactoryGame.log"
+    ]
+  }
 }

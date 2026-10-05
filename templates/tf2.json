@@ -92,5 +92,29 @@
     "join": "\"([^<]+)<[0-9]+><[^>]*><>\" entered the game",
     "leave": "\"([^<]+)<[0-9]+><[^>]*><[^>]*>\" disconnected"
   },
-  "image": "cm2network/steamcmd:root"
+  "image": "cm2network/steamcmd:root",
+  "platforms": [
+    "linux",
+    "windows"
+  ],
+  "windows": {
+    "install": [
+      {
+        "type": "steamcmd",
+        "appid": "232250",
+        "label": "Install Team Fortress 2 dedicated server"
+      },
+      {
+        "type": "vcredist",
+        "label": "Install the Visual C++ runtime"
+      }
+    ],
+    "startCommand": "srcds.exe -console -nocrashdialog -condebug -game tf -port {{PORT}} +tv_port {{PORT_TV}} +maxplayers {{MAX_PLAYERS}} +map {{MAP}} +sv_setsteamaccount \"{{GSLT}}\"",
+    "tailFiles": [
+      "tf/console.log"
+    ],
+    "consoleInput": false,
+    "stopCommand": null,
+    "stopRconCommand": "quit"
+  }
 }
