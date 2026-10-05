@@ -16,7 +16,7 @@ export function renderConsoleTab(host, server) {
     <div class="console-wrap">
       <div class="console" id="console"></div>
       <form class="console-form" id="console-form">
-        <input id="console-input" placeholder="Type a command and press Enter…" autocomplete="off" spellcheck="false" />
+        <input id="console-input" placeholder="Type a command and press Enter. ↑ for history, Tab to complete" autocomplete="off" spellcheck="false" />
         <button class="btn" type="submit">Send</button>
       </form>
     </div>`;
@@ -40,18 +40,66 @@ export function renderConsoleTab(host, server) {
   $('#doctor').addEventListener('click', (event) => onDoctorClick(event, server));
   $('#share-log').addEventListener('click', () => shareLog(server));
 
+  const history = loadHistory(server.id);
+  let cursor = history.length;
+  $('#console-input').addEventListener('keydown', (event) => {
+    const input = event.currentTarget;
+    if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+      if (!history.length) return;
+      event.preventDefault();
+      cursor = Math.max(0, Math.min(history.length, cursor + (event.key === 'ArrowUp' ? -1 : 1)));
+      input.value = history[cursor] || '';
+      input.setSelectionRange(input.value.length, input.value.length);
+    } else if (event.key === 'Tab' && input.value) {
+      // Finish the last word: an online player's name, or a common command.
+      const live = state.servers.find((s) => s.id === server.id);
+      const words = input.value.split(' ');
+      const last = words.at(-1).toLowerCase();
+      if (!last) return;
+      const pool = words.length === 1 ? [...new Set([...history.map((h) => h.split(' ')[0]), ...COMMON])] : live?.playerList || [];
+      const match = pool.find((w) => w.toLowerCase().startsWith(last) && w.toLowerCase() !== last);
+      if (!match) return;
+      event.preventDefault();
+      words[words.length - 1] = match;
+      input.value = `${words.join(' ')}${words.length === 1 ? ' ' : ''}`;
+    }
+  });
+
   $('#console-form').addEventListener('submit', async (event) => {
     event.preventDefault();
     const input = $('#console-input');
     const command = input.value.trim();
     if (!command) return;
     input.value = '';
+    if (history.at(-1) !== command) history.push(command);
+    if (history.length > 100) history.splice(0, history.length - 100);
+    cursor = history.length;
+    saveHistory(server.id, history);
     try {
       await api(`/api/servers/${server.id}/command`, { method: 'POST', body: { command } });
     } catch (err) {
       toast(err.message, 'error');
     }
   });
+}
+
+// Tab-completed when the line has a single word.
+const COMMON = ['say', 'list', 'whitelist', 'op', 'deop', 'kick', 'ban', 'pardon', 'tp', 'give', 'gamemode', 'time', 'weather', 'difficulty', 'save-all', 'stop', 'help'];
+
+function loadHistory(id) {
+  try {
+    return JSON.parse(localStorage.getItem(`gp-cmd-${id}`) || '[]').slice(-100);
+  } catch {
+    return [];
+  }
+}
+
+function saveHistory(id, list) {
+  try {
+    localStorage.setItem(`gp-cmd-${id}`, JSON.stringify(list));
+  } catch {
+    /* private mode */
+  }
 }
 
 export function handleConsoleMessage(msg) {
