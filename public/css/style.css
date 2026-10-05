@@ -1832,7 +1832,7 @@ tbody tr:hover {
   margin-bottom: 22px;
 }
 .auth-brand img {
-  height: 36px;
+  height: 44px;
   width: auto;
   margin-bottom: 14px;
 }
@@ -1971,6 +1971,9 @@ tbody tr:hover {
   }
   .tile-value {
     font-size: 21px;
+  }
+  .tile canvas {
+    display: none;
   }
   .tile [data-host="net"] {
     white-space: normal !important;
