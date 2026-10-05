@@ -74,7 +74,7 @@
       }
     }
   ],
-  "startCommand": "ZOMBOID_HOME={{SERVER_DIR}}/Zomboid ./start-server.sh -cachedir={{SERVER_DIR}}/Zomboid -adminpassword \"{{ADMIN_PASSWORD}}\" -port {{PORT}}",
+  "startCommand": "sed -i -E \"s/-Xmx[0-9]+[mMgG]/-Xmx{{SERVER_MEMORY}}m/\" ProjectZomboid64.json; ZOMBOID_HOME={{SERVER_DIR}}/Zomboid ./start-server.sh -cachedir={{SERVER_DIR}}/Zomboid -adminpassword \"{{ADMIN_PASSWORD}}\" -port {{PORT}}",
   "stopCommand": "quit",
   "stopTimeout": 90,
   "query": {
