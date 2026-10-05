@@ -5,7 +5,8 @@ const { verifyPassword } = require('../../core/auth');
 const { clientIp, isSecure } = require('../helpers');
 const VERSION = require('../../../package.json').version;
 
-module.exports = (router, { store, auth }) => {
+module.exports = (router, app) => {
+  const { store, auth } = app;
   router.get(
     '/api/status',
     () => ({ ok: true, version: VERSION, panelName: store.state.settings.panelName, setupRequired: auth.needsSetup() }),
@@ -125,4 +126,18 @@ module.exports = (router, { store, auth }) => {
     requirePassword(user, body.password);
     return auth.newRecoveryCodes(user.id);
   });
+
+  /* ------------------------------------------------- phone notifications -- */
+
+  // Started with the API so events reach phones from the first minute.
+  const service = require('../../features/push').init(app);
+  const push = () => service;
+
+  router.get('/api/push', ({ user, url }) => ({ publicKey: push().keys.publicKey, ...push().status(user, url.searchParams.get('endpoint') || '') }));
+
+  router.post('/api/push', ({ user, body }) => push().subscribe(user, body?.subscription, body?.events, body?.device));
+
+  router.delete('/api/push', ({ user, body }) => push().unsubscribe(user, String(body?.endpoint || '')));
+
+  router.post('/api/push/test', ({ user, body }) => push().test(user, String(body?.endpoint || '')));
 };

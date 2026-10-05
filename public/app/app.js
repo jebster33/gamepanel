@@ -427,6 +427,7 @@ function homeScreen(el) {
     sheet({
       title: `Signed in as ${state.user.username}`,
       actions: [
+        { label: 'Notifications', run: () => push(notificationsScreen) },
         { label: 'Open the full panel', run: () => (location.href = '/') },
         {
           label: 'Sign out',
@@ -778,6 +779,100 @@ function playerSheet(server, name, online) {
   sheet({ title: name, actions });
 }
 
+/* ---------------------------------------------------------- notifications */
+
+const standalone = () => window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+
+function notificationsScreen(el) {
+  el.innerHTML = `
+    <div class="topbar">
+      <button class="glass glass-btn" id="n-back" aria-label="Back">${ICON.back}</button>
+      <div class="glass title-capsule"><span>Notifications</span></div>
+      <span></span>
+    </div>
+    <div class="scroll"><h1 class="large-title">Notifications</h1><div id="n-body"></div></div>`;
+  $('#n-back', el).addEventListener('click', pop);
+  const body = $('#n-body', el);
+
+  const supported = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+  if (!supported || (/iPhone|iPad/.test(navigator.userAgent) && !standalone())) {
+    body.innerHTML = `<p class="subtitle" style="margin-top:-6px">Get a buzz when a server crashes or a backup fails.</p>
+      <div class="group flat"><div class="row"><span class="row-main"><div class="row-title" style="white-space:normal">Add GamePanel to your Home Screen first</div>
+      <div class="row-sub" style="white-space:normal">In Safari tap Share, then Add to Home Screen. Open it from there and come back here. Needs iOS 16.4 or newer.</div></span></div></div>`;
+    return {};
+  }
+
+  let endpoint = '';
+  const draw = async () => {
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    endpoint = sub?.endpoint || '';
+    const info = await api(`/api/push?endpoint=${encodeURIComponent(endpoint)}`);
+    const on = Boolean(sub && info.subscribed);
+    body.innerHTML = `
+      <p class="subtitle" style="margin-top:-6px">${Notification.permission === 'denied' ? 'Notifications are blocked. Turn them on in Settings, Notifications, GamePanel.' : 'Get a buzz when something needs you.'}</p>
+      <div class="group flat"><label class="row"><span class="row-main"><div class="row-title">Allow notifications</div></span>
+        <input type="checkbox" class="ios-switch" id="n-on" ${on ? 'checked' : ''} ${Notification.permission === 'denied' ? 'disabled' : ''}/></label></div>
+      ${
+        on
+          ? `<div class="section-label">Tell me when</div><div class="group flat">${Object.entries(info.choices)
+              .map(([id, label]) => `<label class="row"><span class="row-main"><div class="row-title" style="font-weight:500">${esc(label)}</div></span><input type="checkbox" class="ios-switch" data-ev="${esc(id)}" ${info.events.includes(id) ? 'checked' : ''}/></label>`)
+              .join('')}</div>
+             <div class="section-label"></div><div class="group flat"><button class="row" id="n-test"><span class="row-main"><div class="row-title lime">Send a test notification</div></span></button></div>`
+          : ''
+      }`;
+
+    $('#n-on', el).addEventListener('change', async (e) => {
+      e.target.disabled = true;
+      try {
+        if (e.target.checked) {
+          if ((await Notification.requestPermission()) !== 'granted') throw new Error('Notifications were not allowed');
+          const fresh =
+            (await reg.pushManager.getSubscription()) ||
+            (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: Uint8Array.from(atob(info.publicKey.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0)) }));
+          await api('/api/push', { method: 'POST', body: { subscription: fresh.toJSON(), device: /iPhone/.test(navigator.userAgent) ? 'iPhone' : navigator.platform } });
+          toast('Notifications on');
+        } else {
+          const current = await reg.pushManager.getSubscription();
+          if (current) {
+            await api('/api/push', { method: 'DELETE', body: { endpoint: current.endpoint } });
+            await current.unsubscribe();
+          }
+          toast('Notifications off');
+        }
+      } catch (err) {
+        toast(err.message, 'error');
+      }
+      draw();
+    });
+    body.querySelectorAll('[data-ev]').forEach((box) =>
+      box.addEventListener('change', async () => {
+        const events = [...body.querySelectorAll('[data-ev]:checked')].map((b) => b.dataset.ev);
+        const current = await reg.pushManager.getSubscription();
+        await api('/api/push', { method: 'POST', body: { subscription: current.toJSON(), events } }).catch((err) => toast(err.message, 'error'));
+      })
+    );
+    $('#n-test', el)?.addEventListener('click', () =>
+      api('/api/push/test', { method: 'POST', body: { endpoint } })
+        .then(() => toast('Sent. It should arrive in a moment.'))
+        .catch((err) => toast(err.message, 'error'))
+    );
+  };
+  draw().catch((err) => (body.innerHTML = `<div class="empty">${esc(err.message)}</div>`));
+  return {};
+}
+
+/** Open a server from a notification tap (/app/#server/<id>). */
+function openFromHash(hash = location.hash) {
+  const m = String(hash).match(/#server\/([\w-]+)/);
+  if (!m || !state.servers.some((s) => s.id === m[1])) return;
+  history.replaceState(null, '', '/app/');
+  push((s) => serverScreen(s, m[1]));
+}
+navigator.serviceWorker?.addEventListener('message', (event) => {
+  if (event.data?.type === 'open' && state.user) openFromHash(new URL(event.data.url, location.origin).hash);
+});
+
 /* ------------------------------------------------------------------ boot */
 
 async function start() {
@@ -785,6 +880,7 @@ async function start() {
   state.servers = servers;
   connect();
   resetStack(homeScreen);
+  openFromHash();
 }
 
 (async () => {
