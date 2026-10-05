@@ -89,3 +89,20 @@ test('crossplay: Geyser port is patched only inside the bedrock block', () => {
   const text = 'bedrock:\n  address: 0.0.0.0\n  port: 19132\nremote:\n  port: 25565\n';
   assert.strictEqual(patchGeyserPort(text, 19133), 'bedrock:\n  address: 0.0.0.0\n  port: 19133\nremote:\n  port: 25565\n');
 });
+
+test('admins without two-factor only reach their account when it is required', () => {
+  const { Auth } = require('../../server/core/auth');
+  const store = { state: { users: [], settings: { requireAdmin2fa: true } }, save() {}, addEvent() {} };
+  const auth = new Auth(store, 'x'.repeat(32));
+  auth.createUser({ username: 'chris', password: 'correct horse battery', role: 'admin' });
+  const { token } = auth.login('chris', 'correct horse battery', '1.1.1.1');
+  const req = (url) => ({ method: 'GET', url, headers: { cookie: `gp_session=${token}`, authorization: `Bearer ${token}` } });
+  assert.ok(auth.userFromRequest(req('/api/auth/me')));
+  assert.throws(() => auth.userFromRequest(req('/api/servers')), /Two-factor sign-in is required/);
+  store.state.settings.requireAdmin2fa = false;
+  assert.ok(auth.userFromRequest(req('/api/servers')));
+  const u = auth.users[0];
+  assert.strictEqual(auth.noteSignInAddress(u, '1.1.1.1'), false);
+  assert.strictEqual(auth.noteSignInAddress(u, '2.2.2.2'), true);
+  assert.strictEqual(auth.noteSignInAddress(u, '1.1.1.1'), false);
+});

@@ -329,9 +329,30 @@ class Auth {
       // Account changes (passwords, 2FA, keys, users) need a person signed in, not a script.
       const path = new URL(req.url, 'http://localhost').pathname;
       if (req.method !== 'GET' && /^\/api\/(auth|users)(\/|$)/.test(path)) return null;
-      return this.userFromApiKey(token, req.method);
+      return this.requireTwoFactor(this.userFromApiKey(token, req.method), req);
     }
-    return this.userFromToken(token);
+    return this.requireTwoFactor(this.userFromToken(token), req);
+  }
+
+  /**
+   * With "require two-factor for administrators" on, an admin without it can
+   * only reach their own account pages until they set it up.
+   */
+  requireTwoFactor(user, req) {
+    if (!user || user.role !== 'admin' || user.totp?.secret || !this.store.state.settings?.requireAdmin2fa) return user;
+    const path = new URL(req.url, 'http://localhost').pathname;
+    if (!path.startsWith('/api/') || path.startsWith('/api/auth/')) return user;
+    fail(403, 'Two-factor sign-in is required for administrators. Set it up on your Account page first.');
+  }
+
+  /** Remember where an account signs in from; true the first time an address is seen. */
+  noteSignInAddress(user, ip) {
+    if (!ip) return false;
+    user.knownIps = user.knownIps || [];
+    const known = user.knownIps.includes(ip);
+    user.knownIps = [ip, ...user.knownIps.filter((x) => x !== ip)].slice(0, 20);
+    this.store.save();
+    return !known && user.knownIps.length > 1;
   }
 
   /* API keys: for scripts and bots. Stored hashed; read-only keys can only GET. */

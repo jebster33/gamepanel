@@ -21,6 +21,8 @@ const TITLES = {
   'server.resource_alert': 'Resource alert',
   'panel.disk_low': 'Disk almost full',
   'user.api_key': 'API key created',
+  'user.new_ip': 'Sign-in from a new address',
+  'user.policy': 'Sign-in rules changed',
   'backup.created': 'Backup created',
   'backup.failed': 'Backup failed',
   'backup.uploaded': 'Backup copied to the cloud',

@@ -51,16 +51,23 @@ module.exports = (router, app) => {
 
   function finishLogin(req, res, { token, user }, ip) {
     res.setHeader('Set-Cookie', auth.cookieHeader(token, isSecure(req)));
+    const record = auth.users.find((u) => u.id === user.id);
+    const newAddress = record ? auth.noteSignInAddress(record, ip) : false;
     const event = store.addEvent('user.login', `${user.username} signed in`, { ip });
     // A location lookup must never slow a sign-in down; fill it in afterwards.
     require('../../features/geoip')
       .locate(ip, { enabled: store.state.settings.geoLookup !== false })
+      .catch(() => null)
       .then((location) => {
-        if (!location) return;
-        event.location = location;
-        store.save();
-      })
-      .catch(() => {});
+        if (location) {
+          event.location = location;
+          store.save();
+        }
+        // Signing in from somewhere new is worth a ping (Discord, phone).
+        if (newAddress) {
+          store.addEvent('user.new_ip', `${user.username} signed in from a new address: ${ip}${location ? ` (${location})` : ''}`, { ip });
+        }
+      });
     return { ok: true, user, token };
   }
 

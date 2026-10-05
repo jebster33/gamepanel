@@ -18,6 +18,7 @@ const EVENT_LABELS = {
   'server.resource_alert': 'A server goes over its CPU, memory or disk alert',
   'panel.disk_low': "The panel's disk is almost full",
   'user.lockout': 'Repeated failed sign-ins',
+  'user.new_ip': 'Someone signs in from a new address',
   'backup.created': 'A backup is made',
   'backup.failed': 'A backup fails',
   'backup.uploaded': 'A backup is copied to the cloud',

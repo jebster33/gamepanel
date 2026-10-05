@@ -22,7 +22,7 @@ const b64u = (buf) => Buffer.from(buf).toString('base64url');
 const fromB64u = (s) => Buffer.from(String(s), 'base64url');
 
 // What a phone hears about unless its owner picks otherwise.
-const DEFAULT_EVENTS = ['server.crashed', 'server.install_failed', 'backup.failed', 'backup.upload_failed', 'user.lockout', 'schedule.failed', 'server.resource_alert', 'panel.disk_low'];
+const DEFAULT_EVENTS = ['server.crashed', 'server.install_failed', 'backup.failed', 'backup.upload_failed', 'user.lockout', 'user.new_ip', 'schedule.failed', 'server.resource_alert', 'panel.disk_low'];
 const EVENT_CHOICES = {
   'server.crashed': 'A server crashes',
   'server.ready': 'A server comes online',
@@ -36,6 +36,7 @@ const EVENT_CHOICES = {
   'panel.disk_low': "The panel's disk is almost full",
   'user.login': 'Someone signs in',
   'user.lockout': 'Repeated failed sign-ins',
+  'user.new_ip': 'Someone signs in from a new address',
 };
 
 /* ------------------------------------------------------------- crypto -- */
