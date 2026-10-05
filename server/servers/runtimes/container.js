@@ -15,6 +15,11 @@ const { logger, interpolate } = require('../../core/util');
 const { STATUS, CONTAINER_DIR } = require('../constants');
 const { docker } = require('./docker-api');
 
+// Newer Docker hands containers an "infinite" open-file limit (about a
+// billion). 32-bit programs such as SteamCMD fail on it, with errors like
+// "Disk write failure", so containers get a large but ordinary limit.
+const FILE_LIMITS = [{ Name: 'nofile', Soft: 65536, Hard: 65536 }];
+
 const DEFAULT_IMAGE = 'debian:bookworm-slim';
 
 const hostUid = () => (typeof process.getuid === 'function' ? process.getuid() : 0);
@@ -152,6 +157,7 @@ module.exports = {
           Binds: [`${bindSource(server.dir)}:${CONTAINER_DIR}:rw`],
           NetworkMode: 'bridge',
           AutoRemove: false,
+          Ulimits: FILE_LIMITS,
           LogConfig: { Type: 'json-file', Config: { 'max-size': '10m', 'max-file': '1' } },
         },
       });
@@ -238,6 +244,7 @@ module.exports = {
         NetworkMode: network,
         RestartPolicy: { Name: 'no' }, // the panel handles restarts and crash counting
         LogConfig: { Type: 'json-file', Config: { 'max-size': '20m', 'max-file': '2' } },
+        Ulimits: FILE_LIMITS,
         SecurityOpt: ['no-new-privileges'],
         CapDrop: ['SYS_ADMIN', 'SYS_MODULE', 'NET_ADMIN'],
         // No PidsLimit: JVM and Unreal servers run hundreds of threads.

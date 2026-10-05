@@ -154,7 +154,12 @@ gp_ensure_steamcmd() {
 gp_steamcmd() {
   local home="$GP_STEAMCMD/home"
   mkdir -p "$home"
-  HOME="$home" "$GP_STEAMCMD/steamcmd.sh" "$@"
+  # 32-bit SteamCMD breaks on huge open-file limits ("Disk write failure"),
+  # which newer Docker and systemd hand out; run it in a subshell with a sane one.
+  (
+    if [ "$(ulimit -n)" = unlimited ] || [ "$(ulimit -n)" -gt 65536 ]; then ulimit -n 65536 2>/dev/null || ulimit -Sn 65536 2>/dev/null || true; fi
+    HOME="$home" "$GP_STEAMCMD/steamcmd.sh" "$@"
+  )
 }
 
 # Print the end of SteamCMD's own logs: they hold the real reason behind
@@ -171,7 +176,7 @@ gp_steam_logs() {
 # When an install fails, say whether SteamCMD can write anywhere at all: a
 # tiny app into a scratch folder, and the same into the server folder.
 gp_steam_probe() {
-  gp_warn "Checking where SteamCMD can install (user $(id -u):$(id -g))"
+  gp_warn "Checking where SteamCMD can install (user $(id -u):$(id -g), open-file limit $(ulimit -n))"
   df -h "$GP_SERVER_DIR" /tmp 2>/dev/null | sed 's/^/  /'
   local dir
   for dir in /tmp/gp-steam-probe "$GP_SERVER_DIR/.gp-steam-probe"; do
