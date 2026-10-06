@@ -114,7 +114,7 @@ async function apply({ manager, store, scheduler }, server) {
   }
   if (pending.gameSettings) {
     try {
-      require('../games/settings').writeGameSettings(manager, server, pending.gameSettings, `setup: ${server.setup.name}`);
+      require('../games/settings').writeGameSettings(manager, server, pending.gameSettings, { actor: `setup: ${server.setup.name}` });
       say(`set ${Object.keys(pending.gameSettings).join(', ')}`);
     } catch (err) {
       problems.push(`game settings: ${err.message}`);

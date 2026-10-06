@@ -24,17 +24,12 @@ test('memory changes and disk use count against the owner', () => {
   assert.doesNotThrow(() => quotas.checkDisk(m, { id: 'z' }, [user]), 'servers without an owner are not counted');
 });
 
-test('names and variables cannot reach the shell', () => {
-  assert.doesNotThrow(() => quotas.assertSafeInput({ name: 'Survival SMP #2', vars: { WORLD_NAME: 'My World-1' } }));
-  assert.throws(() => quotas.assertSafeInput({ name: 'x"; rm -rf ~; "' }), /server name/);
-  assert.throws(() => quotas.assertSafeInput({ vars: { SERVER_PASSWORD: '$(id)' } }), /SERVER_PASSWORD/);
-  // A value an administrator set may be saved back unchanged.
-  assert.doesNotThrow(() => quotas.assertSafeInput({ vars: { SERVER_PASSWORD: 'pa$$' } }, { vars: { SERVER_PASSWORD: 'pa$$' } }));
-});
-
-test('Java arguments: tuning flags yes, flags that run programs no', () => {
-  assert.doesNotThrow(() => quotas.assertSafeInput({ vars: { JAVA_ARGS: '-XX:+UseG1GC -XX:MaxGCPauseMillis=200 -Xms1G -Dfile.encoding=UTF-8' } }));
-  assert.throws(() => quotas.assertSafeInput({ vars: { JAVA_ARGS: '-XX:OnOutOfMemoryError=wget' } }), /JVM tuning/);
-  assert.throws(() => quotas.assertSafeInput({ vars: { JAVA_ARGS: '-javaagent:/tmp/x.jar' } }), /JVM tuning/);
-  assert.throws(() => quotas.assertSafeInput({ vars: { JAVA_ARGS: '@/tmp/args' } }), /JVM tuning/);
+test('self-service deploys use the same rules as sub-user edits', () => {
+  const { checkPatch } = require('../../server/servers/untrusted');
+  const template = { startCommand: './run -name "{{SERVER_NAME}}" {{JAVA_ARGS}}', variables: [{ name: 'WORLD', default: 'w' }, { name: 'JAVA_ARGS', default: '-Xmx2G' }] };
+  const base = { name: '', vars: { WORLD: 'w', JAVA_ARGS: '-Xmx2G' } };
+  assert.doesNotThrow(() => checkPatch(template, { name: 'Survival SMP #2', vars: { WORLD: 'My World-1', JAVA_ARGS: '-Xmx2G' } }, base));
+  assert.throws(() => checkPatch(template, { name: 'x"; rm -rf ~; "' }, base), /server name/);
+  assert.throws(() => checkPatch(template, { vars: { JAVA_ARGS: '-XX:OnOutOfMemoryError=wget' } }, base), /Only administrators/);
+  assert.throws(() => checkPatch(template, { vars: { LD_PRELOAD: '/tmp/x.so' } }, base), /not a setting/);
 });

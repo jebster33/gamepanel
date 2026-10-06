@@ -42,6 +42,7 @@ const { playerCommands, playerDetails } = require('../games/players');
 const { listsFor } = require('../games/player-lists');
 const { Ring } = require('../features/metrics');
 const { docker } = require('./runtimes/docker-api');
+const { checkPatch } = require('./untrusted');
 
 const { STATUS, CONTAINER_DIR } = require('./constants');
 const secrets = require('../core/secrets');
@@ -434,9 +435,19 @@ class ServerManager extends EventEmitter {
     return server;
   }
 
-  update(id, patch) {
+  /** `trusted` is false for changes a non-administrator asked for (see untrusted.js). */
+  update(id, patch, { trusted = true } = {}) {
     const server = this.require(id);
+    if (!trusted) checkPatch(this.template(server), patch, server);
     for (const key of EDITABLE) if (patch[key] !== undefined) server[key] = patch[key];
+    if (patch.name !== undefined) server.name = String(patch.name).trim().slice(0, 60) || server.name;
+    // These end up in start commands as {{MAX_PLAYERS}} and friends: numbers only.
+    for (const key of ['maxPlayers', 'cpuLimit', 'backupRetention']) {
+      if (patch[key] === undefined) continue;
+      const n = Number(patch[key]);
+      if (!Number.isFinite(n) || n < 0) fail(400, `${key} must be a number`);
+      server[key] = key === 'cpuLimit' ? n : Math.round(n);
+    }
     if (patch.startCommand === '') server.startCommand = null;
     if (patch.memory !== undefined) {
       const memory = Math.max(256, Number(patch.memory) || server.memory);

@@ -67,7 +67,8 @@ async function begin(manager, store, server, event, now = Date.now()) {
   const fields = fieldsOf(manager, server);
   const previous = {};
   for (const key of Object.keys(event.changes)) if (fields.has(key)) previous[key] = fields.get(key).value;
-  gameSettings.writeGameSettings(manager, server, event.changes, `event: ${event.name}`);
+  // What a non-administrator set up is checked like any of their edits (servers/untrusted.js).
+  gameSettings.writeGameSettings(manager, server, event.changes, { trusted: event.trusted !== false, actor: `event: ${event.name}` });
   event.active = { startedAt: now, endsAt: now + event.hours * 3_600_000, previous };
   store.save();
   store.addEvent('server.event_started', `${event.name} started on ${server.name}`, { serverId: server.id });
@@ -84,7 +85,8 @@ async function finish(manager, store, server, event) {
   event.active = null;
   store.save();
   try {
-    if (Object.keys(previous).length) gameSettings.writeGameSettings(manager, server, previous, `event: ${event.name} ended`);
+    // Putting back what was there before is always allowed.
+    if (Object.keys(previous).length) gameSettings.writeGameSettings(manager, server, previous, { actor: `event: ${event.name} ended` });
   } catch (err) {
     store.addEvent('schedule.failed', `${event.name} on ${server.name} could not put the old settings back: ${err.message}`, { serverId: server.id });
     return event;
@@ -115,18 +117,21 @@ function list(server) {
   return (server.events || []).map((e) => ({ ...e, nextRun: e.enabled && !e.active ? nextRun(e.cron) : null }));
 }
 
-function add(manager, store, server, input) {
-  const event = { id: uid(6), ...validate(input, fieldsOf(manager, server)), active: null, createdAt: Date.now() };
+/** `trusted` is false when a non-administrator made the event: its values are then checked like their own edits. */
+function add(manager, store, server, input, { trusted = true } = {}) {
+  const event = { id: uid(6), ...validate(input, fieldsOf(manager, server)), active: null, createdAt: Date.now(), trusted };
   server.events = [...(server.events || []), event];
   store.save();
   return event;
 }
 
-function update(manager, store, server, id, input) {
+function update(manager, store, server, id, input, { trusted = true } = {}) {
   const event = (server.events || []).find((e) => e.id === id);
   if (!event) fail(404, 'Event not found');
   if (event.active && input.changes) fail(409, 'End the event before changing what it sets');
   Object.assign(event, validate({ ...event, ...input }, input.changes ? fieldsOf(manager, server) : null));
+  // Once a non-administrator has changed what it sets, it is theirs.
+  if (input.changes && !trusted) event.trusted = false;
   store.save();
   return event;
 }

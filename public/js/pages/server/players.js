@@ -131,7 +131,7 @@ async function onAction(event) {
   if (!btn) return;
   const serverId = current.server;
   const { playerAction: action, player } = btn.dataset;
-  if (action === 'ban' && !(await confirmModal(`Ban ${player}`, `${player} is removed and cannot join again until unbanned.`, 'Ban'))) return;
+  if (action === 'ban' && !(await confirmModal(`Ban ${esc(player)}`, `${player} is removed and cannot join again until unbanned.`, 'Ban'))) return;
   btn.disabled = true;
   try {
     await api(`/api/servers/${serverId}/players/action`, { method: 'POST', body: { action, name: player } });

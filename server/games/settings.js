@@ -291,7 +291,7 @@ module.exports = {
   },
 
   /** Save changed keys. Mirrored keys (MOTD, max players…) update their variable too, or the next start would undo them. */
-  writeGameSettings(manager, server, changes, actor) {
+  writeGameSettings(manager, server, changes, { trusted = true, actor = 'panel' } = {}) {
     const template = manager.template(server);
     const file = template && settingsFileFor(template);
     if (!file) fail(400, 'This game has no settings file the panel can edit');
@@ -326,6 +326,10 @@ module.exports = {
       if (field.variable) varPatch[field.variable] = field.type === 'number' ? Number(value) : value;
     }
     if (!Object.keys(toWrite).length) return { ok: true, changed: 0 };
+    const patch = Object.keys(varPatch).length ? { vars: varPatch } : null;
+    if (patch && varPatch.MAX_PLAYERS !== undefined) patch.maxPlayers = Number(varPatch.MAX_PLAYERS);
+    // Refuse before touching the file, not halfway through.
+    if (patch && !trusted) require('../servers/untrusted').checkPatch(template, patch, server);
 
     const target = containedPath(server.dir, interpolate(file.path, manager.vars(server)));
     const raw = fs.readFileSync(target, 'utf8');
@@ -344,13 +348,9 @@ module.exports = {
       next = patchKeyValue(raw, toWrite, { section: file.section });
     }
     fs.writeFileSync(target, next);
-    require('../features/config-history').record(server.id, path.relative(server.dir, target), { before: raw, after: next, by: actor || 'panel', source: 'game settings' });
+    require('../features/config-history').record(server.id, path.relative(server.dir, target), { before: raw, after: next, by: actor, source: 'game settings' });
 
-    if (Object.keys(varPatch).length) {
-      const patch = { vars: varPatch };
-      if (varPatch.MAX_PLAYERS !== undefined) patch.maxPlayers = Number(varPatch.MAX_PLAYERS);
-      manager.update(server.id, patch);
-    }
+    if (patch) manager.update(server.id, patch, { trusted });
     return { ok: true, changed: Object.keys(toWrite).length };
   },
 

@@ -195,6 +195,7 @@ async function workshopItem({ appid, item, dest, login = 'anonymous', dir, log, 
 /** A shared Temurin JRE per major version, downloaded on first use. */
 async function ensureJava(version, log) {
   const want = String(version || '21');
+  if (!/^\d{1,3}$/.test(want)) throw new Error(`"${want}" is not a Java version`);
   const home = path.join(config.toolsDir, `java-${want}`);
   const binary = path.join(home, 'bin', isWindows ? 'java.exe' : 'java');
   if (fs.existsSync(binary)) {

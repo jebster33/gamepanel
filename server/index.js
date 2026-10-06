@@ -11,7 +11,7 @@ const path = require('path');
 
 const { config, ensureDirs, loadSecret } = require('./core/config');
 const { logger, json, HttpError } = require('./core/util');
-const { describeHost } = require('./core/platform');
+const { describeHost, isWindows, run } = require('./core/platform');
 const { Store } = require('./core/store');
 const { Auth } = require('./core/auth');
 const { WebSocketServer } = require('./core/ws');
@@ -21,7 +21,7 @@ const { HostMetrics, stopSampler } = require('./features/metrics');
 const { Scheduler } = require('./features/scheduler');
 const { Notifier } = require('./features/notify');
 const { Bridge } = require('./features/bridge');
-const { clientIp } = require('./api/helpers');
+const { clientIp, redactServer, scopeBroadcast, sameOrigin } = require('./api/helpers');
 const { createApi, VERSION } = require('./api');
 
 const MIME = {
@@ -42,7 +42,9 @@ const { Nodes } = require('./features/nodes');
 async function main() {
   ensureDirs();
   const secret = loadSecret();
-  const store = new Store(config.stateFile);
+  // Windows: the state file is written in run\ (locked down below) and renamed into place, so it keeps that ACL.
+  const store = new Store(config.stateFile, isWindows ? { tmpDir: config.runDir } : {});
+  if (isWindows && config.service) require('./core/acl').hardenWindowsData(config.dataDir, { run, logger, store }).catch((err) => logger.warn('Could not restrict the data folder:', err.message));
   const auth = new Auth(store, secret);
   const templates = new TemplateRegistry();
   const wss = new WebSocketServer();
@@ -54,6 +56,8 @@ async function main() {
   const bridge = new Bridge({ store, manager, secret });
   if (bridge.enabled) bridge.identity();
   const api = createApi({ store, auth, manager, templates, hostMetrics, scheduler, notifier, bridge, wss });
+  // Every broadcast is cut down to what each signed-in account may see.
+  wss.scope = (conn, topic, payload) => scopeBroadcast(auth, conn, topic, payload);
   require('./features/live-notifications').start({ store, auth, wss });
   require('./features/setups').start({ store, manager, scheduler });
 
@@ -177,6 +181,14 @@ async function main() {
       socket.destroy();
       return;
     }
+    // Browsers send the cookie with a WebSocket from any page on the same
+    // site (another port on this host, say), and the API's CSRF check does
+    // not cover upgrades: the page must be the panel's own.
+    if (!sameOrigin(req)) {
+      socket.write('HTTP/1.1 403 Forbidden\r\n\r\n');
+      socket.destroy();
+      return;
+    }
     const user = auth.userFromRequest(req);
     if (!user) {
       socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
@@ -186,16 +198,19 @@ async function main() {
     const conn = wss.handleUpgrade(req, socket, head);
     if (!conn) return;
     conn.user = user;
+    conn.epoch = user.sessionEpoch || 0;
     conn.subscriptions.add('servers');
     conn.subscriptions.add('stats');
     conn.subscriptions.add('system');
     conn.subscriptions.add('server:status');
 
     conn.send({ topic: 'hello', version: VERSION, user: auth.publicUser(user) });
-    conn.send({ topic: 'servers', servers: [...manager.servers.filter((s) => auth.canAccessServer(user, s.id)).map((s) => manager.publicServer(s)), ...(user.role === 'admin' ? nodes.remoteServers() : [])] });
+    conn.send({ topic: 'servers', servers: [...manager.servers.filter((s) => auth.canAccessServer(user, s.id)).map((s) => redactServer(auth, user, manager.publicServer(s))), ...(user.role === 'admin' ? nodes.remoteServers() : [])] });
 
     conn.on('message', async (msg) => {
       try {
+        // Deleted, or signed out everywhere since this socket opened.
+        if (!scopeBroadcast(auth, conn, 'session', {})) return;
         if (msg.type === 'subscribe' && Array.isArray(msg.topics)) {
           for (const topic of msg.topics) {
             // Console streams are per-server and access controlled.
