@@ -345,7 +345,7 @@ function info(backupDir, name) {
 
 function contents(backupDir, name) {
   const snap = openExisting(backupDir, name).readSnapshot(name);
-  return { entries: snap.entries.map((e) => ({ path: e.path, dir: e.type === 'dir', size: e.size || 0 })), truncated: false };
+  return { entries: snap.entries.map((e) => ({ path: e.path, dir: e.type === 'dir', size: e.size || 0, mtime: e.mtime || null })), truncated: false };
 }
 
 /** Write snapshot entries (all, or those under `paths`) into `target`. */

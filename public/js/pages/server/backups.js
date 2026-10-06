@@ -1,6 +1,7 @@
 import { api } from '../../core/api.js';
 import { $, esc, fmtBytes, fmtTime, icon, toast } from '../../core/util.js';
 import { confirmModal, openModal } from '../../ui/modal.js';
+import { openRestorePreview } from './restore-preview.js';
 
 /* --------------------------------------------------------------- backups */
 
@@ -76,16 +77,7 @@ export async function renderBackupsTab(host, server) {
   });
 
   host.querySelectorAll('[data-restore]').forEach((el) =>
-    el.addEventListener('click', async () => {
-      if (!(await confirmModal('Restore backup', 'This overwrites current files with the archive contents. The server must be stopped. Continue?')))
-        return;
-      try {
-        await api(`/api/servers/${server.id}/backups/${encodeURIComponent(el.dataset.restore)}/restore`, { method: 'POST', body: {} });
-        toast('Backup restored');
-      } catch (err) {
-        toast(err.message, 'error');
-      }
-    })
+    el.addEventListener('click', () => openRestorePreview(server, el.dataset.restore, () => renderBackupsTab(host, server)))
   );
 
   host.querySelectorAll('[data-check]').forEach((el) =>

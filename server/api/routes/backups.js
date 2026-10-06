@@ -89,13 +89,20 @@ module.exports = (router, { store, manager }, { requireAdmin, requireCap, server
       .catch(() => {});
   });
 
-  router.post('/api/servers/:id/backups/:name/restore', async ({ user, params }) => {
+  router.post('/api/servers/:id/backups/:name/restore', async ({ user, params, body }) => {
     requireAdmin(user);
     const server = manager.require(params.id);
     if (manager.isActive(server.id)) fail(409, 'Stop the server before restoring a backup');
-    await backups.restore(server, params.name);
-    store.addEvent('backup.restored', `Backup ${params.name} restored to ${server.name}`, { serverId: server.id });
-    return { ok: true };
+    const result = await require('../../features/restore-preview').restore(manager, server, params.name, { backupFirst: Boolean(body?.backupFirst), exact: Boolean(body?.exact) });
+    if (result.safety) store.addEvent('backup.created', `Backup ${result.safety} of ${server.name} made before a restore`, { serverId: server.id, backup: result.safety });
+    store.addEvent('backup.restored', `Backup ${params.name} restored to ${server.name}${result.removed ? ` (${result.removed} newer files removed)` : ''}`, { serverId: server.id });
+    return result;
+  });
+
+  /** What a full restore would change, before doing it. */
+  router.get('/api/servers/:id/backups/:name/preview', async ({ user, params }) => {
+    const server = serverFor(user, params.id, 'backups');
+    return require('../../features/restore-preview').preview(manager, server, params.name);
   });
 
   /** Look inside a backup, and put single files or folders back from it. */

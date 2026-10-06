@@ -1854,6 +1854,7 @@ tbody tr:hover {
   inset: 0;
   z-index: 100;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   place-items: center;
   padding: 20px;
   background: rgba(8, 9, 7, 0.72);
@@ -3916,4 +3917,54 @@ tr.clickable:hover td {
 .sp-logo img {
   max-height: 44px;
   max-width: 200px;
+}
+.rp-files {
+  margin: 6px 0;
+}
+.rp-files summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.rp-list {
+  max-height: 220px;
+  overflow: auto;
+  margin-top: 6px;
+  padding: 8px 10px;
+  font-size: 12.5px;
+  background: var(--inset);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.rp-list > div {
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  padding: 2px 0;
+}
+.rp-list .mono {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.rp-list .faint {
+  flex: none;
+}
+.rp-jars {
+  margin-top: 4px;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.table-wrap table.rp-areas {
+  min-width: 0;
+  table-layout: fixed;
+}
+.rp-areas th,
+.rp-areas td {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  padding-right: 8px;
+}
+.rp-areas th:not(:first-child),
+.rp-areas td:not(:first-child) {
+  width: 22%;
+  text-align: right;
 }
