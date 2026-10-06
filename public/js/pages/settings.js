@@ -195,6 +195,14 @@ export async function renderSettings(view) {
       <div id="cloud-form" class="faint"><span class="spinner"></span> Loading…</div>
     </div>
 
+    <div class="card mb-16" id="node-copies">
+      <h4>Backup copies on another node</h4>
+      <p class="faint" style="margin:0 0 14px;line-height:1.6">
+        Optional. Sends every archive backup to one of your nodes (another machine running GamePanel), so losing this machine does not lose the backups. Nothing to sign up for.
+      </p>
+      <div id="node-copies-form" class="faint"><span class="spinner"></span> Loading…</div>
+    </div>
+
     <div class="card mb-16" id="oauth">
       <h4>Sign in with Google, Discord or GitHub</h4>
       <p class="faint" style="margin:0 0 14px;line-height:1.6">
@@ -483,6 +491,7 @@ export async function renderSettings(view) {
   });
 
   renderCloudForm();
+  renderNodeCopiesForm();
   renderStatusPageForm();
   renderOauthForm();
 }
@@ -669,6 +678,41 @@ const CLOUD_PRESETS = {
   wasabi: { label: 'Wasabi', endpoint: 'https://s3.eu-central-1.wasabisys.com', hint: 'Use the service URL for your bucket\'s region.' },
   other: { label: 'MinIO or other', endpoint: 'https://minio.example.com', hint: 'Any S3-compatible server.' },
 };
+
+async function renderNodeCopiesForm() {
+  const host = $('#node-copies-form');
+  if (!host) return;
+  let data;
+  try {
+    data = await api('/api/node-backups');
+  } catch (err) {
+    host.textContent = err.message;
+    return;
+  }
+  if (!host.isConnected) return;
+  const c = data.settings;
+  const stored = data.stored || [];
+  host.classList.remove('faint');
+  host.innerHTML = c.nodes.length
+    ? `
+    <div class="form-grid">
+      <label><span>Keep the copies on</span><select id="nb-node">${c.nodes.map((n) => `<option value="${esc(n.id)}" ${n.id === c.nodeId ? 'selected' : ''}>${esc(n.name)}</option>`).join('')}</select></label>
+      <label><span>Copies to keep per server</span><input id="nb-keep" type="number" min="0" value="${Number(c.keep) || 0}" /><div class="hint">0 keeps every copy.</div></label>
+    </div>
+    <div class="checkbox-row"><input type="checkbox" id="nb-on" ${c.enabled ? 'checked' : ''} /><label for="nb-on">Copy every new archive backup there</label></div>
+    <div class="hint">Incremental backups are not copied. Copies already there can be brought back from each server's Backups tab.</div>
+    <button class="btn mt-16" id="nb-save">Save</button>
+    ${stored.length ? `<div class="hint mt-16">This machine keeps ${stored.reduce((n, x) => n + x.count, 0)} backup copies (${fmtBytes(stored.reduce((n, x) => n + x.bytes, 0))}) for other panels.</div>` : ''}`
+    : `<div class="faint">Add a node on the <a href="#/nodes">Nodes</a> page first.</div>${stored.length ? `<div class="hint mt-8">This machine keeps ${stored.reduce((n, x) => n + x.count, 0)} backup copies (${fmtBytes(stored.reduce((n, x) => n + x.bytes, 0))}) for other panels.</div>` : ''}`;
+  host.querySelector('#nb-save')?.addEventListener('click', async () => {
+    try {
+      await api('/api/node-backups', { method: 'PATCH', body: { nodeId: $('#nb-node').value, keep: Number($('#nb-keep').value) || 0, enabled: $('#nb-on').checked } });
+      toast('Saved');
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+  });
+}
 
 async function renderCloudForm() {
   const host = $('#cloud-form');

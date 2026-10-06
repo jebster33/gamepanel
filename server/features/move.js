@@ -20,13 +20,13 @@ const STOP_WAIT_MS = 3 * 60_000;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /** A streaming request to a node: `body` is a readable stream or nothing; resolves with the response stream. */
-function nodeStream(node, method, path, body) {
+function nodeStream(node, method, path, body, extraHeaders = {}) {
   return new Promise((resolve, reject) => {
     const target = new URL(path, node.url);
     const lib = target.protocol === 'https:' ? https : http;
     const req = lib.request(target, {
       method,
-      headers: { Authorization: `Bearer ${node.key}`, Accept: '*/*', ...(body ? { 'Content-Type': 'application/gzip', 'Transfer-Encoding': 'chunked' } : {}) },
+      headers: { Authorization: `Bearer ${node.key}`, Accept: '*/*', ...(body ? { 'Content-Type': 'application/gzip', 'Transfer-Encoding': 'chunked' } : {}), ...extraHeaders },
     });
     // Big worlds take a while; only give up when nothing moves for 10 minutes.
     req.setTimeout(10 * 60_000, () => req.destroy(new Error('the node stopped answering')));

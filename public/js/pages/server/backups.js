@@ -30,7 +30,7 @@ export async function renderBackupsTab(host, server) {
     </div>
     <div class="card card-flush">
       <div class="table-wrap"><table>
-        <thead><tr><th>Backup</th><th>Size</th><th>Created</th><th class="nowrap" title="Test-restored into a scratch folder">Checked</th><th class="cloud-col hidden">Cloud</th><th></th></tr></thead>
+        <thead><tr><th>Backup</th><th>Size</th><th>Created</th><th class="nowrap" title="Test-restored into a scratch folder">Checked</th><th class="cloud-col hidden">Cloud</th><th class="node-col hidden" id="node-col-head">Node</th><th></th></tr></thead>
         <tbody>
           ${
             data.backups.length
@@ -41,7 +41,8 @@ export async function renderBackupsTab(host, server) {
                       <td class="faint nowrap" ${b.total ? `title="Stored ${esc(fmtBytes(b.size))} new; restores ${esc(fmtBytes(b.total))}"` : ''}>${b.kind === 'incremental' ? `+${fmtBytes(b.size)}` : fmtBytes(b.size)}</td>
                       <td class="faint nowrap">${fmtTime(b.createdAt)}</td>
                       <td class="nowrap" data-check-cell="${esc(b.name)}">${checkLabel(b.check)}</td>
-                      <td class="cloud-col hidden nowrap" data-cloud="${esc(b.name)}"></td>
+                      <td class="cloud-col hidden nowrap" data-copy-cloud="${esc(b.name)}"></td>
+                      <td class="node-col hidden nowrap" data-copy-node="${esc(b.name)}"></td>
                       <td class="nowrap" style="text-align:right">
                         <a class="btn btn-sm" href="/api/servers/${esc(server.id)}/backups/${encodeURIComponent(b.name)}/download">${icon('download',12)}</a>
                         <button class="btn btn-sm" data-check="${esc(b.name)}" title="Test-restore it into a scratch folder to make sure it works">Check</button>
@@ -51,14 +52,16 @@ export async function renderBackupsTab(host, server) {
                       </td></tr>`
                   )
                   .join('')
-              : '<tr><td colspan="6" class="faint">No backups yet</td></tr>'
+              : '<tr><td colspan="7" class="faint">No backups yet</td></tr>'
           }
         </tbody>
       </table></div>
     </div>
-    <div id="cloud-only"></div>`;
+    <div id="cloud-only"></div>
+    <div id="node-only"></div>`;
 
-  renderCloudState(host, server, data.backups);
+  renderCopies(host, server, data.backups, 'cloud');
+  renderCopies(host, server, data.backups, 'node');
   $('#backup-mode').addEventListener('click', () => openBackupMode(server, data, () => renderBackupsTab(host, server)));
 
   $('#backup-create').addEventListener('click', async (event) => {
@@ -113,28 +116,36 @@ export async function renderBackupsTab(host, server) {
   );
 }
 
-/* ---------------------------------------------------------- cloud copies */
+/* ------------------------------------------- copies in the cloud or on a node */
 
-/** Mark which backups are already in the bucket, and list the ones only there. */
-async function renderCloudState(host, server, local) {
-  const cloud = await api(`/api/servers/${server.id}/backups/cloud`).catch(() => null);
-  if (!cloud?.enabled || !host.isConnected) return;
-  const remote = new Map(cloud.backups.map((b) => [b.name, b]));
-  host.querySelectorAll('.cloud-col').forEach((el) => el.classList.remove('hidden'));
-  host.querySelectorAll('[data-cloud]').forEach((cell) => {
-    const name = cell.dataset.cloud;
-    const upload = cloud.uploads[name];
-    if (name.endsWith('.snap')) cell.innerHTML = '<span class="faint" title="Cloud copies are for archive backups">—</span>';
+const COPIES = {
+  cloud: { list: 'backups/cloud', status: 'uploads', send: (n) => `backups/${n}/upload`, item: (n) => `backups/cloud/${n}`, where: () => 'the cloud', bucket: 'the bucket' },
+  node: { list: 'backups/node', status: 'sends', send: (n) => `backups/node/${n}/send`, item: (n) => `backups/node/${n}`, where: (c) => c.node || 'the node', bucket: null },
+};
+
+/** Mark which backups already have a copy (in the bucket or on the node), and list the ones only there. */
+async function renderCopies(host, server, local, kind) {
+  const k = COPIES[kind];
+  const copies = await api(`/api/servers/${server.id}/${k.list}`).catch(() => null);
+  if (!copies?.enabled || !host.isConnected) return;
+  const where = k.where(copies);
+  const remote = new Map(copies.backups.map((b) => [b.name, b]));
+  const status = copies[k.status] || {};
+  host.querySelectorAll(`.${kind}-col`).forEach((el) => el.classList.remove('hidden'));
+  if (kind === 'node') host.querySelector('#node-col-head').textContent = where;
+  host.querySelectorAll(`[data-copy-${kind}]`).forEach((cell) => {
+    const name = cell.dataset[`copy${kind[0].toUpperCase()}${kind.slice(1)}`];
+    const st = status[name];
+    if (name.endsWith('.snap')) cell.innerHTML = `<span class="faint" title="Copies are made of archive backups">—</span>`;
     else if (remote.has(name)) cell.innerHTML = '<span class="badge" style="color:var(--lime-text)">✓ copied</span>';
-    else if (upload === 'queued' || upload === 'uploading') cell.innerHTML = `<span class="faint"><span class="spinner"></span> ${upload}</span>`;
-    else
-      cell.innerHTML = `${upload ? `<span class="badge bad" title="${esc(upload)}">failed</span> ` : ''}<button class="btn btn-sm" data-upload="${esc(name)}">Copy</button>`;
+    else if (['queued', 'uploading', 'sending'].includes(st)) cell.innerHTML = `<span class="faint"><span class="spinner"></span> ${esc(st)}</span>`;
+    else cell.innerHTML = `${st ? `<span class="badge bad" title="${esc(st)}">failed</span> ` : ''}<button class="btn btn-sm" data-send-${kind}="${esc(name)}">Copy</button>`;
   });
-  host.querySelectorAll('[data-upload]').forEach((el) =>
+  host.querySelectorAll(`[data-send-${kind}]`).forEach((el) =>
     el.addEventListener('click', async () => {
       try {
-        await api(`/api/servers/${server.id}/backups/${encodeURIComponent(el.dataset.upload)}/upload`, { method: 'POST', body: {} });
-        toast('Copying to the cloud');
+        await api(`/api/servers/${server.id}/${k.send(encodeURIComponent(el.getAttribute(`data-send-${kind}`)))}`, { method: 'POST', body: {} });
+        toast(`Copying to ${where}`);
         setTimeout(() => host.isConnected && renderBackupsTab(host, server), 1500);
       } catch (err) {
         toast(err.message, 'error');
@@ -143,15 +154,15 @@ async function renderCloudState(host, server, local) {
   );
 
   const localNames = new Set(local.map((b) => b.name));
-  const only = cloud.backups.filter((b) => !localNames.has(b.name));
-  const box = host.querySelector('#cloud-only');
-  if (cloud.error) {
-    box.innerHTML = `<div class="card mt-16 faint">${esc(cloud.error)}</div>`;
+  const only = copies.backups.filter((b) => !localNames.has(b.name));
+  const box = host.querySelector(`#${kind}-only`);
+  if (copies.error) {
+    box.innerHTML = `<div class="card mt-16 faint">${esc(copies.error)}</div>`;
     return;
   }
   if (!only.length) return;
   box.innerHTML = `
-    <h4 class="section-title mt-16">Only in the cloud</h4>
+    <h4 class="section-title mt-16">Only in ${esc(where)}</h4>
     <div class="card card-flush">
       <div class="table-wrap"><table>
         <tbody>${only
@@ -162,7 +173,7 @@ async function renderCloudState(host, server, local) {
               <td class="faint nowrap">${fmtTime(b.createdAt)}</td>
               <td class="nowrap" style="text-align:right">
                 <button class="btn btn-sm" data-fetch="${esc(b.name)}" title="Download it onto the panel, then restore it like any backup">Bring back</button>
-                <button class="btn btn-sm btn-danger" data-del-cloud="${esc(b.name)}">${icon('trash', 12)}</button>
+                <button class="btn btn-sm btn-danger" data-del-copy="${esc(b.name)}">${icon('trash', 12)}</button>
               </td></tr>`
           )
           .join('')}</tbody>
@@ -173,7 +184,7 @@ async function renderCloudState(host, server, local) {
       el.disabled = true;
       el.innerHTML = '<span class="spinner"></span> Downloading…';
       try {
-        await api(`/api/servers/${server.id}/backups/cloud/${encodeURIComponent(el.dataset.fetch)}/fetch`, { method: 'POST', body: {} });
+        await api(`/api/servers/${server.id}/${k.item(encodeURIComponent(el.dataset.fetch))}/fetch`, { method: 'POST', body: {} });
         toast('Backup is back on the panel. Restore it from the list.');
         renderBackupsTab(host, server);
       } catch (err) {
@@ -183,11 +194,11 @@ async function renderCloudState(host, server, local) {
       }
     })
   );
-  box.querySelectorAll('[data-del-cloud]').forEach((el) =>
+  box.querySelectorAll('[data-del-copy]').forEach((el) =>
     el.addEventListener('click', async () => {
-      if (!(await confirmModal('Delete cloud copy', `Delete ${el.dataset.delCloud} from the bucket?`))) return;
+      if (!(await confirmModal('Delete copy', `Delete ${esc(el.dataset.delCopy)} from ${esc(k.bucket || where)}?`))) return;
       try {
-        await api(`/api/servers/${server.id}/backups/cloud/${encodeURIComponent(el.dataset.delCloud)}`, { method: 'DELETE' });
+        await api(`/api/servers/${server.id}/${k.item(encodeURIComponent(el.dataset.delCopy))}`, { method: 'DELETE' });
         renderBackupsTab(host, server);
       } catch (err) {
         toast(err.message, 'error');
