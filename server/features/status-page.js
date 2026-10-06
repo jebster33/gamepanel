@@ -13,7 +13,7 @@ const { fail } = require('../core/util');
 const DEFAULTS = { enabled: false, slug: '', title: '', description: '', servers: [], showPlayers: true, showAddress: true, showMotd: true, host: '', links: { discord: '', vote: '', website: '' }, blurbs: {} };
 
 // Games the Steam client can join straight from a link (steam://connect/host:port).
-const STEAM_CONNECT = new Set(['cs2', 'tf2', 'left4dead2', 'garrysmod', 'rust']);
+const STEAM_CONNECT = new Set(['cs2', 'tf2', 'left4dead', 'left4dead2', 'garrysmod', 'rust', 'counter-strike-source', 'day-of-defeat-source', 'half-life-2-deathmatch', 'no-more-room-in-hell', 'insurgency-2014', 'day-of-infamy']);
 
 /** A link the page offers: http(s) only, so nothing else can be smuggled into an href. */
 function cleanUrl(value, label) {

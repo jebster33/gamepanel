@@ -31,3 +31,10 @@ test('names and variables cannot reach the shell', () => {
   // A value an administrator set may be saved back unchanged.
   assert.doesNotThrow(() => quotas.assertSafeInput({ vars: { SERVER_PASSWORD: 'pa$$' } }, { vars: { SERVER_PASSWORD: 'pa$$' } }));
 });
+
+test('Java arguments: tuning flags yes, flags that run programs no', () => {
+  assert.doesNotThrow(() => quotas.assertSafeInput({ vars: { JAVA_ARGS: '-XX:+UseG1GC -XX:MaxGCPauseMillis=200 -Xms1G -Dfile.encoding=UTF-8' } }));
+  assert.throws(() => quotas.assertSafeInput({ vars: { JAVA_ARGS: '-XX:OnOutOfMemoryError=wget' } }), /JVM tuning/);
+  assert.throws(() => quotas.assertSafeInput({ vars: { JAVA_ARGS: '-javaagent:/tmp/x.jar' } }), /JVM tuning/);
+  assert.throws(() => quotas.assertSafeInput({ vars: { JAVA_ARGS: '@/tmp/args' } }), /JVM tuning/);
+});

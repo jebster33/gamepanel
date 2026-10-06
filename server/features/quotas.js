@@ -78,6 +78,20 @@ function assertShellSafe(label, value) {
 }
 
 /**
+ * Java's own flags can run programs too (-XX:OnOutOfMemoryError=…, -javaagent,
+ * argument files), so anyone but an administrator is held to memory and JVM
+ * tuning flags.
+ */
+const JAVA_FLAG = /^-(?:Xm[sxn]\d+[kmgKMG]?|Xss\d+[kmgKMG]?|XX:[+-][A-Za-z0-9]+|XX:[A-Za-z0-9]+=[A-Za-z0-9.%]+|D[A-Za-z0-9_.-]+=[A-Za-z0-9_.:\/-]*|server|showversion)$/;
+const JAVA_DENY = /^-XX:(?:On|Error|Flags|Compile|Agent|Print)|^-D(?:java\.(?:security|library)|jdk\.attach)/i;
+
+function assertJavaArgs(label, value) {
+  for (const flag of String(value ?? '').trim().split(/\s+/).filter(Boolean)) {
+    if (!JAVA_FLAG.test(flag) || JAVA_DENY.test(flag)) fail(400, `${label}: only memory and JVM tuning flags like -Xmx4G or -XX:+UseG1GC are allowed (not ${flag.slice(0, 40)})`);
+  }
+}
+
+/**
  * Only values that change are checked, so what an administrator set can be
  * saved back as it is; the template's own defaults and listed choices are fine too.
  */
@@ -89,6 +103,7 @@ function assertSafeInput({ name, vars } = {}, current = null, template = null) {
     const preset = def ? [def.default, ...(def.options || []).map((o) => (typeof o === 'object' ? o.value : o))] : [];
     if (preset.some((p) => p !== undefined && String(p) === String(value ?? ''))) continue;
     assertShellSafe(`The value for ${key}`, value);
+    if (/JAVA_ARGS|JVM_ARGS/.test(key)) assertJavaArgs(`The value for ${key}`, value);
   }
 }
 
