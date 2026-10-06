@@ -13,7 +13,7 @@ const resolvers = require('../../server/games/resolvers');
 
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'gp-ab2-'));
 
-test('mods.json: only plain names are believed (it sits where mods and players can edit it)', () => {
+test('mods.json: only plain names are believed (it sits where mods and players can edit it)', { skip: process.platform === 'win32' && 'needs symlinks or FIFOs' }, () => {
   const dir = tmp();
   fs.mkdirSync(path.join(dir, '.gamepanel'));
   fs.writeFileSync(

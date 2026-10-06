@@ -32,7 +32,7 @@ test('NBT: a negative array length is refused (it used to loop forever)', () => 
   assert.throws(() => nbt.parse(ints), /bad NBT array length/);
 });
 
-test('a FIFO or a link where a file should be never blocks or leaks', () => {
+test('a FIFO or a link where a file should be never blocks or leaks', { skip: process.platform === 'win32' && 'needs symlinks or FIFOs' }, () => {
   const dir = tmp();
   execFileSync('mkfifo', [path.join(dir, 'fifo')]);
   assert.throws(() => safefs.readRegular(path.join(dir, 'fifo')), /not a regular file/);
@@ -46,7 +46,7 @@ test('a FIFO or a link where a file should be never blocks or leaks', () => {
   assert.throws(() => zip.open(path.join(dir, 'fifo')), /not a regular file/);
 });
 
-test('datapacks: the record of installed packs cannot name a path outside the folder', async () => {
+test('datapacks: the record of installed packs cannot name a path outside the folder', { skip: process.platform === 'win32' && 'needs symlinks or FIFOs' }, async () => {
   const dir = tmp();
   put(dir, '.gamepanel/datapacks.json', JSON.stringify({ '../../../victim': { projectId: 'p1' }, 'sub/x.zip': { projectId: 'p1' }, 'ok.zip': { projectId: 'p1', name: 'Fine' } }));
   fs.mkdirSync(path.join(dir, 'world/datapacks'), { recursive: true });
@@ -63,7 +63,7 @@ test('datapacks: the record of installed packs cannot name a path outside the fo
   assert.strictEqual(list.packs[0].title, 'Fine');
 });
 
-test('staging: a link in live is never followed by a push', async () => {
+test('staging: a link in live is never followed by a push', { skip: process.platform === 'win32' && 'needs symlinks or FIFOs' }, async () => {
   const outside = tmp();
   put(outside, 'panel.json', 'precious');
   put(outside, 'sub/secret.key', 'precious');

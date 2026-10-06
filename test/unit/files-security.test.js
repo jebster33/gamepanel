@@ -34,7 +34,7 @@ test('extract: an archive whose name starts with "-" is just a name', async () =
   assert.strictEqual(fs.readFileSync(path.join(root, 'a.txt'), 'utf8'), 'A');
 });
 
-test('extract: never writes through a symlink that is already in the server folder', async () => {
+test('extract: never writes through a symlink that is already in the server folder', { skip: process.platform === 'win32' && 'needs symlinks or FIFOs' }, async () => {
   const root = tmp();
   const outside = tmp();
   fs.writeFileSync(path.join(outside, 'secret.json'), 'original');
