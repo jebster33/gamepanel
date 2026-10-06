@@ -2586,6 +2586,38 @@ tbody tr:hover {
 .lime {
   color: var(--lime-text);
 }
+.good-text {
+  color: var(--lime-text);
+}
+.ban-add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.ban-add input {
+  flex: 1 1 160px;
+  min-width: 0;
+}
+.appeal-row {
+  align-items: flex-start;
+}
+.appeal-text {
+  margin-top: 4px;
+  font-size: 13.5px;
+  color: var(--muted);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+.appeal-actions {
+  display: flex;
+  gap: 6px;
+  flex: none;
+}
+@media (max-width: 600px) {
+  .appeal-row {
+    flex-wrap: wrap;
+  }
+}
 .bad-text {
   color: var(--red);
 }

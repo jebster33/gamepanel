@@ -68,6 +68,8 @@ async function main() {
     if (rel === '/' || rel === '') rel = '/index.html';
     // Public status pages: /status/<link id>
     if (/^\/status\/[A-Za-z0-9_-]+\/?$/.test(rel)) rel = '/status.html';
+    // Ban appeals: /appeal
+    if (rel === '/appeal' || rel === '/appeal/') rel = '/appeal.html';
     // The iPhone app: /app, /app/
     if (rel === '/app' || rel === '/app/') rel = '/app.html';
     const file = path.join(config.publicDir, path.normalize(rel).replace(/^(\.\.[/\\])+/, ''));

@@ -136,6 +136,12 @@ function render(data) {
     .join('');
   first = false;
   $('footer').textContent = `Updated ${new Date(data.updatedAt).toLocaleTimeString()} · refreshes every 15 seconds`;
+  if (data.appeals) {
+    const link = document.createElement('a');
+    link.href = '/appeal';
+    link.textContent = 'Appeal a ban';
+    $('footer').append(' · ', link);
+  }
 }
 
 async function load() {

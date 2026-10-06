@@ -24,6 +24,7 @@ const TITLES = {
   'server.resource_alert': 'Resource alert',
   'player.watched': 'Watched player joined',
   'player.moderated': 'Chat moderation acted',
+  'ban.appeal': 'New ban appeal',
   'panel.disk_low': 'Disk almost full',
   'user.api_key': 'API key created',
   'user.new_ip': 'Sign-in from a new address',

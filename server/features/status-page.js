@@ -129,6 +129,7 @@ function publicView(store, manager, slug) {
     hideBadge: Boolean(s.hideBadge),
     logo: s.logo ? `/api/public/status/${encodeURIComponent(s.slug)}/logo?v=${s.logo.v}` : null,
     servers,
+    appeals: Boolean(store.state.settings.appeals?.enabled),
     updatedAt: Date.now(),
   };
 }
