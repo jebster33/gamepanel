@@ -121,8 +121,14 @@ func unprotect(sealed []byte) ([]byte, error) {
 
 // removeSelf deletes the running .exe once it has exited.
 func removeSelf(exe string) error {
-	cmd := exec.Command("cmd.exe", "/C", "ping 127.0.0.1 -n 3 >nul & del /f /q \""+exe+"\"")
-	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: 0x00000008 /* DETACHED_PROCESS */}
+	// cmd.exe does not understand Go's \" argument escaping, so the command
+	// line is written out as cmd expects it.
+	cmd := exec.Command("cmd.exe")
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		HideWindow:    true,
+		CreationFlags: 0x00000008, // DETACHED_PROCESS
+		CmdLine:       `cmd.exe /D /C "ping 127.0.0.1 -n 3 >nul & del /f /q "` + exe + `""`,
+	}
 	if err := cmd.Start(); err != nil {
 		return err
 	}
