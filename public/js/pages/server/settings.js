@@ -134,9 +134,13 @@ export function renderServerSettingsTab(host, server) {
         ${Object.entries(server.vars || {})
           .map(
             ([name, value]) =>
-              `<label><span>${esc(name)}</span><input data-var="${esc(name)}" value="${esc(value)}" ${
-                isAdmin ? '' : 'disabled'
-              } /></label>`
+              name in (server.secretVars || {})
+                ? `<label><span>${esc(name)}</span><input data-var="${esc(name)}" type="password" autocomplete="new-password" value="" placeholder="${
+                    server.secretVars[name] ? 'Saved. Type to replace' : 'Not set'
+                  }" ${isAdmin ? '' : 'disabled'} /></label>`
+                : `<label><span>${esc(name)}</span><input data-var="${esc(name)}" value="${esc(value)}" ${
+                    isAdmin ? '' : 'disabled'
+                  } /></label>`
           )
           .join('')}
       </div>

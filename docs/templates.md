@@ -123,7 +123,7 @@ For the Steam Workshop, `mods.workshop` says how the game loads items:
 | `dst` | Don't Starve Together | Adds `ServerModSetup` to `file` and enables it in each `overrides` modoverrides.lua |
 
 Games that only hand Workshop files to an account that owns them set `mods.workshop.login`, e.g.
-`"{{STEAM_USER}} {{STEAM_PASSWORD}}"`. Mark a variable `"secret": true` to show it as a password field.
+`"{{STEAM_USER}} {{STEAM_PASSWORD}}"`. Mark a variable `"secret": true` and the panel encrypts it at rest (AES-256-GCM, keyed from `secret.key`), never sends it back to the browser, and hands Steam logins to SteamCMD through the environment instead of the install script.
 
 ## Other keys
 

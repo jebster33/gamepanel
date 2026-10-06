@@ -6,6 +6,9 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
+// Keep anything the panel writes (secret.key) out of the checkout.
+process.env.GP_DATA_DIR = process.env.GP_DATA_DIR || fs.mkdtempSync(path.join(os.tmpdir(), 'gp-ws-data-'));
+
 const steam = require('../../server/features/mods/providers/workshop');
 const { editList, readKey } = require('../../server/features/mods/workshop');
 const { parseDependency } = require('../../server/features/mods/providers/factorio');
@@ -113,4 +116,27 @@ test('Arma 3 / DayZ: -mod lists enabled Workshop folders in order', () => {
     { key: 'workshop:3', provider: 'workshop', strategy: 'bohemia', folder: '@3' },
   ]);
   assert.strictEqual(modArgument(s), '@1;@3');
+});
+
+test('secret variables are sealed at rest and open again', () => {
+  const secrets = require('../../server/core/secrets');
+  const sealed = secrets.seal('hunter2 pass');
+  assert.ok(secrets.isSealed(sealed));
+  assert.ok(!sealed.includes('hunter2'));
+  assert.notStrictEqual(secrets.seal('hunter2 pass'), sealed);
+  assert.strictEqual(secrets.open(sealed), 'hunter2 pass');
+  assert.strictEqual(secrets.seal(sealed), sealed);
+  assert.strictEqual(secrets.seal(''), '');
+  assert.strictEqual(secrets.open('plain'), 'plain');
+  assert.strictEqual(secrets.open('enc:v1:bad.bad.bad'), '');
+});
+
+test('Steam logins are read from the environment, not written into the install script', () => {
+  const { buildInstallScript } = require('../../server/servers/install/bash');
+  const tpl = { install: [{ type: 'steamcmd', appid: '233780', login: '{{STEAM_USER}} {{STEAM_PASSWORD}}' }, { type: 'workshop', appid: '107410', item: '1', dest: '@1', login: '{{STEAM_USER}} {{STEAM_PASSWORD}}' }] };
+  const { script, env } = buildInstallScript(tpl, '/srv/x', { STEAM_USER: 'bob', STEAM_PASSWORD: 's3cr3t*' });
+  assert.ok(!script.includes('s3cr3t'));
+  assert.match(script, /gp_steam_app '233780' "\$\{STEAM_USER\} \$\{STEAM_PASSWORD\}"/);
+  assert.match(script, /gp_workshop_item '107410' '1' '@1' "\$\{STEAM_USER\} \$\{STEAM_PASSWORD\}"/);
+  assert.strictEqual(env.STEAM_PASSWORD, 's3cr3t*');
 });
