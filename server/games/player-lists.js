@@ -126,6 +126,7 @@ module.exports = {
     return {
       supported: true,
       running: manager.rt(server.id).status === 'running',
+      maintenance: server.maintenance || null,
       lists: Object.entries(lists).map(([id, def]) => ({
         id,
         label: def.label,
@@ -197,5 +198,39 @@ module.exports = {
     }
     manager.logActivity(server.id, { type: on ? 'whitelist-on' : 'whitelist-off', by });
     return { ...module.exports.readLists(manager, server), restartNeeded: running && !def.toggle.on };
+  },
+
+  /**
+   * Maintenance mode: whitelist on, everyone who is not an op or whitelisted
+   * is kicked with a message, and the MOTD says so from the next start.
+   * Turning it off puts the whitelist and MOTD back the way they were.
+   */
+  async setMaintenance(manager, server, on, message, by) {
+    const lists = listsFor(manager.template(server));
+    if (!lists?.whitelist?.toggle) fail(400, 'This game has no whitelist, so it has no maintenance mode');
+    const text = String(message || '').replace(/[\r\n]+/g, ' ').trim().slice(0, 120) || 'Down for maintenance, back soon!';
+    if (on) {
+      if (!server.maintenance) {
+        server.maintenance = { since: Date.now(), by, message: text, whitelist: readProperty(server, lists.whitelist.toggle.property) === 'true', motd: server.vars?.MOTD };
+      } else server.maintenance.message = text;
+      await module.exports.setWhitelist(manager, server, true, by);
+      if (server.vars && server.vars.MOTD !== undefined) server.vars.MOTD = text;
+      const rt = manager.rt(server.id);
+      if (rt.status === 'running') {
+        const allowed = new Set(['ops', 'whitelist'].flatMap((id) => (lists[id] ? readJson(server, lists[id].file).map((e) => String(e.name || '').toLowerCase()) : [])));
+        for (const name of rt.playerList || []) {
+          if (allowed.has(name.toLowerCase())) continue;
+          await manager.sendCommand(server.id, `kick ${name} ${text}`).catch(() => {});
+        }
+      }
+    } else if (server.maintenance) {
+      const was = server.maintenance;
+      delete server.maintenance;
+      if (!was.whitelist) await module.exports.setWhitelist(manager, server, false, by);
+      if (server.vars && was.motd !== undefined) server.vars.MOTD = was.motd;
+    }
+    manager.store.save();
+    manager.broadcastServers?.();
+    return { ...module.exports.readLists(manager, server), maintenance: server.maintenance || null };
   },
 };

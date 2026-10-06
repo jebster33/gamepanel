@@ -49,6 +49,7 @@ function publicView(store, manager, slug) {
         game: p.templateName,
         icon: p.templateIcon,
         status: running ? 'online' : p.status === 'starting' ? 'starting' : 'offline',
+        maintenance: server.maintenance ? server.maintenance.message : undefined,
         players: running ? p.players ?? p.playerList.length : 0,
         maxPlayers: p.maxPlayers,
         playerNames: s.showPlayers && running ? p.playerList.slice(0, 100) : undefined,

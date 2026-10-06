@@ -69,14 +69,14 @@ function render(data) {
       const address = s.address || (s.port ? `${host}:${s.port}` : null);
       const pct = s.maxPlayers ? Math.min(100, (s.players / s.maxPlayers) * 100) : 0;
       return `
-      <article class="card ${esc(s.status)}" style="${first ? `animation-delay:${i * 50}ms` : 'animation:none'}">
+      <article class="card ${esc(s.maintenance ? 'starting' : s.status)}" style="${first ? `animation-delay:${i * 50}ms` : 'animation:none'}">
         <div class="top">
           <span class="icon">${esc(s.icon || '🎮')}</span>
           <div style="min-width:0">
             <div class="name">${esc(s.name)}</div>
             <div class="game">${esc(s.game)}${s.version ? ` · ${esc(s.version)}` : ''}</div>
           </div>
-          <span class="state"><span class="led"></span>${s.status === 'online' ? 'Online' : s.status === 'starting' ? 'Starting' : 'Offline'}</span>
+          <span class="state"><span class="led"></span>${s.maintenance ? 'Maintenance' : s.status === 'online' ? 'Online' : s.status === 'starting' ? 'Starting' : 'Offline'}</span>
         </div>
         ${
           s.status === 'online'
@@ -88,6 +88,7 @@ function render(data) {
             : ''
         }
         ${address ? `<div class="row"><span class="address">${esc(address)} <button data-copy="${esc(address)}">Copy</button></span></div>` : ''}
+        ${s.maintenance ? `<div class="meta" style="margin-top:8px">🛠 ${esc(s.maintenance)}</div>` : ''}
         ${s.joinNote ? `<div class="meta" style="margin-top:8px">${esc(s.joinNote)}</div>` : ''}
         ${uptimeBars(s.uptime30)}
         ${s.playerNames?.length ? `<div class="names">${s.playerNames.map((n) => `<span>${esc(n)}</span>`).join('')}</div>` : ''}

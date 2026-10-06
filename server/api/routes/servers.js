@@ -268,6 +268,14 @@ module.exports = (router, { store, manager, scheduler }, { requireAdmin, require
     return result;
   });
 
+  router.put('/api/servers/:id/maintenance', async ({ user, params, body }) => {
+    const server = serverFor(user, params.id, 'command');
+    const on = Boolean(body?.enabled);
+    const result = await require('../../games/player-lists').setMaintenance(manager, server, on, body?.message, user.username);
+    store.addEvent('server.maintenance', `${user.username} turned maintenance mode ${on ? 'on' : 'off'} for ${server.name}`, { serverId: server.id });
+    return result;
+  });
+
   /** Everyone who has played, the players-online graph and the activity log. */
   router.get('/api/servers/:id/player-history', ({ user, params }) => {
     const server = serverFor(user, params.id, 'console');

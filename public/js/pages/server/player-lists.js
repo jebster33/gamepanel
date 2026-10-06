@@ -42,6 +42,22 @@ function draw(box, server, data) {
           </div>`
         : ''
     }
+    ${
+      wl
+        ? `<div class="card mb-16 row wl-toggle">
+            <div style="flex:1;min-width:200px">
+              <b>Maintenance mode ${data.maintenance ? '<span class="lime">on</span>' : ''}</b>
+              <div class="faint" style="font-size:12.5px">${
+                data.maintenance
+                  ? `Only ops and whitelisted players can join. Turning it off puts the whitelist${data.maintenance.motd !== undefined ? ' and MOTD' : ''} back.`
+                  : 'Kicks everyone except ops and whitelisted players, keeps them out, and shows a message in the server list from the next start.'
+              }</div>
+              ${data.maintenance ? '' : '<input id="mt-message" class="mt-8" maxlength="120" placeholder="Down for maintenance, back soon!" style="margin-top:8px" />'}
+            </div>
+            <label class="switch"><input type="checkbox" id="mt-enabled" ${data.maintenance ? 'checked' : ''} /><i></i></label>
+          </div>`
+        : ''
+    }
     ${data.running ? '' : '<div class="card mb-16 faint" style="font-size:12.5px">The server is stopped, so changes are written straight to its files and apply when it starts.</div>'}
     <div class="lists-grid">${data.lists.map((l) => listCard(server, l)).join('')}</div>`;
 
@@ -51,6 +67,20 @@ function draw(box, server, data) {
     try {
       const next = await api(`/api/servers/${server.id}/player-lists/whitelist`, { method: 'PUT', body: { enabled: input.checked } });
       toast(`Whitelist ${input.checked ? 'on' : 'off'}${next.restartNeeded ? '. Restart to apply.' : ''}`);
+      draw(box, server, next);
+    } catch (err) {
+      toast(err.message, 'error');
+      input.checked = !input.checked;
+      input.disabled = false;
+    }
+  });
+
+  box.querySelector('#mt-enabled')?.addEventListener('change', async (event) => {
+    const input = event.currentTarget;
+    input.disabled = true;
+    try {
+      const next = await api(`/api/servers/${server.id}/maintenance`, { method: 'PUT', body: { enabled: input.checked, message: box.querySelector('#mt-message')?.value } });
+      toast(input.checked ? 'Maintenance mode on' : 'Maintenance mode off. Restart to show the normal MOTD again.');
       draw(box, server, next);
     } catch (err) {
       toast(err.message, 'error');

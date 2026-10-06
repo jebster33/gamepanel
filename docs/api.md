@@ -49,6 +49,7 @@ POST   /api/servers/:id/crossplay        {"enabled"} Geyser + Floodgate (Paper/P
 PUT    /api/servers/:id/subdomain        {"name"} Cloudflare A (+ SRV) record (admins)
 POST   /api/players/ban-everywhere       {"name","reason","unban?"} every Minecraft server
 GET    /api/players/search?q=            players on any visible server (admins: also by address)
+PUT    /api/servers/:id/maintenance      {"enabled","message?"} whitelist on, kick non-ops, MOTD
 PUT    /api/players/:name/note           {"note","watch"} staff note; watch = alert on join
 GET    /api/servers/:id/export           whole server as .tar.gz with gamepanel-server.json (admins)
 GET    /api/servers/:id/diagnose         crash doctor findings
