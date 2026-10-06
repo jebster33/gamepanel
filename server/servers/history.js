@@ -287,7 +287,7 @@ module.exports = {
 
   /** Staff notes and the join watchlist, shared by every server (keyed by lower-case name). */
   playerNote(name) {
-    return this.store.state.playerNotes?.[String(name).toLowerCase()] || null;
+    return this.store?.state.playerNotes?.[String(name).toLowerCase()] || null;
   },
 
   setPlayerNote(name, { note, watch }, actor) {
