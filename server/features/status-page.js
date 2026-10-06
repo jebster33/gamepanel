@@ -59,6 +59,9 @@ function publicView(store, manager, slug) {
         uptime: running ? p.uptime : 0,
         joinNote: s.showAddress ? p.joinNote : null,
         uptime30: manager.uptime ? manager.uptime(server.id) : null,
+        topPlayers: s.showPlayers && manager.playerHistory
+          ? manager.playerHistory(server.id).players.filter((x) => x.seconds >= 60).sort((a, b) => b.seconds - a.seconds).slice(0, 5).map((x) => ({ name: x.name, hours: Math.round(x.seconds / 360) / 10 }))
+          : undefined,
       };
     });
   return {

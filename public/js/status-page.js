@@ -91,6 +91,11 @@ function render(data) {
         ${s.maintenance ? `<div class="meta" style="margin-top:8px">🛠 ${esc(s.maintenance)}</div>` : ''}
         ${s.joinNote ? `<div class="meta" style="margin-top:8px">${esc(s.joinNote)}</div>` : ''}
         ${uptimeBars(s.uptime30)}
+        ${
+          s.topPlayers?.length
+            ? `<div class="most"><span class="meta">Most played</span> ${s.topPlayers.map((p) => `<span>${esc(p.name)} <b>${p.hours}h</b></span>`).join('')}</div>`
+            : ''
+        }
         ${s.playerNames?.length ? `<div class="names">${s.playerNames.map((n) => `<span>${esc(n)}</span>`).join('')}</div>` : ''}
       </article>`;
     })
