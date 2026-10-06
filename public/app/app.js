@@ -763,6 +763,21 @@ function powerSheet(server) {
     if (on) actions.push({ label: 'Restart', run: () => power(server, 'restart') }, { label: 'Stop', danger: true, run: () => power(server, 'stop') });
     else actions.push({ label: 'Start', run: () => power(server, 'start') });
   }
+  if (can('command') && (server.playerLists || []).includes('whitelist')) {
+    const on = Boolean(server.maintenance);
+    actions.push({
+      label: on ? 'End maintenance' : 'Maintenance mode',
+      run: async () => {
+        try {
+          await api(`/api/servers/${server.id}/maintenance`, { method: 'PUT', body: { enabled: !on } });
+          server.maintenance = on ? null : { since: Date.now() };
+          toast(on ? 'Maintenance over' : 'Maintenance mode on');
+        } catch (err) {
+          toast(err.message, 'error');
+        }
+      },
+    });
+  }
   actions.push({ label: 'Copy address', run: () => copy(addressOf(server)) });
   sheet({ title: server.name, actions });
 }
