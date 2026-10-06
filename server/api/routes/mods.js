@@ -121,6 +121,51 @@ module.exports = (router, { store, manager }, { serverFor, integrations }) => {
     return mods.toggle(server, template, params.name);
   });
 
+  /* ------------------------------------------------------ workshop packs -- */
+
+  const packs = require('../../features/mods/workshop-packs');
+  /** The server and its game's Workshop app id. */
+  const packTarget = (user, id) => {
+    const { server, template } = modTarget(user, id);
+    const appId = require('../../features/mods/compat').modContext(server, template).appId;
+    if (!appId || !mods.providersFor(template).some((p) => p.id === 'workshop')) fail(400, 'This game has no Steam Workshop');
+    return { server, template, appId };
+  };
+
+  router.get('/api/servers/:id/workshop-packs', ({ user, params }) => {
+    const { appId } = packTarget(user, params.id);
+    return { appId, packs: packs.list(store, appId) };
+  });
+
+  router.post('/api/servers/:id/workshop-packs/preview', async ({ user, params, body }) => {
+    const { appId } = packTarget(user, params.id);
+    return packs.preview(body?.input, appId);
+  });
+
+  router.post('/api/servers/:id/workshop-packs', async ({ user, params, body }) => {
+    const { server, appId } = packTarget(user, params.id);
+    const pack = await packs.create(store, { name: body?.name, appId, input: body?.input, fromServer: body?.fromServer ? server : null }, user);
+    store.addEvent('mod.pack_saved', `${user.username} saved the Workshop pack ${pack.name} (${pack.items.length} items)`, { serverId: server.id });
+    return { pack };
+  });
+
+  router.post('/api/servers/:id/workshop-packs/:packId/apply', async ({ user, params }) => {
+    const { server, template, appId } = packTarget(user, params.id);
+    const pack = packs.get(store, params.packId);
+    if (pack.appId !== appId) fail(400, `${pack.name} is a pack for a different game`);
+    const result = await installWorkshop(server, template, manager, { input: pack.items.join(',') }, integrations());
+    store.addEvent('mod.installed', `Workshop pack ${pack.name} added to ${server.name}`, { serverId: server.id });
+    return result;
+  });
+
+  router.delete('/api/servers/:id/workshop-packs/:packId', ({ user, params }) => {
+    packTarget(user, params.id);
+    const pack = packs.get(store, params.packId);
+    if (user.role !== 'admin' && pack.createdBy !== user.username) fail(403, 'Only the person who saved a pack, or an administrator, can delete it');
+    packs.remove(store, pack.id);
+    return { ok: true };
+  });
+
   /* ----------------------------------------------------------- modpacks -- */
 
   router.get('/api/servers/:id/modpacks', ({ user, params }) => {

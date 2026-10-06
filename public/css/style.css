@@ -3408,3 +3408,44 @@ tr.clickable:hover td {
   align-items: center;
   gap: 6px;
 }
+
+/* Mods tab: saved Workshop packs. */
+.ws-packs {
+  padding: 12px 14px;
+  background: var(--inset);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.ws-pack-list {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+}
+.ws-pack {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+.ws-pack .grow {
+  flex: 1;
+}
+.ws-preview {
+  display: grid;
+  gap: 6px;
+  max-height: 40vh;
+  overflow-y: auto;
+}
+.ws-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--text);
+}
+.ws-item img {
+  width: 36px;
+  height: 36px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+}
