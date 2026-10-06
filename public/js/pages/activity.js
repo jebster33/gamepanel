@@ -9,6 +9,7 @@ export async function renderActivity(view) {
   setCrumbs('Activity');
   view.innerHTML = '<div class="card"><span class="spinner"></span> Loading…</div>';
   const data = await api('/api/events?limit=200').catch(() => ({ events: [] }));
+  if (state.route.name !== 'activity') return; // the user moved to another page meanwhile
   // A coloured dot reads faster than an icon per event type.
   const tone = (type) => {
     if (type.includes('crash') || type.includes('failed')) return 'var(--danger)';

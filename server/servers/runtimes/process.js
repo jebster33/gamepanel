@@ -46,6 +46,9 @@ module.exports = {
     } else {
       env.HOME = server.dir;
       env.PATH = [...extraPath, basePath].join(path.delimiter);
+      // The start command runs in a login shell, whose profile can rebuild PATH
+      // and put a system Java back in front; spawnShell re-adds these after it.
+      if (extraPath.length) env.GP_PATH_PREFIX = extraPath.join(':');
       // SteamCMD games ship their own shared libraries next to the binary.
       env.LD_LIBRARY_PATH = [path.join(server.dir, 'linux64'), path.join(server.dir, '.steam', 'sdk64'), process.env.LD_LIBRARY_PATH || '']
         .filter(Boolean)

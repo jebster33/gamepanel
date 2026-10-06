@@ -51,6 +51,9 @@ export function renderServerDetail(view) {
   // "network" is a card on the settings tab; old links still land there.
   let tab = state.route.params.tab || 'console';
   if (tab === 'network') tab = 'settings';
+  // A link to a tab this server or user does not have (Mods on Valheim, Files without the permission) opens the first one instead.
+  const tabs = serverTabs(server);
+  if (!tabs.some(([key]) => key === tab)) state.route.params.tab = tab = tabs[0]?.[0] || 'players';
   setCrumbs(`<a href="#/servers">Servers</a> <span class="sep">/</span> ${esc(server.name)}`);
   const address = serverAddress(server);
 
@@ -92,7 +95,7 @@ export function renderServerDetail(view) {
     </div>
 
     <nav class="tabs">
-      ${serverTabs(server)
+      ${tabs
         .map(([key, label]) => `<a class="tab ${tab === key ? 'active' : ''}" href="#/servers/${esc(server.id)}/${key}">${label}</a>`)
         .join('')}
     </nav>

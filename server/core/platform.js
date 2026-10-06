@@ -64,7 +64,9 @@ function spawnShell(command, { cwd, env, keepStdin = true } = {}) {
       windowsHide: !process.env.GP_SERVICE,
     });
   }
-  return spawn('bash', ['-lc', command], { cwd, env, stdio, detached: true });
+  // A login shell's profile may reset PATH; put the panel's own tools (a private Java) back in front.
+  const script = env?.GP_PATH_PREFIX ? `PATH="$GP_PATH_PREFIX:$PATH"; export PATH; ${command}` : command;
+  return spawn('bash', ['-lc', script], { cwd, env, stdio, detached: true });
 }
 
 /** Kill a process and everything it started. */

@@ -26,7 +26,7 @@ export async function renderAudit(view) {
 
   api('/api/users')
     .then((d) => {
-      $('#au-user').insertAdjacentHTML('beforeend', d.users.map((u) => `<option>${esc(u.username)}</option>`).join(''));
+      $('#au-user')?.insertAdjacentHTML('beforeend', d.users.map((u) => `<option>${esc(u.username)}</option>`).join(''));
     })
     .catch(() => {});
 
@@ -35,6 +35,7 @@ export async function renderAudit(view) {
     const qs = new URLSearchParams({ q: $('#au-q').value.trim(), user: $('#au-user').value, server: $('#au-server').value, limit: '200' });
     if (append && entries.length) qs.set('before', String(entries[entries.length - 1].at));
     const data = await api(`/api/audit?${qs}`).catch(() => ({ entries: [] }));
+    if (!$('#au-rows')) return; // the user moved to another page meanwhile
     entries = append ? entries.concat(data.entries) : data.entries;
     $('#au-rows').innerHTML = entries.length
       ? entries

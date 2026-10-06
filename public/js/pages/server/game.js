@@ -30,6 +30,7 @@ export async function renderGameTab(root, server) {
     host.innerHTML = `<div class="card faint">${esc(err.message)}</div>`;
     return;
   }
+  if (!root.isConnected) return; // the user moved to another tab meanwhile
   if (!data.supported) {
     host.innerHTML = '<div class="card faint">This game keeps its settings in a format the panel cannot show as a form yet. Edit them on the Files tab.</div>';
     return;

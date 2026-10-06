@@ -9,6 +9,7 @@ import { confirmModal, openModal } from '../ui/modal.js';
 export async function renderUsers(view) {
   setCrumbs('Users');
   const data = await api('/api/users').catch((err) => ({ users: [], error: err.message }));
+  if (state.route.name !== 'users') return; // the user moved to another page meanwhile
   view.innerHTML = `
     <div class="page-head">
       <h1>Users</h1>
@@ -134,7 +135,7 @@ function openUserModal(user, capabilities = [], defaults = []) {
     .join('');
 
   const modal = openModal({
-    title: editing ? `Edit ${user.username}` : 'New user',
+    title: editing ? `Edit ${esc(user.username)}` : 'New user',
     width: 640,
     body: `
       <div class="form-grid">

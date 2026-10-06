@@ -103,7 +103,7 @@ gp_java_local() {
   chmod -R u+x .java/bin 2>/dev/null || true
   export JAVA_HOME="$GP_SERVER_DIR/.java"
   export PATH="$JAVA_HOME/bin:$PATH"
-  gp_log "Java ready: $(java -version 2>&1 | head -1)"
+  gp_log "Java ready: $(java -version 2>&1 | grep -m1 ' version ')"
 }
 
 gp_ensure_java() {
@@ -112,7 +112,7 @@ gp_ensure_java() {
   [ -x "$GP_SERVER_DIR/.java/bin/java" ] && export PATH="$GP_SERVER_DIR/.java/bin:$PATH"
   if gp_have java; then
     local have
-    have="$(java -version 2>&1 | head -1 | sed -E 's/.*"([0-9]+).*/\\1/')"
+    have="$(java -version 2>&1 | grep -m1 ' version ' | sed -E 's/.*"([0-9]+).*/\\1/')"
     if [ -n "$have" ] && [ "$have" -ge "$want" ] 2>/dev/null; then
       gp_log "Java $have already present"
       return 0

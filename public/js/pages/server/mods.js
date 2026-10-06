@@ -30,6 +30,7 @@ export async function renderModsTab(host, server) {
     host.innerHTML = `<div class="card">Could not load mods: ${esc(err.message)}</div>`;
     return;
   }
+  if (!host.isConnected) return; // the user moved to another tab meanwhile
   if (!info.supported || !info.providers.length) {
     host.innerHTML = `
       <div class="empty">

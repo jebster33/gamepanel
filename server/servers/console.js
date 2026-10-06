@@ -12,6 +12,10 @@ const { stripAnsi, fail } = require('../core/util');
 const { rconCommand } = require('../games/rcon');
 const { setPlayers } = require('../games/players');
 
+// Minecraft logs every RCON connection. The panel's own (TPS checks, game rules)
+// come from this machine and would otherwise fill the console every 30 seconds.
+const PANEL_RCON_NOISE = /Thread RCON Client \/(?:127\.0\.0\.1|0:0:0:0:0:0:0:1|::1)\b.* (?:started|shutting down)\s*$/;
+
 module.exports = {
   openLogStream(server) {
     const rt = this.rt(server.id);
@@ -63,7 +67,7 @@ module.exports = {
     }
     if (!clean.endsWith('\n')) rt.partial = lines.pop() ?? '';
     else lines.pop();
-    return this.emitConsoleLines(server, lines, stream);
+    return this.emitConsoleLines(server, lines.filter((line) => !PANEL_RCON_NOISE.test(line)), stream);
   },
 
   emitConsoleLines(server, lines, stream) {

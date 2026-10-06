@@ -13,6 +13,7 @@ import { qrSvg } from '../ui/qr.js';
 export async function renderAccount(view) {
   setCrumbs('Account');
   const me = await api('/api/auth/me').then((d) => d.user).catch(() => state.user);
+  if (state.route.name !== 'account') return; // the user moved to another page meanwhile
   state.user = { ...state.user, ...me };
 
   view.innerHTML = `

@@ -38,6 +38,7 @@ export async function renderModpacksTab(host, server) {
     host.innerHTML = `<div class="card">${esc(err.message)}</div>`;
     return;
   }
+  if (!host.isConnected) return; // the user moved to another tab meanwhile
   if (!info.supported) {
     host.innerHTML = '<div class="empty"><h3>This server does not use modpacks</h3></div>';
     return;
@@ -176,7 +177,7 @@ function renderPackResults(server, items, info) {
 /** Pick a version of a pack, then reinstall the server onto it. */
 async function openPackInstallModal(server, pack) {
   const modal = openModal({
-    title: `Install ${pack.name}`,
+    title: `Install ${esc(pack.name)}`,
     width: 560,
     body: `
       <p class="faint" style="margin-top:0">${esc(pack.description || '')}</p>
