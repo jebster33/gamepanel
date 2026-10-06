@@ -193,6 +193,15 @@ module.exports = (router, { store, manager, scheduler }, { requireAdmin, require
     return body?.enabled === false ? manager.disableMap(server.id, user) : manager.enableMap(server.id, user);
   });
 
+  /** World pre-generation with Chunky. */
+  router.get('/api/servers/:id/pregen', ({ user, params }) => manager.pregenInfo(serverFor(user, params.id, 'console')));
+
+  router.post('/api/servers/:id/pregen', async ({ user, params, body }) => {
+    const server = serverFor(user, params.id, 'command');
+    if (body?.action === 'install') requireCap(user, 'mods');
+    return manager.pregen(server.id, { action: String(body?.action || ''), radius: body?.radius }, user);
+  });
+
   /** Minecraft worlds. */
   router.get('/api/servers/:id/worlds', async ({ user, params }) => manager.listWorlds(serverFor(user, params.id, 'files')));
 

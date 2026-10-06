@@ -124,3 +124,12 @@ test('BlueMap config values are replaced or added', () => {
   assert.strictEqual(setConfValue('# web\nport: 8100\n', 'port', 8123), '# web\nport: 8123\n');
   assert.strictEqual(setConfValue('', 'port', 8101), 'port: 8101\n');
 });
+
+test('Chunky progress is read from its console lines', () => {
+  const { readProgress } = require('../../server/servers/pregen');
+  const line = (text) => ({ line: `[12:00:00 INFO]: ${text}` });
+  assert.strictEqual(readProgress([line('Done (4.9s)!')]), null);
+  const p = readProgress([line('[Chunky] Task running for world. Processed: 1600 chunks (1.02%), ETA: 0:12:34, Rate: 125.3 cps, Current: 10, -3')]);
+  assert.deepStrictEqual(p, { state: 'running', world: 'world', chunks: 1600, percent: 1.02, eta: '0:12:34', rate: 125.3 });
+  assert.strictEqual(readProgress([line('[Chunky] Task running for world. Processed: 1 chunks (0.00%), ETA: 1:00:00, Rate: 1.0 cps'), line('[Chunky] Task finished for world. Processed: 157609 chunks (100.00%), Total time: 0:21:00')]).state, 'finished');
+});

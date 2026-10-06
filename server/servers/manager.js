@@ -19,6 +19,7 @@
  *   clone.js           duplicating a server
  *   crossplay.js       Bedrock players on Java servers (Geyser + Floodgate)
  *   livemap.js         a web map of the world (BlueMap)
+ *   pregen.js          world pre-generation (Chunky)
  *   watchers.js        tailing game log files, port-based readiness
  *   runtimes/container.js   running a server in Docker (Linux isolation)
  *   runtimes/process.js     running a server as a plain process (Linux or Windows)
@@ -564,6 +565,7 @@ Object.assign(
   require('./clone'),
   require('./crossplay'),
   require('./livemap'),
+  require('./pregen'),
   require('./watchers'),
   require('./runtimes/container'),
   require('./runtimes/process')
