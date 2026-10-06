@@ -322,7 +322,7 @@ module.exports = (router, { store, manager, scheduler }, { requireAdmin, require
       const line = command(manager.template(server));
       if (!line || !manager.isActive(server.id)) continue;
       try {
-        await manager.sendCommand(server.id, line.replace('{msg}', message));
+        await manager.sendCommand(server.id, require('../../games/players').fillBroadcast(line, message));
         results.push({ server: server.name, ok: true });
       } catch (err) {
         results.push({ server: server.name, ok: false, error: err.message });

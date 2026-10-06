@@ -6,7 +6,9 @@
 
 const fs = require('fs');
 const path = require('path');
+const fsp = require('fs/promises');
 const zlib = require('zlib');
+const gunzip = require('util').promisify(zlib.gunzip);
 const { fail, logger } = require('../core/util');
 const { containedPath } = require('../features/files');
 const { diagnose } = require('../games/diagnose');
@@ -114,7 +116,7 @@ module.exports = {
    * before it), newest first: "when did Steve last say anything", "when did
    * the server last crash". Capped so a year of logs can't stall the panel.
    */
-  searchLogs(server, q, { file } = {}) {
+  async searchLogs(server, q, { file } = {}) {
     const dir = containedPath(server.dir, 'logs');
     let files;
     try {
@@ -122,9 +124,11 @@ module.exports = {
         .readdirSync(dir)
         .filter((f) => /\.log(\.gz)?$/.test(f))
         .map((f) => {
-          const st = fs.statSync(path.join(dir, f));
-          return { name: f, size: st.size, modifiedAt: st.mtimeMs };
+          // lstat: a symlink in logs/ must not read files outside the server.
+          const st = fs.lstatSync(path.join(dir, f));
+          return st.isFile() ? { name: f, size: st.size, modifiedAt: st.mtimeMs } : null;
         })
+        .filter(Boolean)
         .sort((a, b) => b.modifiedAt - a.modifiedAt);
     } catch {
       return { files: [], matches: [], truncated: false };
@@ -137,10 +141,23 @@ module.exports = {
     if (file && !targets.length) fail(404, 'Log file not found');
     for (const f of targets) {
       if (!needle && !file) break;
+      if (f.size > budget) {
+        truncated = true;
+        break;
+      }
       let text;
       try {
-        const raw = fs.readFileSync(path.join(dir, f.name));
-        text = (f.name.endsWith('.gz') ? zlib.gunzipSync(raw, { maxOutputLength: 64 * 1024 * 1024 }) : raw).toString('utf8');
+        // At most the last 64 MB of a plain log, read without blocking other requests.
+        const handle = await fsp.open(path.join(dir, f.name), fs.constants.O_RDONLY | (fs.constants.O_NOFOLLOW || 0));
+        let raw;
+        try {
+          const len = Math.min(f.size, 64 * 1024 * 1024);
+          raw = Buffer.alloc(len);
+          await handle.read(raw, 0, len, f.name.endsWith('.gz') ? 0 : f.size - len);
+        } finally {
+          await handle.close();
+        }
+        text = (f.name.endsWith('.gz') ? await gunzip(raw, { maxOutputLength: 64 * 1024 * 1024 }) : raw).toString('utf8');
       } catch {
         continue;
       }

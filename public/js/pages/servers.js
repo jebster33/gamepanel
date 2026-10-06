@@ -131,7 +131,7 @@ async function powerAll(action) {
   const targets = state.servers.filter((s) => (action === 'start' ? s.status === 'stopped' && s.installedAt : ['running', 'starting'].includes(s.status)));
   if (!targets.length) return toast(action === 'start' ? 'Everything is already running' : 'Nothing is running');
   const { confirmModal } = await import('../ui/modal.js');
-  const names = targets.map((s) => esc(s.name)).join(', ');
+  const names = targets.map((s) => s.name).join(', ');
   if (!(await confirmModal(`${action === 'start' ? 'Start' : 'Stop'} ${targets.length} server${targets.length === 1 ? '' : 's'}`, names, action === 'start' ? 'Start all' : 'Stop all'))) return;
   const results = await Promise.allSettled(targets.map((s) => api(`/api/servers/${s.id}/power`, { method: 'POST', body: { action } })));
   const failed = results.filter((r) => r.status === 'rejected').length;

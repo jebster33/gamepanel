@@ -124,7 +124,7 @@ class DiscordBot {
       } else {
         const line = players.broadcastCommand(template);
         if (!line) continue;
-        command = line.replace('{msg}', `[Discord] ${who}: ${text}`.replace(/"/g, "'"));
+        command = players.fillBroadcast(line, `[Discord] ${who}: ${text}`.replace(/"/g, "'"));
       }
       await this.manager.sendCommand(s.id, command).catch(() => {});
     }

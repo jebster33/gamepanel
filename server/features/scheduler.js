@@ -100,7 +100,7 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 async function countdown(m, server, minutes, verb) {
   const command = require('../games/players').broadcastCommand(m.template(server));
   if (!command || !minutes) return false;
-  const say = (text) => m.sendCommand(server.id, command.replace('{msg}', text.replace(/["\r\n]/g, ''))).catch(() => {});
+  const say = (text) => m.sendCommand(server.id, require('../games/players').fillBroadcast(command, text)).catch(() => {});
   const marks = [minutes * 60, 300, 60, 30, 10, 5].filter((s, i, all) => s <= minutes * 60 && all.indexOf(s) === i).sort((a, b) => b - a);
   let left = minutes * 60;
   for (const mark of marks) {
@@ -164,7 +164,7 @@ class Scheduler {
     if (!command) return;
     const i = (a.next || 0) % a.messages.length;
     a.next = i + 1;
-    await m.sendCommand(server.id, command.replace('{msg}', String(a.messages[i]).replace(/["\r\n]/g, '')));
+    await m.sendCommand(server.id, require('../games/players').fillBroadcast(command, a.messages[i]));
   }
 
   async run(server, schedule) {

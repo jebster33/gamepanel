@@ -52,6 +52,16 @@ function broadcastCommand(template) {
   return null;
 }
 
+/**
+ * Put text into a broadcast command ("say {msg}"). Quotes, line breaks and
+ * ; are dropped (Source consoles split commands on ;), and a function
+ * replacer keeps $' and $& in the text from being expanded.
+ */
+function fillBroadcast(command, text) {
+  const clean = String(text).replace(/["\r\n;]/g, ' ').replace(/\s+/g, ' ').trim();
+  return command.replace('{msg}', () => clean);
+}
+
 function playerCommands(template) {
   if (!template) return {};
   if (template.players?.commands) return template.players.commands;
@@ -85,4 +95,4 @@ function playerDetails(rt) {
   return [...(rt.playerInfo?.values() || [])];
 }
 
-module.exports = { playerCommands, broadcastCommand, setPlayers, playerDetails };
+module.exports = { playerCommands, broadcastCommand, fillBroadcast, setPlayers, playerDetails };

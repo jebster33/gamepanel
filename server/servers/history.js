@@ -324,9 +324,9 @@ module.exports = {
   welcomePlayer(server, name) {
     const command = require('../games/players').broadcastCommand(this.template(server));
     if (!command) return;
-    const text = String(server.welcome.message || 'Welcome {player}! Say hi everyone.').replace(/\{player\}/g, name).replace(/["\r\n]/g, '');
+    const text = String(server.welcome.message || 'Welcome {player}! Say hi everyone.').replace(/\{player\}/g, () => name);
     // A moment after joining, so it lands after the join message.
-    setTimeout(() => this.sendCommand(server.id, command.replace('{msg}', text)).catch(() => {}), 3000);
+    setTimeout(() => this.sendCommand(server.id, require('../games/players').fillBroadcast(command, text)).catch(() => {}), 3000);
   },
 
   /** Staff notes and the join watchlist, shared by every server (keyed by lower-case name). */
