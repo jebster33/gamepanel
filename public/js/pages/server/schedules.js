@@ -74,7 +74,10 @@ export async function renderSchedulesTab(host, server) {
         <select id="an-every" style="width:auto">${[5, 10, 15, 30, 60]
           .map((n) => `<option value="${n}" ${(server.announcements?.every || 15) === n ? 'selected' : ''}>${n} minutes</option>`)
           .join('')}</select>
-        <div class="spacer"></div>
+      </div>
+      <div class="checkbox-row mt-16"><input type="checkbox" id="an-welcome" ${server.welcome?.enabled ? 'checked' : ''} /><label for="an-welcome">Welcome players the first time they join</label></div>
+      <div class="row" style="gap:8px">
+        <input id="an-welcome-msg" maxlength="200" value="${esc(server.welcome?.message || '')}" placeholder="Welcome {player}! Say hi everyone." style="flex:1" />
         <button class="btn btn-sm" id="an-save">Save</button>
       </div>
     </div>`
@@ -85,7 +88,12 @@ export async function renderSchedulesTab(host, server) {
     try {
       const { announcements } = await api(`/api/servers/${server.id}/announcements`, {
         method: 'PUT',
-        body: { enabled: $('#an-on').checked, every: Number($('#an-every').value), messages: $('#an-messages').value.split('\n') },
+        body: {
+          enabled: $('#an-on').checked,
+          every: Number($('#an-every').value),
+          messages: $('#an-messages').value.split('\n'),
+          welcome: { enabled: $('#an-welcome').checked, message: $('#an-welcome-msg').value },
+        },
       });
       server.announcements = announcements;
       $('#an-on').checked = announcements.enabled;

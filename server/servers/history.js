@@ -107,6 +107,7 @@ module.exports = {
         h.open[name] = since && since < now ? since : now;
         if (p.first > h.open[name]) p.first = h.open[name];
         this.logActivity(server.id, { type: 'join', name });
+        if (p.sessions === 1 && server.welcome?.enabled && now - h.open[name] < 120_000) this.welcomePlayer(server, name);
         const flag = this.playerNote(name);
         // Not for players who were already on before the panel started watching.
         if (flag?.watch && now - h.open[name] < 120_000) this.store.addEvent('player.watched', `${name} joined ${server.name}${flag.note ? ` (note: ${flag.note.slice(0, 120)})` : ''}`, { serverId: server.id });
@@ -317,6 +318,15 @@ module.exports = {
       for (const p of this.playerHistory(id).players) if (hits.has(p.name)) out.push({ ...p, serverId: id, note: this.playerNote(p.name) });
     }
     return out.sort((a, b) => b.online - a.online || b.last - a.last).slice(0, 100);
+  },
+
+  /** First time on the server: greet them in chat. server.welcome = { enabled, message } with {player}. */
+  welcomePlayer(server, name) {
+    const command = require('../games/players').broadcastCommand(this.template(server));
+    if (!command) return;
+    const text = String(server.welcome.message || 'Welcome {player}! Say hi everyone.').replace(/\{player\}/g, name).replace(/["\r\n]/g, '');
+    // A moment after joining, so it lands after the join message.
+    setTimeout(() => this.sendCommand(server.id, command.replace('{msg}', text)).catch(() => {}), 3000);
   },
 
   /** Staff notes and the join watchlist, shared by every server (keyed by lower-case name). */

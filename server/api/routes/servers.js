@@ -395,8 +395,11 @@ module.exports = (router, { store, manager, scheduler }, { requireAdmin, require
       .slice(0, 20);
     const every = Math.max(1, Math.min(240, Math.round(Number(body?.every) || 15)));
     server.announcements = { enabled: Boolean(body?.enabled) && messages.length > 0, every, messages, next: 0 };
+    if (body?.welcome !== undefined) {
+      server.welcome = { enabled: Boolean(body.welcome.enabled), message: String(body.welcome.message || '').replace(/[\r\n]+/g, ' ').trim().slice(0, 200) };
+    }
     store.save();
-    return { announcements: server.announcements };
+    return { announcements: server.announcements, welcome: server.welcome || null };
   });
 
   /* ---------------------------------------------------------- schedules -- */
