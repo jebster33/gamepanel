@@ -3,6 +3,7 @@
   "name": "Rust",
   "category": "Survival",
   "icon": "🔩",
+  "storeAppId": 252490,
   "description": "Facepunch's Rust dedicated server. Expect a large install (~15 GB) and heavy RAM use.",
   "defaultMemory": 8192,
   "variables": [

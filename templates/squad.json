@@ -3,6 +3,7 @@
   "name": "Squad",
   "category": "Shooter",
   "icon": "🎖️",
+  "storeAppId": 393380,
   "description": "Squad dedicated server. Large install; 100-player rounds want a fast CPU and 12 GB+ of RAM.",
   "defaultMemory": 12288,
   "variables": [

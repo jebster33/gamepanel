@@ -3,6 +3,7 @@
   "name": "Left 4 Dead 2",
   "category": "Shooter",
   "icon": "🧪",
+  "storeAppId": 550,
   "description": "Left 4 Dead 2 dedicated server for co-op and versus campaigns.",
   "defaultMemory": 2048,
   "variables": [

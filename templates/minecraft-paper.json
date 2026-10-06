@@ -3,6 +3,7 @@
   "name": "Minecraft: Paper",
   "category": "Minecraft",
   "icon": "🟩",
+  "logo": "/img/games/minecraft.svg",
   "description": "High-performance Minecraft Java server with full Bukkit/Spigot plugin support. The best default for most Minecraft servers.",
   "defaultMemory": 4096,
   "variables": [

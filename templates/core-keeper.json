@@ -3,6 +3,7 @@
   "name": "Core Keeper",
   "category": "Survival",
   "icon": "⛏️",
+  "storeAppId": 1621690,
   "description": "Core Keeper dedicated server. Prints a game ID on first start — share it with your players.",
   "defaultMemory": 4096,
   "variables": [

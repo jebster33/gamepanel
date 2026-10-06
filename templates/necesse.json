@@ -3,6 +3,7 @@
   "name": "Necesse",
   "category": "Sandbox",
   "icon": "🗺️",
+  "storeAppId": 1169040,
   "description": "Necesse dedicated server — tiny footprint, ideal for a small VPS.",
   "defaultMemory": 2048,
   "variables": [

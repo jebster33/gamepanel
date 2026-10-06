@@ -3,6 +3,7 @@
   "name": "V Rising",
   "category": "Survival",
   "icon": "🧛",
+  "storeAppId": 1604030,
   "description": "V Rising dedicated server, run through Wine as Stunlock only ships a Windows build.",
   "defaultMemory": 8192,
   "variables": [

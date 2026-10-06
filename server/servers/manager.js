@@ -297,6 +297,8 @@ class ServerManager extends EventEmitter {
       task: rt.task,
       templateName: tpl?.name || server.templateId,
       templateIcon: tpl?.icon || '🎮',
+      templateLogo: tpl?.logo || null,
+      templateStoreAppId: tpl?.storeAppId || null,
       templateCategory: tpl?.category || 'Other',
       supportsConsoleInput: tpl?.consoleInput !== false,
       hasRcon: Boolean(tpl?.rcon && server.vars?.RCON_PASSWORD),
@@ -410,6 +412,8 @@ class ServerManager extends EventEmitter {
       lastExit: null,
       notes: '',
     };
+    this.checkServerFits(server);
+    this.checkDiskRoom('create a server');
 
     fs.mkdirSync(server.dir, { recursive: true });
     this.servers.push(server);
@@ -423,7 +427,11 @@ class ServerManager extends EventEmitter {
     const server = this.require(id);
     for (const key of EDITABLE) if (patch[key] !== undefined) server[key] = patch[key];
     if (patch.startCommand === '') server.startCommand = null;
-    if (patch.memory !== undefined) server.memory = Math.max(256, Number(patch.memory) || server.memory);
+    if (patch.memory !== undefined) {
+      const memory = Math.max(256, Number(patch.memory) || server.memory);
+      this.checkServerFits({ ...server, memory });
+      server.memory = memory;
+    }
     if (patch.hangRestartMinutes !== undefined) server.hangRestartMinutes = Math.max(0, Math.min(60, Math.round(Number(patch.hangRestartMinutes) || 0)));
     if (patch.idleStopMinutes !== undefined) server.idleStopMinutes = Math.max(0, Math.min(1440, Math.round(Number(patch.idleStopMinutes) || 0)));
     if (patch.alerts !== undefined) server.alerts = this.cleanAlerts(patch.alerts);
@@ -511,6 +519,8 @@ class ServerManager extends EventEmitter {
       memory,
       crashes: this.servers.reduce((n, s) => n + (s.crashCount || 0), 0),
       cores: os.cpus().length,
+      limits: this.limits(),
+      usage: this.usage(),
     };
   }
 
@@ -560,6 +570,7 @@ Object.assign(
   require('./config-files'),
   require('./install'),
   require('./import'),
+  require('./limits'),
   require('./power'),
   require('./stats'),
   require('./history'),
