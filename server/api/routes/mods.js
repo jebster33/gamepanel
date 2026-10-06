@@ -227,6 +227,37 @@ module.exports = (router, { store, manager }, { serverFor, integrations }) => {
     };
   });
 
+  /**
+   * What would change going from the installed version of the pack to another
+   * one: mods added, removed and updated. Only for the pack already installed.
+   */
+  router.get('/api/servers/:id/modpacks/diff', async ({ user, url, params }) => {
+    const server = serverFor(user, params.id, 'mods');
+    const source = url.searchParams.get('source') === 'curseforge' ? 'curseforge' : 'modrinth';
+    const project = String(url.searchParams.get('project') || '');
+    const target = String(url.searchParams.get('version') || '');
+    const pack = server.pack || {};
+    const installedSource = pack.source || (server.vars?.MODPACK_SOURCE === 'curseforge' ? 'curseforge' : 'modrinth');
+    const sameProject = installedSource === source && [pack.slug, server.vars?.MODPACK].filter(Boolean).map(String).includes(project);
+    if (!sameProject) return { available: false, reason: 'A different pack: everything is replaced.' };
+    let current = pack.versionId || (source === 'curseforge' ? server.vars?.MODPACK_VERSION : null);
+    if (!current && source === 'modrinth' && pack.version) {
+      // Installed before the panel kept the version id: find it by its number.
+      const versions = await mods.PROVIDERS.modrinth.versions({ projectId: project, ctx: {}, projectType: 'modpack' }).catch(() => []);
+      current = versions.find((v) => v.version === pack.version)?.id || null;
+    }
+    if (!current) return { available: false, reason: 'The panel does not know which version is installed now.' };
+    if (current === target) return { available: true, same: true };
+    const packDiff = require('../../games/pack-diff');
+    try {
+      const key = integrations().curseforgeKey;
+      const [from, to] = await Promise.all([packDiff.contents({ source, project, version: current, key }), packDiff.contents({ source, project, version: target, key })]);
+      return { available: true, ...packDiff.diff(from, to) };
+    } catch (err) {
+      return { available: false, reason: `Could not compare the versions: ${err.message}` };
+    }
+  });
+
   /** Switch the server to a modpack (or another version of it) and reinstall. */
   router.post('/api/servers/:id/modpacks/install', async ({ user, params, body }) => {
     const server = serverFor(user, params.id, 'mods');

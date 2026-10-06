@@ -3449,3 +3449,33 @@ tr.clickable:hover td {
   object-fit: cover;
   border-radius: var(--radius-sm);
 }
+
+/* Modpack install: what changes between the installed version and the chosen one. */
+.pack-diff {
+  margin-top: 12px;
+}
+.pack-diff details {
+  margin: 6px 0;
+}
+.pack-diff summary {
+  cursor: pointer;
+  font-size: 13px;
+}
+.pack-diff summary .add {
+  color: var(--lime-text);
+}
+.pack-diff summary .del {
+  color: var(--red);
+}
+.pack-diff ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  max-height: 180px;
+  overflow-y: auto;
+  font-size: 12.5px;
+  line-height: 1.7;
+}
+.pack-diff-head {
+  font-size: 13px;
+  margin-bottom: 4px;
+}

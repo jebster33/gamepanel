@@ -194,3 +194,16 @@ test('disable and enable by renaming', async () => {
   await mods.toggle(server, template, 'fabric-api-0.105.0.jar.disabled');
   assert.deepStrictEqual(files(server), ['fabric-api-0.105.0.jar']);
 });
+
+test('modpack diff matches mods by project, not file name', () => {
+  const { diff } = require('../../server/games/pack-diff');
+  const pack = (version, mods) => ({ version, minecraft: '1.21.1', loader: 'fabric 0.16', mods: new Map(mods) });
+  const d = diff(
+    pack('1.0', [['mr:sodium', { name: 'Sodium', version: '0.5.8' }], ['mr:lithium', { name: 'Lithium', version: '0.12' }], ['mr:old', { name: 'Old', version: '1' }]]),
+    pack('1.1', [['mr:sodium', { name: 'Sodium', version: '0.6.0' }], ['mr:lithium', { name: 'Lithium', version: '0.12' }], ['mr:new', { name: 'New', version: '2' }]])
+  );
+  assert.deepStrictEqual(d.updated, [{ name: 'Sodium', from: '0.5.8', to: '0.6.0' }]);
+  assert.deepStrictEqual(d.added.map((m) => m.name), ['New']);
+  assert.deepStrictEqual(d.removed.map((m) => m.name), ['Old']);
+  assert.strictEqual(d.unchanged, 1);
+});
