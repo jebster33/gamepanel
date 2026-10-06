@@ -24,7 +24,7 @@ port, like `Minecraft  127.0.0.1:25565`, and they connect their game to it.
 
 | Action | What happens |
 |---|---|
-| Tick or untick servers | Their client opens or closes those ports within seconds. |
+| Tick or untick servers | Their client opens or closes those ports within seconds. RCON (remote admin) ports stay hidden unless you tick *Also share RCON*. |
 | Extra ports | Anything else: SSH (`22`), a web map, a voice server. *Local port* is what they use on their computer, *Host* is where the panel sends it (blank = the panel's machine). |
 | Turn off | Disconnects them now; switching it back on lets them back in. |
 | Reset password | Disconnects and signs them out. The next time they open the client it asks for a new password. |
