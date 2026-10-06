@@ -6,7 +6,7 @@
  * disk the panel lives on is nearly full.
  * Mixed into ServerManager (see manager.js), so `this` is the manager.
  *
- * server.alerts = { cpu: percent, memory: percent of its limit, disk: GB };
+ * server.alerts = { cpu: percent, memory: percent of its limit, disk: GB, tps: below this (Paper) };
  * 0 or missing turns one off.
  */
 
@@ -20,7 +20,7 @@ const HOST_COOLDOWN_MS = 6 * 3600_000;
 
 function cleanAlerts(input = {}) {
   const num = (v, max) => Math.max(0, Math.min(max, Math.round(Number(v) || 0)));
-  return { cpu: num(input.cpu, 6400), memory: num(input.memory, 100), disk: num(input.disk, 100_000) };
+  return { cpu: num(input.cpu, 6400), memory: num(input.memory, 100), disk: num(input.disk, 100_000), tps: num(input.tps, 20) };
 }
 
 module.exports = {
@@ -37,6 +37,7 @@ module.exports = {
       const memPct = server.memory ? (rt.memory / (server.memory * 1024 * 1024)) * 100 : 0;
       this.alertWhen(server, rt, 'cpu', running && limits.cpu > 0 && rt.cpu >= limits.cpu, now, () => `CPU has been at ${Math.round(rt.cpu)}% for over 2 minutes (alert at ${limits.cpu}%)`);
       this.alertWhen(server, rt, 'memory', running && limits.memory > 0 && memPct >= limits.memory, now, () => `Memory has been at ${Math.round(memPct)}% of its ${server.memory} MB limit for over 2 minutes`);
+      this.alertWhen(server, rt, 'tps', running && limits.tps > 0 && rt.tps != null && rt.tps < limits.tps, now, () => `TPS has been ${rt.tps.toFixed(1)} for over 2 minutes (alert below ${limits.tps}). Players will feel lag.`);
       const diskGb = (rt.diskBytes || 0) / 1024 ** 3;
       this.alertWhen(server, rt, 'disk', limits.disk > 0 && diskGb >= limits.disk, now, () => `The server folder is ${diskGb.toFixed(1)} GB (alert at ${limits.disk} GB)`, 0);
     }

@@ -45,6 +45,7 @@ export function renderServerSettingsTab(host, server) {
         <label><span>CPU above (%)</span><input id="al-cpu" type="number" min="0" value="${server.alerts?.cpu || 0}" ${isAdmin ? '' : 'disabled'} /><div class="hint">For 2 minutes. 100% is one full core.</div></label>
         <label><span>Memory above (% of limit)</span><input id="al-memory" type="number" min="0" max="100" value="${server.alerts?.memory || 0}" ${isAdmin ? '' : 'disabled'} /><div class="hint">For 2 minutes.</div></label>
         <label><span>Folder bigger than (GB)</span><input id="al-disk" type="number" min="0" value="${server.alerts?.disk || 0}" ${isAdmin ? '' : 'disabled'} /><div class="hint">Worlds, logs and mods together.</div></label>
+        ${['minecraft-paper', 'minecraft-purpur'].includes(server.templateId) ? `<label><span>TPS below</span><input id="al-tps" type="number" min="0" max="20" value="${server.alerts?.tps || 0}" ${isAdmin ? '' : 'disabled'} /><div class="hint">20 is perfect; 15 or less feels laggy. For 2 minutes.</div></label>` : ''}
       </div>
       ${isAdmin ? '<button class="btn mt-16" id="al-save">Save alerts</button>' : ''}
     </div>
@@ -191,7 +192,7 @@ export function renderServerSettingsTab(host, server) {
     try {
       await api(`/api/servers/${server.id}`, {
         method: 'PATCH',
-        body: { alerts: { cpu: Number($('#al-cpu').value), memory: Number($('#al-memory').value), disk: Number($('#al-disk').value) } },
+        body: { alerts: { cpu: Number($('#al-cpu').value), memory: Number($('#al-memory').value), disk: Number($('#al-disk').value), tps: Number($('#al-tps')?.value || 0) } },
       });
       await loadServers();
       toast('Alerts saved. Pick where they go under Settings, Notifications, or on the phone app.');
