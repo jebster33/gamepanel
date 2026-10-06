@@ -1,6 +1,6 @@
 'use strict';
 
-const { fail, logger } = require('../../core/util');
+const { fail, logger, readBody } = require('../../core/util');
 const { rconCommand } = require('../../games/rcon');
 const { query } = require('../../games/query');
 const quotas = require('../../features/quotas');
@@ -379,8 +379,27 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
     return manager.pregen(server.id, { action: String(body?.action || ''), radius: body?.radius }, user);
   });
 
+  /** Datapacks in the loaded world (Minecraft Java). */
+  const datapacks = require('../../features/datapacks');
+  router.get('/api/servers/:id/datapacks', ({ user, params }) => datapacks.list(manager, serverFor(user, params.id, 'mods')));
+  router.get('/api/servers/:id/datapacks/search', ({ user, params, url }) =>
+    datapacks.search(manager, serverFor(user, params.id, 'mods'), { query: String(url.searchParams.get('query') || '').slice(0, 100), page: Math.min(50, Math.max(0, Number(url.searchParams.get('page')) || 0)) })
+  );
+  router.get('/api/servers/:id/datapacks/updates', ({ user, params }) => datapacks.updates(manager, serverFor(user, params.id, 'mods')));
+  router.post('/api/servers/:id/datapacks/install', ({ user, params, body }) => datapacks.install(manager, store, serverFor(user, params.id, 'mods'), { projectId: body?.projectId, versionId: body?.versionId }, user.username));
+  router.post(
+    '/api/servers/:id/datapacks/upload',
+    async ({ user, params, url, req }) => {
+      const server = serverFor(user, params.id, 'mods');
+      return datapacks.upload(manager, store, server, url.searchParams.get('name'), await readBody(req, 256 * 1024 * 1024), user.username);
+    },
+    { rawBody: true }
+  );
+  router.post('/api/servers/:id/datapacks/:name/toggle', ({ user, params, body }) => datapacks.toggle(manager, serverFor(user, params.id, 'mods'), params.name, Boolean(body?.on), user.username));
+  router.delete('/api/servers/:id/datapacks/:name', ({ user, params }) => datapacks.remove(manager, store, serverFor(user, params.id, 'mods'), params.name, user.username));
+
   /** Minecraft worlds. */
-  router.get('/api/servers/:id/worlds', async ({ user, params }) => manager.listWorlds(serverFor(user, params.id, 'files')));
+  router.get('/api/servers/:id/worlds',async ({ user, params }) => manager.listWorlds(serverFor(user, params.id, 'files')));
 
   router.post('/api/servers/:id/worlds/use', async ({ user, params, body }) => {
     const server = serverFor(user, params.id, 'settings');
