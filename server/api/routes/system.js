@@ -133,6 +133,32 @@ module.exports = (router, { store, auth, manager, hostMetrics, notifier }, { req
     }
   });
 
+  /**
+   * The panel's own state (accounts, settings, keys, player history) as one
+   * .tar.gz, for moving to a new machine or recovering from a dead disk.
+   * Server files and backups are left out; they have their own exports.
+   * Holds password hashes and secrets, so it asks for the password again.
+   */
+  router.post('/api/system/panel-backup', ({ user, body, res }) => {
+    requireAdmin(user);
+    const record = auth.users.find((u) => u.id === user.id);
+    if (!require('../../core/auth').verifyPassword(String(body?.password || ''), record?.password)) fail(403, 'Your password is not right');
+    const fs = require('fs');
+    const path = require('path');
+    const { spawn } = require('child_process');
+    const parts = ['panel.json', 'secret.key', 'push-keys.json', 'players', 'templates'].filter((p) => fs.existsSync(path.join(config.dataDir, p)));
+    const tar = process.platform === 'win32' ? path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'tar.exe') : 'tar';
+    store.addEvent('panel.backup', `${user.username} downloaded a backup of the panel's settings and accounts`);
+    store.saveNow();
+    manager.saveHistories?.();
+    res.writeHead(200, { 'Content-Type': 'application/gzip', 'Content-Disposition': `attachment; filename="gamepanel-settings-${new Date().toISOString().slice(0, 10)}.tar.gz"` });
+    const proc = spawn(tar, ['-czf', '-', ...parts], { cwd: config.dataDir, stdio: ['ignore', 'pipe', 'ignore'], windowsHide: true });
+    proc.stdout.pipe(res);
+    proc.on('error', () => res.destroy());
+    res.on('close', () => proc.kill());
+    return undefined;
+  });
+
   /** The Discord bot (slash commands). */
   const discordBot = require('../../features/discord-bot').init({ store, manager });
 

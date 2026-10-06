@@ -158,8 +158,27 @@ export async function renderSettings(view) {
         <tr><th>Uptime</th><td>${fmtDuration((state.host?.uptime || 0) * 1000)}</td></tr>
         <tr><th>Templates loaded</th><td>${state.templates.length}</td></tr>
       </table></div>
-      <button class="btn mt-16" id="s-reload-templates">Reload templates</button>
+      <div class="row mt-16" style="gap:8px">
+        <button class="btn" id="s-reload-templates">Reload templates</button>
+        <button class="btn" id="s-panel-backup" title="Accounts, settings, keys and player history. Not server files.">Back up panel settings</button>
+      </div>
     </div>`;
+
+  $('#s-panel-backup').addEventListener('click', async () => {
+    const { promptModal } = await import('../ui/modal.js');
+    const password = await promptModal('Back up panel settings', 'Your password', '', { type: 'password', hint: 'The file holds every account, setting and key, so keep it somewhere safe. To restore, stop the panel and unpack it into the data folder.' });
+    if (!password) return;
+    try {
+      const res = await fetch('/api/system/panel-backup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password }) });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `Failed (${res.status})`);
+      const url = URL.createObjectURL(await res.blob());
+      const a = Object.assign(document.createElement('a'), { href: url, download: /filename="([^"]+)"/.exec(res.headers.get('Content-Disposition') || '')?.[1] || 'gamepanel-settings.tar.gz' });
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 10_000);
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+  });
 
   $('#n-test').addEventListener('click', async () => {
     try {

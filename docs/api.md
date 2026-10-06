@@ -58,6 +58,7 @@ POST   /api/servers/:id/backups/:name/restore-files   {"paths"} put back single 
 PUT    /api/servers/:id/maintenance      {"enabled","message?"} whitelist on, kick non-ops, MOTD
 PUT    /api/players/:name/note           {"note","watch"} staff note; watch = alert on join
 PUT    /api/servers/:id/discord-feed      {"webhook","chat","joins","status","test?"} chat relay to a channel
+POST   /api/system/panel-backup          {"password"} accounts, settings, keys, player history as .tar.gz (admins)
 GET    /api/servers/:id/export           whole server as .tar.gz with gamepanel-server.json (admins)
 GET    /api/servers/:id/diagnose         crash doctor findings
 POST   /api/servers/:id/share-log        upload the console to mclo.gs
