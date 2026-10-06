@@ -113,6 +113,7 @@ function contents(serverId, name) {
     const entries = [];
     let rest = '';
     let truncated = false;
+    let unparsed = 0;
     proc.stdout.on('data', (chunk) => {
       const lines = (rest + chunk).split(/\r?\n/);
       rest = lines.pop();
@@ -124,7 +125,10 @@ function contents(serverId, name) {
         }
         // "-rw-r--r-- user/group  1234 2026-10-05 12:00 ./path/to/file" (GNU) or "... 1234 Oct  5 12:00 ./path" (bsdtar).
         const m = line.match(/^([dl-])\S*\s+(?:\S+\s+)*?(\d+)\s+([A-Za-z]{3}\s+\d{1,2}|\d{4}-\d{2}-\d{2})\s+(\d{1,2}:\d{2}(?::\d{2})?|\d{4})\s+(.+)$/);
-        if (!m) continue;
+        if (!m) {
+          if (line.trim()) unparsed++;
+          continue;
+        }
         const path_ = m[5].replace(/ -> .*$/, '').replace(/^\.\//, '').replace(/\/$/, '');
         if (!path_ || path_ === '.') continue;
         // GNU tar prints local time to the minute; bsdtar's "Oct  5 12:00" is too vague to compare.
@@ -133,7 +137,7 @@ function contents(serverId, name) {
       }
     });
     proc.on('error', (err) => reject(new Error(`tar could not be run: ${err.message}`)));
-    proc.on('close', () => ok({ entries, truncated }));
+    proc.on('close', () => ok({ entries, truncated, unparsed }));
   });
 }
 

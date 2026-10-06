@@ -15,6 +15,7 @@ const net = require('net');
 const fs = require('fs');
 const path = require('path');
 const { logger } = require('../core/util');
+const safefs = require('../core/safefs');
 const { STATUS } = require('../servers/constants');
 
 const SYNC_MS = 15_000;
@@ -91,7 +92,7 @@ function takePackets(buf) {
 
 function properties(server) {
   try {
-    return fs.readFileSync(path.join(server.dir, 'server.properties'), 'utf8');
+    return safefs.readText(path.join(server.dir, 'server.properties'), 1024 * 1024);
   } catch {
     return '';
   }
@@ -100,7 +101,7 @@ const prop = (text, key) => (text.match(new RegExp(`^${key.replace('.', '\\.')}=
 
 function favicon(server) {
   try {
-    const png = fs.readFileSync(path.join(server.dir, 'server-icon.png'));
+    const png = safefs.readRegular(path.join(server.dir, 'server-icon.png'), 64 * 1024);
     return png.length < 64 * 1024 ? `data:image/png;base64,${png.toString('base64')}` : undefined;
   } catch {
     return undefined;
@@ -120,7 +121,7 @@ function statusJson(server, protocol, waking) {
 
 const readJson = (server, file) => {
   try {
-    return JSON.parse(fs.readFileSync(path.join(server.dir, file), 'utf8'));
+    return JSON.parse(safefs.readText(path.join(server.dir, file), 4 * 1024 * 1024));
   } catch {
     return [];
   }

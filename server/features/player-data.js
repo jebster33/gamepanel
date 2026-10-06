@@ -15,6 +15,7 @@ const nbt = require('../core/nbt');
 const backups = require('./backups');
 const { containedPath } = require('./files');
 const lists = require('../games/player-lists');
+const safefs = require('../core/safefs');
 
 const isJava = (template) => template?.query?.type === 'minecraft' && template.id !== 'minecraft-bedrock' && template.id !== 'minecraft-velocity';
 
@@ -26,7 +27,7 @@ const isJava = (template) => template?.query?.type === 'minecraft' && template.i
 async function uuidOf(manager, server, name) {
   const lower = String(name).toLowerCase();
   try {
-    const cache = JSON.parse(fs.readFileSync(containedPath(server.dir, 'usercache.json'), 'utf8'));
+    const cache = JSON.parse(safefs.readText(containedPath(server.dir, 'usercache.json'), 8 * 1024 * 1024));
     const hit = cache.find((u) => String(u.name).toLowerCase() === lower);
     if (hit && /^[0-9a-f-]{36}$/i.test(hit.uuid)) return hit.uuid;
   } catch {
@@ -41,7 +42,7 @@ async function uuidOf(manager, server, name) {
   }
   for (const f of files.slice(0, 3000)) {
     try {
-      const known = nbt.read(fs.readFileSync(path.join(dir, f))).bukkit?.lastKnownName;
+      const known = nbt.read(safefs.readRegular(path.join(dir, f), 2 * 1024 * 1024)).bukkit?.lastKnownName;
       if (known && String(known).toLowerCase() === lower) return f.slice(0, 36);
     } catch {
       /* unreadable: skip */
@@ -173,7 +174,7 @@ async function inventory(manager, server, name, { backup = null } = {}) {
     if (!buf) fail(404, `${name} is not in that backup (they had not joined yet, or the world was different)`);
   } else {
     try {
-      buf = fs.readFileSync(containedPath(server.dir, rel));
+      buf = safefs.readRegular(containedPath(server.dir, rel), 8 * 1024 * 1024);
     } catch {
       fail(404, `${name} has no saved data on this server yet`);
     }
@@ -204,8 +205,10 @@ async function restore(manager, store, server, name, backup, actor) {
     fs.copyFileSync(file, keep);
   }
   fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(`${file}.gamepanel-tmp`, buf);
-  fs.renameSync(`${file}.gamepanel-tmp`, file);
+  // A temp name nobody can have planted a link at (exclusive create), then an atomic rename over the file.
+  const tmp = `${file}.${require('crypto').randomBytes(6).toString('hex')}.tmp`;
+  fs.writeFileSync(tmp, buf, { flag: 'wx' });
+  fs.renameSync(tmp, file);
   manager.logActivity(server.id, { type: 'inventory', name, by: actor, text: backup });
   store.addEvent('player.restored', `${actor} put back ${name}'s inventory on ${server.name} from ${backup}`, { serverId: server.id });
   return { ok: true };

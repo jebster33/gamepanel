@@ -61,7 +61,7 @@ function props(text) {
 async function compare(server, name) {
   const backup = backups.list(server.id).find((b) => b.name === name);
   if (!backup) fail(404, 'Backup not found');
-  const [{ entries, truncated: bTrunc }, { files: now, truncated: nTrunc }] = await Promise.all([backups.contents(server.id, name), current(server.dir)]);
+  const [{ entries, truncated: bTrunc, unparsed = 0 }, { files: now, truncated: nTrunc }] = await Promise.all([backups.contents(server.id, name), current(server.dir)]);
   const then = new Map();
   for (const e of entries) if (!e.dir && !skipped(e.path)) then.set(e.path, e);
 
@@ -91,7 +91,7 @@ async function compare(server, name) {
     addedSince.push({ path: rel, size: n.size, modified: n.mtime });
     bump(rel, 'addedSince', 0);
   }
-  return { backup, then, now, comeBack, changed, addedSince, same, areas: [...areas.values()], truncated: bTrunc || nTrunc };
+  return { backup, then, now, comeBack, changed, addedSince, same, areas: [...areas.values()], truncated: bTrunc || nTrunc, unparsed };
 }
 
 async function preview(manager, server, name) {
@@ -110,7 +110,7 @@ async function preview(manager, server, name) {
   let properties = [];
   if (c.then.has('server.properties') && c.now.has('server.properties')) {
     const old = props((await backups.readFile(server, name, 'server.properties').catch(() => null))?.toString('utf8'));
-    const cur = props(await fsp.readFile(path.join(server.dir, 'server.properties'), 'utf8').catch(() => ''));
+    const cur = props((() => { try { return require('../core/safefs').readText(path.join(server.dir, 'server.properties'), 1024 * 1024); } catch { return ''; } })());
     properties = [...new Set([...Object.keys(old), ...Object.keys(cur)])]
       .filter((k) => old[k] !== cur[k] && !/password|secret|token/i.test(k))
       .sort()
@@ -143,7 +143,13 @@ async function restore(manager, server, name, { backupFirst = false, exact = fal
   let safety = null;
   if (backupFirst) safety = await backups.create(server, 'before-restore');
   // Worked out before the restore: afterwards every file from the backup is there again.
-  const extra = exact ? (await compare(server, name)).addedSince.map((f) => f.path) : [];
+  let extra = [];
+  if (exact) {
+    const c = await compare(server, name);
+    // A listing that was cut short, or had lines that could not be read, would call real backup files "added since" and delete them.
+    if (c.truncated || c.unparsed) fail(400, 'This server is too large (or has file names the panel cannot list) for "exactly like the backup". Restore without it.');
+    extra = c.addedSince.map((f) => f.path);
+  }
   await backups.restore(server, name);
   let removed = 0;
   for (const rel of extra) {

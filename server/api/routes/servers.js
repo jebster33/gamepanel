@@ -395,7 +395,7 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
   });
 
   /** Memory and settings advice, and applying one piece of it. */
-  router.get('/api/servers/:id/advice', ({ user, params }) => require('../../features/advice').advise(manager, serverFor(user, params.id)));
+  router.get('/api/servers/:id/advice', ({ user, params }) => require('../../features/advice').advise(manager, serverFor(user, params.id), { admin: user.role === 'admin' }));
   router.post('/api/servers/:id/advice/:adviceId/apply', ({ user, params }) => {
     requireAdmin(user);
     return require('../../features/advice').apply(manager, store, serverFor(user, params.id), params.adviceId, user.username);

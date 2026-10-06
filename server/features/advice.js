@@ -44,23 +44,8 @@ function aikar(memoryMb) {
   ].join(' ');
 }
 
-/** The end of a text file (logs can be huge). */
-function tail(file, bytes = 2 * MB) {
-  try {
-    const fd = fs.openSync(file, 'r');
-    try {
-      const size = fs.fstatSync(fd).size;
-      const len = Math.min(size, bytes);
-      const buf = Buffer.alloc(len);
-      fs.readSync(fd, buf, 0, len, size - len);
-      return buf.toString('utf8');
-    } finally {
-      fs.closeSync(fd);
-    }
-  } catch {
-    return '';
-  }
-}
+/** The end of a text file (logs can be huge); a FIFO or a link yields nothing. */
+const tail = (file, bytes) => require('../core/safefs').tailText(file, bytes);
 
 const countJars = (dir) => {
   try {
@@ -136,7 +121,7 @@ function minecraftNeed(f) {
   return Math.min(16384, Math.max(1024, roundUp(base + Math.ceil(players / 10) * (f.modded ? 768 : 512))));
 }
 
-function advise(manager, server) {
+function advise(manager, server, { admin = true } = {}) {
   const f = facts(manager, server);
   const out = [];
   const add = (a) => out.push(a);
@@ -161,7 +146,8 @@ function advise(manager, server) {
     const to = Math.max(1024, roundUp(f.memPeak * 1.6));
     add({ id: 'mem-spare', level: 'tip', title: 'Memory to spare', detail: `It never used more than ${gb(f.memPeak)} of its ${gb(f.memory)} in ${Math.floor(f.days)} days. ${gb(to)} would still leave room.`, action: { kind: 'memory', value: to, label: `Use ${gb(to)}` } });
   }
-  if (f.committedMb > f.hostMb * 0.9) {
+  // Machine-wide numbers say things about other servers: administrators only.
+  if (admin && f.committedMb > f.hostMb * 0.9) {
     add({ id: 'host-full', level: 'warn', title: 'More memory promised than the machine has', detail: `Servers that run or start on their own are set to ${gb(f.committedMb)} together; this machine has ${gb(f.hostMb)}. When they all run, the system starts swapping or kills one.` });
   }
 
@@ -204,7 +190,7 @@ function advise(manager, server) {
   const order = { warn: 0, tip: 1, good: 2 };
   out.sort((a, b) => order[a.level] - order[b.level]);
   const { template, ...shown } = f;
-  return { advice: out, facts: { ...shown, javaArgs: undefined, need: f.minecraft ? minecraftNeed(f) : null } };
+  return { advice: out, facts: { ...shown, hostMb: admin ? shown.hostMb : undefined, committedMb: admin ? shown.committedMb : undefined, javaArgs: undefined, need: f.minecraft ? minecraftNeed(f) : null } };
 }
 
 /** Apply one piece of advice by id. */

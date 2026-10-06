@@ -82,6 +82,8 @@ async function create(manager, store, liveId, { name, withWorld = true } = {}, a
     });
     for (const key of ['javaOverride', 'resolvedVersion', 'gameVersion', 'loader', 'installedAt']) if (live[key] !== undefined) copy[key] = JSON.parse(JSON.stringify(live[key]));
     copy.stagingOf = live.id;
+    // The copy must not be able to control live with a password it inherited.
+    if (copy.vars?.RCON_PASSWORD !== undefined) copy.vars.RCON_PASSWORD = require('../core/secrets').seal(crypto.randomBytes(12).toString('hex'));
     copy.notes = `Staging copy of ${live.name}. Push changes to it from the banner at the top.`;
     store.save();
     manager.broadcastServers();
@@ -147,6 +149,21 @@ function props(text) {
   return out;
 }
 
+/** True when `p` is a link (to anything): never followed, on either side of a push. */
+const isLink = async (p) => (await fsp.lstat(p).catch(() => null))?.isSymbolicLink() === true;
+
+/** True when a folder on the way from `base` down to `base/rel` is a link: a file there would be written through it. */
+async function hasLinkOnPath(base, rel) {
+  let cur = base;
+  for (const part of String(rel).split('/').filter(Boolean)) {
+    cur = path.join(cur, part);
+    const st = await fsp.lstat(cur).catch(() => null);
+    if (!st) return false; // not there yet: it will be created as a real folder
+    if (st.isSymbolicLink()) return true;
+  }
+  return false;
+}
+
 /**
  * In plugins/ and mods/ live keeps writing data of its own (databases,
  * caches) after the copy is made. There, only the jars at the top and config
@@ -160,6 +177,8 @@ const deletable = (name, rel) => !isJarFolder(name) || !rel.includes('/');
 async function compareEntry(staging, live, name, isWorld) {
   const s = path.join(staging.dir, name);
   const l = path.join(live.dir, name);
+  // A link at the top (a game or mod can make one) is never followed: it is not offered for pushing.
+  if ((await isLink(s)) || (await isLink(l))) return { added: 0, changed: 0, removed: 0, files: [], folder: false, linked: true };
   const sStat = await fsp.stat(s).catch(() => null);
   const lStat = await fsp.stat(l).catch(() => null);
   const files = [];
@@ -212,12 +231,17 @@ async function diff(manager, stagingId) {
     }
   }
   const entries = [];
+  const skippedLinks = [];
   for (const name of [...names].sort()) {
     if (NEVER.has(name) || VERSION_DIRS.has(name) || /\.jar$/i.test(name) || name === 'server.properties') continue;
     const isWorld = worlds.has(name);
     // Copied without its world: pushing would only delete live's.
     if (isWorld && !fs.existsSync(path.join(staging.dir, name))) continue;
     const d = await compareEntry(staging, live, name, isWorld);
+    if (d.linked) {
+      skippedLinks.push(name);
+      continue;
+    }
     if (!d.added && !d.changed && !d.removed) continue;
     const kind = isWorld ? 'world' : /^(plugins|mods|datapacks|kubejs|scripts)$/i.test(name) ? 'mods' : /^(config|defaultconfigs|serverconfig)$/i.test(name) || SAFE_EXT.test(name) ? 'settings' : 'other';
     entries.push({ name, kind, ...d, push: kind === 'mods' || kind === 'settings' });
@@ -246,6 +270,7 @@ async function diff(manager, stagingId) {
     staging: { id: staging.id, name: staging.name, running: manager.isActive(staging.id) },
     live: { id: live.id, name: live.name, running: manager.isActive(live.id) },
     entries,
+    skippedLinks,
     properties,
     version: { settings: version, files: jars },
   };
@@ -257,24 +282,41 @@ async function diff(manager, stagingId) {
 async function syncEntry(staging, live, name) {
   const s = path.join(staging.dir, name);
   const l = path.join(live.dir, name);
+  if ((await isLink(s)) || (await isLink(l))) fail(400, `Refusing to push ${name}: it is a link, not a folder or file`);
   const sStat = await fsp.lstat(s).catch(() => null);
   if (!sStat) {
     await fsp.rm(l, { recursive: true, force: true });
-    return;
+    return [];
   }
   if (!sStat.isDirectory()) {
     await fsp.rm(l, { recursive: true, force: true });
     await fsp.cp(s, l, { force: true, verbatimSymlinks: true });
-    return;
+    return [];
   }
   // Remove what staging no longer has, then copy over everything it does.
   const [a, b] = await Promise.all([walk(s), walk(l)]);
-  for (const rel of b.keys()) if (!a.has(rel) && deletable(name, rel)) await fsp.rm(path.join(l, rel), { force: true });
+  const skipped = [];
+  for (const rel of b.keys()) {
+    if (a.has(rel) || !deletable(name, rel)) continue;
+    if (await hasLinkOnPath(l, path.dirname(rel))) {
+      skipped.push(`${name}/${rel}`);
+      continue;
+    }
+    await fsp.rm(path.join(l, rel), { force: true });
+  }
   for (const rel of a.keys()) {
     if (!pushable(name, rel)) continue;
-    await fsp.mkdir(path.dirname(path.join(l, rel)), { recursive: true });
-    await fsp.cp(path.join(s, rel), path.join(l, rel), { force: true, verbatimSymlinks: true });
+    if (await hasLinkOnPath(l, path.dirname(rel))) {
+      skipped.push(`${name}/${rel}`);
+      continue;
+    }
+    const to = path.join(l, rel);
+    await fsp.mkdir(path.dirname(to), { recursive: true });
+    // Replace what is there, never write through a link that stands where the file goes.
+    if (await isLink(to)) await fsp.rm(to, { force: true });
+    await fsp.copyFile(path.join(s, rel), to);
   }
+  return skipped;
 }
 
 async function stopAndWait(manager, id, ms = 3 * 60_000) {
@@ -303,8 +345,9 @@ async function push(manager, store, stagingId, { entries = [], properties = true
     manager.pushConsole(live, `Stopping to take changes from ${staging.name}…`, 'system');
     await stopAndWait(manager, live.id);
   }
+  const skippedByLink = [];
   try {
-    for (const name of picked) await syncEntry(staging, live, name);
+    for (const name of picked) skippedByLink.push(...(await syncEntry(staging, live, name)));
     if (doProps) {
       const s = props(await fsp.readFile(path.join(staging.dir, 'server.properties'), 'utf8'));
       const values = {};
@@ -312,7 +355,7 @@ async function push(manager, store, stagingId, { entries = [], properties = true
       manager.setProperties(live, values);
     }
     if (doVersion) {
-      for (const name of plan.version.files) await syncEntry(staging, live, name);
+      for (const name of plan.version.files) skippedByLink.push(...(await syncEntry(staging, live, name)));
       for (const v of plan.version.settings) {
         if (['resolvedVersion', 'gameVersion', 'loader'].includes(v.key)) live[v.key] = staging[v.key];
         else live.vars = { ...(live.vars || {}), [v.key]: staging.vars[v.key] };
@@ -327,7 +370,7 @@ async function push(manager, store, stagingId, { entries = [], properties = true
   store.addEvent('server.pushed', `${actor?.username || 'Someone'} pushed ${what.join(', ')} from ${staging.name} to ${live.name}`, { serverId: live.id });
   manager.pushConsole(live, `Took ${what.join(', ')} from ${staging.name}. Backup from before: ${safety.name}.`, 'system');
   if (wasRunning) await manager.start(live.id).catch((err) => manager.pushConsole(live, `Could not start again: ${err.message}`, 'system'));
-  return { ok: true, pushed: what, backup: safety.name, restarted: wasRunning };
+  return { ok: true, pushed: what, backup: safety.name, restarted: wasRunning, skippedLinks: skippedByLink };
 }
 
 module.exports = { create, diff, push, worldNames, NEVER, KEEP_PROPS };

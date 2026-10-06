@@ -52,11 +52,14 @@ async function receive(req, source, serverId, name) {
   const file = storeFile(source, serverId, name);
   fs.mkdirSync(path.dirname(file), { recursive: true });
   const size = Number(req.headers['x-backup-size']) || 0;
-  if (size && freeBytes(path.dirname(file)) - size < 1024 ** 3) fail(507, 'Not enough free disk space on this node for that backup');
+  // The size is how a full disk is refused before it fills, and how a cut-off copy is noticed.
+  if (!size) fail(400, 'Send the size of the backup in X-Backup-Size');
+  if (fs.existsSync(file)) fail(409, 'That copy is already here; copies are never overwritten');
+  if (freeBytes(path.dirname(file)) - size < 1024 ** 3) fail(507, 'Not enough free disk space on this node for that backup');
   const part = `${file}.part`;
   try {
     await pipeline(req, fs.createWriteStream(part));
-    if (size && fs.statSync(part).size !== size) throw new Error('the copy arrived incomplete');
+    if (fs.statSync(part).size !== size) throw new Error('the copy arrived incomplete');
     fs.renameSync(part, file);
   } catch (err) {
     fs.rmSync(part, { force: true });
@@ -97,6 +100,23 @@ function storedSummary() {
     }
   }
   return out;
+}
+
+/** A tar's member names: none absolute, none climbing out with "..". */
+function assertArchiveNames(file) {
+  return new Promise((resolve, reject) => {
+    const proc = require('child_process').spawn('tar', ['-tzf', file], { stdio: ['ignore', 'pipe', 'ignore'] });
+    let rest = '';
+    let bad = null;
+    proc.stdout.on('data', (chunk) => {
+      const lines = (rest + chunk).split('\n');
+      rest = lines.pop();
+      for (const name of lines) if (!bad && (name.startsWith('/') || /^[A-Za-z]:/.test(name) || name.split(/[/\\]/).includes('..'))) bad = name;
+      if (bad) proc.kill();
+    });
+    proc.on('error', reject);
+    proc.on('close', (code) => (bad ? reject(new Error(`the copy has a file that would unpack outside the server (${bad})`)) : code === 0 ? resolve() : reject(new Error('the copy is not a readable backup'))));
+  });
 }
 
 /* ------------------------------------------------------- sending: copies -- */
@@ -222,6 +242,8 @@ class NodeBackups {
       const { nodeStream } = require('./move');
       const res = await nodeStream(this.node(), 'GET', this.path(serverId, name));
       await pipeline(res, fs.createWriteStream(part));
+      // A copy coming back from another machine is only unpacked later, as a backup: no name may reach outside the folder.
+      await assertArchiveNames(part);
       fs.renameSync(part, target);
     } catch (err) {
       fs.rmSync(part, { force: true });

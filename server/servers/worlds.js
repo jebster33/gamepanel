@@ -64,7 +64,7 @@ function findLevel(dir, depth = 0) {
 module.exports = {
   readProperties(server) {
     try {
-      return fs.readFileSync(containedPath(server.dir, 'server.properties'), 'utf8');
+      return require('../core/safefs').readText(containedPath(server.dir, 'server.properties'), 1024 * 1024);
     } catch {
       return '';
     }

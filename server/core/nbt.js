@@ -66,9 +66,11 @@ function parse(buf) {
         need(4);
         const n = buf.readInt32BE(pos);
         pos += 4;
+        if (n < 0) throw new Error('bad NBT array length');
         need(n);
         pos += n;
-        return Array.from(buf.subarray(pos - n, pos), (b) => (b << 24) >> 24);
+        // Nobody reads these here: keep a short sample, not a million-item array.
+        return Array.from(buf.subarray(pos - n, pos - n + Math.min(n, 64)), (b) => (b << 24) >> 24);
       }
       case 8:
         return string();
@@ -97,6 +99,7 @@ function parse(buf) {
         need(4);
         const n = buf.readInt32BE(pos);
         pos += 4;
+        if (n < 0) throw new Error('bad NBT array length');
         const size = type === 11 ? 4 : 8;
         need(n * size);
         const out = [];

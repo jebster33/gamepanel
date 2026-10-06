@@ -22,6 +22,7 @@ const crypto = require('crypto');
 const { fail, logger } = require('../core/util');
 const { containedPath } = require('./files');
 const nbt = require('../core/nbt');
+const safefs = require('../core/safefs');
 const zip = require('../core/zip');
 const compat = require('./mods/compat');
 const modrinth = require('./mods/providers/modrinth');
@@ -159,7 +160,7 @@ function fits(meta, expected) {
 /** pack.mcmeta of a zip or a folder, or null; an error message when it is broken. */
 function inspect(full, isDir) {
   try {
-    if (isDir) return readMcmeta(fs.readFileSync(path.join(full, 'pack.mcmeta'), 'utf8'));
+    if (isDir) return readMcmeta(safefs.readText(path.join(full, 'pack.mcmeta'), 1024 * 1024));
     const z = zip.open(full);
     try {
       const buf = z.read('pack.mcmeta');
@@ -192,9 +193,21 @@ function context(manager, server) {
 }
 
 const manifestFile = (server) => containedPath(server.dir, '.gamepanel/datapacks.json');
+/**
+ * The record of what came from Modrinth lives in a file a files-user can edit:
+ * only plain file names (no folders, no ..) are kept, so it can never point a delete elsewhere.
+ */
+function cleanManifest(data) {
+  const out = {};
+  for (const [file, m] of Object.entries(data && typeof data === 'object' ? data : {})) {
+    if (path.basename(file) === file && /^[\w.+\- ]+\.zip$/i.test(file) && m && typeof m === 'object') out[file] = m;
+  }
+  return out;
+}
+
 function loadManifest(server) {
   try {
-    return JSON.parse(fs.readFileSync(manifestFile(server), 'utf8')) || {};
+    return cleanManifest(JSON.parse(safefs.readText(manifestFile(server), 1024 * 1024)));
   } catch {
     return {};
   }
@@ -207,7 +220,7 @@ function saveManifest(server, data) {
 /** Packs the game itself has turned off (level.dat DataPacks.Disabled). */
 function disabledInGame(server, world) {
   try {
-    const data = nbt.read(fs.readFileSync(containedPath(server.dir, `${world}/level.dat`)));
+    const data = nbt.read(safefs.readRegular(containedPath(server.dir, `${world}/level.dat`), 8 * 1024 * 1024));
     return new Set((data.Data?.DataPacks?.Disabled || []).filter((n) => String(n).startsWith('file/')).map((n) => String(n).slice(5)));
   } catch {
     return new Set();
@@ -219,7 +232,7 @@ const pending = new Map(); // serverId -> Map(name -> { on, at })
 
 function entries(dir) {
   try {
-    return fs.readdirSync(dir, { withFileTypes: true }).filter((e) => !e.name.startsWith('.') && (e.isDirectory() || /\.zip$/i.test(e.name)));
+    return fs.readdirSync(dir, { withFileTypes: true }).filter((e) => !e.name.startsWith('.') && (e.isDirectory() || (e.isFile() && /\.zip$/i.test(e.name))));
   } catch {
     return [];
   }
