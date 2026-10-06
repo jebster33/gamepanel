@@ -25,6 +25,8 @@ const TITLES = {
   'player.watched': 'Watched player joined',
   'player.moderated': 'Chat moderation acted',
   'ban.appeal': 'New ban appeal',
+  'server.moved': 'Server moved',
+  'server.move_failed': 'Moving a server failed',
   'panel.disk_low': 'Disk almost full',
   'user.api_key': 'API key created',
   'user.new_ip': 'Sign-in from a new address',

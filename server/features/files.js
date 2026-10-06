@@ -318,4 +318,4 @@ function resolveDownload(root, rel) {
   return { file, size: stat.size, name: path.basename(file) };
 }
 
-module.exports = { list, search, read, write, mkdir, remove, rename, extract, compress, resolveDownload, containedPath, MAX_EDIT_BYTES };
+module.exports = { list, search, read, write, mkdir, remove, rename, extract, compress, resolveDownload, containedPath, assertArchiveIsSafe, MAX_EDIT_BYTES };

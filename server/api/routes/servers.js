@@ -50,6 +50,23 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
     return { server: manager.publicServer(server) };
   });
 
+  /** The receiving end of a move from another node: an export streamed in as the body. */
+  router.post(
+    '/api/servers/receive',
+    async ({ user, req, url }) => {
+      requireAdmin(user);
+      const server = await manager.receiveServer(req, user, { name: url.searchParams.get('name') || undefined });
+      return { server: manager.publicServer(server) };
+    },
+    { rawBody: true }
+  );
+
+  /** Move a server to another node, or from a node to this machine. */
+  router.post('/api/move', ({ user, body }) => {
+    requireAdmin(user);
+    return require('../../features/move').start({ manager, store }, { serverId: String(body?.serverId || ''), to: String(body?.to || ''), keepSource: Boolean(body?.keepSource) }, user);
+  });
+
   /** Servers other panels (Pterodactyl, AMP, LinuxGSM) left on this machine, ready to import. */
   router.get('/api/import/scan', ({ user }) => {
     requireAdmin(user);
@@ -274,9 +291,10 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
   });
 
   /** The whole server as one archive another panel can import. */
-  router.get('/api/servers/:id/export', async ({ user, params, res }) => {
+  router.get('/api/servers/:id/export', async ({ user, params, res, url }) => {
     requireAdmin(user);
-    await manager.exportServer(serverFor(user, params.id, 'files'), res);
+    // ?move=1 (a move to another node) carries secret variables in the clear; administrators only, as above.
+    await manager.exportServer(serverFor(user, params.id, 'files'), res, { forMove: url.searchParams.get('move') === '1' });
     return undefined;
   });
 
