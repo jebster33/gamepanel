@@ -87,7 +87,7 @@ function render(data) {
                </div>`
             : ''
         }
-        ${address ? `<div class="row"><span class="address">${esc(address)} <button data-copy="${esc(address)}">Copy</button></span></div>` : ''}
+        ${address ? `<div class="row"><span class="address">${esc(address)} <button data-copy="${esc(address)}">Copy</button></span>${s.mapPort ? `<a class="meta" href="http://${esc(host)}:${s.mapPort}" target="_blank" rel="noopener">🗺️ Live map</a>` : ''}</div>` : ''}
         ${s.maintenance ? `<div class="meta" style="margin-top:8px">🛠 ${esc(s.maintenance)}</div>` : ''}
         ${s.joinNote ? `<div class="meta" style="margin-top:8px">${esc(s.joinNote)}</div>` : ''}
         ${uptimeBars(s.uptime30)}
