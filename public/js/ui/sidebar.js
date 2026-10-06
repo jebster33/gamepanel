@@ -38,6 +38,11 @@ export function renderHostMini() {
       <span class="value">${diskPct.toFixed(0)}%</span></div>`;
 }
 
+/** "Connections" only exists while the bridge is on (and only for admins). */
+export function setBridgeNav(enabled) {
+  $('#nav-connections')?.classList.toggle('hidden', !(enabled && state.user?.role === 'admin'));
+}
+
 export function closeSidebar() {
   $('#sidebar').classList.remove('open');
   $('#sidebar-backdrop').classList.remove('show');

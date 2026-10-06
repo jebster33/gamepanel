@@ -47,6 +47,7 @@ Filename: "http://localhost:8420"; Description: "Open GamePanel in your browser"
 
 [UninstallRun]
 Filename: "{app}\GamePanel-Service.exe"; Parameters: "stop"; Flags: runhidden waituntilterminated; RunOnceId: "StopService"
+Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{app}\windows\stop-servers.ps1"""; Flags: runhidden waituntilterminated; RunOnceId: "StopServers"
 Filename: "{app}\GamePanel-Service.exe"; Parameters: "uninstall"; Flags: runhidden waituntilterminated; RunOnceId: "RemoveService"
 Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""GamePanel"""; Flags: runhidden waituntilterminated; RunOnceId: "RemoveFirewall"
 
@@ -55,11 +56,28 @@ Type: files; Name: "{app}\GamePanel.url"
 
 [Messages]
 FinishedLabel=GamePanel is running as a Windows service and starts with Windows.%n%nOpen http://localhost:8420 and create your administrator account. Servers, backups and settings are kept in C:\ProgramData\GamePanel.
+ConfirmUninstall=This removes GamePanel and ALL of its data: every game server and its world files, all backups, users, bridge connections and settings in C:\ProgramData\GamePanel.%n%nThis cannot be undone. Continue?
 
 [Code]
 function ServiceExists: Boolean;
 begin
   Result := RegKeyExists(HKLM, 'SYSTEM\CurrentControlSet\Services\GamePanel');
+end;
+
+{ Uninstalling removes everything, data included (see ConfirmUninstall). }
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+var
+  DataDir: String;
+begin
+  if CurUninstallStep = usPostUninstall then
+  begin
+    DataDir := ExpandConstant('{commonappdata}\GamePanel');
+    if DirExists(DataDir) then
+    begin
+      Sleep(2000);
+      DelTree(DataDir, True, True, True);
+    end;
+  end;
 end;
 
 { An update replaces node.exe, so the running panel has to stop first. }

@@ -49,6 +49,7 @@ jobs:
           Start-Sleep 3
           if (Get-Service GamePanel -ErrorAction SilentlyContinue) { throw 'The service is still registered after uninstall' }
           if (Test-Path "$env:ProgramFiles\GamePanel\node\node.exe") { throw 'Program files were left behind' }
+          if (Test-Path "$env:ProgramData\GamePanel\panel.json") { throw 'Panel data was left behind' }
           Write-Host 'Uninstalled cleanly'
 
       - name: Install with the PowerShell one-liner
@@ -62,8 +63,9 @@ jobs:
         run: |
           Get-Content windows/install.ps1 -Raw | Invoke-Expression
           ./windows/test-install.ps1 -Port 8090
-          powershell -ExecutionPolicy Bypass -File "$env:ProgramFiles\GamePanel\windows\uninstall.ps1"
+          powershell -ExecutionPolicy Bypass -File "$env:ProgramFiles\GamePanel\windows\uninstall.ps1" -Yes
           if (Get-Service GamePanel -ErrorAction SilentlyContinue) { throw 'uninstall.ps1 left the service behind' }
+          if (Test-Path "$env:ProgramData\GamePanel\panel.json") { throw 'uninstall.ps1 left the panel data behind' }
 
       - uses: actions/upload-artifact@v4
         with:

@@ -3,6 +3,7 @@
   "name": "ARK: Survival Ascended",
   "category": "Survival",
   "icon": "🦖",
+  "storeAppId": 2399830,
   "description": "The Unreal Engine 5 remake of ARK. Windows only: Studio Wildcard ships no Linux server.",
   "platforms": [
     "windows"

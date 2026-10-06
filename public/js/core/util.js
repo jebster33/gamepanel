@@ -14,6 +14,32 @@ export function esc(value) {
     .replace(/'/g, '&#39;');
 }
 
+const STEAM_ART = 'https://cdn.cloudflare.steamstatic.com/steam/apps';
+
+/**
+ * A game's artwork as HTML: a banner when `wide`, otherwise square cover art.
+ * Steam games use their store art; templates can set their own `logo`. Falls
+ * back to the template's emoji when there is none or it fails to load.
+ */
+export function gameArt(game, { wide = false } = {}) {
+  const emoji = esc(game?.icon || '🎮');
+  const steam = game?.storeAppId ? `${STEAM_ART}/${Number(game.storeAppId)}/${wide ? 'header.jpg' : 'library_600x900.jpg'}` : '';
+  const src = game?.logo || steam;
+  if (!src) return emoji;
+  return `<img src="${esc(src)}" alt="" loading="lazy" class="${game?.logo ? 'art-contain' : ''}" data-fallback="${emoji}" />`;
+}
+
+// The CSP blocks inline onerror handlers, so swap broken art for its emoji here.
+// Image errors don't bubble, hence the capture listener.
+document.addEventListener(
+  'error',
+  (event) => {
+    const img = event.target;
+    if (img instanceof HTMLImageElement && img.dataset.fallback !== undefined) img.replaceWith(img.dataset.fallback);
+  },
+  true
+);
+
 export function fmtBytes(bytes, decimals = 1) {
   const n = Number(bytes) || 0;
   if (n < 1024) return `${n} B`;

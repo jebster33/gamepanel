@@ -3,6 +3,7 @@
   "name": "Minecraft: Modpack",
   "category": "Minecraft",
   "icon": "📦",
+  "logo": "/img/games/minecraft.svg",
   "description": "Deploy any Modrinth modpack as a server — pick the pack, pick a version, and the panel installs the right loader, every mod and the pack's own configs. Fabric, Quilt, NeoForge and Forge packs are all supported.",
   "defaultMemory": 6144,
   "image": "eclipse-temurin:{{JAVA_VERSION}}-jre",

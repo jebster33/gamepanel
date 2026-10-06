@@ -3,6 +3,7 @@
   "name": "Garry's Mod",
   "category": "Sandbox",
   "icon": "🔧",
+  "storeAppId": 4000,
   "description": "Garry's Mod dedicated server with Workshop collection support.",
   "defaultMemory": 4096,
   "variables": [

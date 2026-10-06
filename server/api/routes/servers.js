@@ -4,7 +4,7 @@ const { fail, logger } = require('../../core/util');
 const { rconCommand } = require('../../games/rcon');
 const { query } = require('../../games/query');
 
-module.exports = (router, { store, manager, scheduler }, { requireAdmin, requireCap, serverFor, visibleServers }) => {
+module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin, requireCap, serverFor, visibleServers }) => {
   router.get('/api/servers', ({ user }) => ({ servers: visibleServers(user) }));
 
   router.post('/api/servers', async ({ user, body }) => {
@@ -40,6 +40,7 @@ module.exports = (router, { store, manager, scheduler }, { requireAdmin, require
   router.delete('/api/servers/:id', async ({ user, params, url }) => {
     requireAdmin(user);
     await manager.remove(params.id, url.searchParams.get('keepFiles') !== '1');
+    bridge?.forgetServer(params.id);
     return { ok: true };
   });
 

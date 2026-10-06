@@ -3,6 +3,7 @@
   "name": "Minecraft: Forge",
   "category": "Minecraft",
   "icon": "🔨",
+  "logo": "/img/games/minecraft.svg",
   "description": "The classic mod loader with the biggest library of mods. Only mods built for Forge and your Minecraft version are offered.",
   "defaultMemory": 6144,
   "variables": [

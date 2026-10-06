@@ -3,6 +3,7 @@
   "name": "Unturned",
   "category": "Survival",
   "icon": "🧟‍♂️",
+  "storeAppId": 304930,
   "description": "Unturned dedicated server — light on resources and quick to install.",
   "defaultMemory": 2048,
   "variables": [

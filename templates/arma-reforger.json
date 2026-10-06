@@ -3,6 +3,7 @@
   "name": "Arma Reforger",
   "category": "Shooter",
   "icon": "🪖",
+  "storeAppId": 1874880,
   "description": "Military sandbox on Everon. Crossplay with Xbox and PlayStation is on by default.",
   "platforms": [
     "linux",

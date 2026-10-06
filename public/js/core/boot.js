@@ -3,7 +3,7 @@ import { connectWebSocket } from './live.js';
 import { handleRoute } from './router.js';
 import { state } from './state.js';
 import { $, $$, can } from './util.js';
-import { renderSidebarServers } from '../ui/sidebar.js';
+import { renderSidebarServers, setBridgeNav } from '../ui/sidebar.js';
 
 /* ------------------------------------------------------------------ auth */
 
@@ -57,6 +57,7 @@ export async function enterApp() {
   // Restricted accounts may not be allowed every one of these; a refused
   // request must not stop the panel from loading.
   await Promise.allSettled([loadServers(), loadTemplates(), loadSystem()]);
+  setBridgeNav(state.bridgeEnabled);
   connectWebSocket();
   renderSidebarServers();
   handleRoute();
@@ -89,4 +90,5 @@ async function loadSystem() {
   state.host = data.host;
   state.overview = data.overview;
   state.version = data.version;
+  state.bridgeEnabled = Boolean(data.bridgeEnabled);
 }

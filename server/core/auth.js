@@ -498,6 +498,7 @@ module.exports = {
   Auth,
   hashPassword,
   verifyPassword,
+  checkPasswordStrength,
   sanitizePermissions,
   COOKIE_NAME,
   CAPABILITIES,

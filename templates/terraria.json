@@ -3,6 +3,7 @@
   "name": "Terraria",
   "category": "Sandbox",
   "icon": "🌳",
+  "storeAppId": 105600,
   "description": "Vanilla Terraria dedicated server. Lightweight — happily runs several worlds on a small VPS.",
   "defaultMemory": 1024,
   "variables": [

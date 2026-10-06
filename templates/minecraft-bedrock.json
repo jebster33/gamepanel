@@ -3,6 +3,7 @@
   "name": "Minecraft: Bedrock",
   "category": "Minecraft",
   "icon": "🧱",
+  "logo": "/img/games/minecraft.svg",
   "description": "Official Bedrock Edition dedicated server for console, mobile and Windows 10 players.",
   "defaultMemory": 2048,
   "variables": [

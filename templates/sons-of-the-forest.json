@@ -3,6 +3,7 @@
   "name": "Sons of the Forest",
   "category": "Survival",
   "icon": "🌲",
+  "storeAppId": 1326470,
   "description": "Co-op survival horror for up to 8 players. Windows only.",
   "platforms": [
     "windows"

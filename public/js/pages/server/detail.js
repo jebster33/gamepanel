@@ -1,6 +1,6 @@
 import { setCrumbs } from '../../core/router.js';
 import { state } from '../../core/state.js';
-import { $, can, esc, fmtBytes, fmtDuration, fmtRate, icon, statusPill } from '../../core/util.js';
+import { $, can, esc, fmtBytes, fmtDuration, fmtRate, gameArt, icon, statusPill } from '../../core/util.js';
 import { renderAccessTab } from './access.js';
 import { renderBackupsTab } from './backups.js';
 import { patchDoctor, renderConsoleTab } from './console.js';
@@ -56,7 +56,7 @@ export function renderServerDetail(view) {
 
   view.innerHTML = `
     <div class="srv-header">
-      <span class="srv-icon">${esc(server.templateIcon || '🎮')}</span>
+      <span class="srv-icon">${gameArt({ icon: server.templateIcon, logo: server.templateLogo, storeAppId: server.templateStoreAppId })}</span>
       <div style="min-width:0;flex:1">
         <h1>${esc(server.name)}</h1>
         <div class="meta">
