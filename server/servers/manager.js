@@ -48,7 +48,7 @@ const { STATUS, CONTAINER_DIR } = require('./constants');
 const secrets = require('../core/secrets');
 
 /** Fields a PATCH may change. Anything else on a server is managed by the panel. */
-const EDITABLE = ['name', 'memory', 'cpuLimit', 'maxPlayers', 'autoStart', 'autoRestart', 'updateOnStart', 'autoUpdate', 'startCommand', 'notes', 'ip', 'backupRetention', 'idleStopMinutes', 'hangRestartMinutes', 'alerts'];
+const EDITABLE = ['name', 'memory', 'cpuLimit', 'maxPlayers', 'autoStart', 'autoRestart', 'updateOnStart', 'autoUpdate', 'startCommand', 'notes', 'ip', 'backupRetention', 'idleStopMinutes', 'hangRestartMinutes', 'alerts', 'wakeOnJoin'];
 
 class ServerManager extends EventEmitter {
   /**
@@ -281,6 +281,7 @@ class ServerManager extends EventEmitter {
       vars: Object.fromEntries(Object.entries(server.vars || {}).map(([k, v]) => [k, hidden.has(k) || secrets.isSealed(v) ? '' : v])),
       secretVars: Object.fromEntries([...hidden].map((k) => [k, Boolean(server.vars?.[k])])),
       status: rt.status,
+      wake: server.wakeOnJoin ? require('../features/wake-on-join').view(server.id) : undefined,
       startedAt: rt.startedAt,
       uptime: rt.startedAt ? Date.now() - rt.startedAt : 0,
       cpu: Number(rt.cpu.toFixed(1)),
@@ -459,6 +460,10 @@ class ServerManager extends EventEmitter {
     if (patch.hangRestartMinutes !== undefined) server.hangRestartMinutes = Math.max(0, Math.min(60, Math.round(Number(patch.hangRestartMinutes) || 0)));
     if (patch.idleStopMinutes !== undefined) server.idleStopMinutes = Math.max(0, Math.min(1440, Math.round(Number(patch.idleStopMinutes) || 0)));
     if (patch.alerts !== undefined) server.alerts = this.cleanAlerts(patch.alerts);
+    if (patch.wakeOnJoin !== undefined) {
+      server.wakeOnJoin = Boolean(patch.wakeOnJoin);
+      setImmediate(() => require('../features/wake-on-join').sync());
+    }
     if (patch.vars) {
       // A secret left blank keeps its saved value (the UI never sees it); a new one is sealed.
       const hidden = secrets.secretNames(this.template(server));

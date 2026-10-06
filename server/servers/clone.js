@@ -17,7 +17,7 @@ const { fail, logger } = require('../core/util');
 const TAR = process.platform === 'win32' ? path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'tar.exe') : 'tar';
 const MANIFEST = 'gamepanel-server.json';
 // Settings an export carries to another panel. Ports are not: the new panel picks free ones.
-const PORTABLE = ['templateId', 'name', 'vars', 'memory', 'cpuLimit', 'maxPlayers', 'autoRestart', 'updateOnStart', 'autoUpdate', 'startCommand', 'schedules', 'javaOverride', 'gameVersion', 'idleStopMinutes', 'hangRestartMinutes', 'alerts', 'backupRetention', 'notes'];
+const PORTABLE = ['templateId', 'name', 'vars', 'memory', 'cpuLimit', 'maxPlayers', 'autoRestart', 'updateOnStart', 'autoUpdate', 'startCommand', 'schedules', 'javaOverride', 'gameVersion', 'idleStopMinutes', 'hangRestartMinutes', 'alerts', 'backupRetention', 'notes', 'wakeOnJoin'];
 
 const CARRY = ['javaOverride', 'resolvedVersion', 'gameVersion', 'idleStopMinutes', 'hangRestartMinutes', 'alerts', 'backupRetention', 'notes', 'installedAt'];
 
@@ -127,7 +127,7 @@ module.exports = {
       if (!manifest) fail(400, 'This is not a GamePanel server export');
       if (!this.templates.get(manifest.templateId)) fail(400, `This server needs the ${manifest.templateId} template, which this panel does not have`);
       const server = this.create({ ...manifest, name: name || manifest.name, autoStart: false }, actor);
-      for (const key of ['schedules', 'javaOverride', 'gameVersion', 'idleStopMinutes', 'hangRestartMinutes', 'alerts', 'backupRetention', 'notes']) if (manifest[key] !== undefined) server[key] = manifest[key];
+      for (const key of ['schedules', 'javaOverride', 'gameVersion', 'idleStopMinutes', 'hangRestartMinutes', 'alerts', 'backupRetention', 'notes', 'wakeOnJoin']) if (manifest[key] !== undefined) server[key] = manifest[key];
       // Secrets arrive in the clear (see exportStream): seal them with this panel's key.
       const secrets = require('../core/secrets');
       for (const k of secrets.secretNames(this.template(server))) if (server.vars?.[k]) server.vars[k] = secrets.seal(secrets.open(server.vars[k]));

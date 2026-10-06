@@ -16,6 +16,7 @@ const EVENT_LABELS = {
   'server.ready': 'A server comes online',
   'server.stopped': 'A server stops',
   'server.idle_stopped': 'A server stops because it is empty',
+  'server.woken': 'A player wakes a sleeping server by joining',
   'server.resource_alert': 'A server goes over its CPU, memory or disk alert',
   'panel.disk_low': "The panel's disk is almost full",
   'user.lockout': 'Repeated failed sign-ins',

@@ -28,6 +28,7 @@ const EVENT_CHOICES = {
   'server.ready': 'A server comes online',
   'server.stopped': 'A server stops',
   'server.idle_stopped': 'A server stops because it is empty',
+  'server.woken': 'A player wakes a sleeping server by joining',
   'server.install_failed': 'An install or update fails',
   'backup.failed': 'A backup fails',
   'backup.upload_failed': 'A cloud backup fails',

@@ -461,11 +461,12 @@ const LOG_TEXT = {
   datapack: (e) => `${esc(e.text)}${e.by ? ` by ${esc(e.by)}` : ''}`,
   version: (e) => `Switched to <b>${esc(e.text)}</b>${e.by ? ` by ${esc(e.by)}` : ''}`,
   idle: () => 'Stopped because nobody was on',
+  wake: (e) => `<b>${esc(e.name)}</b> woke the server up by joining`,
   start: () => 'Server started',
   stop: () => 'Server stopped',
   crash: () => '<span class="bad-text">Server crashed</span>',
 };
-const LOG_ICON = { inventory: '🎒', datapack: '📦', automod: '🛡', join: '→', leave: '←', chat: '💬', kick: '⤫', ban: '⛔', unban: '✓', whitelist: '＋', unwhitelist: '−', op: '★', deop: '☆', start: '▶', stop: '■', crash: '⚠', version: '⇅' };
+const LOG_ICON = { wake: '☀', inventory: '🎒', datapack: '📦', automod: '🛡', join: '→', leave: '←', chat: '💬', kick: '⤫', ban: '⛔', unban: '✓', whitelist: '＋', unwhitelist: '−', op: '★', deop: '☆', start: '▶', stop: '■', crash: '⚠', version: '⇅' };
 
 function logRow(e) {
   const text = (LOG_TEXT[e.type] || ((x) => esc(x.type)))(e);
