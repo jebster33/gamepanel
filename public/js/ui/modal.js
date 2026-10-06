@@ -40,8 +40,10 @@ export function openModal({ title, body, actions = [], width = 620 }) {
   };
   document.addEventListener('keydown', onKey);
 
+  // Focus the first field only if it's in view, so a long modal opens at the top.
   const firstInput = backdrop.querySelector('input, textarea, select');
-  firstInput?.focus();
+  const bodyBox = backdrop.querySelector('.modal-body').getBoundingClientRect();
+  if (firstInput && firstInput.getBoundingClientRect().bottom <= bodyBox.bottom) firstInput.focus();
   return api;
 }
 
@@ -59,28 +61,31 @@ export function confirmModal(title, message, confirmLabel = 'Confirm') {
   });
 }
 
-export function promptModal(title, label, value = '') {
+export function promptModal(title, label, value = '', { type = 'text', hint = '' } = {}) {
   return new Promise((resolve) => {
+    // Passwords keep their spaces; everything else is trimmed.
+    const read = () => (type === 'password' ? $('#prompt-input').value : $('#prompt-input').value.trim());
     const modal = openModal({
       title,
       width: 440,
-      body: `<label><span>${esc(label)}</span><input id="prompt-input" value="${esc(value)}" /></label>`,
+      body: `<label><span>${esc(label)}</span><input id="prompt-input" type="${esc(type)}" value="${esc(value)}" ${type === 'password' ? 'autocomplete="current-password"' : ''} /></label>${hint ? `<div class="hint mt-8">${esc(hint)}</div>` : ''}`,
       actions: [
         { label: 'Cancel', onClick: () => { modal.close(); resolve(null); } },
         {
           label: 'OK',
           primary: true,
           onClick: () => {
-            const result = $('#prompt-input').value.trim();
+            const result = read();
             modal.close();
             resolve(result || null);
           },
         },
       ],
     });
+    $('#prompt-input')?.focus();
     $('#prompt-input')?.addEventListener('keydown', (event) => {
       if (event.key === 'Enter') {
-        const result = $('#prompt-input').value.trim();
+        const result = read();
         modal.close();
         resolve(result || null);
       }

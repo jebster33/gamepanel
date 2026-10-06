@@ -10,6 +10,8 @@ module.exports = (router, app, { serverFor }) => {
 
   router.get('/api/servers/:id/files', async ({ user, params, url }) => files.list(rootOf(user, params.id), url.searchParams.get('path') || ''));
 
+  router.get('/api/servers/:id/files/search', async ({ user, params, url }) => files.search(rootOf(user, params.id), url.searchParams.get('q')));
+
   router.get('/api/servers/:id/files/content', async ({ user, params, url }) => files.read(rootOf(user, params.id), url.searchParams.get('path') || ''));
 
   router.put('/api/servers/:id/files/content', async ({ user, params, url, body }) =>

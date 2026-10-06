@@ -50,6 +50,9 @@ function hashPassword(password) {
   return `scrypt$${SCRYPT_PARAMS.N}$${SCRYPT_PARAMS.r}$${SCRYPT_PARAMS.p}$${salt.toString('base64')}$${key.toString('base64')}`;
 }
 
+let decoy;
+const decoyHash = () => (decoy ||= hashPassword(crypto.randomBytes(16).toString('hex')));
+
 function verifyPassword(password, stored) {
   try {
     const [scheme, N, r, p, saltB64, keyB64] = String(stored).split('$');
@@ -72,6 +75,20 @@ function base64url(buf) {
 }
 
 /** token = base64url(payloadJSON).base64url(hmac) */
+// The passwords every brute-force list tries first.
+const COMMON_PASSWORDS = new Set(
+  'password password1 password123 12345678 123456789 1234567890 qwertyui qwerty123 11111111 00000000 iloveyou abc12345 welcome1 letmein1 admin123 administrator changeme minecraft gamepanel passw0rd sunshine princess football baseball superman starwars trustno1 dragon12 monkey123 shadow12 master12 whatever 1q2w3e4r qwertyuiop asdfghjk zaq12wsx'.split(' ')
+);
+
+function checkPasswordStrength(password, username = '') {
+  const value = String(password || '');
+  if (value.length < 8) fail(400, 'Password must be at least 8 characters');
+  if (value.length > 256) fail(400, 'Password is too long');
+  const lower = value.toLowerCase();
+  if (COMMON_PASSWORDS.has(lower) || /^(.)\1+$/.test(value)) fail(400, 'That password is one of the first ones attackers try. Pick another.');
+  if (username && lower.includes(String(username).toLowerCase())) fail(400, 'Your password should not contain your username');
+}
+
 function signToken(secret, payload) {
   const body = base64url(JSON.stringify(payload));
   const sig = base64url(crypto.createHmac('sha256', secret).update(body).digest());
@@ -105,6 +122,9 @@ function parseCookies(header) {
   return out;
 }
 
+const hashKey = (key) => crypto.createHash('sha256').update(String(key)).digest('hex');
+const publicKey = (k) => ({ id: k.id, name: k.name, readOnly: k.readOnly, prefix: k.prefix, createdAt: k.createdAt, lastUsed: k.lastUsed });
+
 class Auth {
   constructor(store, secret) {
     this.store = store;
@@ -130,7 +150,7 @@ class Auth {
     if (!/^[A-Za-z0-9_.-]{3,32}$/.test(username)) {
       fail(400, 'Username must be 3-32 characters (letters, numbers, . _ -)');
     }
-    if (String(password || '').length < 8) fail(400, 'Password must be at least 8 characters');
+    checkPasswordStrength(password, username);
     if (this.findByUsername(username)) fail(409, 'That username is already taken');
     const user = {
       id: uid(10),
@@ -147,10 +167,11 @@ class Auth {
   }
 
   setPassword(userId, password) {
-    if (String(password || '').length < 8) fail(400, 'Password must be at least 8 characters');
     const user = this.users.find((u) => u.id === userId);
     if (!user) fail(404, 'User not found');
+    checkPasswordStrength(password, user.username);
     user.password = hashPassword(password);
+    user.sessionEpoch = (user.sessionEpoch || 0) + 1;
     this.store.save();
   }
 
@@ -172,11 +193,20 @@ class Auth {
     }
   }
 
+  noteAccountFailure(key) {
+    // Made-up usernames must not grow this map forever.
+    if (this.failures.size > 5000) for (const [k, v] of this.failures) if (v.until < Date.now()) this.failures.delete(k);
+    const entry = this.failures.get(key);
+    const count = (entry?.count || 0) + 1;
+    this.failures.set(key, { count, until: count >= 10 ? Date.now() + Math.min(5 * 60_000, 2 ** (count - 10) * 15_000) : 0 });
+  }
+
   recordFailure(ip, message) {
     const entry = this.failures.get(ip);
     const next = { count: (entry?.count || 0) + 1, until: 0 };
     if (next.count >= 5) {
       next.until = Date.now() + Math.min(15 * 60_000, 2 ** (next.count - 5) * 30_000);
+      if (next.count === 5) this.store.addEvent('user.lockout', `Sign-ins from ${ip} paused after 5 failed attempts`, { ip });
     }
     this.failures.set(ip, next);
     fail(401, message);
@@ -188,9 +218,18 @@ class Auth {
    */
   login(username, password, ip = 'unknown') {
     this.checkLockout(ip);
+    // A slow, spread-out guessing attack from many addresses still hits the
+    // account's own limit (kept short, so it cannot lock the owner out for long).
+    const account = `user:${String(username || '').toLowerCase()}`;
+    this.checkLockout(account);
     const user = this.findByUsername(username);
-    const ok = user && verifyPassword(password, user.password);
-    if (!ok) this.recordFailure(ip, 'Incorrect username or password');
+    // Unknown names still pay for one hash, so response time doesn't reveal which accounts exist.
+    const ok = verifyPassword(password, user ? user.password : decoyHash()) && Boolean(user);
+    if (!ok) {
+      this.noteAccountFailure(account);
+      this.recordFailure(ip, 'Incorrect username or password');
+    }
+    this.failures.delete(account);
     if (user.totp?.secret) {
       return { twoFactor: true, ticket: signToken(this.secret, { sub: user.id, purpose: '2fa', exp: Date.now() + TICKET_TTL_MS }) };
     }
@@ -232,7 +271,7 @@ class Auth {
     user.lastLogin = Date.now();
     this.store.save();
     return {
-      token: signToken(this.secret, { sub: user.id, exp: Date.now() + SESSION_TTL_MS }),
+      token: signToken(this.secret, { sub: user.id, v: user.sessionEpoch || 0, exp: Date.now() + SESSION_TTL_MS }),
       user: this.publicUser(user),
     };
   }
@@ -290,7 +329,82 @@ class Auth {
       const url = new URL(req.url, 'http://localhost');
       token = url.searchParams.get('token');
     }
-    return this.userFromToken(token);
+    if (token && token.startsWith('gp_')) {
+      // Account changes (passwords, 2FA, keys, users) need a person signed in, not a script.
+      const path = new URL(req.url, 'http://localhost').pathname;
+      if (req.method !== 'GET' && /^\/api\/(auth|users)(\/|$)/.test(path)) return null;
+      return this.requireTwoFactor(this.userFromApiKey(token, req.method), req);
+    }
+    return this.requireTwoFactor(this.userFromToken(token), req);
+  }
+
+  /**
+   * With "require two-factor for administrators" on, an admin without it can
+   * only reach their own account pages until they set it up.
+   */
+  requireTwoFactor(user, req) {
+    if (!user || user.role !== 'admin' || user.totp?.secret || !this.store.state.settings?.requireAdmin2fa) return user;
+    const path = new URL(req.url, 'http://localhost').pathname;
+    // Only sign-in and account setup are open; everything else, the live WebSocket included, waits for 2FA.
+    if (path === '/ws') return null; // refused like a signed-out socket (the upgrade handler cannot take a throw)
+    if (!path.startsWith('/api/') || path.startsWith('/api/auth/')) return user;
+    fail(403, 'Two-factor sign-in is required for administrators. Set it up on your Account page first.');
+  }
+
+  /** Remember where an account signs in from; true the first time an address is seen. */
+  noteSignInAddress(user, ip) {
+    if (!ip) return false;
+    user.knownIps = user.knownIps || [];
+    const known = user.knownIps.includes(ip);
+    user.knownIps = [ip, ...user.knownIps.filter((x) => x !== ip)].slice(0, 20);
+    this.store.save();
+    return !known && user.knownIps.length > 1;
+  }
+
+  /* API keys: for scripts and bots. Stored hashed; read-only keys can only GET. */
+
+  createApiKey(userId, { name, readOnly = false } = {}) {
+    const user = this.users.find((u) => u.id === userId);
+    if (!user) fail(404, 'User not found');
+    const label = String(name || '').trim().slice(0, 40);
+    if (!label) fail(400, 'Give the key a name so you know what uses it');
+    user.apiKeys = user.apiKeys || [];
+    if (user.apiKeys.length >= 20) fail(400, 'An account can have at most 20 keys');
+    const key = `gp_${crypto.randomBytes(24).toString('base64url')}`;
+    const record = { id: crypto.randomBytes(6).toString('hex'), name: label, readOnly: Boolean(readOnly), hash: hashKey(key), prefix: key.slice(0, 7), createdAt: Date.now(), lastUsed: null };
+    user.apiKeys.push(record);
+    this.store.save();
+    return { key, ...publicKey(record) };
+  }
+
+  listApiKeys(userId) {
+    const user = this.users.find((u) => u.id === userId);
+    return (user?.apiKeys || []).map(publicKey);
+  }
+
+  deleteApiKey(userId, keyId) {
+    const user = this.users.find((u) => u.id === userId);
+    if (!user) fail(404, 'User not found');
+    const before = (user.apiKeys || []).length;
+    user.apiKeys = (user.apiKeys || []).filter((k) => k.id !== keyId);
+    if (user.apiKeys.length === before) fail(404, 'No such key');
+    this.store.save();
+  }
+
+  userFromApiKey(key, method = 'GET') {
+    const hash = hashKey(key);
+    for (const user of this.users) {
+      const record = (user.apiKeys || []).find((k) => k.hash.length === hash.length && crypto.timingSafeEqual(Buffer.from(k.hash), Buffer.from(hash)));
+      if (!record) continue;
+      if (record.readOnly && !['GET', 'HEAD'].includes(String(method).toUpperCase())) return null;
+      // Remember use at most once a minute, so busy scripts do not rewrite the state file.
+      if (!record.lastUsed || Date.now() - record.lastUsed > 60_000) {
+        record.lastUsed = Date.now();
+        this.store.save();
+      }
+      return user;
+    }
+    return null;
   }
 
   userFromToken(token) {
@@ -298,7 +412,18 @@ class Auth {
     // A half-finished two-factor sign-in is not a session.
     if (!payload || payload.purpose) return null;
     const user = this.users.find((u) => u.id === payload.sub);
-    return user || null;
+    // Signing out everywhere (or a password change) bumps the epoch, which
+    // retires every session issued before it.
+    if (!user || (payload.v || 0) !== (user.sessionEpoch || 0)) return null;
+    return user;
+  }
+
+  /** End every session this account has, on every device. */
+  revokeSessions(userId) {
+    const user = this.users.find((u) => u.id === userId);
+    if (!user) fail(404, 'User not found');
+    user.sessionEpoch = (user.sessionEpoch || 0) + 1;
+    this.store.save();
   }
 
   publicUser(user) {

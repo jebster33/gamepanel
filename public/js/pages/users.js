@@ -15,6 +15,13 @@ export async function renderUsers(view) {
       <div class="spacer"></div>
       <button class="btn btn-primary" id="user-new">New user</button>
     </div>
+    <div class="card mb-16 row" style="align-items:center;gap:12px">
+      <div style="flex:1;min-width:220px">
+        <div style="font-weight:600">Require two-factor for administrators</div>
+        <div class="faint" style="font-size:13px">Admins without an authenticator app can only open their Account page until they set one up.</div>
+      </div>
+      <label class="switch"><input type="checkbox" id="policy-2fa" ${data.requireAdmin2fa ? 'checked' : ''} /><i></i></label>
+    </div>
     <div class="card card-flush">
       <div class="table-wrap"><table>
         <thead><tr><th>User</th><th>Role</th><th>Servers</th><th>Permissions</th><th>Last login</th><th></th></tr></thead>
@@ -33,6 +40,7 @@ export async function renderUsers(view) {
                 <td class="faint nowrap">${fmtTime(u.lastLogin)}</td>
                 <td style="text-align:right" class="nowrap">
                   ${u.twoFactor && u.id !== state.user.id ? `<button class="btn btn-sm" data-reset-tf="${esc(u.id)}" title="For someone who lost their phone and recovery codes">Reset 2FA</button>` : ''}
+                  ${u.id !== state.user.id ? `<button class="btn btn-sm" data-revoke="${esc(u.id)}" title="Ends their sessions on every device">Sign out</button>` : ''}
                   <button class="btn btn-sm" data-edit-user="${esc(u.id)}">Edit</button>
                   ${u.id !== state.user.id ? `<button class="btn btn-sm btn-danger" data-del-user="${esc(u.id)}">${icon('trash',12)}</button>` : ''}
                 </td></tr>`
@@ -43,6 +51,15 @@ export async function renderUsers(view) {
     </div>`;
 
   $('#user-new').addEventListener('click', () => openUserModal(null, data.capabilities, data.defaults));
+  $('#policy-2fa').addEventListener('change', async (event) => {
+    try {
+      await api('/api/users/policy', { method: 'PUT', body: { requireAdmin2fa: event.target.checked } });
+      toast(event.target.checked ? 'Admins now need two-factor sign-in' : 'Two-factor is optional again');
+    } catch (err) {
+      event.target.checked = !event.target.checked;
+      toast(err.message, 'error');
+    }
+  });
   view.querySelectorAll('[data-edit-user]').forEach((el) =>
     el.addEventListener('click', () =>
       openUserModal(data.users.find((u) => u.id === el.dataset.editUser), data.capabilities, data.defaults)
@@ -56,6 +73,18 @@ export async function renderUsers(view) {
         await api(`/api/users/${target.id}`, { method: 'PATCH', body: { resetTwoFactor: true } });
         toast(`Two-factor sign-in reset for ${target.username}`);
         renderUsers(view);
+      } catch (err) {
+        toast(err.message, 'error');
+      }
+    })
+  );
+  view.querySelectorAll('[data-revoke]').forEach((el) =>
+    el.addEventListener('click', async () => {
+      const target = data.users.find((u) => u.id === el.dataset.revoke);
+      if (!(await confirmModal('Sign out everywhere', `${target.username} is signed out on every device and has to sign in again.`, 'Sign out'))) return;
+      try {
+        await api(`/api/users/${target.id}`, { method: 'PATCH', body: { revokeSessions: true } });
+        toast(`${target.username} was signed out everywhere`);
       } catch (err) {
         toast(err.message, 'error');
       }

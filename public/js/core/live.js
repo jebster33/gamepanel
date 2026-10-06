@@ -96,7 +96,7 @@ function applyStats(list) {
     const hist = state.serverHistory.get(stat.id);
     hist.cpu.push(stat.cpu || 0);
     hist.mem.push(stat.memory || 0);
-    hist.players.push(stat.players || 0);
+    hist.players.push(stat.players ?? stat.playerList?.length ?? 0);
     hist.ping.push(stat.ping || 0);
     for (const key of Object.keys(hist)) if (hist[key].length > 180) hist[key].shift();
   }

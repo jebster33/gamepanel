@@ -127,6 +127,7 @@ module.exports = {
 
   /** Track joins/leaves from log output, for games without a query protocol. */
   trackPlayers(server, template, text) {
+    this.trackChat(server, template, text);
     const patterns = template.logPatterns || {};
     if (!patterns.join && !patterns.leave) return;
     const rt = this.rt(server.id);

@@ -143,6 +143,60 @@ async function list(root, rel = '') {
   return { path: String(rel || '').replace(/\\/g, '/'), items };
 }
 
+/**
+ * Find files by name, and text inside config files ("where is max-players
+ * set?"). Skips worlds' region data, libraries and other bulky folders, and
+ * stops after a few hundred hits or a few thousand files.
+ */
+const SKIP_DIRS = new Set(['region', 'entities', 'poi', 'libraries', 'cache', 'versions', 'node_modules', '.git', 'bluemap', 'crash-reports', 'logs', 'backups']);
+
+async function search(root, q) {
+  const needle = String(q || '').trim().toLowerCase().slice(0, 100);
+  if (needle.length < 2) fail(400, 'Type at least 2 characters');
+  const results = [];
+  let visited = 0;
+  const walk = async (rel, depth) => {
+    if (depth > 8 || results.length >= 300 || visited > 5000) return;
+    let entries;
+    try {
+      entries = await fsp.readdir(containedPath(root, rel), { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      if (results.length >= 300 || ++visited > 5000) return;
+      if (entry.isSymbolicLink()) continue;
+      const childRel = rel ? `${rel}/${entry.name}` : entry.name;
+      if (entry.isDirectory()) {
+        if (!SKIP_DIRS.has(entry.name)) await walk(childRel, depth + 1);
+        continue;
+      }
+      if (entry.name.toLowerCase().includes(needle)) results.push({ path: childRel, line: 0, text: '' });
+      const full = containedPath(root, childRel);
+      let stat;
+      try {
+        stat = await fsp.stat(full);
+      } catch {
+        continue;
+      }
+      if (!isProbablyText(entry.name, stat.size) || stat.size > 1024 * 1024 || entry.name.endsWith('.log')) continue;
+      let text;
+      try {
+        text = await fsp.readFile(full, 'utf8');
+      } catch {
+        continue;
+      }
+      if (!text.toLowerCase().includes(needle)) continue;
+      const lines = text.split(/\r?\n/);
+      for (let i = 0; i < lines.length && results.length < 300; i++) {
+        if (lines[i].toLowerCase().includes(needle)) results.push({ path: childRel, line: i + 1, text: lines[i].trim().slice(0, 200) });
+      }
+    }
+  };
+  await walk('', 0);
+  return { results, truncated: results.length >= 300 || visited > 5000 };
+}
+
 async function read(root, rel) {
   const file = containedPath(root, rel);
   const stat = await fsp.stat(file).catch(() => null);
@@ -246,4 +300,4 @@ function resolveDownload(root, rel) {
   return { file, size: stat.size, name: path.basename(file) };
 }
 
-module.exports = { list, read, write, mkdir, remove, rename, extract, compress, resolveDownload, containedPath, MAX_EDIT_BYTES };
+module.exports = { list, search, read, write, mkdir, remove, rename, extract, compress, resolveDownload, containedPath, MAX_EDIT_BYTES };

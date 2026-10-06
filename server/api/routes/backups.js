@@ -37,6 +37,22 @@ module.exports = (router, { store, manager }, { requireAdmin, requireCap, server
     return { ok: true };
   });
 
+  /** Look inside a backup, and put single files or folders back from it. */
+  router.get('/api/servers/:id/backups/:name/contents', async ({ user, params }) => {
+    const server = serverFor(user, params.id, 'backups');
+    return backups.contents(server.id, params.name);
+  });
+
+  router.post('/api/servers/:id/backups/:name/restore-files', async ({ user, params, body }) => {
+    // Same rule as a full restore: picking every folder would amount to one.
+    requireAdmin(user);
+    const server = serverFor(user, params.id, 'backups');
+    const result = await backups.restorePaths(server, params.name, body?.paths);
+    const what = result.restored.length === 1 ? result.restored[0] : `${result.restored.length} files and folders`;
+    store.addEvent('backup.restored', `${user.username} restored ${what} on ${server.name} from ${params.name}`, { serverId: server.id });
+    return { ...result, running: manager.isActive(server.id) };
+  });
+
   router.delete('/api/servers/:id/backups/:name', ({ user, params }) => {
     const server = serverFor(user, params.id);
     requireCap(user, 'backups.restore');

@@ -55,6 +55,7 @@ module.exports = {
         playerList: rt.playerList,
         playerDetails: playerDetails(rt),
         ping: rt.ping,
+        tps: rt.tps ?? null,
         connections: rt.connections,
         networkRx: rt.networkRx || 0,
         networkTx: rt.networkTx || 0,
@@ -62,6 +63,9 @@ module.exports = {
       });
     }
     if (summary.length) this.bus.broadcast('stats', { servers: summary });
+    this.observePlayers();
+    this.pollTps();
+    this.checkAlerts();
   },
 
   getHistory(id) {
@@ -75,9 +79,32 @@ module.exports = {
       for (const server of this.servers) {
         this.rt(server.id).diskBytes = await directorySize(server.dir).catch(() => 0);
       }
+      this.checkHostDisk();
     } finally {
       this.diskBusy = false;
     }
+  },
+
+  /**
+   * Watchdog: a server whose process is alive but has stopped answering
+   * (frozen main thread, deadlock) gets restarted after N minutes. Only once
+   * it has answered at least once this run, so a wrong query port can't
+   * cause a restart loop.
+   */
+  checkHung(server, rt) {
+    const limit = Number(server.hangRestartMinutes) || 0;
+    if (!limit || !rt.queryOkAt || rt.queryOkAt < (rt.startedAt || 0) || rt.hungRestarting) return;
+    if (Date.now() - rt.queryFailSince < limit * 60_000) return;
+    rt.hungRestarting = true;
+    this.pushConsole(server, `Not answering for ${limit} minute${limit === 1 ? '' : 's'}, restarting`, 'system');
+    this.store.addEvent('server.hung', `${server.name} stopped answering for ${limit} minutes and was restarted`, { serverId: server.id });
+    this.restart(server.id)
+      .catch((err) => this.pushConsole(server, `Watchdog restart failed: ${err.message}`, 'system'))
+      .finally(() => {
+        rt.hungRestarting = false;
+        rt.queryFailSince = null;
+        rt.queryOkAt = null;
+      });
   },
 
   /** Ask each running server how it is doing over its query protocol. */
@@ -98,6 +125,8 @@ module.exports = {
         const host = server.ip && server.ip !== '0.0.0.0' ? server.ip : '127.0.0.1';
         const result = await query({ type, host, port });
         if (result.online) {
+          rt.queryOkAt = Date.now();
+          rt.queryFailSince = null;
           rt.ping = result.latency;
           rt.queryError = null;
           if (typeof result.players === 'number') rt.players = result.players;
@@ -114,6 +143,8 @@ module.exports = {
         } else {
           rt.ping = null;
           rt.queryError = result.reason || 'No response';
+          rt.queryFailSince ||= Date.now();
+          this.checkHung(server, rt);
         }
       });
     await Promise.allSettled(jobs);

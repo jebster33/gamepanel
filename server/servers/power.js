@@ -31,6 +31,8 @@ module.exports = {
 
     this.writeConfigFiles(server, template);
     this.applyPropertyPatches(server, template);
+    this.patchCrossplay(server);
+    this.patchMap(server);
 
     const vars = this.vars(server);
     const command = interpolate(server.startCommand || template.startCommand, vars);
@@ -40,6 +42,7 @@ module.exports = {
     this.pushConsole(server, `Starting: ${redactSecrets(command, vars)}`, 'system');
 
     rt.stopping = false;
+    rt.diagnosis = null;
     rt.playerList = [];
     rt.playerInfo = new Map();
     rt.players = null;
@@ -133,6 +136,7 @@ module.exports = {
     rt.recentCrashes = [...rt.recentCrashes, Date.now()].filter((t) => Date.now() - t < CRASH_WINDOW_MS);
     this.store.save();
     this.pushConsole(server, `Server crashed (${how}).`, 'system');
+    this.diagnoseCrash(server, code, signal);
     this.setStatus(server, STATUS.CRASHED);
     this.store.addEvent('server.crashed', `${server.name} crashed (exit ${code ?? signal})`, {
       serverId: server.id,

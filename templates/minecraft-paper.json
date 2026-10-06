@@ -131,6 +131,8 @@
   "mods": {
     "providers": [
       "modrinth",
+      "hangar",
+      "spigot",
       "curseforge"
     ],
     "dir": "plugins",

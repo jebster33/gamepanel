@@ -23,6 +23,45 @@ const COMMANDS = {
   'project-zomboid': { kick: 'kickuser "{name}"', ban: 'banuser "{name}"' },
 };
 
+// How to post a message in game chat, for restart countdowns. {msg} is
+// replaced; quotes are stripped from the message first.
+const BROADCAST = {
+  minecraft: 'say {msg}',
+  'minecraft-bedrock': 'say {msg}',
+  cs2: 'say "{msg}"',
+  garrysmod: 'say "{msg}"',
+  left4dead2: 'say "{msg}"',
+  tf2: 'say "{msg}"',
+  rust: 'say "{msg}"',
+  terraria: 'say {msg}',
+  unturned: 'say "{msg}"',
+  'seven-days-to-die': 'say "{msg}"',
+  squad: 'AdminBroadcast {msg}',
+  factorio: '{msg}',
+  'project-zomboid': 'servermsg "{msg}"',
+  'ark-survival-evolved': 'serverchat {msg}',
+  'ark-survival-ascended': 'serverchat {msg}',
+  palworld: 'Broadcast {msg}',
+};
+
+function broadcastCommand(template) {
+  if (!template) return null;
+  if (template.players?.broadcast) return template.players.broadcast;
+  if (BROADCAST[template.id]) return BROADCAST[template.id];
+  if (template.query?.type === 'minecraft') return BROADCAST.minecraft;
+  return null;
+}
+
+/**
+ * Put text into a broadcast command ("say {msg}"). Quotes, line breaks and
+ * ; are dropped (Source consoles split commands on ;), and a function
+ * replacer keeps $' and $& in the text from being expanded.
+ */
+function fillBroadcast(command, text) {
+  const clean = String(text).replace(/["\r\n;]/g, ' ').replace(/\s+/g, ' ').trim();
+  return command.replace('{msg}', () => clean);
+}
+
 function playerCommands(template) {
   if (!template) return {};
   if (template.players?.commands) return template.players.commands;
@@ -56,4 +95,4 @@ function playerDetails(rt) {
   return [...(rt.playerInfo?.values() || [])];
 }
 
-module.exports = { playerCommands, setPlayers, playerDetails };
+module.exports = { playerCommands, broadcastCommand, fillBroadcast, setPlayers, playerDetails };
