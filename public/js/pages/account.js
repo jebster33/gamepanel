@@ -7,6 +7,7 @@ import { openModal } from '../ui/modal.js';
 import { otpMarkup, wireOtp } from '../ui/otp.js';
 import { qrSvg } from '../ui/qr.js';
 import { startTour } from '../ui/tour.js';
+import { LANGUAGES, lang, setLanguage } from '../core/i18n.js';
 
 /* --------------------------------------------------------------- account */
 
@@ -54,6 +55,10 @@ export async function renderAccount(view) {
 
     <div class="card mb-16" id="prefs">
       <h4>This browser</h4>
+      <div class="row mb-16" style="gap:12px;align-items:center">
+        <div class="faint" style="flex:1;min-width:220px">Language of the panel in this browser. Server consoles, files and names stay as they are.</div>
+        <select id="a-lang" style="width:auto" translate="no">${LANGUAGES.map((l) => `<option value="${l.id}" ${l.id === lang ? 'selected' : ''}>${esc(l.label)}</option>`).join('')}</select>
+      </div>
       <div class="row" style="gap:12px;align-items:center">
         <div class="faint" style="flex:1;min-width:220px">A quick walk past the main parts of the panel.</div>
         <button class="btn" id="a-tour">Take the tour</button>
@@ -83,6 +88,7 @@ export async function renderAccount(view) {
   renderApiKeys();
 
   $('#a-tour').addEventListener('click', () => startTour());
+  $('#a-lang').addEventListener('change', (e) => setLanguage(e.target.value));
   renderLinkedAccounts($('#linked-card'));
   $('#a-revoke').addEventListener('click', async () => {
     try {

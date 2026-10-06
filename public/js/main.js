@@ -9,6 +9,7 @@
  */
 import { api } from './core/api.js';
 import { bootstrap, enterApp } from './core/boot.js';
+import { startTranslating } from './core/i18n.js';
 import { handleRoute } from './core/router.js';
 import { state } from './core/state.js';
 import { $, esc, toast } from './core/util.js';
@@ -178,6 +179,8 @@ window.addEventListener('resize', () => {
   if (state.route.name === 'dashboard') drawHostCharts();
   if (state.route.name === 'server' && state.route.params.tab === 'metrics') drawServerCharts(state.route.params.id);
 });
+
+startTranslating();
 
 // Back from Google/Discord/GitHub: an error to show, a code step, or a freshly linked account.
 const returned = new URLSearchParams(location.search);
