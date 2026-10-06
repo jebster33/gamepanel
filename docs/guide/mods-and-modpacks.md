@@ -8,7 +8,7 @@
 | Minecraft Fabric, Quilt, Forge, NeoForge | Modrinth, CurseForge |
 | Minecraft modpack servers | Modrinth and CurseForge packs, plus extra mods |
 | Rust | uMod / Oxide plugins |
-| Garry's Mod, ARK, Project Zomboid, Unturned | Steam Workshop |
+| Garry's Mod, ARK, Project Zomboid, Unturned, Arma 3, DayZ, Conan Exiles, tModLoader, Space Engineers, Don't Starve Together, Killing Floor 2, Avorion | Steam Workshop |
 | Factorio | The Factorio mod portal |
 
 CurseForge needs a free API key (from console.curseforge.com) under **Settings → Integrations**. Factorio
@@ -36,7 +36,9 @@ Open the server's **Mods** tab, search on the left and press install.
 Restart the server to load changes.
 
 **Steam Workshop** works per game: Garry's Mod addons are unpacked, Unturned and ARK get the item added to
-their own mod lists, and Project Zomboid gets `WorkshopItems` and `Mods` written for you. Paste the
+their own mod lists, Project Zomboid gets `WorkshopItems` and `Mods` written for you, Killing Floor 2 gets
+`ServerSubscribedWorkshopItems` lines in KFEngine.ini (start the server once first), and Avorion gets the item in
+the galaxy's modconfig.lua. Paste the
 Workshop link or item ID and press **Add item**.
 
 ## Modpacks

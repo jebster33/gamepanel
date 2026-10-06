@@ -141,7 +141,7 @@
       }
     }
   ],
-  "startCommand": "./start-tModLoaderServer.sh -nosteam -config serverconfig.txt -tmlsavedirectory \"{{SERVER_DIR}}/saves\"",
+  "startCommand": "./start-tModLoaderServer.sh -nosteam -config serverconfig.txt -tmlsavedirectory saves",
   "stopCommand": "exit",
   "stopTimeout": 45,
   "query": {
@@ -187,6 +187,6 @@
         "path": "saves/Mods"
       }
     ],
-    "startCommand": "start-tModLoaderServer.bat -nosteam -config serverconfig.txt -tmlsavedirectory \"{{SERVER_DIR}}\\saves\""
+    "startCommand": "start-tModLoaderServer.bat -nosteam -config serverconfig.txt -tmlsavedirectory saves"
   }
 }

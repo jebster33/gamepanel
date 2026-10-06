@@ -4,7 +4,7 @@
   "category": "Shooter",
   "icon": "🩸",
   "storeAppId": 232090,
-  "description": "Co-op zombie ('Zed') shooter for up to six players. The first start writes the config; the server name and passwords apply from the second start on. Web admin runs on its own port.",
+  "description": "Co-op zombie ('Zed') shooter for up to six players. The first start writes the config; the server name and passwords apply from the second start on. Web admin runs on its own port. Workshop maps and mods from the Mods tab are added to KFEngine.ini and downloaded by the server on its next start.",
   "platforms": [
     "linux",
     "windows"
@@ -222,5 +222,16 @@
       "KFGame/Logs/Launch.log"
     ],
     "consoleInput": false
+  },
+  "mods": {
+    "providers": [
+      "workshop"
+    ],
+    "dir": "KFGame/Cache",
+    "appId": 232090,
+    "workshop": {
+      "strategy": "kf2",
+      "file": "KFGame/Config/*Server-KFEngine.ini"
+    }
   }
 }
