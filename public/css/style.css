@@ -2683,6 +2683,13 @@ tbody tr:hover {
   .world-row > .row { width: 100%; justify-content: flex-start !important; }
 }
 
+tr.clickable {
+  cursor: pointer;
+}
+tr.clickable:hover td {
+  background: var(--surface-2, rgba(255, 255, 255, 0.03));
+}
+
 .recovery-codes {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

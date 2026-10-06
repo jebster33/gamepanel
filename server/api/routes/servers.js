@@ -282,6 +282,13 @@ module.exports = (router, { store, manager, scheduler }, { requireAdmin, require
     return profile;
   });
 
+  /** Find a player on any server this account can see. */
+  router.get('/api/players/search', ({ user, url }) => {
+    requireCap(user, 'console');
+    const ids = visibleServers(user).map((s) => s.id);
+    return { players: manager.searchPlayers(ids, url.searchParams.get('q'), { byAddress: user.role === 'admin' }) };
+  });
+
   /** A staff note on a player, and whether to alert when they join any server. */
   router.put('/api/players/:name/note', ({ user, params, body }) => {
     requireCap(user, 'command');

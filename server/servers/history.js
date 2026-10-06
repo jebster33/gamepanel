@@ -285,6 +285,24 @@ module.exports = {
     return out;
   },
 
+  /**
+   * Find players across servers by name, or (administrators) by address.
+   * One row per player per server, most recently seen first.
+   */
+  searchPlayers(ids, query, { byAddress = false } = {}) {
+    const q = String(query || '').trim().toLowerCase();
+    if (q.length < 2) return [];
+    const out = [];
+    for (const id of ids) {
+      const h = this.history(id);
+      const hits = new Set(Object.keys(h.players).filter((name) => name.toLowerCase().includes(q)));
+      if (byAddress) for (const [name, list] of Object.entries(h.ips || {})) if (list.some((e) => e.ip.startsWith(q))) hits.add(name);
+      if (!hits.size) continue;
+      for (const p of this.playerHistory(id).players) if (hits.has(p.name)) out.push({ ...p, serverId: id, note: this.playerNote(p.name) });
+    }
+    return out.sort((a, b) => b.online - a.online || b.last - a.last).slice(0, 100);
+  },
+
   /** Staff notes and the join watchlist, shared by every server (keyed by lower-case name). */
   playerNote(name) {
     return this.store?.state.playerNotes?.[String(name).toLowerCase()] || null;

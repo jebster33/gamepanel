@@ -308,7 +308,7 @@ function areaChart(samples, range, maxPlayers) {
 
 /* --------------------------------------------------------- player profile */
 
-async function openProfile(serverId, name) {
+export async function openProfile(serverId, name, ctx = current) {
   let p;
   try {
     p = await api(`/api/servers/${serverId}/player-history/${encodeURIComponent(name)}`);
@@ -316,7 +316,7 @@ async function openProfile(serverId, name) {
     toast(err.message, 'error');
     return;
   }
-  const server = { id: serverId, templateId: current.templateId };
+  const server = { id: serverId, templateId: ctx.templateId };
   const modal = openModal({
     title: 'Player',
     width: 520,
@@ -366,7 +366,7 @@ async function openProfile(serverId, name) {
       }
       ${p.log.length ? `<h4 style="margin:18px 0 6px">Activity</h4><div class="act-list act-compact">${p.log.slice(0, 60).map(logRow).join('')}</div>` : ''}`,
     actions:
-      can('command') && current.lists
+      can('command') && ctx.lists
         ? [
             { label: 'Unban everywhere', onClick: () => banEverywhere(p.name, true) },
             { label: 'Ban on all servers', danger: true, onClick: () => banEverywhere(p.name, false) },
@@ -387,7 +387,7 @@ async function openProfile(serverId, name) {
     a.addEventListener('click', (event) => {
       event.preventDefault();
       modal.close();
-      openProfile(serverId, a.dataset.profile);
+      openProfile(serverId, a.dataset.profile, ctx);
     })
   );
 }
