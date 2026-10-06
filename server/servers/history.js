@@ -197,6 +197,7 @@ module.exports = {
 
   saveHistories() {
     this.historySavedAt = Date.now();
+    this.saveMetricHistories?.();
     if (!this.histories) return;
     for (const [id, h] of this.histories) {
       if (!h.dirty) continue;

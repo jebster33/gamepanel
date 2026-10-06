@@ -418,9 +418,9 @@ module.exports = (router, { store, manager, scheduler, auth }, { requireAdmin, r
     return manager.sendCommand(server.id, String(body.command).trim());
   });
 
-  router.get('/api/servers/:id/history', ({ user, params }) => {
+  router.get('/api/servers/:id/history', ({ user, params, url }) => {
     const server = serverFor(user, params.id);
-    return { history: manager.getHistory(server.id) };
+    return { history: manager.getHistory(server.id, url.searchParams.get('range')) };
   });
 
   router.get('/api/servers/:id/query', async ({ user, params }) => {

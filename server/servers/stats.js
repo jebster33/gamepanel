@@ -34,7 +34,7 @@ module.exports = {
         rt.memory = 0;
         rt.connections = 0;
       }
-      rt.history.push({
+      const point = {
         t: Date.now(),
         cpu: Number(rt.cpu.toFixed(1)),
         mem: rt.memory,
@@ -43,7 +43,9 @@ module.exports = {
         conns: rt.connections,
         rx: rt.networkRx || 0,
         tx: rt.networkTx || 0,
-      });
+      };
+      rt.history.push(point);
+      this.recordMetric(server.id, point);
       summary.push({
         id: server.id,
         status: rt.status,
@@ -66,10 +68,6 @@ module.exports = {
     this.observePlayers();
     this.pollTps();
     this.checkAlerts();
-  },
-
-  getHistory(id) {
-    return this.rt(id).history.toArray();
   },
 
   async refreshDiskUsage() {
