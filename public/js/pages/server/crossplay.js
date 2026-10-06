@@ -156,3 +156,44 @@ export async function renderPregenCard(host, server) {
   clearTimeout(host._pgTimer);
   if (active) host._pgTimer = setTimeout(() => host.isConnected && renderPregenCard(host, server), 5000);
 }
+
+/* ---------------------------------------------------------- game rules */
+
+/* Minecraft Java game rules, flipped live over RCON. */
+export async function renderGameruleCard(host, server) {
+  let info;
+  try {
+    info = await api(`/api/servers/${server.id}/gamerules`);
+  } catch {
+    return;
+  }
+  if (!info.supported || !host.isConnected) return;
+  const editable = can('command');
+  host.innerHTML = `
+    <div class="card mb-16">
+      <h4 style="margin:0 0 4px">Game rules</h4>
+      <div class="faint" style="font-size:13px;margin-bottom:${info.rules.length ? 12 : 0}px">${
+        !info.running ? 'Start the server to see and change game rules. Changes apply instantly, no restart.' : info.rules.length ? 'Changes apply instantly, no restart.' : 'The server did not answer over RCON.'
+      }</div>
+      <div class="gr-grid">${info.rules
+        .map((r) =>
+          r.kind === 'bool'
+            ? `<div class="checkbox-row" style="margin:0"><input type="checkbox" id="gr-${esc(r.name)}" data-rule="${esc(r.name)}" ${r.value ? 'checked' : ''} ${editable ? '' : 'disabled'} /><label for="gr-${esc(r.name)}">${esc(r.label)}</label></div>`
+            : `<label class="gr-num"><span>${esc(r.label)}</span><input type="number" min="0" data-rule="${esc(r.name)}" value="${Number(r.value)}" ${editable ? '' : 'disabled'} /></label>`
+        )
+        .join('')}</div>
+    </div>`;
+  host.querySelectorAll('[data-rule]').forEach((el) =>
+    el.addEventListener('change', async () => {
+      el.disabled = true;
+      try {
+        const r = await api(`/api/servers/${server.id}/gamerules`, { method: 'PUT', body: { name: el.dataset.rule, value: el.type === 'checkbox' ? el.checked : Number(el.value) } });
+        toast(`${r.name} is now ${r.value}`);
+      } catch (err) {
+        toast(err.message, 'error');
+        if (el.type === 'checkbox') el.checked = !el.checked;
+      }
+      el.disabled = false;
+    })
+  );
+}

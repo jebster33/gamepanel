@@ -198,6 +198,16 @@ module.exports = (router, { store, manager, scheduler }, { requireAdmin, require
     return body?.enabled === false ? manager.disableCrossplay(server.id, user) : manager.enableCrossplay(server.id, user);
   });
 
+  /** Minecraft Java game rules over RCON (keep inventory, daylight cycle…). */
+  router.get('/api/servers/:id/gamerules', ({ user, params }) => manager.gamerules(serverFor(user, params.id, 'command')));
+
+  router.put('/api/servers/:id/gamerules', async ({ user, params, body }) => {
+    const server = serverFor(user, params.id, 'command');
+    const result = await manager.setGamerule(server, String(body?.name || ''), body?.value);
+    store.addEvent('server.settings', `${user.username} set ${result.name} to ${result.value} on ${server.name}`, { serverId: server.id });
+    return result;
+  });
+
   /** A live web map (BlueMap) on Paper and Purpur. */
   router.get('/api/servers/:id/map', ({ user, params }) => manager.mapInfo(serverFor(user, params.id, 'settings')));
 

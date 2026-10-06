@@ -52,6 +52,8 @@ GET    /api/servers/:id/worlds/download  ?name= (a .tar.gz)
 POST   /api/servers/:id/clone            {"name","copyFiles"} (admins)
 POST   /api/servers/:id/crossplay        {"enabled"} Geyser + Floodgate (Paper/Purpur)
 POST   /api/servers/:id/map              {"enabled"} BlueMap live web map (Paper/Purpur)
+GET    /api/servers/:id/gamerules        Minecraft Java game rules (server running)
+PUT    /api/servers/:id/gamerules        {"name","value"} change one live over RCON
 POST   /api/servers/:id/pregen           {"action":"install|start|pause|continue|cancel","radius?"} Chunky pre-generation
 PUT    /api/servers/:id/subdomain        {"name"} Cloudflare A (+ SRV) record (admins)
 POST   /api/players/ban-everywhere       {"name","reason","unban?"} every Minecraft server

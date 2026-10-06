@@ -572,6 +572,7 @@ Object.assign(
   require('./livemap'),
   require('./pregen'),
   require('./tps'),
+  require('./gamerules'),
   require('./watchers'),
   require('./runtimes/container'),
   require('./runtimes/process')
