@@ -216,6 +216,16 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
     return require('../../features/chat-moderation').view(manager, server);
   });
 
+  /** A Minecraft player's inventory, now or in a backup, and putting it back. */
+  router.get('/api/servers/:id/players/:name/inventory', ({ user, params, url }) =>
+    require('../../features/player-data').inventory(manager, serverFor(user, params.id, 'files'), params.name, { backup: url.searchParams.get('backup') || null })
+  );
+  router.post('/api/servers/:id/players/:name/inventory/restore', ({ user, params, body }) => {
+    const server = serverFor(user, params.id, 'backups.restore');
+    if (!body?.backup) fail(400, 'Pick the backup to restore from');
+    return require('../../features/player-data').restore(manager, store, server, params.name, String(body.backup), user.username);
+  });
+
   /** Whitelist from Discord roles. */
   router.get('/api/discord/guilds', async ({ user }) => {
     requireCap(user, 'command');

@@ -165,6 +165,38 @@ function remove(serverId, name) {
   return { ok: true };
 }
 
+/** One file out of a backup, as a Buffer (null when the backup does not have it). Up to 64 MB. */
+async function readFile(server, name, rel) {
+  const clean = String(rel).replace(/\\/g, '/').replace(/^\.?\/+/, '');
+  if (!clean || clean.split('/').some((p) => p === '..' || p === '')) fail(400, 'Invalid path');
+  if (vault.isSnapshot(name)) {
+    const scratch = path.join(config.cacheDir, `read-${server.id}-${uid(6)}`);
+    fs.mkdirSync(scratch, { recursive: true });
+    try {
+      await vault.restore(backupDirFor(server.id), name, scratch, [clean]);
+      return fs.readFileSync(path.join(scratch, clean));
+    } catch (err) {
+      if (err.status === 404 || err.code === 404 || err.code === 'ENOENT') return null;
+      throw err;
+    } finally {
+      fs.rmSync(scratch, { recursive: true, force: true });
+    }
+  }
+  const file = resolve(server.id, name);
+  return new Promise((ok, reject) => {
+    const proc = spawn(TAR, ['-xzOf', file, `./${clean}`], { stdio: ['ignore', 'pipe', 'ignore'], windowsHide: true });
+    const chunks = [];
+    let size = 0;
+    proc.stdout.on('data', (c) => {
+      size += c.length;
+      if (size > 64 * 1024 * 1024) proc.kill();
+      else chunks.push(c);
+    });
+    proc.on('error', reject);
+    proc.on('close', (code) => ok(code === 0 && chunks.length ? Buffer.concat(chunks) : null));
+  });
+}
+
 /** An incremental backup as a plain .tar.gz download: put back into a scratch folder, then packed. */
 async function downloadSnapshot(server, name, res) {
   const scratch = path.join(config.cacheDir, `download-${server.id}-${uid(6)}`);
@@ -297,4 +329,4 @@ async function verify(server, name) {
   return result;
 }
 
-module.exports = { list, create, restore, restorePaths, contents, remove, resolve, prune, dirFor: backupDirFor, verify, checks, downloadSnapshot, vault };
+module.exports = { list, create, restore, restorePaths, contents, remove, resolve, prune, dirFor: backupDirFor, verify, checks, downloadSnapshot, readFile, vault };

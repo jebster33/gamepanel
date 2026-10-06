@@ -2586,6 +2586,67 @@ tbody tr:hover {
 .lime {
   color: var(--lime-text);
 }
+.inv-stats {
+  margin-bottom: 10px;
+  font-size: 12.5px;
+}
+.inv-wrap {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.inv-side {
+  display: grid;
+  flex: 0 0 min(40px, calc((100% - 34px) / 10));
+  gap: 3px;
+}
+.inv-main {
+  flex: 1;
+  min-width: 0;
+}
+.inv-gap {
+  height: 6px;
+}
+.inv-grid {
+  display: grid;
+  grid-template-columns: repeat(9, minmax(0, 40px));
+  align-items: start;
+  gap: 3px;
+}
+.inv-hotbar {
+  margin-top: 8px;
+}
+.inv-slot {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  width: 100%;
+  min-width: 0;
+  font-size: 10px;
+  font-weight: 650;
+  color: var(--muted);
+  background: var(--inset);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+}
+.inv-slot img {
+  width: 75%;
+  height: auto;
+  aspect-ratio: 1;
+  image-rendering: pixelated;
+}
+.inv-slot.enchanted {
+  box-shadow: inset 0 0 0 1px rgba(170, 120, 255, 0.7);
+}
+.inv-count {
+  position: absolute;
+  right: 2px;
+  bottom: 0;
+  font-size: 11px;
+  color: var(--text);
+  text-shadow: 0 1px 2px #000;
+}
 .sb-row {
   flex-wrap: wrap;
   gap: 8px;

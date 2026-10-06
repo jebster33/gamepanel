@@ -101,7 +101,7 @@ async function syncServer(manager, store, server, memberList = null) {
     try {
       await lists.changeList(manager, server, { list: 'whitelist', action: 'remove', name }, 'Discord roles');
     } catch (err) {
-      if (err.status !== 404) {
+      if (err.code !== 404 && err.status !== 404) {
         logger.warn(`Discord whitelist: could not remove ${name} on ${server.name}: ${err.message}`);
         continue;
       }
