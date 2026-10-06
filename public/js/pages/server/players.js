@@ -196,6 +196,7 @@ async function renderHistory(box, server) {
       </div>
       <div id="pl-chart" class="pl-chart"></div>
     </div>
+    ${popularTimes(data.samples)}
     <div class="card card-flush players-card">
       <div class="players-head">
         <div><b class="players-count">${s.unique}</b><span class="faint"> player${s.unique === 1 ? '' : 's'} seen</span></div>
@@ -528,4 +529,42 @@ function renderActivity(box, server) {
     if (!box.isConnected) return clearInterval(current.timer);
     if (entries.length <= 150 && document.visibilityState === 'visible') reload();
   }, 10_000);
+}
+
+/**
+ * "Popular times": average players for each weekday and hour over the last
+ * 30 days, from the same 5-minute samples as the graph. Local time.
+ */
+function popularTimes(samples) {
+  const sum = Array.from({ length: 7 }, () => new Array(24).fill(0));
+  const count = Array.from({ length: 7 }, () => new Array(24).fill(0));
+  let seen = 0;
+  for (const [t, n] of samples || []) {
+    if (n == null) continue;
+    const d = new Date(t);
+    const day = (d.getDay() + 6) % 7; // Monday first
+    sum[day][d.getHours()] += n;
+    count[day][d.getHours()] += 1;
+    seen += 1;
+  }
+  if (seen < 24 * 12) return ''; // under a day of data says nothing yet
+  const avg = sum.map((row, d) => row.map((s, h) => (count[d][h] ? s / count[d][h] : null)));
+  const max = Math.max(0.01, ...avg.flat().filter((v) => v != null));
+  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const hourLabel = (h) => new Date(2026, 0, 1, h).toLocaleTimeString([], { hour: 'numeric' });
+  const cells = avg
+    .map(
+      (row, d) =>
+        `<span class="pt-day">${days[d]}</span>${row
+          .map((v, h) => `<i style="${v == null ? '' : `--a:${(0.08 + 0.92 * (v / max)).toFixed(2)}`}" class="${v == null ? 'none' : ''}" title="${days[d]} ${hourLabel(h)}: ${v == null ? 'no data' : `${v.toFixed(1)} on average`}"></i>`)
+          .join('')}`
+    )
+    .join('');
+  return `
+    <div class="card mb-16">
+      <h4 style="margin:0 0 10px">Popular times <span class="faint" style="font-weight:400;font-size:12px">average players, last 30 days</span></h4>
+      <div class="pt-grid">${cells}
+        <span></span>${[0, 6, 12, 18].map((h) => `<span class="pt-hour" style="grid-column:${h + 2} / span 6">${hourLabel(h)}</span>`).join('')}
+      </div>
+    </div>`;
 }

@@ -2730,6 +2730,29 @@ tr.clickable:hover td {
   }
 }
 
+.pt-grid {
+  display: grid;
+  grid-template-columns: 34px repeat(24, 1fr);
+  gap: 3px;
+  align-items: center;
+}
+.pt-grid i {
+  height: 16px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--accent) calc(var(--a, 0) * 100%), var(--hover));
+}
+.pt-grid i.none {
+  background: transparent;
+  outline: 1px dashed var(--border);
+  outline-offset: -1px;
+}
+.pt-day,
+.pt-hour {
+  font-size: 11px;
+  color: var(--faint);
+  font-family: var(--mono);
+}
+
 .recovery-codes {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
