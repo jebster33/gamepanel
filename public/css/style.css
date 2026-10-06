@@ -1370,6 +1370,89 @@ tbody tr:hover {
 .file-check {
   width: 28px;
 }
+/* Config history: versions on the left, the diff on the right. */
+.history-grid {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: 16px;
+}
+.history-list {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+.history-item {
+  display: grid;
+  gap: 2px;
+  padding: 8px 10px;
+  text-align: left;
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--text);
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.history-item:hover {
+  background: var(--hover);
+}
+.history-item.active {
+  background: var(--lime-soft);
+  border-color: var(--border-strong);
+}
+.history-item .faint {
+  font-size: 11.5px;
+  overflow-wrap: anywhere;
+}
+.diff {
+  max-height: 60vh;
+  overflow: auto;
+  padding: 8px 0;
+  font: 12px/1.55 var(--mono);
+  background: var(--inset);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.diff-line {
+  padding: 0 12px 0 0;
+  white-space: pre;
+}
+.diff-op {
+  display: inline-block;
+  width: 26px;
+  text-align: center;
+  color: var(--faint);
+  user-select: none;
+}
+.diff-line.add {
+  background: var(--lime-soft);
+}
+.diff-line.add .diff-op {
+  color: var(--lime-text);
+}
+.diff-line.del {
+  background: var(--red-soft);
+}
+.diff-line.del .diff-op {
+  color: var(--red);
+}
+.diff-fold {
+  padding: 2px 12px 2px 26px;
+  color: var(--faint);
+  font-style: italic;
+}
+@media (max-width: 760px) {
+  .history-grid {
+    grid-template-columns: 1fr;
+  }
+  .history-list {
+    max-height: 30vh;
+  }
+}
+
 .editor {
   width: 100%;
   height: 60vh;

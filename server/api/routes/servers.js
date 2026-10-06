@@ -88,7 +88,7 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
 
   router.put('/api/servers/:id/game-settings', ({ user, params, body }) => {
     const server = serverFor(user, params.id, 'settings');
-    const result = require('../../games/settings').writeGameSettings(manager, server, body.values);
+    const result = require('../../games/settings').writeGameSettings(manager, server, body.values, user.username);
     if (result.changed) store.addEvent('server.settings', `${user.username} changed ${result.changed} game setting${result.changed === 1 ? '' : 's'} on ${server.name}`, { serverId: server.id });
     return { ...result, restartNeeded: manager.isActive(server.id) };
   });
