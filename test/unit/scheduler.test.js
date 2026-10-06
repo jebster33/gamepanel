@@ -19,3 +19,18 @@ test('next run', () => {
   const next = nextRun('0 */6 * * *', new Date('2026-01-01T07:10:00'));
   assert.strictEqual(new Date(next).getHours(), 12);
 });
+
+test('"skip while players are online" holds a restart', async () => {
+  const { Scheduler } = require('../../server/features/scheduler');
+  const calls = [];
+  const rt = { players: 2 };
+  const m = { isActive: () => true, rt: () => rt, restart: async () => calls.push('restart'), pushConsole: () => {} };
+  const s = new Scheduler(m, { addEvent: () => {}, save: () => {} });
+  const schedule = { name: 'Nightly', action: 'restart', onlyWhenEmpty: true };
+  await s.run({ id: 'a', name: 'SMP' }, schedule);
+  assert.deepStrictEqual(calls, []);
+  assert.match(schedule.lastResult, /2 players online/);
+  rt.players = 0;
+  await s.run({ id: 'a', name: 'SMP' }, schedule);
+  assert.deepStrictEqual(calls, ['restart']);
+});

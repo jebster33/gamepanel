@@ -118,7 +118,7 @@ function scheduleRow(s) {
       <label class="switch" title="${s.enabled ? 'On' : 'Off'}"><input type="checkbox" data-enable ${s.enabled ? 'checked' : ''} /><i></i></label>
       <div class="grow">
         <div class="title">${esc(s.name)}</div>
-        <div class="sub">${esc(whenLabel(s.cron))} · ${esc(actionLabel(s.action))}${s.command ? ` <span class="mono">${esc(s.command)}</span>` : ''}${s.warnMinutes ? ` · ${s.warnMinutes} min warning` : ''}</div>
+        <div class="sub">${esc(whenLabel(s.cron))} · ${esc(actionLabel(s.action))}${s.command ? ` <span class="mono">${esc(s.command)}</span>` : ''}${s.warnMinutes ? ` · ${s.warnMinutes} min warning` : ''}${s.onlyWhenEmpty ? ' · only when empty' : ''}</div>
       </div>
       <div class="hide-sm" style="text-align:right;font-size:12px">
         <div class="muted">${s.nextRun ? `Next ${fmtTime(s.nextRun)}` : 'Paused'}</div>
@@ -161,7 +161,9 @@ function openScheduleModal(server, schedule, onSaved) {
         <input id="sch-name" value="${esc(schedule?.name || '')}" placeholder="Shown in the list and in alerts" />
       </label>
       <div class="checkbox-row"><input type="checkbox" id="sch-only-running" ${schedule?.onlyIfRunning === false ? '' : 'checked'} />
-        <label for="sch-only-running">Skip it when the server is not running</label></div>`,
+        <label for="sch-only-running">Skip it when the server is not running</label></div>
+      <div class="checkbox-row" id="sch-empty-wrap"><input type="checkbox" id="sch-only-empty" ${schedule?.onlyWhenEmpty ? 'checked' : ''} />
+        <label for="sch-only-empty">Skip it while players are online</label></div>`,
     actions: [
       { label: 'Cancel', close: true },
       {
@@ -176,6 +178,7 @@ function openScheduleModal(server, schedule, onSaved) {
             command: $('#sch-command').value,
             name: $('#sch-name').value.trim() || ACTIONS.find(([a]) => a === action)[1],
             onlyIfRunning: $('#sch-only-running').checked,
+            onlyWhenEmpty: $('#sch-only-empty').checked,
             warnMinutes: Number($('#sch-warn').value),
           };
           btn.disabled = true;
@@ -197,6 +200,7 @@ function openScheduleModal(server, schedule, onSaved) {
   const sync = () => {
     $('#sch-command-wrap').classList.toggle('hidden', $('#sch-action').value !== 'command');
     $('#sch-warn-wrap').classList.toggle('hidden', !['restart', 'stop'].includes($('#sch-action').value));
+    $('#sch-empty-wrap').classList.toggle('hidden', $('#sch-action').value === 'start');
     $('#sch-cron-wrap').classList.toggle('hidden', $('#sch-preset').value !== 'custom');
   };
   $('#sch-action').addEventListener('change', sync);
