@@ -3,6 +3,7 @@
   "name": "Minecraft: Quilt",
   "category": "Minecraft",
   "icon": "🧵",
+  "logo": "/img/games/minecraft.svg",
   "description": "A Fabric-compatible mod loader. Runs Quilt mods and almost every Fabric mod.",
   "defaultMemory": 6144,
   "variables": [

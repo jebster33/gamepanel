@@ -3,6 +3,7 @@
   "name": "Minecraft: NeoForge",
   "category": "Minecraft",
   "icon": "🦊",
+  "logo": "/img/games/minecraft.svg",
   "description": "The community fork of Forge most new mods target from 1.20.2 on. Only NeoForge mods for your Minecraft version are offered.",
   "defaultMemory": 6144,
   "variables": [

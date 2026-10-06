@@ -3,6 +3,7 @@
   "name": "Minecraft: Fabric",
   "category": "Minecraft",
   "icon": "🧵",
+  "logo": "/img/games/minecraft.svg",
   "description": "Modded Minecraft with the Fabric loader. Drop your mods into the mods/ folder from the file manager.",
   "defaultMemory": 6144,
   "variables": [

@@ -3,6 +3,7 @@
   "name": "Space Engineers",
   "category": "Sandbox",
   "icon": "🛰️",
+  "storeAppId": 244850,
   "description": "Build ships and stations in space. Windows only. A new world is created on first start.",
   "platforms": [
     "windows"

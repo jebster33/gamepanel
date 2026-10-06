@@ -34,6 +34,7 @@ export async function renderSettings(view) {
   const data = await api('/api/settings').catch((err) => ({ settings: {}, error: err.message }));
   const s = data.settings;
   const integrations = s.integrations || {};
+  const limits = s.limits || {};
   view.innerHTML = `
     <div class="page-head"><div><h1>Settings</h1><div class="lede">Panel-wide options. Per-server options live on each server's Settings tab.</div></div></div>
 
@@ -85,6 +86,19 @@ export async function renderSettings(view) {
         s.containerize !== false ? 'checked' : ''
       } /><label for="s-containerize">Run each game server in its own container (isolation, hard memory/CPU limits, per-server network stats)</label></div>
       <div class="hint">Applies the next time a server starts. Without Docker the panel falls back to plain processes.</div>
+    </div>
+
+    <div class="card mb-16" id="limits">
+      <h4>Limits</h4>
+      <div class="faint" style="margin-bottom:12px">Caps for the whole panel. Leave a field at 0 for no limit.</div>
+      <div class="form-grid">
+        <label><span>Max memory for running servers (GB)</span><input id="l-mem" type="number" min="0" step="0.5" value="${+((limits.memoryMb || 0) / 1024).toFixed(1)}" /></label>
+        <label><span>Max CPU cores per server</span><input id="l-cpu" type="number" min="0" step="0.5" value="${limits.cpuCores || 0}" /></label>
+        <label><span>Max storage for servers and backups (GB)</span><input id="l-disk" type="number" min="0" step="1" value="${limits.diskGb || 0}" /></label>
+      </div>
+      <div id="limits-usage" class="hint">Checking usage…</div>
+      <div class="hint">Memory is checked when a server starts, storage before installs, updates and backups. The CPU cap applies to container servers without a cap of their own. Game servers run headless and don't use the GPU, so there is nothing to cap there.</div>
+      <button class="btn btn-primary mt-16" id="l-save">Save limits</button>
     </div>
 
     <div class="card mb-16" id="discord-bot">
@@ -234,6 +248,38 @@ export async function renderSettings(view) {
     try {
       await api('/api/settings', { method: 'PATCH', body: { containerize: event.target.checked } });
       toast(event.target.checked ? 'Containers enabled for new starts' : 'Containers disabled');
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+  });
+
+  const showUsage = () =>
+    api('/api/system')
+      .then((sys) => {
+        const el = $('#limits-usage');
+        if (!el) return;
+        const u = sys.overview?.usage || {};
+        el.textContent = `In use now: ${+((u.memoryMb || 0) / 1024).toFixed(1)} GB memory by running servers (host has ${fmtBytes(
+          sys.host?.memory?.total
+        )}), ${fmtBytes(u.diskBytes || 0)} of storage. The host has ${sys.host?.cpu?.cores ?? '?'} CPU cores.`;
+      })
+      .catch(() => {});
+  showUsage();
+
+  $('#l-save').addEventListener('click', async () => {
+    try {
+      await api('/api/settings', {
+        method: 'PATCH',
+        body: {
+          limits: {
+            memoryMb: Math.round(Number($('#l-mem').value) * 1024),
+            cpuCores: Number($('#l-cpu').value),
+            diskGb: Number($('#l-disk').value),
+          },
+        },
+      });
+      toast('Limits saved');
+      showUsage();
     } catch (err) {
       toast(err.message, 'error');
     }
@@ -507,17 +553,32 @@ async function checkForUpdates(interactive) {
     return;
   }
 
-  const current = data.current ? `${data.current.commit} · ${fmtTime(Date.parse(data.current.date))}` : 'unknown';
+  const release = data.mode === 'release';
+  const current = release
+    ? `v${data.version}`
+    : data.current
+      ? `${data.current.commit} · ${fmtTime(Date.parse(data.current.date))}`
+      : `v${data.version}`;
   if (!data.updateAvailable) {
-    status.innerHTML = `Up to date — v${esc(data.version)} (${esc(current)})`;
+    status.innerHTML = release ? `Up to date — ${esc(current)}` : `Up to date — v${esc(data.version)} (${esc(current)})`;
+    if (data.note) status.innerHTML += ` <span class="faint">${esc(data.note)}</span>`;
     return;
   }
 
-  status.innerHTML = `<b>${data.behind} update${data.behind === 1 ? '' : 's'} available</b> — you are on ${esc(current)}`;
-  detail.innerHTML = `
+  if (release) {
+    status.innerHTML = `<b>Version ${esc(data.latest)} is available</b> — you are on ${esc(current)}`;
+    detail.innerHTML = `
+      <div class="card" style="background:rgba(74,222,128,.06)">
+        ${data.notes ? `<pre class="update-notes">${esc(data.notes)}</pre>` : ''}
+        ${data.url ? `<a href="${esc(data.url)}" target="_blank" rel="noopener">Release notes on GitHub</a>` : ''}
+        <div><button class="btn btn-primary mt-16" id="update-apply">Update and restart</button></div>
+      </div>`;
+  } else {
+    status.innerHTML = `<b>${data.behind} update${data.behind === 1 ? '' : 's'} available</b> — you are on ${esc(current)}`;
+    detail.innerHTML = `
     <div class="card" style="background:rgba(74,222,128,.06)">
       <div class="table-wrap"><table>
-        ${data.commits
+        ${(data.commits || [])
           .map(
             (c) => `<tr><td class="mono faint nowrap" style="width:80px">${esc(c.commit)}</td>
                       <td>${esc(c.subject)}</td>
@@ -527,6 +588,7 @@ async function checkForUpdates(interactive) {
       </table></div>
       <button class="btn btn-primary mt-16" id="update-apply">Update and restart</button>
     </div>`;
+  }
 
   $('#update-apply').addEventListener('click', async (event) => {
     const btn = event.currentTarget;
@@ -535,7 +597,7 @@ async function checkForUpdates(interactive) {
     btn.innerHTML = '<span class="spinner"></span> Updating…';
     try {
       const result = await api('/api/system/update', { method: 'POST', body: {} });
-      detail.innerHTML = `<div class="card">Updated ${esc(result.from)} → ${esc(result.to)}. Waiting for the panel to come back…</div>`;
+      detail.innerHTML = `<div class="card">Updated ${result.from ? `${esc(result.from)} → ` : ''}${esc(result.to)}. Waiting for the panel to come back…</div>`;
       waitForPanel();
     } catch (err) {
       toast(err.message, 'error');
@@ -554,7 +616,7 @@ function waitForPanel(attempt = 0) {
       setTimeout(() => location.reload(), 800);
     } catch {
       if (attempt < 40) waitForPanel(attempt + 1);
-      else toast('The panel did not come back. Check: journalctl -u gamepanel -n 50', 'error', 15000);
+      else toast('The panel did not come back. Check its log in the data folder (logs/), or journalctl -u gamepanel on Linux.', 'error', 15000);
     }
   }, 2000);
 }

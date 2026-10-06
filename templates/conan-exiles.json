@@ -3,6 +3,7 @@
   "name": "Conan Exiles",
   "category": "Survival",
   "icon": "⚔️",
+  "storeAppId": 440900,
   "description": "Open-world survival in the lands of Conan the Barbarian. Windows only.",
   "platforms": [
     "windows"

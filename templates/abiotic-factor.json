@@ -3,6 +3,7 @@
   "name": "Abiotic Factor",
   "category": "Survival",
   "icon": "🧪",
+  "storeAppId": 427410,
   "description": "Co-op survival-crafting in an underground research facility, for up to 6 players. Windows only.",
   "platforms": [
     "windows"

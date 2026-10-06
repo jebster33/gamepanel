@@ -3,6 +3,7 @@
   "name": "ARK: Survival Evolved",
   "category": "Survival",
   "icon": "🦖",
+  "storeAppId": 346110,
   "description": "ARK: Survival Evolved dedicated server. Large install and very RAM-hungry — 16 GB recommended.",
   "defaultMemory": 12288,
   "variables": [

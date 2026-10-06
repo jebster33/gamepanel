@@ -3,6 +3,7 @@
   "name": "Counter-Strike 2",
   "category": "Shooter",
   "icon": "🔫",
+  "storeAppId": 730,
   "description": "Counter-Strike 2 dedicated server. A Game Server Login Token (GSLT) is required for public internet servers — get one at steamcommunity.com/dev/managegameservers.",
   "defaultMemory": 4096,
   "variables": [

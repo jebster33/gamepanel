@@ -1,7 +1,7 @@
 import { setCrumbs } from '../core/router.js';
 import { state } from '../core/state.js';
 import { api } from '../core/api.js';
-import { $, can, esc, fmtBytes, icon, statusPill, toast } from '../core/util.js';
+import { $, can, esc, fmtBytes, gameArt, icon, statusPill, toast } from '../core/util.js';
 import { revealChildren } from '../ui/fx.js';
 
 /* --------------------------------------------------------- server cards */
@@ -16,7 +16,7 @@ export function serverAddress(server) {
 export function renderServerCards() {
   if (!state.servers.length) {
     return `<div class="empty">
-      <img src="/img/empty-rack.png" alt="" width="140" height="135" />
+      <img class="line-art" src="/img/empty-rack.png" alt="" width="140" height="135" />
       <h3>No servers yet</h3>
       <p>Pick a game and the panel installs it, opens the ports and starts it for you.</p>
       ${state.user?.role === 'admin' ? '<div class="row" style="justify-content:center"><a class="btn btn-primary" href="#/templates">Pick a game</a><button class="btn" data-import>Import existing</button></div>' : ''}
@@ -43,7 +43,7 @@ function serverRow(server) {
   return `
   <div class="srv-row spot" data-card="${esc(server.id)}">
     <a class="srv-identity" href="#/servers/${esc(server.id)}">
-      <span class="srv-icon">${esc(server.templateIcon || '🎮')}</span>
+      <span class="srv-icon">${gameArt({ icon: server.templateIcon, logo: server.templateLogo, storeAppId: server.templateStoreAppId })}</span>
       <span class="srv-name">
         <span class="title">${esc(server.name)}</span>
         <span class="sub">${esc(server.templateName)}${

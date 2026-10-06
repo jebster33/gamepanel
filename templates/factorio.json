@@ -3,6 +3,7 @@
   "name": "Factorio",
   "category": "Sandbox",
   "icon": "⚙️",
+  "storeAppId": 427520,
   "description": "Factorio headless server. Creates a fresh map on install; drop your own saves into saves/ to use them instead.",
   "defaultMemory": 2048,
   "variables": [

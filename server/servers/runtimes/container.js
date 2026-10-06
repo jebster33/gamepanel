@@ -226,7 +226,8 @@ module.exports = {
 
     const { exposed, bindings } = this.portBindings(server);
     const memoryBytes = Math.max(64, Number(server.memory) || 1024) * 1024 * 1024;
-    const nanoCpus = server.cpuLimit ? Math.round((Number(server.cpuLimit) / 100) * 1e9) : 0;
+    const cpuLimit = this.effectiveCpuLimit(server);
+    const nanoCpus = cpuLimit ? Math.round((cpuLimit / 100) * 1e9) : 0;
 
     const created = await docker.create(name, {
       Image: image,

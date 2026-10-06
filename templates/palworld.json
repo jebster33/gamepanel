@@ -3,6 +3,7 @@
   "name": "Palworld",
   "category": "Survival",
   "icon": "🐾",
+  "storeAppId": 1623730,
   "description": "Palworld dedicated server. Needs plenty of RAM — 16 GB is comfortable for a full 32-player world.",
   "defaultMemory": 12288,
   "variables": [

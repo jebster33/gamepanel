@@ -951,6 +951,15 @@ tbody tr:hover {
 .card table th:last-child {
   padding-right: 0;
 }
+/* Edge-to-edge tables still need breathing room at the card's edges. */
+.card-flush table td:first-child,
+.card-flush table th:first-child {
+  padding-left: 18px;
+}
+.card-flush table td:last-child,
+.card-flush table th:last-child {
+  padding-right: 18px;
+}
 
 /* --------------------------------------------------------------- servers */
 
@@ -1009,6 +1018,7 @@ tbody tr:hover {
   background: var(--raised);
   border: 1px solid var(--border);
   border-radius: var(--radius);
+  overflow: hidden;
 }
 .srv-name {
   display: flex;
@@ -2974,6 +2984,87 @@ tr.clickable:hover td {
     animation: none !important;
     transition: none !important;
   }
+}
+
+/* ------------------------------------------------------------ game art */
+
+.min-w-0 {
+  min-width: 0;
+}
+.game-card {
+  padding-top: 0;
+  overflow: hidden;
+}
+.game-card .g-art {
+  display: grid;
+  place-items: center;
+  margin: 0 -16px;
+  aspect-ratio: 460 / 215;
+  font-size: 40px;
+  background: var(--raised);
+  border-bottom: 1px solid var(--border);
+  overflow: hidden;
+}
+.game-card .g-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s var(--ease);
+}
+.game-card .g-art img.art-contain {
+  width: 40%;
+  height: 80%;
+  object-fit: contain;
+}
+.game-card:hover .g-art img {
+  transform: scale(1.03);
+}
+.tile-card .t-foot {
+  flex-wrap: wrap;
+}
+.tile-card .t-foot .badge {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tile-card .t-deploy {
+  margin-left: auto;
+}
+.srv-icon img,
+.t-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.srv-icon img.art-contain {
+  object-fit: contain;
+  padding: 3px;
+}
+.update-notes {
+  max-height: 240px;
+  margin: 0 0 12px;
+  overflow: auto;
+  font-size: 12.5px;
+  white-space: pre-wrap;
+  color: var(--muted);
+}
+
+/* ------------------------------------------------------------- backdrop */
+
+/* A quiet contour-line hero behind the top of every page, with a lime glow. */
+.main {
+  background:
+    radial-gradient(ellipse 60% 340px at 78% -60px, color-mix(in srgb, var(--lime) 9%, transparent), transparent 70%),
+    url("/img/hero-dark.svg") top center / max(1600px, 100%) auto no-repeat;
+}
+:root[data-theme="light"] .main {
+  background:
+    radial-gradient(ellipse 60% 340px at 78% -60px, color-mix(in srgb, var(--lime) 22%, transparent), transparent 70%),
+    url("/img/hero-light.svg") top center / max(1600px, 100%) auto no-repeat;
+}
+/* Line drawings are dark on transparent; flip them for the light theme. */
+:root[data-theme="light"] .line-art {
+  filter: invert(1) hue-rotate(180deg);
 }
 
 /* -------------------------------------------------- bridge: extra ports */
