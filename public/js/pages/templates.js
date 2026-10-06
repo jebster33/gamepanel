@@ -1,5 +1,6 @@
 import { render, setCrumbs } from '../core/router.js';
 import { state } from '../core/state.js';
+import { api } from '../core/api.js';
 import { $, can, esc, gameArt, icon, toast } from '../core/util.js';
 import { openCreateServerModal } from './deploy.js';
 import { revealChildren } from '../ui/fx.js';
@@ -17,6 +18,25 @@ function portBadge(ports) {
 }
 
 let templateFilter = { category: 'all', search: '' };
+
+/** Administrators deploy anything; people with "create their own servers" anything not marked admin-only. */
+const canDeploy = (tpl) => state.user.role === 'admin' || (can('deploy') && tpl && !tpl.adminOnly);
+
+const fmtUse = (used, limit, unit) => (limit ? `${used} of ${limit} ${unit}` : `${used} ${unit}, no limit`);
+
+/** What a self-service account has left to deploy with. */
+async function showQuota() {
+  const data = await api('/api/quota').catch(() => null);
+  const host = $('#quota-note');
+  if (!data?.quota || !host) return;
+  const { quota: q, usage: u } = data;
+  host.innerHTML = `<div class="card mb-16 quota-card">
+    <b>Your quota</b>
+    <span>${fmtUse(u.servers, q.servers, 'servers')}</span>
+    <span>${fmtUse(Math.round((u.memoryMb / 1024) * 10) / 10, q.memoryMb ? Math.round((q.memoryMb / 1024) * 10) / 10 : 0, 'GB memory')}</span>
+    <span>${fmtUse(Math.round((u.diskBytes / 1024 ** 3) * 10) / 10, q.diskGb, 'GB disk')}</span>
+  </div>`;
+}
 
 export function renderTemplates(view) {
   setCrumbs('Games');
@@ -37,6 +57,7 @@ export function renderTemplates(view) {
       <div class="spacer"></div>
       <input class="search-input" id="tpl-search" placeholder="Search games…" value="${esc(templateFilter.search)}" />
     </div>
+    <div id="quota-note"></div>
     <div class="filter-bar">
       <span class="chip ${templateFilter.category === 'all' ? 'active' : ''}" data-cat="all">All (${state.templates.length})</span>
       ${state.categories
@@ -66,11 +87,7 @@ export function renderTemplates(view) {
           <div class="t-foot">
             ${tpl.defaultMemory ? `<span class="badge" title="Recommended memory for this game">${fmtRam(tpl.defaultMemory)} RAM</span>` : ''}
             ${portBadge(tpl.ports || [])}
-            ${
-              state.user.role === 'admin'
-                ? '<button class="btn btn-sm t-deploy">Deploy</button>'
-                : ''
-            }
+            ${canDeploy(tpl) ? '<button class="btn btn-sm t-deploy">Deploy</button>' : ''}
           </div>
         </div>`
               )
@@ -80,6 +97,7 @@ export function renderTemplates(view) {
     </div>`;
 
   revealChildren(view.querySelector('.grid-cards'));
+  if (state.user.role !== 'admin' && can('deploy')) showQuota();
 
   $('#tpl-search').addEventListener('input', (event) => {
     templateFilter.search = event.target.value;
@@ -94,7 +112,8 @@ export function renderTemplates(view) {
   );
   view.querySelectorAll('[data-template]').forEach((el) =>
     el.addEventListener('click', () => {
-      if (state.user.role !== 'admin') return toast('Only administrators can create servers', 'warn');
+      const tpl = state.templates.find((t) => t.id === el.dataset.template);
+      if (!canDeploy(tpl)) return toast(can('deploy') ? 'Only administrators can create this kind of server' : 'Only administrators can create servers', 'warn');
       openCreateServerModal(el.dataset.template);
     })
   );

@@ -155,7 +155,13 @@ export function renderServerSettingsTab(host, server) {
                <button class="btn btn-danger" id="set-delete">Delete server</button>
              </div>
            </div>`
-        : ''
+        : server.ownerId && server.ownerId === state.user.id
+          ? `<div class="card">
+               <h4 style="margin:0 0 6px">Delete server</h4>
+               <p class="faint" style="margin:0 0 14px">You created this server, so you can delete it. That removes it and all of its files, and frees its share of your quota.</p>
+               <button class="btn btn-danger" id="set-delete-own">Delete server</button>
+             </div>`
+          : ''
     }`;
 
   renderNetworkCard(server);
@@ -219,6 +225,18 @@ export function renderServerSettingsTab(host, server) {
       });
       await loadServers();
       toast('Alerts saved. Pick where they go under Settings, Notifications, or on the phone app.');
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+  });
+
+  $('#set-delete-own')?.addEventListener('click', async () => {
+    if (!(await confirmModal('Delete server', `Permanently delete “${server.name}” and all of its files?`, 'Delete'))) return;
+    try {
+      await api(`/api/servers/${server.id}`, { method: 'DELETE' });
+      await loadServers();
+      toast('Server deleted');
+      location.hash = '#/servers';
     } catch (err) {
       toast(err.message, 'error');
     }

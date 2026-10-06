@@ -30,6 +30,12 @@ const CAPABILITIES = [
   { id: 'backups', label: 'Create and download backups', group: 'Backups' },
   { id: 'backups.restore', label: 'Restore and delete backups', group: 'Backups' },
   { id: 'activity', label: 'View the activity log', group: 'Panel' },
+  {
+    id: 'deploy',
+    label: 'Create their own servers (within their quota)',
+    group: 'Panel',
+    warning: 'They get full access to the servers they create, up to the quota set below.',
+  },
   { id: 'templates', label: 'Browse the template catalogue', group: 'Panel' },
 ];
 
@@ -438,6 +444,7 @@ class Auth {
       lastLogin: user.lastLogin || null,
       twoFactor: Boolean(user.totp?.secret),
       recoveryCodesLeft: user.totp ? (user.totp.recovery || []).length : undefined,
+      quota: user.role === 'admin' ? null : require('../features/quotas').quotaFor(user),
     };
   }
 

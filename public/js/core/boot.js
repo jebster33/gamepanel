@@ -53,7 +53,9 @@ export async function enterApp() {
 
   // Hide navigation the account cannot use at all, so nothing dead-ends in a
   // permission error.
-  $$('[data-needs]').forEach((el) => el.classList.toggle('hidden', !can(el.dataset.needs)));
+  $$('[data-needs]').forEach((el) => el.classList.toggle('hidden', !el.dataset.needs.split('|').some((cap) => can(cap))));
+  // Self-service accounts deploy their own servers.
+  $('#new-server-btn').classList.toggle('hidden', !can('deploy'));
 
   // Restricted accounts may not be allowed every one of these; a refused
   // request must not stop the panel from loading.
@@ -77,7 +79,7 @@ export async function loadServers() {
 }
 
 export async function loadTemplates() {
-  if (!can('templates')) {
+  if (!can('templates') && !can('deploy')) {
     state.templates = [];
     state.categories = [];
     return;

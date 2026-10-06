@@ -3,13 +3,30 @@
 const { fail, logger } = require('../../core/util');
 const { rconCommand } = require('../../games/rcon');
 const { query } = require('../../games/query');
+const quotas = require('../../features/quotas');
 
 module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin, requireCap, serverFor, visibleServers }) => {
   router.get('/api/servers', ({ user }) => ({ servers: visibleServers(user) }));
 
   router.post('/api/servers', async ({ user, body }) => {
-    requireAdmin(user);
-    const server = manager.create(body, user);
+    let server;
+    if (user.role === 'admin') {
+      server = manager.create(body, user);
+    } else {
+      // Self-service: within the account's quota, and nothing that reaches the host's shell.
+      requireCap(user, 'deploy');
+      const template = manager.templates.require(body.templateId);
+      // Templates whose variables are commands or scripts run anything on the host.
+      if (template.adminOnly) fail(403, `Only administrators can create ${template.name} servers`);
+      quotas.assertSafeInput(body, null, template);
+      quotas.checkCreate(manager, user, Number(body.memory) || Number(template.defaultMemory) || 2048);
+      server = manager.create({ templateId: body.templateId, name: body.name, memory: body.memory, maxPlayers: body.maxPlayers, autoStart: body.autoStart, autoRestart: body.autoRestart, vars: body.vars, ports: body.ports }, user);
+      server.ownerId = user.id;
+      const record = store.state.users.find((u) => u.id === user.id);
+      record.servers = [...new Set([...(record.servers || []), server.id])];
+      record.serverPerms = { ...(record.serverPerms || {}), [server.id]: quotas.OWNER_PERMISSIONS };
+      store.save();
+    }
     // Installs can take many minutes: start it and let the console stream.
     manager.install(server.id).catch((err) => logger.error('Install error:', err.message));
     return { server: manager.publicServer(server) };
@@ -33,12 +50,16 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
       serverFor(user, params.id, 'settings');
       // The start command runs in a shell on the host: administrators only.
       if (body.startCommand !== undefined) fail(403, 'Only administrators can change the start command');
+      const current = manager.require(params.id);
+      quotas.assertSafeInput(body, current, manager.template(current));
+      if (body.memory !== undefined) quotas.checkMemory(manager, user, manager.require(params.id), Math.max(256, Number(body.memory) || 0));
     }
     return { server: manager.publicServer(manager.update(params.id, body)) };
   });
 
   router.delete('/api/servers/:id', async ({ user, params, url }) => {
-    requireAdmin(user);
+    // People who deployed a server themselves may delete it.
+    if (user.role !== 'admin' && serverFor(user, params.id).ownerId !== user.id) requireAdmin(user);
     await manager.remove(params.id, url.searchParams.get('keepFiles') !== '1');
     bridge?.forgetServer(params.id);
     return { ok: true };
@@ -48,6 +69,7 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
     const server = serverFor(user, params.id, 'power');
     switch (String(body.action || '').toLowerCase()) {
       case 'start':
+        quotas.checkDisk(manager, server, store.state.users);
         return { ok: true, server: await manager.start(server.id) };
       case 'stop':
         return manager.stop(server.id);

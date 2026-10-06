@@ -3317,3 +3317,16 @@ tr.clickable:hover td {
 .hint.warn-text:empty {
   display: none;
 }
+
+/* Games page: what a self-service account has left. */
+.quota-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 22px;
+  padding: 12px 18px;
+  font-size: 13px;
+}
+.quota-card span {
+  color: var(--muted);
+}
