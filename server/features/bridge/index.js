@@ -134,6 +134,7 @@ class Bridge {
       keyVersion: 1,
       password: null,
       servers: [],
+      shareRcon: false,
       ports: [],
       devices: [],
       createdAt: Date.now(),
@@ -146,6 +147,7 @@ class Bridge {
   updateConnection(id, body) {
     const conn = this.find(id);
     if (body.enabled !== undefined) conn.enabled = Boolean(body.enabled);
+    if (body.shareRcon !== undefined) conn.shareRcon = Boolean(body.shareRcon);
     if (Array.isArray(body.servers)) {
       const known = new Set(this.manager.servers.map((s) => s.id));
       conn.servers = [...new Set(body.servers.map(String))].filter((sid) => known.has(sid));
@@ -218,6 +220,7 @@ class Bridge {
       enabled: conn.enabled,
       passwordSet: Boolean(conn.password),
       servers: conn.servers,
+      shareRcon: Boolean(conn.shareRcon),
       ports: conn.ports,
       createdAt: conn.createdAt,
       online: onlineDevices.size > 0,
@@ -247,6 +250,8 @@ class Bridge {
       const host = server.ip && server.ip !== '0.0.0.0' && server.ip !== '::' ? server.ip : '127.0.0.1';
       for (const p of serverPorts(server, template)) {
         if (!(p.port > 0 && p.port < 65536)) continue;
+        // Remote admin ports stay hidden unless the admin shares them on purpose.
+        if (!conn.shareRcon && (p.name === template?.rcon?.port || /rcon/i.test(p.name))) continue;
         out.push({
           id: `s:${server.id}:${p.name}:${p.protocol}`,
           kind: 'server',

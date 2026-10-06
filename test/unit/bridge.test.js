@@ -22,7 +22,7 @@ function fakeStore() {
 
 function fakeManager(servers) {
   const templates = {
-    mc: { ports: [{ name: 'game', protocol: 'tcp' }, { name: 'query', protocol: 'udp' }] },
+    mc: { ports: [{ name: 'game', protocol: 'tcp' }, { name: 'query', protocol: 'udp' }, { name: 'rcon', protocol: 'tcp' }], rcon: { port: 'rcon' } },
     rust: { ports: [{ name: 'game', protocol: 'both' }] },
   };
   return { servers, template: (s) => templates[s.templateId] };
@@ -50,7 +50,7 @@ test('a damaged identity is never silently replaced', () => {
 
 test('forwards cover exactly the allowed servers and custom ports', () => {
   const manager = fakeManager([
-    { id: 's1', name: 'Minecraft', templateId: 'mc', ports: { game: 25565, query: 25566 } },
+    { id: 's1', name: 'Minecraft', templateId: 'mc', ports: { game: 25565, query: 25566, rcon: 25575 } },
     { id: 's2', name: 'Rust', templateId: 'rust', ports: { game: 28015 }, ip: '10.0.0.5' },
     { id: 's3', name: 'Hidden', templateId: 'mc', ports: { game: 25575, query: 25576 } },
   ]);
@@ -65,6 +65,9 @@ test('forwards cover exactly the allowed servers and custom ports', () => {
   assert.strictEqual(f.find((x) => x.group === 'Minecraft').target.host, '127.0.0.1');
   assert.strictEqual(f.find((x) => x.name === 'SSH').localPort, 2222);
   assert.ok(bridge.clientForwards(conn).every((x) => !x.target), 'internal targets are not sent to clients');
+  assert.ok(!f.some((x) => x.name === 'rcon'), 'RCON is hidden by default');
+  bridge.updateConnection(conn.id, { shareRcon: true });
+  assert.ok(bridge.forwardsFor(conn).some((x) => x.name === 'rcon' && x.port === 25575), 'RCON is shared when asked');
   bridge.forgetServer('s1');
   assert.deepStrictEqual(conn.servers, ['s2']);
   bridge.stop();
