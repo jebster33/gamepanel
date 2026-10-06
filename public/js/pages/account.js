@@ -6,6 +6,7 @@ import { copyToClipboard } from '../ui/clipboard.js';
 import { openModal } from '../ui/modal.js';
 import { otpMarkup, wireOtp } from '../ui/otp.js';
 import { qrSvg } from '../ui/qr.js';
+import { startTour } from '../ui/tour.js';
 
 /* --------------------------------------------------------------- account */
 
@@ -49,6 +50,14 @@ export async function renderAccount(view) {
       <div class="hint">Changing it signs you out on every other device.</div>
     </div>
 
+    <div class="card mb-16" id="prefs">
+      <h4>This browser</h4>
+      <div class="row" style="gap:12px;align-items:center">
+        <div class="faint" style="flex:1;min-width:220px">A quick walk past the main parts of the panel.</div>
+        <button class="btn" id="a-tour">Take the tour</button>
+      </div>
+    </div>
+
     <div class="card mb-16 row" style="align-items:center;gap:16px">
       <div style="flex:1;min-width:220px">
         <h4 style="margin-top:0">Other devices</h4>
@@ -71,6 +80,7 @@ export async function renderAccount(view) {
   renderTwoFactor(me);
   renderApiKeys();
 
+  $('#a-tour').addEventListener('click', () => startTour());
   $('#a-revoke').addEventListener('click', async () => {
     try {
       await api('/api/auth/sessions/revoke', { method: 'POST' });

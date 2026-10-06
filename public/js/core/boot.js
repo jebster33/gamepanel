@@ -4,6 +4,7 @@ import { handleRoute } from './router.js';
 import { state } from './state.js';
 import { $, $$, can } from './util.js';
 import { initNotifications } from '../ui/notifications.js';
+import { maybeStartTour } from '../ui/tour.js';
 import { renderSidebarServers, setBridgeNav } from '../ui/sidebar.js';
 
 /* ------------------------------------------------------------------ auth */
@@ -65,6 +66,7 @@ export async function enterApp() {
   initNotifications();
   renderSidebarServers();
   handleRoute();
+  maybeStartTour();
 }
 
 /** Other machines this panel controls (administrators only). */

@@ -3364,3 +3364,47 @@ tr.clickable:hover td {
 .ev-value > * {
   width: 100%;
 }
+
+/* First-run tour: a ring around one part of the panel, and a bubble about it. */
+.tour {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+}
+.tour-ring {
+  position: fixed;
+  border-radius: var(--radius);
+  box-shadow: 0 0 0 2px var(--lime), 0 0 0 9999px rgba(0, 0, 0, 0.55);
+  transition: all 0.25s var(--ease);
+  pointer-events: none;
+}
+.tour-bubble {
+  position: fixed;
+  width: min(320px, calc(100vw - 24px));
+  padding: 16px 18px 14px;
+  background: var(--raised);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  transition: left 0.25s var(--ease), top 0.25s var(--ease);
+}
+.tour-bubble h3 {
+  margin: 2px 0 6px;
+  font-size: 16px;
+}
+.tour-bubble p {
+  margin: 0 0 14px;
+  color: var(--muted);
+  font-size: 13.5px;
+  line-height: 1.55;
+}
+.tour-count {
+  font: 11px var(--mono);
+  letter-spacing: 0.06em;
+  color: var(--lime-text);
+}
+.tour-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
