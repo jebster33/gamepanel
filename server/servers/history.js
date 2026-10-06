@@ -106,7 +106,8 @@ module.exports = {
         if (p.first > h.open[name]) p.first = h.open[name];
         this.logActivity(server.id, { type: 'join', name });
         const flag = this.playerNote(name);
-        if (flag?.watch) this.store.addEvent('player.watched', `${name} joined ${server.name}${flag.note ? ` (note: ${flag.note.slice(0, 120)})` : ''}`, { serverId: server.id });
+        // Not for players who were already on before the panel started watching.
+        if (flag?.watch && now - h.open[name] < 120_000) this.store.addEvent('player.watched', `${name} joined ${server.name}${flag.note ? ` (note: ${flag.note.slice(0, 120)})` : ''}`, { serverId: server.id });
       }
       for (const name of h.known) {
         if (online.has(name)) continue;
