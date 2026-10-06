@@ -2690,6 +2690,38 @@ tr.clickable:hover td {
   background: var(--surface-2, rgba(255, 255, 255, 0.03));
 }
 
+.bb-crumbs {
+  margin: 12px 0 6px;
+  font-size: 13px;
+}
+.bb-list {
+  max-height: 46vh;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 4px 0;
+}
+.bb-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 7px 12px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.bb-row:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+.bb-row > :nth-child(2) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bb-list > .faint {
+  padding: 10px 12px;
+}
+
 .recovery-codes {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
