@@ -20,6 +20,12 @@ They run it. The first time it asks them to choose a password; after that it
 remembers them on that computer. The window lists an address for each shared
 port, like `Minecraft  127.0.0.1:25565`, and they connect their game to it.
 
+<img src="screenshots/bridge-client.png" alt="The Bridge client on first launch" width="640" />
+
+The client keeps running while they play. It updates by itself when you share
+or unshare something, and typing `status`, `logout`, `uninstall` or `quit` in
+its window does what it says.
+
 ## Managing a connection
 
 | Action | What happens |

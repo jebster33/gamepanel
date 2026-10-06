@@ -1,5 +1,7 @@
 # Troubleshooting
 
+Also see the [user guide](guide/README.md).
+
 **The panel will not start**
 ```bash
 journalctl -u gamepanel -n 50 --no-pager
@@ -14,6 +16,23 @@ journalctl -u gamepanel -n 50 --no-pager
 **Players cannot connect** — check the port in Settings, then confirm it is open in both `ufw` *and* your provider's firewall (Oracle, AWS and Hetzner all have their own). UDP games need UDP rules.
 
 **Console empty for a Unity/Unreal game** — some engines only log to a file. Read it in the file explorer, or add `-logfile /dev/stdout` to the start command.
+
+**"Starting … would put … of server memory in use, over the panel limit"** — the panel-wide memory cap
+under **Settings → Limits** is reached. Stop another server, lower this server's memory limit, or raise the
+cap. Storage works the same way for installs, updates and backups.
+
+**The Mods tab has no CurseForge results** — CurseForge needs a free API key under **Settings →
+Integrations**. Modrinth, Hangar, SpigotMC and uMod work without one.
+
+**A Minecraft server says it needs another Java version** — the Crash doctor on the Console offers the fix.
+The panel fetches the Java version each Minecraft server needs, so the Java installed on the machine
+usually does not matter.
+
+**A node shows Offline** — open its address from the main panel's machine (`curl http://<node>:8420/api/status`).
+If that works, the API key was probably deleted on the node: **Nodes → Edit** and paste a new full-access key.
+
+**A friend can't see a server, or can't use a tab** — their account only sees the servers it was given, and the server's **Access** tab sets what they may do there. See the
+[users guide](guide/users-and-2fa.md).
 
 **Windows: the panel does not open** — check the service with `Get-Service GamePanel`, and read
 `C:\ProgramData\GamePanel\logs\GamePanel-Service.out.log`. Restart it with `Restart-Service GamePanel`.
