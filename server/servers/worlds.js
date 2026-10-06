@@ -70,6 +70,56 @@ module.exports = {
     }
   },
 
+  /**
+   * The game's own per-player statistics (world/stats/<uuid>.json, Java
+   * Edition 1.13+): deaths, kills, distance, most-mined blocks, advancements.
+   * Returns null when the server or player has none.
+   */
+  playerStats(server, name) {
+    if (isBedrock(server)) return null;
+    const read = (rel) => {
+      try {
+        return JSON.parse(fs.readFileSync(containedPath(server.dir, rel), 'utf8'));
+      } catch {
+        return null;
+      }
+    };
+    const cache = read('usercache.json');
+    const entry = Array.isArray(cache) && cache.find((u) => String(u.name).toLowerCase() === String(name).toLowerCase());
+    if (!entry || !/^[0-9a-f-]{36}$/i.test(entry.uuid)) return null;
+    const world = this.activeWorld(server);
+    const data = read(path.join(world, 'stats', `${entry.uuid}.json`));
+    if (!data?.stats) return null;
+    const st = data.stats;
+    const custom = st['minecraft:custom'] || {};
+    const c = (k) => Number(custom[`minecraft:${k}`]) || 0;
+    const nice = (k) => k.replace(/^minecraft:/, '').replace(/_/g, ' ');
+    const top = (group, n = 5) =>
+      Object.entries(st[group] || {})
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, n)
+        .map(([k, v]) => ({ name: nice(k), count: v }));
+    const sum = (group) => Object.values(st[group] || {}).reduce((a, b) => a + (Number(b) || 0), 0);
+    const cm = Object.entries(custom).reduce((a, [k, v]) => a + (k.endsWith('_one_cm') ? Number(v) || 0 : 0), 0);
+    const adv = read(path.join(world, 'advancements', `${entry.uuid}.json`)) || {};
+    const advancements = Object.entries(adv).filter(([k, v]) => !k.includes(':recipes/') && v?.done === true).length;
+    return {
+      uuid: entry.uuid,
+      playSeconds: Math.round((c('play_time') || c('play_one_minute')) / 20),
+      deaths: c('deaths'),
+      mobKills: c('mob_kills'),
+      playerKills: c('player_kills'),
+      jumps: c('jump'),
+      km: Math.round(cm / 1000) / 100,
+      mined: sum('minecraft:mined'),
+      used: sum('minecraft:used'),
+      advancements,
+      topMined: top('minecraft:mined'),
+      topKilled: top('minecraft:killed'),
+      killedBy: top('minecraft:killed_by', 3),
+    };
+  },
+
   activeWorld(server) {
     const m = this.readProperties(server).match(/^level-name=(.*)$/m);
     return (m && m[1].trim()) || (isBedrock(server) ? 'Bedrock level' : 'world');

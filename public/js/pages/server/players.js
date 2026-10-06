@@ -334,6 +334,7 @@ export async function openProfile(serverId, name, ctx = current) {
         ${kpi('Sessions', p.sessions)}
         ${kpi('First seen', new Date(p.first).toLocaleDateString())}
       </div>
+      ${p.stats ? statsHtml(p.stats) : ''}
       <h4 style="margin:18px 0 6px">Recent sessions</h4>
       <div class="pl-sessions">${
         p.recent.length
@@ -391,6 +392,23 @@ export async function openProfile(serverId, name, ctx = current) {
       openProfile(serverId, a.dataset.profile, ctx);
     })
   );
+}
+
+/** The game's own statistics for this player (Minecraft Java). */
+function statsHtml(st) {
+  const n = (v) => Number(v).toLocaleString();
+  const list = (title, items) =>
+    items.length ? `<div><div class="faint" style="font-size:12px;margin-bottom:4px">${title}</div>${items.map((i) => `<div class="pl-session"><span>${esc(i.name)}</span><span class="mono faint">${n(i.count)}</span></div>`).join('')}</div>` : '';
+  return `<h4 style="margin:18px 0 6px">In-game stats</h4>
+    <div class="kpi-grid kpi-small">
+      ${kpi('Deaths', n(st.deaths))}
+      ${kpi('Mob kills', n(st.mobKills))}
+      ${kpi('Player kills', n(st.playerKills))}
+      ${kpi('Travelled', `${n(st.km)} km`)}
+      ${kpi('Blocks mined', n(st.mined))}
+      ${kpi('Advancements', n(st.advancements))}
+    </div>
+    <div class="pl-stats-lists">${list('Most mined', st.topMined)}${list('Most killed', st.topKilled)}${list('Killed by', st.killedBy)}</div>`;
 }
 
 /** BattleMetrics-style network ban: every Minecraft server this account moderates. */

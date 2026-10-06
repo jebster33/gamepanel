@@ -328,7 +328,7 @@ module.exports = (router, { store, manager, scheduler }, { requireAdmin, require
     // Addresses are personal data: administrators only.
     const profile = manager.playerProfile(server.id, params.name, { withAddresses: user.role === 'admin' });
     if (!profile) fail(404, 'This player has never been seen on this server');
-    return profile;
+    return { ...profile, stats: manager.playerStats(server, profile.name) };
   });
 
   /** Find a player on any server this account can see. */
