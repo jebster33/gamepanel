@@ -50,6 +50,8 @@ function parseRoute() {
 }
 
 export function handleRoute() {
+  // Signed out: the sign-in screen is showing, and pages need an account to draw.
+  if (!state.user) return;
   const previous = state.route;
   state.route = parseRoute();
 
