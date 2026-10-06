@@ -18,6 +18,13 @@ module.exports = (router, { store, auth, manager }, { requireAdmin }) => {
     return { users: auth.users.map((u) => auth.publicUser(u)), capabilities: CAPABILITIES, defaults: DEFAULT_PERMISSIONS, requireAdmin2fa: Boolean(store.state.settings.requireAdmin2fa) };
   });
 
+  /** The signed-in account's own quota and what it uses of it. */
+  router.get('/api/quota', ({ user }) => {
+    const quotas = require('../../features/quotas');
+    if (user.role === 'admin') return { unlimited: true };
+    return { quota: quotas.quotaFor(user), usage: quotas.usage(manager, user), canDeploy: auth.can(user, 'deploy') };
+  });
+
   /** Sign-in rules for everyone. */
   router.put('/api/users/policy', ({ user, body }) => {
     requireAdmin(user);
@@ -34,7 +41,13 @@ module.exports = (router, { store, auth, manager }, { requireAdmin }) => {
 
   router.post('/api/users', ({ user, body }) => {
     requireAdmin(user);
-    const created = auth.createUser(body);
+    let created = auth.createUser(body);
+    if (body.quota) {
+      const record = auth.users.find((u) => u.id === created.id);
+      record.quota = require('../../features/quotas').cleanQuota(body.quota);
+      store.save();
+      created = auth.publicUser(record);
+    }
     store.addEvent('user.created', `User ${created.username} created by ${user.username}`);
     return { user: created };
   });
@@ -49,6 +62,7 @@ module.exports = (router, { store, auth, manager }, { requireAdmin }) => {
     }
     if (Array.isArray(body.servers)) target.servers = body.servers;
     if (Array.isArray(body.permissions)) target.permissions = sanitizePermissions(body.permissions);
+    if (body.quota) target.quota = require('../../features/quotas').cleanQuota(body.quota);
     if (body.password) auth.setPassword(target.id, body.password);
     // For someone who lost their phone and their recovery codes.
     if (body.resetTwoFactor) auth.disableTwoFactor(target.id);

@@ -3,7 +3,7 @@ import { copyToClipboard } from '../ui/clipboard.js';
 import { loadTemplates } from '../core/boot.js';
 import { setCrumbs } from '../core/router.js';
 import { state } from '../core/state.js';
-import { $, esc, fmtBytes, fmtDuration, fmtTime, toast } from '../core/util.js';
+import { $, esc, fmtBytes, fmtDuration, fmtTime, icon, toast } from '../core/util.js';
 import { confirmModal } from '../ui/modal.js';
 import { setBridgeNav } from '../ui/sidebar.js';
 
@@ -26,7 +26,16 @@ const EVENT_LABELS = {
   'backup.upload_failed': 'Copying a backup to the cloud fails',
   'schedule.failed': 'A scheduled task fails',
   'panel.updated': 'The panel updates itself',
+  'panel.backup': "Someone downloads the panel's settings backup",
   'user.login': 'Someone signs in',
+  'server.hung': 'A frozen server is restarted',
+  'server.world_reset': 'A world is reset',
+  'player.watched': 'A player on the watchlist joins',
+  'user.api_key': 'Someone creates an API key',
+  'user.policy': 'Sign-in rules change',
+  'user.password': 'Someone changes their password',
+  'user.2fa_disabled': 'Someone turns off two-factor sign-in',
+  'user.sessions_revoked': 'Someone signs out of their other devices',
 };
 
 export async function renderSettings(view) {
@@ -89,6 +98,13 @@ export async function renderSettings(view) {
       <div class="hint">Applies the next time a server starts. Without Docker the panel falls back to plain processes.</div>
     </div>
 
+    <div class="card mb-16" id="events">
+      <h4>Scheduled events</h4>
+      <div class="faint" style="margin-bottom:12px">Change game settings for a while and put them back automatically, like a double XP weekend. Set them up on a server's Schedules tab.</div>
+      <div class="checkbox-row"><input type="checkbox" id="s-events" ${s.scheduledEvents ? 'checked' : ''} /><label for="s-events">Turn on scheduled events</label></div>
+      <div class="hint">Turning it off stops new events from starting. Ones already running still end on time and put their settings back.</div>
+    </div>
+
     <div class="card mb-16" id="limits">
       <h4>Limits</h4>
       <div class="faint" style="margin-bottom:12px">Caps for the whole panel. Leave a field at 0 for no limit.</div>
@@ -141,10 +157,19 @@ export async function renderSettings(view) {
       <div id="cloud-form" class="faint"><span class="spinner"></span> Loading…</div>
     </div>
 
-    <div class="card mb-16" id="status-page">
-      <h4>Public status page</h4>
+    <div class="card mb-16" id="oauth">
+      <h4>Sign in with Google, Discord or GitHub</h4>
       <p class="faint" style="margin:0 0 14px;line-height:1.6">
-        A page anyone with the link can open, no sign-in: which servers are up, who is on and the address to join. Good for a Discord channel.
+        People link one of these on their Account page, then sign in with it instead of their password. No account is ever created this way.
+        Register the panel as an app with the service and paste its client ID and secret here.
+      </p>
+      <div id="oauth-form" class="faint"><span class="spinner"></span> Loading…</div>
+    </div>
+
+    <div class="card mb-16" id="status-page">
+      <h4>Public server list</h4>
+      <p class="faint" style="margin:0 0 14px;line-height:1.6">
+        A page anyone with the link can open, no sign-in: which servers are up, who is on, the message of the day and the address to join, with a Join button for games that have one. Good for a Discord channel or a website.
       </p>
       <div id="sp-form" class="faint"><span class="spinner"></span> Loading…</div>
     </div>
@@ -245,6 +270,16 @@ export async function renderSettings(view) {
           )}</span>. Servers run as plain processes and share the host. Install Docker and restart the panel for isolation.`;
     })
     .catch(() => {});
+
+  $('#s-events').addEventListener('change', async (event) => {
+    try {
+      await api('/api/settings', { method: 'PATCH', body: { scheduledEvents: event.target.checked } });
+      toast(event.target.checked ? 'Scheduled events on' : 'Scheduled events off');
+    } catch (err) {
+      toast(err.message, 'error');
+      event.target.checked = !event.target.checked;
+    }
+  });
 
   $('#s-containerize').addEventListener('change', async (event) => {
     try {
@@ -372,9 +407,55 @@ export async function renderSettings(view) {
 
   renderCloudForm();
   renderStatusPageForm();
+  renderOauthForm();
 }
 
 /* ---------------------------------------------------- public status page */
+
+async function renderOauthForm() {
+  const host = $('#oauth-form');
+  if (!host) return;
+  const data = await api('/api/settings/oauth').catch((err) => ({ error: err.message }));
+  if (!host.isConnected) return;
+  if (data.error) {
+    host.textContent = data.error;
+    return;
+  }
+  host.classList.remove('faint');
+  host.innerHTML = `
+    <label class="field"><span>Panel address people use</span><input id="oa-url" value="${esc(data.publicUrl)}" placeholder="${esc(location.origin)}" /><div class="hint">Leave empty to use the address this page is open on. Google only accepts https:// addresses (or localhost).</div></label>
+    ${data.providers
+      .map(
+        (p) => `<div class="oauth-provider">
+          <div class="row" style="gap:8px;align-items:center;margin-bottom:8px">
+            <b style="flex:1">${esc(p.label)} ${p.clientId && p.hasSecret ? '<span class="badge accent">On</span>' : ''}</b>
+            <a class="btn btn-sm btn-ghost" href="${esc(p.console)}" target="_blank" rel="noopener">${icon('external', 12)} Developer console</a>
+          </div>
+          <div class="form-grid">
+            <label><span>Client ID</span><input data-oa-id="${esc(p.id)}" value="${esc(p.clientId)}" autocomplete="off" /></label>
+            <label><span>Client secret</span><input data-oa-secret="${esc(p.id)}" type="password" placeholder="${p.hasSecret ? 'Saved (leave empty to keep)' : ''}" autocomplete="off" /></label>
+          </div>
+          <div class="hint" style="margin-top:-6px">Redirect URL to register: <span class="mono" style="overflow-wrap:anywhere">${esc(p.redirectUri)}</span></div>
+        </div>`
+      )
+      .join('')}
+    <button class="btn btn-primary mt-16" id="oa-save">Save sign-in providers</button>`;
+  $('#oa-save').addEventListener('click', async () => {
+    const body = { publicUrl: $('#oa-url').value };
+    for (const p of data.providers) {
+      const clientId = $(`[data-oa-id="${p.id}"]`).value.trim();
+      const clientSecret = $(`[data-oa-secret="${p.id}"]`).value.trim();
+      body[p.id] = clientId ? { clientId, ...(clientSecret ? { clientSecret } : {}) } : { clear: true };
+    }
+    try {
+      await api('/api/settings/oauth', { method: 'PUT', body });
+      toast('Sign-in providers saved');
+      renderOauthForm();
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+  });
+}
 
 async function renderStatusPageForm() {
   const host = $('#sp-form');
@@ -386,11 +467,12 @@ async function renderStatusPageForm() {
     host.textContent = err.message;
     return;
   }
+  if (!host.isConnected) return;
   const link = sp.slug ? `${location.origin}/status/${sp.slug}` : '';
   const picked = new Set(sp.servers);
   host.classList.remove('faint');
   host.innerHTML = `
-    <div class="checkbox-row"><input type="checkbox" id="sp-enabled" ${sp.enabled ? 'checked' : ''} /><label for="sp-enabled">Turn on the status page</label></div>
+    <div class="checkbox-row"><input type="checkbox" id="sp-enabled" ${sp.enabled ? 'checked' : ''} /><label for="sp-enabled">Turn on the server list</label></div>
     ${
       link
         ? `<div class="row mt-16"><span class="mono" style="overflow-wrap:anywhere">${esc(link)}</span>
@@ -403,18 +485,30 @@ async function renderStatusPageForm() {
       <label><span>Title</span><input id="sp-title" value="${esc(sp.title)}" placeholder="${esc(document.title)}" /></label>
       <label><span>Address players use</span><input id="sp-host" value="${esc(sp.host)}" placeholder="play.example.com or your public IP" /><div class="hint">Shown with each server's port. Empty uses the address the page was opened on.</div></label>
     </div>
-    <label class="field"><span>Description</span><input id="sp-desc" value="${esc(sp.description)}" placeholder="Optional, e.g. rules or a Discord invite" /></label>
-    <div class="field-label mt-16">Servers on the page</div>
-    <div class="perm-grid" style="gap:2px 14px">${
-      state.servers.length
+    <label class="field"><span>Description</span><input id="sp-desc" value="${esc(sp.description)}" placeholder="Optional, e.g. rules" /></label>
+    <div class="form-grid">
+      <label><span>Discord invite</span><input id="sp-discord" value="${esc(sp.links?.discord || '')}" placeholder="https://discord.gg/…" /></label>
+      <label><span>Vote link</span><input id="sp-vote" value="${esc(sp.links?.vote || '')}" placeholder="https://… (a server list site)" /></label>
+      <label><span>Website</span><input id="sp-website" value="${esc(sp.links?.website || '')}" placeholder="https://…" /></label>
+    </div>
+    <div class="field-label">Servers on the page</div>
+    <div class="sp-servers">${
+      state.servers.filter((x) => !x.node).length
         ? state.servers
-            .map((x) => `<label class="perm-row"><input type="checkbox" data-sp-server="${esc(x.id)}" ${picked.has(x.id) ? 'checked' : ''} /><span>${esc(x.templateIcon || '🎮')} ${esc(x.name)}</span></label>`)
+            .filter((x) => !x.node)
+            .map(
+              (x) => `<div class="sp-server">
+                <label class="perm-row"><input type="checkbox" data-sp-server="${esc(x.id)}" ${picked.has(x.id) ? 'checked' : ''} /><span>${esc(x.templateIcon || '🎮')} ${esc(x.name)}</span></label>
+                <input data-sp-blurb="${esc(x.id)}" value="${esc(sp.blurbs?.[x.id] || '')}" placeholder="A line about it (optional), e.g. Semi-vanilla, no resets" maxlength="200" />
+              </div>`
+            )
             .join('')
         : '<span class="faint">No servers yet</span>'
     }</div>
     <div class="checkbox-row mt-16"><input type="checkbox" id="sp-players" ${sp.showPlayers ? 'checked' : ''} /><label for="sp-players">Show the names of players who are on</label></div>
     <div class="checkbox-row"><input type="checkbox" id="sp-address" ${sp.showAddress ? 'checked' : ''} /><label for="sp-address">Show the address to join</label></div>
-    <button class="btn btn-primary mt-16" id="sp-save">Save status page</button>`;
+    <div class="checkbox-row"><input type="checkbox" id="sp-motd" ${sp.showMotd !== false ? 'checked' : ''} /><label for="sp-motd">Show Minecraft's message of the day</label></div>
+    <button class="btn btn-primary mt-16" id="sp-save">Save server list</button>`;
 
   const save = async (extra = {}) => {
     try {
@@ -428,10 +522,13 @@ async function renderStatusPageForm() {
           servers: [...document.querySelectorAll('[data-sp-server]')].filter((el) => el.checked).map((el) => el.dataset.spServer),
           showPlayers: $('#sp-players').checked,
           showAddress: $('#sp-address').checked,
+          showMotd: $('#sp-motd').checked,
+          links: { discord: $('#sp-discord').value, vote: $('#sp-vote').value, website: $('#sp-website').value },
+          blurbs: Object.fromEntries([...document.querySelectorAll('[data-sp-blurb]')].map((el) => [el.dataset.spBlurb, el.value])),
           ...extra,
         },
       });
-      toast(extra.newLink ? 'New link made. The old one no longer works.' : 'Status page saved');
+      toast(extra.newLink ? 'New link made. The old one no longer works.' : 'Server list saved');
       renderStatusPageForm();
     } catch (err) {
       toast(err.message, 'error');
@@ -464,6 +561,7 @@ async function renderCloudForm() {
     host.textContent = err.message;
     return;
   }
+  if (!host.isConnected) return;
   const preset = Object.entries(CLOUD_PRESETS).find(([, p]) => c.endpoint && c.endpoint.includes(p.endpoint.split('.').slice(-2).join('.')))?.[0] || (c.endpoint ? 'other' : 'b2');
   host.classList.remove('faint');
   host.innerHTML = `
@@ -546,6 +644,7 @@ async function checkForUpdates(interactive) {
     status.textContent = err.message;
     return;
   }
+  if (!status.isConnected) return; // the user left Settings while it was checking
 
   if (!data.supported) {
     status.textContent = data.reason;

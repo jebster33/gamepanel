@@ -1,0 +1,122 @@
+{
+  "id": "left4dead",
+  "name": "Left 4 Dead",
+  "category": "Shooter",
+  "icon": "🧟‍♀️",
+  "storeAppId": 500,
+  "description": "The original Left 4 Dead co-op campaign server.",
+  "platforms": [
+    "linux",
+    "windows"
+  ],
+  "defaultMemory": 2048,
+  "variables": [
+    {
+      "name": "MAP",
+      "label": "Starting map",
+      "default": "l4d_hospital01_apartment",
+      "options": [
+        "l4d_hospital01_apartment",
+        "l4d_garage01_alleys",
+        "l4d_smalltown01_caves",
+        "l4d_airport01_greenhouse",
+        "l4d_farm01_hilltop",
+        "l4d_river01_docks"
+      ],
+      "allowCustom": true
+    },
+    {
+      "name": "MAX_PLAYERS",
+      "label": "Max players",
+      "default": 8,
+      "type": "number"
+    },
+    {
+      "name": "GAME_MODE",
+      "label": "Game mode",
+      "default": "coop",
+      "options": [
+        "coop",
+        "versus",
+        "survival"
+      ]
+    },
+    {
+      "name": "GSLT",
+      "label": "Steam game server token (GSLT)",
+      "default": "",
+      "description": "Optional. Lists the server publicly; get one at steamcommunity.com/dev/managegameservers."
+    },
+    {
+      "name": "RCON_PASSWORD",
+      "label": "RCON password",
+      "default": "",
+      "generate": "password"
+    }
+  ],
+  "ports": [
+    {
+      "name": "game",
+      "default": 27015,
+      "protocol": "udp"
+    }
+  ],
+  "image": "cm2network/steamcmd:root",
+  "install": [
+    {
+      "type": "steamcmd",
+      "appid": "222840",
+      "label": "Install the Left 4 Dead dedicated server",
+      "prefetchPlatform": "windows"
+    },
+    {
+      "type": "chmod",
+      "path": "srcds_run",
+      "mode": "+x"
+    }
+  ],
+  "configFiles": [
+    {
+      "path": "left4dead/cfg/server.cfg",
+      "mode": "create",
+      "content": "hostname \"{{SERVER_NAME}}\"\nrcon_password \"{{RCON_PASSWORD}}\"\nsv_lan 0\nsv_steamgroup_exclusive 0\n"
+    }
+  ],
+  "startCommand": "./srcds_run -console -norestart -game left4dead -port {{PORT}} +maxplayers {{MAX_PLAYERS}} +mp_gamemode {{GAME_MODE}} +map {{MAP}} +sv_setsteamaccount \"{{GSLT}}\"",
+  "stopCommand": "quit",
+  "stopTimeout": 45,
+  "query": {
+    "type": "a2s",
+    "port": "game"
+  },
+  "rcon": {
+    "type": "source",
+    "port": "game"
+  },
+  "logPatterns": {
+    "ready": "VAC secure mode|gameserver Steam ID|Connection to Steam servers successful",
+    "join": "\"([^<]+)<[0-9]+><[^>]*><>\" entered the game",
+    "leave": "\"([^<]+)<[0-9]+><[^>]*><[^>]*>\" disconnected"
+  },
+  "windows": {
+    "install": [
+      {
+        "type": "steamcmd",
+        "appid": "222840",
+        "label": "Install the Left 4 Dead dedicated server"
+      },
+      {
+        "type": "vcredist",
+        "label": "Install the Visual C++ runtime"
+      }
+    ],
+    "startCommand": "srcds.exe -console -nocrashdialog -condebug -game left4dead -port {{PORT}} +maxplayers {{MAX_PLAYERS}} +mp_gamemode {{GAME_MODE}} +map {{MAP}} +sv_setsteamaccount \"{{GSLT}}\"",
+    "tailFiles": [
+      "left4dead/console.log"
+    ],
+    "consoleInput": false,
+    "stopCommand": null,
+    "stopRconCommand": "quit"
+  },
+  "pty": true
+}

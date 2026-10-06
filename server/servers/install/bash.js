@@ -207,9 +207,14 @@ gp_steam_probe() {
 }
 
 gp_steam_app() {
-  local appid="$1" login="\${2:-anonymous}" branch="\${3:-}" prefetch="\${4:-}" n
+  local appid="$1" login="\${2:-anonymous}" branch="\${3:-}" prefetch="\${4:-}" platform="\${5:-}" n
   gp_ensure_steamcmd
-  local args=( +@ShutdownOnFailedCommand 1 +@NoPromptForPassword 1 +force_install_dir "$GP_SERVER_DIR" +login $login )
+  local args=( +@ShutdownOnFailedCommand 1 +@NoPromptForPassword 1 )
+  # Windows-only servers that run under Wine need SteamCMD to fetch the Windows build.
+  [ -n "$platform" ] && args+=( +@sSteamCmdForcePlatformType "$platform" )
+  # Split "user password" without globbing either part.
+  local -a creds; read -ra creds <<< "$login"
+  args+=( +force_install_dir "$GP_SERVER_DIR" +login "\${creds[@]}" )
   # Some apps (Left 4 Dead 2) answer "Invalid platform" for Linux until the
   # files of another platform have been fetched once; do that first.
   if [ -n "$prefetch" ]; then
@@ -235,12 +240,13 @@ gp_steam_app() {
 # One Steam Workshop item into a folder. Large items often time out on the
 # first try, so give SteamCMD a few goes.
 gp_workshop_item() {
-  local appid="$1" item="$2" dest="$3" stage="$GP_SERVER_DIR/.gamepanel/steam-workshop" n
+  local appid="$1" item="$2" dest="$3" login="\${4:-anonymous}" stage="$GP_SERVER_DIR/.gamepanel/steam-workshop" n
+  local -a creds; read -ra creds <<< "$login"
   gp_ensure_steamcmd
   mkdir -p "$stage"
   for n in 1 2 3; do
     gp_log "SteamCMD: downloading Workshop item $item (attempt $n)"
-    gp_steamcmd +force_install_dir "$stage" +login anonymous +workshop_download_item "$appid" "$item" validate +quit
+    gp_steamcmd +@NoPromptForPassword 1 +force_install_dir "$stage" +login "\${creds[@]}" +workshop_download_item "$appid" "$item" validate +quit
     [ -d "$stage/steamapps/workshop/content/$appid/$item" ] && break
   done
   local src="$stage/steamapps/workshop/content/$appid/$item"
@@ -270,6 +276,23 @@ function shellQuote(value) {
   return `'${String(value).replace(/'/g, `'\\''`)}'`;
 }
 
+/**
+ * A Steam login for the script. {{VARS}} become environment references (every
+ * variable is exported to the script), so a password never lands in the
+ * install script on disk.
+ */
+function loginArg(login) {
+  const text = String(login || 'anonymous');
+  if (!text.includes('{{')) return shellQuote(text);
+  const parts = text.split(/(\{\{\s*[A-Z][A-Z0-9_]*\s*\}\})/);
+  return `"${parts
+    .map((p) => {
+      const m = p.match(/^\{\{\s*([A-Z][A-Z0-9_]*)\s*\}\}$/);
+      return m ? `\${${m[1]}}` : p.replace(/["$`\\]/g, '\\$&');
+    })
+    .join('')}"`;
+}
+
 function stepToShell(step, vars) {
   const type = String(step.type || '').toLowerCase();
   const val = (v) => interpolate(v, vars);
@@ -282,12 +305,12 @@ function stepToShell(step, vars) {
       return `gp_ensure_java ${shellQuote(val(step.version || '21'))}`;
 
     case 'steamcmd':
-      return `gp_steam_app ${shellQuote(val(step.appid))} ${shellQuote(val(step.login || 'anonymous'))} ${shellQuote(
+      return `gp_steam_app ${shellQuote(val(step.appid))} ${loginArg(step.login)} ${shellQuote(
         val(step.branch || '')
-      )} ${shellQuote(val(step.prefetchPlatform || ''))}`;
+      )} ${shellQuote(val(step.prefetchPlatform || ''))} ${shellQuote(val(step.platform || ''))}`;
 
     case 'workshop':
-      return `gp_workshop_item ${shellQuote(val(step.appid))} ${shellQuote(val(step.item))} ${shellQuote(val(step.dest))}`;
+      return `gp_workshop_item ${shellQuote(val(step.appid))} ${shellQuote(val(step.item))} ${shellQuote(val(step.dest))} ${loginArg(step.login)}`;
 
     case 'download':
       return `gp_fetch ${shellQuote(val(step.url))} ${shellQuote(val(step.dest || 'download.bin'))}${

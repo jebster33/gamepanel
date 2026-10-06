@@ -10,6 +10,7 @@
  */
 
 const fs = require('fs');
+const path = require('path');
 const { fail, interpolate } = require('../core/util');
 const { containedPath } = require('../features/files');
 const { patchKeyValue } = require('../servers/config-files');
@@ -290,7 +291,7 @@ module.exports = {
   },
 
   /** Save changed keys. Mirrored keys (MOTD, max players…) update their variable too, or the next start would undo them. */
-  writeGameSettings(manager, server, changes, { trusted = true } = {}) {
+  writeGameSettings(manager, server, changes, { trusted = true, actor = 'panel' } = {}) {
     const template = manager.template(server);
     const file = template && settingsFileFor(template);
     if (!file) fail(400, 'This game has no settings file the panel can edit');
@@ -347,6 +348,7 @@ module.exports = {
       next = patchKeyValue(raw, toWrite, { section: file.section });
     }
     fs.writeFileSync(target, next);
+    require('../features/config-history').record(server.id, path.relative(server.dir, target), { before: raw, after: next, by: actor, source: 'game settings' });
 
     if (patch) manager.update(server.id, patch, { trusted });
     return { ok: true, changed: Object.keys(toWrite).length };

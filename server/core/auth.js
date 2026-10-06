@@ -35,6 +35,12 @@ const CAPABILITIES = [
   { id: 'backups', label: 'Create and download backups', group: 'Backups' },
   { id: 'backups.restore', label: 'Restore and delete backups', group: 'Backups' },
   { id: 'activity', label: 'View the activity log', group: 'Panel' },
+  {
+    id: 'deploy',
+    label: 'Create their own servers (within their quota)',
+    group: 'Panel',
+    warning: 'They get full access to the servers they create, up to the quota set below.',
+  },
   { id: 'templates', label: 'Browse the template catalogue', group: 'Panel' },
 ];
 
@@ -261,6 +267,26 @@ class Auth {
     return { ...this.startSession(user, ip), usedRecoveryCode: how === 'recovery', recoveryCodesLeft: (user.totp.recovery || []).length };
   }
 
+  /**
+   * Sign in after another service vouched for the person (Google, Discord,
+   * GitHub). Two-factor sign-in still applies: the result is the same as a
+   * right password.
+   */
+  loginLinked(user, ip = 'unknown') {
+    if (user.totp?.secret) {
+      return { twoFactor: true, ticket: signToken(this.secret, { sub: user.id, purpose: '2fa', exp: Date.now() + TICKET_TTL_MS }) };
+    }
+    return this.startSession(user, ip);
+  }
+
+  sign(payload) {
+    return signToken(this.secret, payload);
+  }
+
+  verify(token) {
+    return verifyToken(this.secret, token);
+  }
+
   /** 'totp' or 'recovery' when the code is good (a recovery code is used up), otherwise null. */
   checkSecondFactor(user, code) {
     const step = totp.verify(user.totp.secret, code, { lastStep: user.totp.lastStep ?? -1 });
@@ -448,6 +474,8 @@ class Auth {
       lastLogin: user.lastLogin || null,
       twoFactor: Boolean(user.totp?.secret),
       recoveryCodesLeft: user.totp ? (user.totp.recovery || []).length : undefined,
+      quota: user.role === 'admin' ? null : require('../features/quotas').quotaFor(user),
+      identities: Object.fromEntries(Object.entries(user.identities || {}).map(([p, i]) => [p, i.name || i.id])),
     };
   }
 

@@ -5,7 +5,7 @@ and watch a game. Drop it into the panel's `templates` folder inside its data
 directory (`/var/lib/gamepanel/templates` on Linux, `C:\ProgramData\GamePanel\templates`
 on Windows) and press **Reload templates** in Settings.
 
-The 41 built-in templates in [`templates/`](../templates) are the best examples.
+The 61 built-in templates in [`templates/`](../templates) are the best examples.
 
 ## The shape
 
@@ -69,8 +69,8 @@ On Windows the start command runs through `cmd.exe`, so no `./`, `export` or `$(
 
 | Step | Linux | Windows | What it does |
 |---|:-:|:-:|---|
-| `steamcmd` | ✓ | ✓ | Install or update a Steam app (`appid`, optional `branch`, `login`) |
-| `workshop` | ✓ | ✓ | Download Workshop items with SteamCMD |
+| `steamcmd` | ✓ | ✓ | Install or update a Steam app (`appid`, optional `branch`, `login`, and `platform: "windows"` to fetch the Windows build for Wine) |
+| `workshop` | ✓ | ✓ | Download Workshop items with SteamCMD (optional `login`) |
 | `download` | ✓ | ✓ | Fetch a URL to `dest` |
 | `fetchlist` | ✓ | ✓ | Fetch a list of `{url, path}` files (resolvers use it for modpacks) |
 | `extract` | ✓ | ✓ | Unpack zip, tar.gz, tar.xz or 7z |
@@ -116,11 +116,22 @@ For the Steam Workshop, `mods.workshop` says how the game loads items:
 | `gma` | Garry's Mod | Extracts the `.gma` into `addons` |
 | `list` | Unturned, ARK | Writes the item ID into the game's own mod list (`file`, `key`) and lets the game download it |
 | `zomboid` | Project Zomboid | Adds `WorkshopItems=` and `Mods=` to the server ini |
+| `bohemia` | Arma 3, DayZ | Downloads into an `@id` folder, copies its `.bikey` files into `keys` (lowercases names on Linux with `lowercase: true`), and fills `{{WORKSHOP_MODS}}` for `-mod=` |
+| `modlist` | Conan Exiles | Copies the item's `.pak` files into `dir` and lists them in `file` (modlist.txt) |
+| `tmodloader` | tModLoader | Copies the newest `.tmod` into `dir` and switches it on in `file` (enabled.json) |
+| `spaceengineers` | Space Engineers | Adds the item to `<Mods>` in `file` and in every world matching `worlds`; the game downloads it |
+| `dst` | Don't Starve Together | Adds `ServerModSetup` to `file` and enables it in each `overrides` modoverrides.lua |
+| `kf2` | Killing Floor 2 | Adds a `ServerSubscribedWorkshopItems=` line to every ini matching `file` (KFEngine.ini) and puts the Steam Workshop download manager first; the game downloads it |
+| `avorion` | Avorion | Adds `{workshopid = "id"}` to `mods` in `file` (the galaxy's modconfig.lua); the game downloads it |
+
+Games that only hand Workshop files to an account that owns them set `mods.workshop.login`, e.g.
+`"{{STEAM_USER}} {{STEAM_PASSWORD}}"`. Mark a variable `"secret": true` and the panel encrypts it at rest (AES-256-GCM, keyed from `secret.key`), never sends it back to the browser, and hands Steam logins to SteamCMD through the environment instead of the install script.
 
 ## Other keys
 
 - `configFiles` writes files on install (`mode: "create"` keeps user edits, `"overwrite"` replaces).
-- `patchProperties` re-applies listed keys before every start (`properties`, `ini`, `json`).
+- `patchProperties` re-applies listed keys before every start (`properties`, `ini`, `json`). A missing file is
+  skipped unless `createIfMissing` is set or `seedFrom` names a default to start from (Eco's `Network.eco.template`).
 - `wizard`: `[{ "title", "description", "fields": ["VAR", …] }]` turns the create form into steps (see `fivem.json`).
 - `sidecars` start companion containers, such as a private MariaDB for FiveM.
 - `container: false` forces a plain process even when Docker is available.
@@ -139,3 +150,33 @@ runners by `.github/workflows/games.yml`. A `ci` block tunes that:
   "windows": { "vars": { } }
 }
 ```
+
+## Administrator-only templates
+
+`"adminOnly": true` keeps a template away from people who create their own servers within a quota. Use it
+when a variable is a command or a script (like the custom-command and generic SteamCMD templates), since
+whatever it holds runs on the host.
+
+## Ready-made setups
+
+A setup is a template plus what makes it a particular kind of server, deployed in one click from the Games
+page. The built-in ones are in [`setups/`](../setups); put your own in the panel's data folder under `setups/`.
+
+```json
+{
+  "id": "my-smp",
+  "name": "Our SMP",
+  "templateId": "minecraft-paper",
+  "description": "Shown on the card.",
+  "tags": ["Minecraft"],
+  "memory": 4096,
+  "vars": { "MC_VERSION": "26.1.2" },
+  "mods": [{ "provider": "modrinth", "projectId": "luckperms" }],
+  "gameSettings": { "difficulty": "hard" },
+  "schedules": [{ "name": "Backup", "action": "backup", "cron": "0 */6 * * *" }]
+}
+```
+
+The game installs first; the mods, game settings and schedules are added when it finishes, and the console
+says how each one went. Pin `vars` to a game version every mod supports, since mods are only installed in
+builds made for the server's version.

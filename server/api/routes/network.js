@@ -22,6 +22,13 @@ module.exports = (router, { store, manager }, { serverFor }) => {
     };
   });
 
+  /** Ask a service on the internet whether it can reach this server. */
+  router.post('/api/servers/:id/network/check', async ({ user, params, body }) => {
+    const server = serverFor(user, params.id, 'settings');
+    const host = body?.host || require('../../features/dns').playerAddress(server)?.replace(/:\d+$/, '') || store.state.settings.statusPage?.host || '';
+    return require('../../features/reachability').check(manager, server, { host });
+  });
+
   router.post('/api/servers/:id/network', async ({ user, params, body }) => {
     const server = serverFor(user, params.id, 'settings');
     const ports = network.serverPorts(server, manager.template(server));

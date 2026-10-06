@@ -55,9 +55,11 @@ async function main() {
   const notifier = new Notifier(store);
   const bridge = new Bridge({ store, manager, secret });
   if (bridge.enabled) bridge.identity();
-  const api = createApi({ store, auth, manager, templates, hostMetrics, scheduler, notifier, bridge });
+  const api = createApi({ store, auth, manager, templates, hostMetrics, scheduler, notifier, bridge, wss });
   // Every broadcast is cut down to what each signed-in account may see.
   wss.scope = (conn, topic, payload) => scopeBroadcast(auth, conn, topic, payload);
+  require('./features/live-notifications').start({ store, auth, wss });
+  require('./features/setups').start({ store, manager, scheduler });
 
   /* ------------------------------------------------------ static assets -- */
 

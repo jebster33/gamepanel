@@ -98,6 +98,7 @@ const { PROVIDERS: MOD_PROVIDERS } = require(path.join(ROOT, 'server/features/mo
 const { variant, platformsOf } = require(path.join(ROOT, 'server/games/templates'));
 
 const COMMON_STEP_TYPES = ['apt', 'java', 'steamcmd', 'workshop', 'download', 'fetchlist', 'extract', 'copy', 'remove', 'run', 'writefile', 'mkdir', 'chmod'];
+const WORKSHOP_STRATEGIES = ['copy', 'gma', 'list', 'zomboid', 'bohemia', 'modlist', 'tmodloader', 'spaceengineers', 'dst', 'kf2', 'avorion'];
 const STEP_TYPES = {
   linux: [...COMMON_STEP_TYPES, 'script'],
   windows: [...COMMON_STEP_TYPES, 'powershell', 'vcredist', 'directx'],
@@ -128,6 +129,7 @@ const BUILTIN_VARS = new Set([
   'PORT',
   'MAX_PLAYERS',
   'JAVA_VERSION',
+  'WORKSHOP_MODS',
   // Supplied by resolvers
   'DOWNLOAD_URL',
   'RESOLVED_VERSION',
@@ -270,6 +272,10 @@ async function checkTemplate(file) {
     if (tpl.mods.providers?.includes('workshop') && !tpl.mods.appId) {
       fail(`${id}: workshop mods need an appId`);
     }
+    const strategy = tpl.mods.workshop?.strategy;
+    if (strategy && !WORKSHOP_STRATEGIES.includes(strategy)) fail(`${id}: unknown Workshop strategy "${strategy}"`);
+    if (['list', 'modlist', 'tmodloader', 'spaceengineers', 'dst', 'zomboid', 'kf2', 'avorion'].includes(strategy) && !tpl.mods.workshop.file) fail(`${id}: Workshop strategy "${strategy}" needs a file`);
+    if (strategy === 'bohemia' && !/\{\{WORKSHOP_MODS\}\}/.test(JSON.stringify(tpl))) fail(`${id}: bohemia Workshop mods need {{WORKSHOP_MODS}} in the start command`);
   }
 
   /* --- resolver --- */

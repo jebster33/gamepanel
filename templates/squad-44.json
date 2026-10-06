@@ -1,0 +1,75 @@
+{
+  "id": "squad-44",
+  "name": "Squad 44",
+  "category": "Shooter",
+  "icon": "🎖️",
+  "storeAppId": 736220,
+  "description": "Large-scale World War II combined-arms shooter (formerly Post Scriptum), from the Squad engine.",
+  "platforms": [
+    "linux",
+    "windows"
+  ],
+  "defaultMemory": 8192,
+  "variables": [
+    {
+      "name": "MAX_PLAYERS",
+      "label": "Max players",
+      "default": 80,
+      "type": "number"
+    }
+  ],
+  "ports": [
+    {
+      "name": "game",
+      "default": 10027,
+      "protocol": "udp"
+    },
+    {
+      "name": "query",
+      "default": 10037,
+      "protocol": "udp",
+      "offset": 10
+    }
+  ],
+  "image": "cm2network/steamcmd:root",
+  "install": [
+    {
+      "type": "steamcmd",
+      "appid": "746200",
+      "label": "Install the Squad 44 dedicated server"
+    },
+    {
+      "type": "chmod",
+      "path": "PostScriptumServer.sh",
+      "mode": "+x"
+    }
+  ],
+  "startCommand": "./PostScriptumServer.sh Port={{PORT}} QueryPort={{PORT_QUERY}} FIXEDMAXPLAYERS={{MAX_PLAYERS}} RANDOM=ALWAYS -log",
+  "stopTimeout": 45,
+  "query": {
+    "type": "a2s",
+    "port": "query"
+  },
+  "readyOnPort": "game",
+  "logPatterns": {
+    "ready": "Session 'GameSession' is being set as 'listening'|Server started"
+  },
+  "windows": {
+    "install": [
+      {
+        "type": "steamcmd",
+        "appid": "746200",
+        "label": "Install the Squad 44 dedicated server"
+      },
+      {
+        "type": "vcredist",
+        "label": "Install the Visual C++ runtime"
+      }
+    ],
+    "startCommand": "PostScriptumServer.exe Port={{PORT}} QueryPort={{PORT_QUERY}} FIXEDMAXPLAYERS={{MAX_PLAYERS}} RANDOM=ALWAYS -log",
+    "tailFiles": [
+      "PostScriptum/Saved/Logs/PostScriptum.log"
+    ],
+    "consoleInput": false
+  }
+}

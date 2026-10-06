@@ -1,0 +1,120 @@
+{
+  "id": "day-of-defeat-source",
+  "name": "Day of Defeat: Source",
+  "category": "Shooter",
+  "icon": "🪖",
+  "storeAppId": 300,
+  "description": "World War II team shooter on the Source engine.",
+  "platforms": [
+    "linux",
+    "windows"
+  ],
+  "defaultMemory": 2048,
+  "variables": [
+    {
+      "name": "MAP",
+      "label": "Starting map",
+      "default": "dod_anzio",
+      "options": [
+        "dod_anzio",
+        "dod_avalanche",
+        "dod_argentan",
+        "dod_colmar",
+        "dod_donner",
+        "dod_flash",
+        "dod_jagd",
+        "dod_kalt",
+        "dod_palermo"
+      ],
+      "allowCustom": true
+    },
+    {
+      "name": "MAX_PLAYERS",
+      "label": "Max players",
+      "default": 32,
+      "type": "number"
+    },
+    {
+      "name": "GSLT",
+      "label": "Steam game server token (GSLT)",
+      "default": "",
+      "description": "Optional. Lists the server publicly; get one at steamcommunity.com/dev/managegameservers."
+    },
+    {
+      "name": "RCON_PASSWORD",
+      "label": "RCON password",
+      "default": "",
+      "generate": "password"
+    }
+  ],
+  "ports": [
+    {
+      "name": "game",
+      "default": 27015,
+      "protocol": "udp"
+    },
+    {
+      "name": "tv",
+      "default": 27020,
+      "protocol": "udp",
+      "offset": 5
+    }
+  ],
+  "image": "cm2network/steamcmd:root",
+  "install": [
+    {
+      "type": "steamcmd",
+      "appid": "232290",
+      "label": "Install the Day of Defeat: Source dedicated server"
+    },
+    {
+      "type": "chmod",
+      "path": "srcds_run",
+      "mode": "+x"
+    }
+  ],
+  "configFiles": [
+    {
+      "path": "dod/cfg/server.cfg",
+      "mode": "create",
+      "content": "hostname \"{{SERVER_NAME}}\"\nrcon_password \"{{RCON_PASSWORD}}\"\nsv_lan 0\n"
+    }
+  ],
+  "startCommand": "./srcds_run -console -norestart -game dod -port {{PORT}} +maxplayers {{MAX_PLAYERS}} +tv_port {{PORT_TV}} +map {{MAP}} +sv_setsteamaccount \"{{GSLT}}\"",
+  "stopCommand": "quit",
+  "stopTimeout": 45,
+  "query": {
+    "type": "a2s",
+    "port": "game"
+  },
+  "rcon": {
+    "type": "source",
+    "port": "game"
+  },
+  "logPatterns": {
+    "ready": "VAC secure mode|gameserver Steam ID|Connection to Steam servers successful",
+    "join": "\"([^<]+)<[0-9]+><[^>]*><>\" entered the game",
+    "leave": "\"([^<]+)<[0-9]+><[^>]*><[^>]*>\" disconnected"
+  },
+  "windows": {
+    "install": [
+      {
+        "type": "steamcmd",
+        "appid": "232290",
+        "label": "Install the Day of Defeat: Source dedicated server"
+      },
+      {
+        "type": "vcredist",
+        "label": "Install the Visual C++ runtime"
+      }
+    ],
+    "startCommand": "srcds.exe -console -nocrashdialog -condebug -game dod -port {{PORT}} +maxplayers {{MAX_PLAYERS}} +tv_port {{PORT_TV}} +map {{MAP}} +sv_setsteamaccount \"{{GSLT}}\"",
+    "tailFiles": [
+      "dod/console.log"
+    ],
+    "consoleInput": false,
+    "stopCommand": null,
+    "stopRconCommand": "quit"
+  },
+  "pty": true
+}

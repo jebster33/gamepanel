@@ -1,0 +1,144 @@
+{
+  "id": "avorion",
+  "name": "Avorion",
+  "category": "Sandbox",
+  "icon": "🌌",
+  "storeAppId": 445220,
+  "description": "Procedural space sandbox: build ships block by block, mine, trade and fight toward the galaxy's core. Workshop mods from the Mods tab are listed in the galaxy's modconfig.lua and downloaded by the server on its next start.",
+  "platforms": [
+    "linux",
+    "windows"
+  ],
+  "defaultMemory": 4096,
+  "variables": [
+    {
+      "name": "GALAXY_NAME",
+      "label": "Galaxy name",
+      "default": "gamepanel"
+    },
+    {
+      "name": "MAX_PLAYERS",
+      "label": "Max players",
+      "default": 10,
+      "type": "number"
+    },
+    {
+      "name": "DIFFICULTY",
+      "label": "Difficulty",
+      "default": "0",
+      "options": [
+        {
+          "value": "-3",
+          "label": "Beginner"
+        },
+        {
+          "value": "-2",
+          "label": "Easy"
+        },
+        {
+          "value": "-1",
+          "label": "Normal"
+        },
+        {
+          "value": "0",
+          "label": "Veteran"
+        },
+        {
+          "value": "1",
+          "label": "Difficult"
+        },
+        {
+          "value": "2",
+          "label": "Hardcore"
+        },
+        {
+          "value": "3",
+          "label": "Insane"
+        }
+      ]
+    }
+  ],
+  "ports": [
+    {
+      "name": "game",
+      "default": 27000,
+      "protocol": "both"
+    },
+    {
+      "name": "query",
+      "default": 27003,
+      "protocol": "udp",
+      "offset": 3
+    },
+    {
+      "name": "steam_query",
+      "default": 27020,
+      "protocol": "udp",
+      "offset": 20
+    },
+    {
+      "name": "steam_master",
+      "default": 27021,
+      "protocol": "udp",
+      "offset": 21
+    }
+  ],
+  "image": "cm2network/steamcmd:root",
+  "install": [
+    {
+      "type": "steamcmd",
+      "appid": "565060",
+      "label": "Install the Avorion dedicated server"
+    },
+    {
+      "type": "chmod",
+      "path": "bin/AvorionServer",
+      "mode": "+x"
+    },
+    {
+      "type": "mkdir",
+      "path": "galaxy"
+    }
+  ],
+  "startCommand": "LD_LIBRARY_PATH=./linux64:$LD_LIBRARY_PATH ./bin/AvorionServer --galaxy-name \"{{GALAXY_NAME}}\" --datapath galaxy --server-name \"{{SERVER_NAME}}\" --port {{PORT}} --query-port {{PORT_QUERY}} --steam-query-port {{PORT_STEAM_QUERY}} --steam-master-port {{PORT_STEAM_MASTER}} --max-players {{MAX_PLAYERS}} --difficulty {{DIFFICULTY}}",
+  "stopCommand": "/stop",
+  "stopTimeout": 90,
+  "query": {
+    "type": "a2s",
+    "port": "steam_query"
+  },
+  "logPatterns": {
+    "ready": "Server startup complete|Server is ready",
+    "join": "Player logged in: (.+?),",
+    "leave": "Player logged off: (.+?),"
+  },
+  "windows": {
+    "install": [
+      {
+        "type": "steamcmd",
+        "appid": "565060",
+        "label": "Install the Avorion dedicated server"
+      },
+      {
+        "type": "vcredist",
+        "label": "Install the Visual C++ runtime"
+      },
+      {
+        "type": "mkdir",
+        "path": "galaxy"
+      }
+    ],
+    "startCommand": "bin\\AvorionServer.exe --galaxy-name \"{{GALAXY_NAME}}\" --datapath galaxy --server-name \"{{SERVER_NAME}}\" --port {{PORT}} --query-port {{PORT_QUERY}} --steam-query-port {{PORT_STEAM_QUERY}} --steam-master-port {{PORT_STEAM_MASTER}} --max-players {{MAX_PLAYERS}} --difficulty {{DIFFICULTY}}"
+  },
+  "mods": {
+    "providers": [
+      "workshop"
+    ],
+    "dir": "galaxy/{{GALAXY_NAME}}/mods",
+    "appId": 445220,
+    "workshop": {
+      "strategy": "avorion",
+      "file": "galaxy/{{GALAXY_NAME}}/modconfig.lua"
+    }
+  }
+}

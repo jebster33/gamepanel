@@ -1,0 +1,126 @@
+{
+  "id": "counter-strike-source",
+  "name": "Counter-Strike: Source",
+  "category": "Shooter",
+  "icon": "💣",
+  "storeAppId": 240,
+  "description": "The classic Source-engine Counter-Strike. Light on resources; add a GSLT to list it publicly.",
+  "platforms": [
+    "linux",
+    "windows"
+  ],
+  "defaultMemory": 2048,
+  "variables": [
+    {
+      "name": "MAP",
+      "label": "Starting map",
+      "default": "de_dust2",
+      "options": [
+        "de_dust2",
+        "de_dust",
+        "de_inferno",
+        "de_nuke",
+        "de_train",
+        "de_aztec",
+        "de_cbble",
+        "de_piranesi",
+        "de_prodigy",
+        "cs_office",
+        "cs_italy",
+        "cs_assault",
+        "cs_compound",
+        "cs_havana",
+        "cs_militia"
+      ],
+      "allowCustom": true
+    },
+    {
+      "name": "MAX_PLAYERS",
+      "label": "Max players",
+      "default": 24,
+      "type": "number"
+    },
+    {
+      "name": "GSLT",
+      "label": "Steam game server token (GSLT)",
+      "default": "",
+      "description": "Optional. Lists the server publicly; get one at steamcommunity.com/dev/managegameservers."
+    },
+    {
+      "name": "RCON_PASSWORD",
+      "label": "RCON password",
+      "default": "",
+      "generate": "password"
+    }
+  ],
+  "ports": [
+    {
+      "name": "game",
+      "default": 27015,
+      "protocol": "udp"
+    },
+    {
+      "name": "tv",
+      "default": 27020,
+      "protocol": "udp",
+      "offset": 5
+    }
+  ],
+  "image": "cm2network/steamcmd:root",
+  "install": [
+    {
+      "type": "steamcmd",
+      "appid": "232330",
+      "label": "Install the Counter-Strike: Source dedicated server"
+    },
+    {
+      "type": "chmod",
+      "path": "srcds_run",
+      "mode": "+x"
+    }
+  ],
+  "configFiles": [
+    {
+      "path": "cstrike/cfg/server.cfg",
+      "mode": "create",
+      "content": "hostname \"{{SERVER_NAME}}\"\nrcon_password \"{{RCON_PASSWORD}}\"\nsv_lan 0\n"
+    }
+  ],
+  "startCommand": "./srcds_run -console -norestart -game cstrike -port {{PORT}} +maxplayers {{MAX_PLAYERS}} +tv_port {{PORT_TV}} +map {{MAP}} +sv_setsteamaccount \"{{GSLT}}\"",
+  "stopCommand": "quit",
+  "stopTimeout": 45,
+  "query": {
+    "type": "a2s",
+    "port": "game"
+  },
+  "rcon": {
+    "type": "source",
+    "port": "game"
+  },
+  "logPatterns": {
+    "ready": "VAC secure mode|gameserver Steam ID|Connection to Steam servers successful",
+    "join": "\"([^<]+)<[0-9]+><[^>]*><>\" entered the game",
+    "leave": "\"([^<]+)<[0-9]+><[^>]*><[^>]*>\" disconnected"
+  },
+  "windows": {
+    "install": [
+      {
+        "type": "steamcmd",
+        "appid": "232330",
+        "label": "Install the Counter-Strike: Source dedicated server"
+      },
+      {
+        "type": "vcredist",
+        "label": "Install the Visual C++ runtime"
+      }
+    ],
+    "startCommand": "srcds.exe -console -nocrashdialog -condebug -game cstrike -port {{PORT}} +maxplayers {{MAX_PLAYERS}} +tv_port {{PORT_TV}} +map {{MAP}} +sv_setsteamaccount \"{{GSLT}}\"",
+    "tailFiles": [
+      "cstrike/console.log"
+    ],
+    "consoleInput": false,
+    "stopCommand": null,
+    "stopRconCommand": "quit"
+  },
+  "pty": true
+}

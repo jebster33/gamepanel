@@ -28,6 +28,8 @@ export function sideBadge(item) {
 
 // Which store the search below looks in.
 let source = 'modrinth';
+// The pack this server has now, for "what changes" when picking another version of it.
+let installed = null;
 
 export async function renderModpacksTab(host, server) {
   host.innerHTML = '<div class="card"><span class="spinner"></span> Loading modpacks…</div>';
@@ -45,6 +47,7 @@ export async function renderModpacksTab(host, server) {
   }
 
   const pack = info.current;
+  installed = pack ? { ...pack, source: pack.source || (pack.url && !/modrinth\.com/.test(pack.url) ? 'curseforge' : 'modrinth') } : null;
   host.innerHTML = `
     <div class="card mb-16">
       <div class="row">
@@ -60,6 +63,7 @@ export async function renderModpacksTab(host, server) {
           }</div>
         </div>
         <div style="flex:1"></div>
+        ${pack?.slug && can('mods') ? '<button class="btn btn-sm" id="pack-change-version">Change version</button>' : ''}
         ${
           pack?.url
             ? `<a class="btn btn-sm" href="${esc(pack.url)}" target="_blank" rel="noopener">${icon(
@@ -125,6 +129,10 @@ export async function renderModpacksTab(host, server) {
     source = e.target.value;
     renderModpacksTab(host, server);
   });
+  $('#pack-change-version')?.addEventListener('click', () => {
+    source = installed.source;
+    openPackInstallModal(server, { id: installed.slug, slug: installed.slug, name: installed.name || installed.slug, description: '' });
+  });
   $('#pack-search-btn').addEventListener('click', runSearch);
   $('#pack-search').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') runSearch();
@@ -174,18 +182,48 @@ function renderPackResults(server, items, info) {
   );
 }
 
+/** Mods added, removed and updated between the installed version and the chosen one. */
+async function showDiff(server, project, versionId) {
+  const box = $('#pack-diff');
+  if (!box) return;
+  box.dataset.version = versionId;
+  box.innerHTML = '<span class="spinner"></span> Comparing with the installed version…';
+  const d = await api(`/api/servers/${server.id}/modpacks/diff?source=${source}&project=${encodeURIComponent(project)}&version=${encodeURIComponent(versionId)}`).catch((err) => ({ available: false, reason: err.message }));
+  if (!$('#pack-diff') || box.dataset.version !== versionId) return;
+  if (!d.available) {
+    box.innerHTML = `<div class="hint">${esc(d.reason || '')}</div>`;
+    return;
+  }
+  if (d.same) {
+    box.innerHTML = '<div class="hint">This is the version installed now. Installing it again resets the pack’s mods and configs.</div>';
+    return;
+  }
+  const list = (title, items, fmt, cls) =>
+    items.length ? `<details ${items.length <= 8 ? 'open' : ''}><summary><b class="${cls}">${title} ${items.length}</b></summary><ul>${items.map((m) => `<li>${fmt(m)}</li>`).join('')}</ul></details>` : '';
+  const changed = (label, a, b) => (a && b && a !== b ? `<div class="pack-diff-head">${label}: <span class="mono">${esc(a)}</span> → <span class="mono">${esc(b)}</span></div>` : '');
+  box.innerHTML = `
+    <div class="field-label">What changes</div>
+    ${changed('Minecraft', d.from.minecraft, d.to.minecraft)}
+    ${changed('Loader', d.from.loader, d.to.loader)}
+    ${list('Added', d.added, (m) => `${esc(m.name)} <span class="faint mono">${esc(m.version)}</span>`, 'add')}
+    ${list('Updated', d.updated, (m) => `${esc(m.name)} <span class="faint mono">${esc(m.from)} → ${esc(m.to)}</span>`, '')}
+    ${list('Removed', d.removed, (m) => `${esc(m.name)} <span class="faint mono">${esc(m.version)}</span>`, 'del')}
+    <div class="hint">${d.unchanged} mod${d.unchanged === 1 ? '' : 's'} stay the same.${d.removed.length ? ' Removed mods may leave blocks or items behind in the world; make a backup first.' : ''}</div>`;
+}
+
 /** Pick a version of a pack, then reinstall the server onto it. */
 async function openPackInstallModal(server, pack) {
   const modal = openModal({
     title: `Install ${esc(pack.name)}`,
     width: 560,
     body: `
-      <p class="faint" style="margin-top:0">${esc(pack.description || '')}</p>
-      <div class="row mb-16" style="gap:6px">${sideBadge(pack)}</div>
+      ${pack.description ? `<p class="faint" style="margin-top:0">${esc(pack.description)}</p>` : ''}
+      ${sideBadge(pack) ? `<div class="row mb-16" style="gap:6px">${sideBadge(pack)}</div>` : ''}
       <label><span>Version</span>
         <select id="pack-version"><option>Loading versions…</option></select>
         <div class="hint" id="pack-version-hint"></div>
       </label>
+      <div id="pack-diff" class="pack-diff"></div>
       <div class="hint" style="color:var(--warning)">
         This replaces the mods folder and the pack's own configs. Worlds, player data and
         server.properties are left alone.
@@ -234,9 +272,12 @@ async function openPackInstallModal(server, pack) {
           }</option>`
       )
       .join('');
+    const project = source === 'curseforge' ? pack.id : pack.slug || pack.id;
+    const isInstalled = installed && String(installed.slug) === String(project);
     const describe = () => {
       const chosen = data.versions.find((v) => v.id === select.value);
       $('#pack-version-hint').textContent = chosen ? `Loader: ${(chosen.loaders || []).join(', ') || 'unknown'}` : '';
+      if (isInstalled && chosen) showDiff(server, project, chosen.id);
     };
     select.addEventListener('change', describe);
     describe();

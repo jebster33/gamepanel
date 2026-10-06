@@ -134,6 +134,7 @@ class Scheduler {
     const minute = Math.floor(now.getTime() / 60_000);
     if (minute === this.lastMinute) return;
     this.lastMinute = minute;
+    require('./events').tick(this.manager, this.store, now).catch(() => {});
     for (const server of this.manager.servers) {
       this.announce(server, minute).catch(() => {});
       for (const schedule of server.schedules || []) {

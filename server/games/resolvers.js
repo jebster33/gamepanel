@@ -312,6 +312,7 @@ const RESOLVERS = {
       PACK_NAME: index.name || project.title || slug,
       PACK_SLUG: project.slug || slug,
       PACK_VERSION_NUMBER: version.version_number,
+      PACK_VERSION_ID: version.id,
       PACK_URL: `https://modrinth.com/modpack/${project.slug || slug}`,
       PACK_VERSION_URL: `https://modrinth.com/modpack/${project.slug || slug}/version/${encodeURIComponent(
         version.version_number
@@ -576,4 +577,4 @@ async function loaderInstallScript(loader, game) {
   });
 }
 
-module.exports = { resolveDownload, RESOLVERS, readMrpackIndex, detectLoader, loaderInstallScript };
+module.exports = { resolveDownload, RESOLVERS, readMrpackIndex, readZipJson, detectLoader, loaderInstallScript };

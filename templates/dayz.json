@@ -1,0 +1,188 @@
+{
+  "id": "dayz",
+  "name": "DayZ",
+  "category": "Survival",
+  "icon": "🧟",
+  "storeAppId": 221100,
+  "description": "Hardcore open-world zombie survival. Steam only hands the server (and Workshop mods) to a real account, so enter a Steam login; Workshop mods need an account that owns DayZ.",
+  "platforms": [
+    "linux",
+    "windows"
+  ],
+  "defaultMemory": 6144,
+  "variables": [
+    {
+      "name": "STEAM_USER",
+      "label": "Steam username",
+      "default": "",
+      "description": "This server only downloads with a real Steam account. Use one without Steam Guard (a spare account is fine)."
+    },
+    {
+      "name": "STEAM_PASSWORD",
+      "label": "Steam password",
+      "default": "",
+      "secret": true,
+      "description": "Encrypted on this panel and only handed to SteamCMD."
+    },
+    {
+      "name": "MISSION",
+      "label": "Map",
+      "default": "dayzOffline.chernarusplus",
+      "options": [
+        {
+          "value": "dayzOffline.chernarusplus",
+          "label": "Chernarus"
+        },
+        {
+          "value": "dayzOffline.enoch",
+          "label": "Livonia (DLC)"
+        },
+        {
+          "value": "dayzOffline.sakhal",
+          "label": "Sakhal (DLC)"
+        }
+      ],
+      "allowCustom": true
+    },
+    {
+      "name": "MAX_PLAYERS",
+      "label": "Max players",
+      "default": 60,
+      "type": "number"
+    },
+    {
+      "name": "SERVER_PASSWORD",
+      "label": "Join password",
+      "default": "",
+      "description": "Leave empty for an open server."
+    },
+    {
+      "name": "ADMIN_PASSWORD",
+      "label": "Admin password",
+      "default": "",
+      "generate": "password"
+    },
+    {
+      "name": "FIRST_PERSON_ONLY",
+      "label": "First person only",
+      "default": "0",
+      "options": [
+        {
+          "value": "0",
+          "label": "No (1st and 3rd person)"
+        },
+        {
+          "value": "1",
+          "label": "Yes"
+        }
+      ]
+    },
+    {
+      "name": "EXTRA_MODS",
+      "label": "Extra -mod folders",
+      "default": "",
+      "description": "Optional, for mods you copied in yourself. Workshop mods are added automatically."
+    }
+  ],
+  "ports": [
+    {
+      "name": "game",
+      "default": 2302,
+      "protocol": "udp"
+    },
+    {
+      "name": "query",
+      "default": 27016,
+      "protocol": "udp",
+      "offset": 24714
+    }
+  ],
+  "image": "cm2network/steamcmd:root",
+  "install": [
+    {
+      "type": "steamcmd",
+      "appid": "223350",
+      "login": "{{STEAM_USER}} {{STEAM_PASSWORD}}",
+      "label": "Install the DayZ dedicated server"
+    },
+    {
+      "type": "chmod",
+      "path": "DayZServer",
+      "mode": "+x"
+    },
+    {
+      "type": "mkdir",
+      "path": "keys"
+    },
+    {
+      "type": "mkdir",
+      "path": "profiles"
+    }
+  ],
+  "configFiles": [
+    {
+      "path": "gamepanel.cfg",
+      "mode": "create",
+      "content": "hostname = \"{{SERVER_NAME}}\";\npassword = \"{{SERVER_PASSWORD}}\";\npasswordAdmin = \"{{ADMIN_PASSWORD}}\";\nmaxPlayers = {{MAX_PLAYERS}};\nverifySignatures = 2;\nforceSameBuild = 1;\ndisableVoN = 0;\nvonCodecQuality = 20;\ndisable3rdPerson = {{FIRST_PERSON_ONLY}};\ndisableCrosshair = 0;\nserverTime = \"SystemTime\";\nserverTimeAcceleration = 12;\nserverNightTimeAcceleration = 4;\nserverTimePersistent = 0;\nguaranteedUpdates = 1;\nloginQueueConcurrentPlayers = 5;\nloginQueueMaxPlayers = 500;\ninstanceId = 1;\nstorageAutoFix = 1;\nsteamQueryPort = {{PORT_QUERY}};\n\nclass Missions\n{\n    class DayZ\n    {\n        template = \"{{MISSION}}\";\n    };\n};\n"
+    }
+  ],
+  "startCommand": "./DayZServer -config=gamepanel.cfg -port={{PORT}} -profiles=profiles -BEpath=battleye -dologs -adminlog -netlog -freezecheck \"-mod={{WORKSHOP_MODS}}\"",
+  "stopTimeout": 45,
+  "readyOnPort": "game",
+  "query": {
+    "type": "a2s",
+    "port": "query"
+  },
+  "logPatterns": {
+    "ready": "Mission read|Steam server connected",
+    "join": "Player \"(.+?)\" \\(id=[^)]*\\) is connected",
+    "leave": "Player \"(.+?)\" \\(id=[^)]*\\) has been disconnected"
+  },
+  "mods": {
+    "providers": [
+      "workshop"
+    ],
+    "dir": ".",
+    "appId": 221100,
+    "workshop": {
+      "strategy": "bohemia",
+      "login": "{{STEAM_USER}} {{STEAM_PASSWORD}}",
+      "keys": "keys",
+      "lowercase": true
+    }
+  },
+  "windows": {
+    "install": [
+      {
+        "type": "steamcmd",
+        "appid": "223350",
+        "login": "{{STEAM_USER}} {{STEAM_PASSWORD}}",
+        "label": "Install the DayZ dedicated server"
+      },
+      {
+        "type": "vcredist",
+        "label": "Install the Visual C++ runtime"
+      },
+      {
+        "type": "directx",
+        "label": "Install the DirectX runtime"
+      },
+      {
+        "type": "mkdir",
+        "path": "keys"
+      },
+      {
+        "type": "mkdir",
+        "path": "profiles"
+      }
+    ],
+    "startCommand": "DayZServer_x64.exe -config=gamepanel.cfg -port={{PORT}} -profiles=profiles -BEpath=battleye -dologs -adminlog -netlog -freezecheck \"-mod={{WORKSHOP_MODS}}\"",
+    "tailFiles": [
+      "profiles/DayZServer_x64_*.RPT"
+    ],
+    "consoleInput": false
+  },
+  "ci": {
+    "skip": "needs a Steam account to download"
+  }
+}

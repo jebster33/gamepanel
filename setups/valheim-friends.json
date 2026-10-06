@@ -1,0 +1,29 @@
+{
+  "id": "valheim-friends",
+  "name": "Valheim with friends",
+  "templateId": "valheim",
+  "description": "A private Valheim world (join by address, not listed) with crossplay on for Xbox and Game Pass players, a backup every 3 hours and a restart at 05:00 when nobody is on.",
+  "tags": [
+    "Valheim",
+    "Private",
+    "Crossplay"
+  ],
+  "memory": 4096,
+  "vars": {
+    "PUBLIC": "0",
+    "CROSSPLAY": "-crossplay"
+  },
+  "schedules": [
+    {
+      "name": "Backup",
+      "action": "backup",
+      "cron": "0 */3 * * *"
+    },
+    {
+      "name": "Restart when empty",
+      "action": "restart",
+      "cron": "0 5 * * *",
+      "onlyWhenEmpty": true
+    }
+  ]
+}

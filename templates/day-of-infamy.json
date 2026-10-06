@@ -1,0 +1,138 @@
+{
+  "id": "day-of-infamy",
+  "name": "Day of Infamy",
+  "category": "Shooter",
+  "icon": "🪖",
+  "storeAppId": 447820,
+  "description": "World War II infantry shooter from the makers of Insurgency.",
+  "platforms": [
+    "linux",
+    "windows"
+  ],
+  "defaultMemory": 2048,
+  "variables": [
+    {
+      "name": "MAP",
+      "label": "Starting map",
+      "default": "bastogne",
+      "options": [
+        "bastogne",
+        "brittany",
+        "comacchio",
+        "crete",
+        "dog_red",
+        "dunkirk",
+        "flakturm",
+        "foy",
+        "ortona",
+        "reichswald",
+        "saint_lo",
+        "salerno",
+        "sicily"
+      ],
+      "allowCustom": true
+    },
+    {
+      "name": "MAX_PLAYERS",
+      "label": "Max players",
+      "default": 32,
+      "type": "number"
+    },
+    {
+      "name": "PLAYLIST",
+      "label": "Playlist (game mode)",
+      "default": "nwi/coop",
+      "options": [
+        "nwi/coop",
+        "nwi/pvp_offensive",
+        "nwi/pvp_invasion",
+        "nwi/pvp_frontline",
+        "nwi/pvp_liberation",
+        "nwi/pvp_entrenchment"
+      ],
+      "allowCustom": true
+    },
+    {
+      "name": "GSLT",
+      "label": "Steam game server token (GSLT)",
+      "default": "",
+      "description": "Optional. Lists the server publicly; get one at steamcommunity.com/dev/managegameservers."
+    },
+    {
+      "name": "RCON_PASSWORD",
+      "label": "RCON password",
+      "default": "",
+      "generate": "password"
+    }
+  ],
+  "ports": [
+    {
+      "name": "game",
+      "default": 27015,
+      "protocol": "udp"
+    },
+    {
+      "name": "tv",
+      "default": 27020,
+      "protocol": "udp",
+      "offset": 5
+    }
+  ],
+  "image": "cm2network/steamcmd:root",
+  "install": [
+    {
+      "type": "steamcmd",
+      "appid": "462310",
+      "label": "Install the Day of Infamy dedicated server"
+    },
+    {
+      "type": "chmod",
+      "path": "srcds_run",
+      "mode": "+x"
+    }
+  ],
+  "configFiles": [
+    {
+      "path": "doi/cfg/server.cfg",
+      "mode": "create",
+      "content": "hostname \"{{SERVER_NAME}}\"\nrcon_password \"{{RCON_PASSWORD}}\"\nsv_lan 0\n"
+    }
+  ],
+  "startCommand": "./srcds_run -console -norestart -game doi -port {{PORT}} -maxplayers {{MAX_PLAYERS}} +tv_port {{PORT_TV}} +sv_playlist {{PLAYLIST}} +map {{MAP}} +sv_setsteamaccount \"{{GSLT}}\"",
+  "stopCommand": "quit",
+  "stopTimeout": 45,
+  "query": {
+    "type": "a2s",
+    "port": "game"
+  },
+  "rcon": {
+    "type": "source",
+    "port": "game"
+  },
+  "logPatterns": {
+    "ready": "VAC secure mode|gameserver Steam ID|Connection to Steam servers successful",
+    "join": "\"([^<]+)<[0-9]+><[^>]*><>\" entered the game",
+    "leave": "\"([^<]+)<[0-9]+><[^>]*><[^>]*>\" disconnected"
+  },
+  "windows": {
+    "install": [
+      {
+        "type": "steamcmd",
+        "appid": "462310",
+        "label": "Install the Day of Infamy dedicated server"
+      },
+      {
+        "type": "vcredist",
+        "label": "Install the Visual C++ runtime"
+      }
+    ],
+    "startCommand": "srcds.exe -console -nocrashdialog -condebug -game doi -port {{PORT}} -maxplayers {{MAX_PLAYERS}} +tv_port {{PORT_TV}} +sv_playlist {{PLAYLIST}} +map {{MAP}} +sv_setsteamaccount \"{{GSLT}}\"",
+    "tailFiles": [
+      "doi/console.log"
+    ],
+    "consoleInput": false,
+    "stopCommand": null,
+    "stopRconCommand": "quit"
+  },
+  "pty": true
+}

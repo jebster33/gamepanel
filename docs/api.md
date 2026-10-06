@@ -70,10 +70,31 @@ POST   /api/system/panel-backup          {"password"} accounts, settings, keys, 
 GET    /api/servers/:id/export           whole server as .tar.gz with gamepanel-server.json (admins)
 GET    /api/servers/:id/diagnose         crash doctor findings
 POST   /api/servers/:id/share-log        upload the console to mclo.gs
+GET    /api/notifications                recent events this account may see (the bell)
+GET    /api/servers/:id/config-history   files with saved versions
+GET    /api/servers/:id/config-history/versions?path=        versions of one file
+GET    /api/servers/:id/config-history/version?path=&version= one version's content
+POST   /api/servers/:id/config-history/revert                {"path","version"} put it back
+GET    /api/quota                        your quota and what you use of it (self-service accounts)
+GET    /api/setups                       ready-made setups
+POST   /api/setups/:id/deploy            {"name","memory"} create a server from one
+GET    /api/servers/:id/events           scheduled events (optional feature)
+POST   /api/servers/:id/events           {"name","cron","hours","changes":{key:value},"announce","restart"}
+POST   /api/servers/:id/events/:eid/start|end   run or end one now
+POST   /api/servers/:id/network/check    can the internet reach it? (mcsrvstat.us, portchecker.io)
+GET    /api/servers/:id/world-map        Rust, Valheim and Terraria map links
+GET    /api/servers/:id/workshop-packs   saved Workshop packs for this game
+POST   /api/servers/:id/workshop-packs   {"name","input"} or {"name","fromServer":true}
+POST   /api/servers/:id/workshop-packs/:pid/apply   add a pack's items
+GET    /api/servers/:id/modpacks/diff    ?source=&project=&version= mods added, removed, updated
+GET    /api/auth/oauth/providers         sign-in buttons that are set up
+GET    /api/auth/oauth/:p/start          sign in with google|discord|github (?link=1 links instead)
+GET    /api/settings/oauth               providers, client ids and redirect URLs (admins)
+PUT    /api/settings/oauth               {"publicUrl","discord":{"clientId","clientSecret"}} (admins)
 GET    /api/system                       host metrics
 GET    /api/system/runtime               Docker status
 GET    /api/system/update                pending panel updates
 POST   /api/system/update                update and restart
 ```
 
-`WS /ws` streams `servers`, `stats`, `system`, `server:status` and `console:<id>`.
+`WS /ws` streams `servers`, `stats`, `system`, `server:status`, `notification` and `console:<id>`.

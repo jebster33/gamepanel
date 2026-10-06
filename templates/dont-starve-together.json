@@ -115,5 +115,19 @@
   },
   "ci": {
     "installOnly": "needs a Klei cluster token to boot"
+  },
+  "mods": {
+    "providers": [
+      "workshop"
+    ],
+    "dir": "mods",
+    "appId": 322330,
+    "workshop": {
+      "strategy": "dst",
+      "file": "mods/dedicated_server_mods_setup.lua",
+      "overrides": [
+        "dst/Cluster_1/Master/modoverrides.lua"
+      ]
+    }
   }
 }

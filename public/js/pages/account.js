@@ -6,6 +6,8 @@ import { copyToClipboard } from '../ui/clipboard.js';
 import { openModal } from '../ui/modal.js';
 import { otpMarkup, wireOtp } from '../ui/otp.js';
 import { qrSvg } from '../ui/qr.js';
+import { startTour } from '../ui/tour.js';
+import { LANGUAGES, lang, setLanguage } from '../core/i18n.js';
 
 /* --------------------------------------------------------------- account */
 
@@ -49,6 +51,20 @@ export async function renderAccount(view) {
       <div class="hint">Changing it signs you out on every other device.</div>
     </div>
 
+    <div id="linked-card"></div>
+
+    <div class="card mb-16" id="prefs">
+      <h4>This browser</h4>
+      <div class="row mb-16" style="gap:12px;align-items:center">
+        <div class="faint" style="flex:1;min-width:220px">Language of the panel in this browser. Server consoles, files and names stay as they are.</div>
+        <select id="a-lang" style="width:auto" translate="no">${LANGUAGES.map((l) => `<option value="${l.id}" ${l.id === lang ? 'selected' : ''}>${esc(l.label)}</option>`).join('')}</select>
+      </div>
+      <div class="row" style="gap:12px;align-items:center">
+        <div class="faint" style="flex:1;min-width:220px">A quick walk past the main parts of the panel.</div>
+        <button class="btn" id="a-tour">Take the tour</button>
+      </div>
+    </div>
+
     <div class="card mb-16 row" style="align-items:center;gap:16px">
       <div style="flex:1;min-width:220px">
         <h4 style="margin-top:0">Other devices</h4>
@@ -71,6 +87,9 @@ export async function renderAccount(view) {
   renderTwoFactor(me);
   renderApiKeys();
 
+  $('#a-tour').addEventListener('click', () => startTour());
+  $('#a-lang').addEventListener('change', (e) => setLanguage(e.target.value));
+  renderLinkedAccounts($('#linked-card'));
   $('#a-revoke').addEventListener('click', async () => {
     try {
       await api('/api/auth/sessions/revoke', { method: 'POST' });
@@ -278,4 +297,40 @@ function askPassword(title, message, withCode, onConfirm) {
       },
     ],
   });
+}
+
+/** Google, Discord and GitHub accounts this panel account can sign in with. */
+async function renderLinkedAccounts(host) {
+  const data = await api('/api/auth/oauth/providers').catch(() => null);
+  if (!data?.providers.length || !host?.isConnected) return;
+  const linked = state.user.identities || {};
+  host.innerHTML = `
+    <div class="card mb-16">
+      <h4>Sign in with another account</h4>
+      <div class="faint" style="margin-bottom:12px">Link one and you can use its button on the sign-in page instead of your password. Two-factor sign-in still applies.</div>
+      <div class="list">${data.providers
+        .map(
+          (p) => `<div class="list-row">
+            <div class="grow"><div class="title">${esc(p.label)}</div><div class="sub">${linked[p.id] ? `Linked to ${esc(linked[p.id])}` : 'Not linked'}</div></div>
+            ${
+              linked[p.id]
+                ? `<button class="btn btn-sm btn-ghost btn-danger" data-unlink="${esc(p.id)}">Unlink</button>`
+                : `<a class="btn btn-sm" href="/api/auth/oauth/${encodeURIComponent(p.id)}/start?link=1">Link ${esc(p.label)}</a>`
+            }
+          </div>`
+        )
+        .join('')}</div>
+    </div>`;
+  host.querySelectorAll('[data-unlink]').forEach((btn) =>
+    btn.addEventListener('click', async () => {
+      try {
+        const { user } = await api(`/api/auth/oauth/${btn.dataset.unlink}`, { method: 'DELETE' });
+        state.user = { ...state.user, ...user };
+        toast('Unlinked');
+        renderLinkedAccounts(host);
+      } catch (err) {
+        toast(err.message, 'error');
+      }
+    })
+  );
 }

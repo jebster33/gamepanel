@@ -3,13 +3,41 @@
 const { fail, logger } = require('../../core/util');
 const { rconCommand } = require('../../games/rcon');
 const { query } = require('../../games/query');
+const quotas = require('../../features/quotas');
 
 module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin, requireCap, serverFor, visibleServers, serverView }) => {
   router.get('/api/servers', ({ user }) => ({ servers: visibleServers(user) }));
 
+  /**
+   * Create a server for this account: anything for administrators, and within
+   * the quota (with nothing that reaches the shell) for self-service accounts.
+   */
+  const createFor = (user, body) => {
+    let server;
+    if (user.role === 'admin') {
+      server = manager.create(body, user);
+    } else {
+      // Self-service: within the account's quota, and nothing that reaches the host's shell.
+      requireCap(user, 'deploy');
+      const template = manager.templates.require(body.templateId);
+      // Templates whose variables are commands or scripts run anything on the host.
+      if (template.adminOnly) fail(403, `Only administrators can create ${template.name} servers`);
+      // The same rules as a sub-user's edits (servers/untrusted.js), measured against the template's defaults.
+      const defaults = Object.fromEntries((template.variables || []).map((v) => [v.name, v.default ?? '']));
+      require('../../servers/untrusted').checkPatch(template, { name: body.name, vars: body.vars || {} }, { name: '', vars: defaults });
+      quotas.checkCreate(manager, user, Number(body.memory) || Number(template.defaultMemory) || 2048);
+      server = manager.create({ templateId: body.templateId, name: body.name, memory: body.memory, maxPlayers: body.maxPlayers, autoStart: body.autoStart, autoRestart: body.autoRestart, vars: body.vars, ports: body.ports }, user);
+      server.ownerId = user.id;
+      const record = store.state.users.find((u) => u.id === user.id);
+      record.servers = [...new Set([...(record.servers || []), server.id])];
+      record.serverPerms = { ...(record.serverPerms || {}), [server.id]: quotas.OWNER_PERMISSIONS };
+      store.save();
+    }
+    return server;
+  };
+
   router.post('/api/servers', async ({ user, body }) => {
-    requireAdmin(user);
-    const server = manager.create(body, user);
+    const server = createFor(user, body);
     // Installs can take many minutes: start it and let the console stream.
     manager.install(server.id).catch((err) => logger.error('Install error:', err.message));
     return { server: manager.publicServer(server) };
@@ -31,12 +59,17 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
   router.patch('/api/servers/:id', ({ user, params, body }) => {
     const admin = user.role === 'admin';
     // Names and variables reach a shell on the host: non-admins get checked values only (servers/untrusted.js).
-    if (!admin) serverFor(user, params.id, 'settings');
+    if (!admin) {
+      serverFor(user, params.id, 'settings');
+      // Raising a server's memory counts against its owner's quota.
+      if (body.memory !== undefined) quotas.checkMemory(manager, user, manager.require(params.id), Math.max(256, Number(body.memory) || 0));
+    }
     return { server: manager.publicServer(manager.update(params.id, body, { trusted: admin })) };
   });
 
   router.delete('/api/servers/:id', async ({ user, params, url }) => {
-    requireAdmin(user);
+    // People who deployed a server themselves may delete it.
+    if (user.role !== 'admin' && serverFor(user, params.id).ownerId !== user.id) requireAdmin(user);
     await manager.remove(params.id, url.searchParams.get('keepFiles') !== '1');
     bridge?.forgetServer(params.id);
     return { ok: true };
@@ -46,6 +79,7 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
     const server = serverFor(user, params.id, 'power');
     switch (String(body.action || '').toLowerCase()) {
       case 'start':
+        quotas.checkDisk(manager, server, store.state.users);
         return { ok: true, server: await manager.start(server.id) };
       case 'stop':
         return manager.stop(server.id);
@@ -86,7 +120,7 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
 
   router.put('/api/servers/:id/game-settings', ({ user, params, body }) => {
     const server = serverFor(user, params.id, 'settings');
-    const result = require('../../games/settings').writeGameSettings(manager, server, body.values, { trusted: user.role === 'admin' });
+    const result = require('../../games/settings').writeGameSettings(manager, server, body.values, { trusted: user.role === 'admin', actor: user.username });
     if (result.changed) store.addEvent('server.settings', `${user.username} changed ${result.changed} game setting${result.changed === 1 ? '' : 's'} on ${server.name}`, { serverId: server.id });
     return { ...result, restartNeeded: manager.isActive(server.id) };
   });
@@ -214,6 +248,9 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
     const server = serverFor(user, params.id, 'settings');
     return body?.enabled === false ? manager.disableMap(server.id, user) : manager.enableMap(server.id, user);
   });
+
+  /** A web map for Rust, Valheim and Terraria worlds. */
+  router.get('/api/servers/:id/world-map', ({ user, params }) => ({ map: require('../../games/world-maps').worldMap(serverFor(user, params.id, 'console')) }));
 
   /** World pre-generation with Chunky. */
   router.get('/api/servers/:id/pregen', ({ user, params }) => manager.pregenInfo(serverFor(user, params.id, 'console')));
@@ -511,6 +548,63 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
     const server = serverFor(user, params.id, 'schedules');
     scheduler.remove(server, params.sid);
     return { ok: true };
+  });
+
+  /* -------------------------------------------------- ready-made setups -- */
+
+  const setups = require('../../features/setups');
+
+  router.get('/api/setups', ({ user }) => {
+    if (user.role !== 'admin') requireCap(user, 'deploy');
+    return { setups: setups.list(manager.templates) };
+  });
+
+  router.post('/api/setups/:sid/deploy', async ({ user, params, body }) => {
+    const setup = setups.get(params.sid);
+    const server = createFor(user, setups.serverInput(setup, { name: body?.name, memory: body?.memory }));
+    setups.attach(store, server, setup);
+    store.addEvent('server.setup_deployed', `${user.username} deployed ${server.name} from the ${setup.name} setup`, { serverId: server.id });
+    manager.install(server.id).catch((err) => logger.error('Install error:', err.message));
+    return { server: manager.publicServer(server) };
+  });
+
+  /* ---------------------------------------------------- scheduled events -- */
+
+  const events = require('../../features/events');
+  const eventServer = (user, id) => {
+    const server = serverFor(user, id, 'schedules');
+    requireCap(user, 'settings', server.id);
+    return server;
+  };
+
+  router.get('/api/servers/:id/events', ({ user, params }) => {
+    const server = serverFor(user, params.id, 'schedules');
+    return { enabled: events.enabled(store), events: events.list(server) };
+  });
+
+  router.post('/api/servers/:id/events', ({ user, params, body }) => {
+    const server = eventServer(user, params.id);
+    if (!events.enabled(store)) fail(400, 'Scheduled events are off. An administrator can turn them on in Settings.');
+    const event = events.add(manager, store, server, body || {}, { trusted: user.role === 'admin' });
+    store.addEvent('schedule.created', `${user.username} scheduled the event ${event.name} on ${server.name}`, { serverId: server.id });
+    return { event };
+  });
+
+  router.patch('/api/servers/:id/events/:eid', ({ user, params, body }) => ({ event: events.update(manager, store, eventServer(user, params.id), params.eid, body || {}, { trusted: user.role === 'admin' }) }));
+
+  router.delete('/api/servers/:id/events/:eid', async ({ user, params }) => {
+    await events.remove(manager, store, eventServer(user, params.id), params.eid);
+    return { ok: true };
+  });
+
+  /** Start or end one now, outside its schedule. */
+  router.post('/api/servers/:id/events/:eid/:action', async ({ user, params }) => {
+    const server = eventServer(user, params.id);
+    const event = (server.events || []).find((e) => e.id === params.eid);
+    if (!event) fail(404, 'Event not found');
+    if (params.action === 'start') return { event: await events.begin(manager, store, server, event) };
+    if (params.action === 'end') return { event: await events.finish(manager, store, server, event) };
+    return fail(400, 'Use start or end');
   });
 
   /* ------------------------------------------------- public status page -- */
