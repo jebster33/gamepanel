@@ -11,6 +11,16 @@
  *   install.js         installing, reinstalling and updating games
  *   power.js           start / stop / restart / kill, crashes and auto-restart
  *   stats.js           CPU, memory, players, ping, disk
+ *   history.js         player history and the activity log
+ *   versions.js        switching game version / Minecraft server type
+ *   doctor.js          crash doctor and log sharing
+ *   worlds.js          Minecraft worlds: switch, import, download, reset
+ *   alerts.js          CPU, memory and disk alerts
+ *   clone.js           duplicating a server
+ *   crossplay.js       Bedrock players on Java servers (Geyser + Floodgate)
+ *   livemap.js         a web map of the world (BlueMap)
+ *   pregen.js          world pre-generation (Chunky)
+ *   tps.js             ticks per second over RCON (Paper, Purpur)
  *   watchers.js        tailing game log files, port-based readiness
  *   runtimes/container.js   running a server in Docker (Linux isolation)
  *   runtimes/process.js     running a server as a plain process (Linux or Windows)
@@ -28,13 +38,15 @@ const { config } = require('../core/config');
 const { logger, uid, slugify, fail, sleep } = require('../core/util');
 const { HOST_PLATFORM, isWindows } = require('../core/platform');
 const { variant } = require('../games/templates');
+const { playerCommands, playerDetails } = require('../games/players');
+const { listsFor } = require('../games/player-lists');
 const { Ring } = require('../features/metrics');
 const { docker } = require('./runtimes/docker-api');
 
 const { STATUS, CONTAINER_DIR } = require('./constants');
 
 /** Fields a PATCH may change. Anything else on a server is managed by the panel. */
-const EDITABLE = ['name', 'memory', 'cpuLimit', 'maxPlayers', 'autoStart', 'autoRestart', 'updateOnStart', 'startCommand', 'notes', 'ip', 'backupRetention'];
+const EDITABLE = ['name', 'memory', 'cpuLimit', 'maxPlayers', 'autoStart', 'autoRestart', 'updateOnStart', 'startCommand', 'notes', 'ip', 'backupRetention', 'idleStopMinutes', 'hangRestartMinutes', 'alerts'];
 
 class ServerManager extends EventEmitter {
   /**
@@ -81,6 +93,7 @@ class ServerManager extends EventEmitter {
   async shutdown() {
     this.shuttingDown = true;
     for (const t of this.timers || []) clearInterval(t);
+    this.saveHistories();
     // Containers keep running across a panel restart or update; only child
     // processes have to stop, since they would be orphaned.
     for (const server of this.servers) {
@@ -272,6 +285,12 @@ class ServerManager extends EventEmitter {
       players: rt.players,
       maxPlayers: rt.maxPlayers ?? server.maxPlayers ?? null,
       playerList: rt.playerList,
+      tps: rt.tps ?? null,
+      // The webhook URL lets anyone post to that channel: only say whether one is set.
+      discordFeed: server.discordFeed ? { ...server.discordFeed, webhook: undefined, channelId: undefined, connected: true } : undefined,
+      playerDetails: playerDetails(rt),
+      playerCommands: Object.keys(playerCommands(tpl)),
+      playerLists: Object.keys(listsFor(tpl) || {}),
       ping: rt.ping,
       queryError: rt.queryError,
       diskBytes: rt.diskBytes,
@@ -287,6 +306,7 @@ class ServerManager extends EventEmitter {
       modProviders: tpl?.mods?.providers || [],
       gameVersion: this.gameVersion(server),
       joinNote: tpl?.joinNote || null,
+      diagnosis: rt.diagnosis || null,
     };
   }
 
@@ -355,7 +375,8 @@ class ServerManager extends EventEmitter {
     return out;
   }
 
-  create(input, actor) {
+  /** `dir` is set when importing a server whose files stay where they are. */
+  create(input, actor, { dir = null } = {}) {
     const base = this.templates.require(input.templateId);
     const platform = this.pickPlatform(base);
     const template = variant(base, platform);
@@ -369,7 +390,7 @@ class ServerManager extends EventEmitter {
       name,
       templateId: template.id,
       platform,
-      dir: path.join(config.serversDir, id),
+      dir: dir || path.join(config.serversDir, id),
       ip: input.ip || '0.0.0.0',
       ports: this.assignPorts(template, input.ports || {}),
       vars,
@@ -403,6 +424,9 @@ class ServerManager extends EventEmitter {
     for (const key of EDITABLE) if (patch[key] !== undefined) server[key] = patch[key];
     if (patch.startCommand === '') server.startCommand = null;
     if (patch.memory !== undefined) server.memory = Math.max(256, Number(patch.memory) || server.memory);
+    if (patch.hangRestartMinutes !== undefined) server.hangRestartMinutes = Math.max(0, Math.min(60, Math.round(Number(patch.hangRestartMinutes) || 0)));
+    if (patch.idleStopMinutes !== undefined) server.idleStopMinutes = Math.max(0, Math.min(1440, Math.round(Number(patch.idleStopMinutes) || 0)));
+    if (patch.alerts !== undefined) server.alerts = this.cleanAlerts(patch.alerts);
     if (patch.vars) server.vars = { ...server.vars, ...patch.vars };
     if (patch.ports) {
       const used = this.usedPorts(server.id);
@@ -425,8 +449,14 @@ class ServerManager extends EventEmitter {
     if (this.dockerAvailable) await this.cleanupContainers(server).catch(() => {});
     this.servers.splice(this.servers.indexOf(server), 1);
     this.runtime.delete(id);
+    this.deleteHistory(id);
+    // Free play.example.com so the name can be reused.
+    if (server.subdomain) require('../features/dns').release(this.store, server).catch(() => {});
     this.store.save();
-    if (deleteFiles) {
+    // A server imported in place keeps its folder: those files were never the panel's.
+    if (deleteFiles && server.imported?.inPlace) {
+      fs.rmSync(path.join(config.backupsDir, id), { recursive: true, force: true });
+    } else if (deleteFiles) {
       // Windows can hold file locks for a moment after a process exits.
       await sleep(isWindows ? 1500 : 0);
       try {
@@ -469,7 +499,7 @@ class ServerManager extends EventEmitter {
     for (const server of this.servers) {
       const rt = this.rt(server.id);
       if (rt.status === STATUS.RUNNING) running++;
-      players += rt.players || 0;
+      players += rt.players ?? rt.playerList?.length ?? 0;
       cpu += rt.cpu;
       memory += rt.memory;
     }
@@ -529,8 +559,20 @@ Object.assign(
   require('./console'),
   require('./config-files'),
   require('./install'),
+  require('./import'),
   require('./power'),
   require('./stats'),
+  require('./history'),
+  require('./versions'),
+  require('./doctor'),
+  require('./worlds'),
+  require('./alerts'),
+  require('./clone'),
+  require('./crossplay'),
+  require('./livemap'),
+  require('./pregen'),
+  require('./tps'),
+  require('./gamerules'),
   require('./watchers'),
   require('./runtimes/container'),
   require('./runtimes/process')

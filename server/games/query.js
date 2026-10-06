@@ -277,6 +277,60 @@ function queryA2S(host, port, timeout = DEFAULT_TIMEOUT) {
   });
 }
 
+/**
+ * A2S_PLAYER: who is on a Source/Steam server right now, with score and time
+ * connected. Many games leave names blank for players still loading in.
+ */
+function queryA2SPlayers(host, port, timeout = DEFAULT_TIMEOUT) {
+  return new Promise((resolve) => {
+    const socket = dgram.createSocket('udp4');
+    let done = false;
+    let tries = 0;
+    const finish = (result) => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      try {
+        socket.close();
+      } catch {
+        /* already closed */
+      }
+      resolve(result);
+    };
+    const timer = setTimeout(() => finish(null), timeout);
+    const request = (challenge) =>
+      socket.send(Buffer.concat([Buffer.from([0xff, 0xff, 0xff, 0xff, 0x55]), challenge]), port, host, (err) => err && finish(null));
+
+    socket.on('message', (msg) => {
+      if (msg.length < 5 || msg.readInt32LE(0) !== -1) return finish(null);
+      if (msg[4] === 0x41) {
+        if (tries++ > 2) return finish(null);
+        return request(msg.subarray(5, 9));
+      }
+      if (msg[4] !== 0x44) return finish(null);
+      const players = [];
+      try {
+        const count = msg[5];
+        let off = 6;
+        for (let i = 0; i < count && off < msg.length; i++) {
+          off += 1; // index, always 0 in practice
+          const name = readCString(msg, off);
+          off = name.next;
+          const score = msg.readInt32LE(off);
+          const duration = msg.readFloatLE(off + 4);
+          off += 8;
+          players.push({ name: name.value, score, time: Math.round(duration) });
+        }
+      } catch {
+        /* keep whatever parsed cleanly */
+      }
+      finish(players);
+    });
+    socket.on('error', () => finish(null));
+    request(Buffer.from([0xff, 0xff, 0xff, 0xff]));
+  });
+}
+
 /* ----------------------------------------------------------------- probe -- */
 
 function probeTcp(host, port, timeout = DEFAULT_TIMEOUT) {
@@ -351,4 +405,4 @@ async function query(opts) {
   }
 }
 
-module.exports = { query, queryMinecraft, queryBedrock, queryA2S, probeTcp, probeUdp, QUERY_TYPES: Object.keys(HANDLERS) };
+module.exports = { query, queryMinecraft, queryBedrock, queryA2S, queryA2SPlayers, probeTcp, probeUdp, QUERY_TYPES: Object.keys(HANDLERS) };

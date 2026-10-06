@@ -58,6 +58,10 @@ async function main() {
   function serveStatic(req, res, pathname) {
     let rel = decodeURIComponent(pathname);
     if (rel === '/' || rel === '') rel = '/index.html';
+    // Public status pages: /status/<link id>
+    if (/^\/status\/[A-Za-z0-9_-]+\/?$/.test(rel)) rel = '/status.html';
+    // The iPhone app: /app, /app/
+    if (rel === '/app' || rel === '/app/') rel = '/app.html';
     const file = path.join(config.publicDir, path.normalize(rel).replace(/^(\.\.[/\\])+/, ''));
     if (!file.startsWith(config.publicDir)) {
       json(res, 400, { error: 'Bad path' });
@@ -90,12 +94,51 @@ async function main() {
     });
   }
 
+  /* ------------------------------------------------- security headers -- */
+
+  // The pages' own inline scripts (the theme snippet that runs before first
+  // paint) are allowed by hash, so no other inline script can ever run.
+  const inlineHashes = new Set();
+  for (const name of fs.readdirSync(config.publicDir).filter((f) => f.endsWith('.html'))) {
+    const html = fs.readFileSync(path.join(config.publicDir, name), 'utf8');
+    for (const m of html.matchAll(/<script>([\s\S]*?)<\/script>/g)) {
+      inlineHashes.add(`'sha256-${require('crypto').createHash('sha256').update(m[1]).digest('base64')}'`);
+    }
+  }
+  const scriptSrc = ["'self'", ...inlineHashes].join(' ');
+
+  function securityHeaders(req, res) {
+    const host = /^[A-Za-z0-9.:[\]-]+$/.test(req.headers.host || '') ? req.headers.host : '';
+    res.setHeader(
+      'Content-Security-Policy',
+      [
+        "default-src 'self'",
+        `script-src ${scriptSrc}`,
+        "style-src 'self' 'unsafe-inline'",
+        // Mod icons, Minecraft heads and the like come from their own CDNs.
+        "img-src 'self' data: blob: https:",
+        "font-src 'self' data:",
+        `connect-src 'self'${host ? ` ws://${host} wss://${host}` : ''}`,
+        "worker-src 'self'",
+        "manifest-src 'self'",
+        "frame-ancestors 'self'",
+        "form-action 'self'",
+        "base-uri 'self'",
+        "object-src 'none'",
+      ].join('; ')
+    );
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=(), usb=()');
+    res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+  }
+
   /* -------------------------------------------------------- http server -- */
 
   const server = http.createServer(async (req, res) => {
     const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
     res.setHeader('X-Frame-Options', 'SAMEORIGIN');
     res.setHeader('Referrer-Policy', 'same-origin');
+    securityHeaders(req, res);
 
     if (!url.pathname.startsWith('/api/')) return serveStatic(req, res, url.pathname);
 

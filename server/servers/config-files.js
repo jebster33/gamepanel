@@ -9,7 +9,8 @@
 
 const fs = require('fs');
 const path = require('path');
-const { logger, interpolate, safeJoin } = require('../core/util');
+const { logger, interpolate } = require('../core/util');
+const { containedPath } = require('../features/files');
 
 /** Coerce "25" → 25 and "true" → true for JSON configs. */
 function typed(raw) {
@@ -59,7 +60,7 @@ module.exports = {
     for (const file of template.configFiles || []) {
       let target;
       try {
-        target = safeJoin(server.dir, interpolate(file.path, vars));
+        target = containedPath(server.dir, interpolate(file.path, vars));
       } catch {
         continue;
       }
@@ -82,7 +83,7 @@ module.exports = {
     for (const patch of template.patchProperties || []) {
       let target;
       try {
-        target = safeJoin(server.dir, interpolate(patch.path, vars));
+        target = containedPath(server.dir, interpolate(patch.path, vars));
       } catch {
         continue;
       }

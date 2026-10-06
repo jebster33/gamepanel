@@ -17,7 +17,8 @@
 
 const { json, readJson, HttpError } = require('../core/util');
 const { Router } = require('./router');
-const { createHelpers } = require('./helpers');
+const { createHelpers, clientIp } = require('./helpers');
+const { RateLimiter } = require('../core/ratelimit');
 
 const VERSION = require('../../package.json').version;
 const ROUTES = ['auth', 'system', 'templates', 'servers', 'files', 'mods', 'network', 'backups', 'users', 'bridge'];
@@ -27,6 +28,13 @@ function createApi(app) {
   const router = new Router();
   const h = createHelpers(app);
   for (const name of ROUTES) require(`./routes/${name}`)(router, app, h);
+  // Per address for anything anonymous (sign-in page, status page), per account once signed in.
+  const anonymousLimit = new RateLimiter({ limit: 120 });
+  const userLimit = new RateLimiter({ limit: 1200 });
+  const tooMany = (res, limiter, key) => {
+    res.setHeader('Retry-After', String(limiter.retryAfter(key)));
+    json(res, 429, { error: 'Too many requests. Slow down and try again in a moment.' });
+  };
 
   async function handle(req, res, url) {
     const match = router.match(req.method, url.pathname);
@@ -55,9 +63,15 @@ function createApi(app) {
     if (!route.public) {
       user = app.auth.userFromRequest(req);
       if (!user) {
+        const ip = clientIp(req);
+        if (!anonymousLimit.take(ip)) return tooMany(res, anonymousLimit, ip);
         json(res, 401, { error: 'Not signed in' });
         return;
       }
+      if (!userLimit.take(user.id)) return tooMany(res, userLimit, user.id);
+    } else {
+      const ip = clientIp(req);
+      if (!anonymousLimit.take(ip)) return tooMany(res, anonymousLimit, ip);
     }
 
     const body = !route.rawBody && writes ? await readJson(req) : {};

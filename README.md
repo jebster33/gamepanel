@@ -65,9 +65,12 @@ too (after asking), along with users, bridge connections and the containers Game
 |---|---|
 | **Create a server in a minute** | Pick a game, the panel downloads it, gives it free ports and starts it. |
 | **Live console** | Colour-coded output you can type into, with RCON where the game has it. |
+| **Live player list** | Who is on, for how long, and their score where the game reports it, with kick and ban. |
+| **Import existing** | Already have a server on this machine? Point the panel at its folder; nothing is reinstalled. |
+| **Two-factor sign-in** | Codes from any authenticator app: Apple Passwords, Google or Microsoft Authenticator, 2FAS, Aegis… |
 | **One-click mods** | Modrinth, CurseForge, uMod, Steam Workshop and the Factorio portal, filtered to your loader and version. |
 | **Schedules** | Nightly restarts, backups every few hours, a console message on the hour. |
-| **Backups** | One click, scheduled, downloadable, restorable. |
+| **Backups** | One click, scheduled, downloadable, restorable, and optionally copied to Backblaze B2, Cloudflare R2, S3 or MinIO. |
 | **Files** | Browse, edit, drag-and-drop upload, unzip in place. |
 | **Alerts** | Crashes and failed backups posted to Discord. |
 | **Sharing** | Give friends access to one server and only the buttons you choose. |

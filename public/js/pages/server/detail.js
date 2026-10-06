@@ -2,11 +2,13 @@ import { setCrumbs } from '../../core/router.js';
 import { state } from '../../core/state.js';
 import { $, can, esc, fmtBytes, fmtDuration, fmtRate, icon, statusPill } from '../../core/util.js';
 import { renderBackupsTab } from './backups.js';
-import { renderConsoleTab } from './console.js';
+import { patchDoctor, renderConsoleTab } from './console.js';
 import { renderFilesTab } from './files.js';
+import { renderGameTab } from './game.js';
 import { drawServerCharts, renderMetricsTab } from './metrics.js';
 import { renderModpacksTab } from './modpacks.js';
 import { renderModsTab } from './mods.js';
+import { patchPlayersTab, renderPlayersTab } from './players.js';
 import { renderSchedulesTab } from './schedules.js';
 import { renderServerSettingsTab } from './settings.js';
 import { serverAddress } from '../servers.js';
@@ -16,12 +18,14 @@ import { serverAddress } from '../servers.js';
 function serverTabs(server) {
   return [
     can('console') && ['console', 'Console'],
+    ['players', 'Players'],
     ['metrics', 'Metrics'],
     can('files') && ['files', 'Files'],
     server.hasModpacks && can('mods') && ['modpacks', 'Modpack'],
     server.hasMods && can('mods') && ['mods', 'Mods'],
     can('backups') && ['backups', 'Backups'],
     can('schedules') && ['schedules', 'Schedules'],
+    can('settings') && ['game', 'Game settings'],
     can('settings') && ['settings', 'Settings'],
   ].filter(Boolean);
 }
@@ -72,8 +76,8 @@ export function renderServerDetail(view) {
     <div class="metrics compact" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr))">
       ${tile('CPU', 'cpu', `${(server.cpu || 0).toFixed(1)}<span class="unit">%</span>`)}
       ${tile('Memory', 'mem', `${fmtBytes(server.memory)}<span class="unit">/ ${fmtBytes(server.memoryLimit)}</span>`)}
-      ${tile('Players', 'players', `${server.players ?? '—'}<span class="unit">${server.maxPlayers ? '/ ' + server.maxPlayers : ''}</span>`)}
-      ${tile('Ping', 'ping', server.ping != null ? server.ping + '<span class="unit">ms</span>' : '—')}
+      ${tile('Players', 'players', `${server.players ?? (server.playerList?.length || '—')}<span class="unit">${server.maxPlayers ? '/ ' + server.maxPlayers : ''}</span>`)}
+      ${hasTps(server) ? tile('TPS', 'ping', tpsHtml(server)) : tile('Ping', 'ping', server.ping != null ? server.ping + '<span class="unit">ms</span>' : '—')}
       ${tile(
         'Network',
         'net',
@@ -119,6 +123,7 @@ export function patchServerHeader() {
   if (status) status.innerHTML = statusPill(server.status);
   const power = $('#detail-power');
   if (power) power.innerHTML = powerButtons(server);
+  if ((state.route.params.tab || 'console') === 'console') patchDoctor(server);
 }
 
 export function patchServerDetail() {
@@ -132,15 +137,16 @@ export function patchServerDetail() {
   set('mem', `${fmtBytes(server.memory)}<span class="unit">/ ${fmtBytes(server.memoryLimit)}</span>`);
   set(
     'players',
-    `${server.players ?? '—'}<span class="unit">${server.maxPlayers ? '/ ' + server.maxPlayers : ''}</span>`
+    `${server.players ?? (server.playerList?.length || '—')}<span class="unit">${server.maxPlayers ? '/ ' + server.maxPlayers : ''}</span>`
   );
-  set('ping', server.ping != null ? `${server.ping}<span class="unit">ms</span>` : '—');
+  set('ping', hasTps(server) ? tpsHtml(server) : server.ping != null ? `${server.ping}<span class="unit">ms</span>` : '—');
   set('conns', String(server.connections ?? 0));
   set('crashes', String(server.crashCount || 0));
   if (server.runtime === 'docker') set('net', `<span style="font-size:12.5px;white-space:nowrap">↓ ${fmtRate(server.networkRx)} ↑ ${fmtRate(server.networkTx)}</span>`);
   const uptime = $('#detail-uptime');
   if (uptime) uptime.textContent = server.status === 'running' ? 'up ' + fmtDuration(server.uptime) : '';
   if (state.route.params.tab === 'metrics') drawServerCharts(server.id);
+  if (state.route.params.tab === 'players') patchPlayersTab(server);
 }
 
 function renderServerTab(server, tab) {
@@ -148,6 +154,12 @@ function renderServerTab(server, tab) {
   switch (tab) {
     case 'metrics':
       renderMetricsTab(host, server);
+      break;
+    case 'players':
+      renderPlayersTab(host, server);
+      break;
+    case 'game':
+      renderGameTab(host, server);
       break;
     case 'files':
       renderFilesTab(host, server, '');
@@ -172,4 +184,13 @@ function renderServerTab(server, tab) {
       renderConsoleTab(host, server);
       break;
   }
+}
+
+/** Paper and Purpur report ticks per second; 20 is perfect, under 15 players feel lag. */
+const hasTps = (server) => ['minecraft-paper', 'minecraft-purpur'].includes(server.templateId);
+
+function tpsHtml(server) {
+  if (server.tps == null) return '—';
+  const tone = server.tps >= 18 ? 'var(--success)' : server.tps >= 15 ? 'var(--warning)' : 'var(--danger)';
+  return `<span style="color:${tone}">${server.tps.toFixed(1)}</span><span class="unit">/ 20</span>`;
 }
