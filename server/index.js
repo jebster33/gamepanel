@@ -170,20 +170,6 @@ async function main() {
       socket.destroy();
       return;
     }
-    // Another site can't open the live socket with this browser's cookie.
-    if (req.headers.origin) {
-      let same = false;
-      try {
-        same = new URL(req.headers.origin).host === req.headers.host;
-      } catch {
-        same = false;
-      }
-      if (!same) {
-        socket.write('HTTP/1.1 403 Forbidden\r\n\r\n');
-        socket.destroy();
-        return;
-      }
-    }
     const conn = wss.handleUpgrade(req, socket, head);
     if (!conn) return;
     conn.user = user;
