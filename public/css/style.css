@@ -2586,6 +2586,31 @@ tbody tr:hover {
 .lime {
   color: var(--lime-text);
 }
+.choice-list {
+  display: grid;
+  gap: 8px;
+}
+.choice {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+.choice:has(input:checked) {
+  border-color: var(--lime);
+  background: var(--lime-soft);
+}
+.choice input {
+  margin-top: 4px;
+}
+.chip-sm {
+  padding: 1px 7px;
+  font-size: 11px;
+  vertical-align: 1px;
+}
 .imp-found {
   max-height: 300px;
   overflow: auto;

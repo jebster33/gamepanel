@@ -18,9 +18,14 @@ export async function renderBackupsTab(host, server) {
   if (!host.isConnected) return; // the user moved to another tab meanwhile
 
   host.innerHTML = `
-    <div class="row mb-16">
+    <div class="row mb-16 backup-head">
       <button class="btn btn-primary" id="backup-create">Create backup</button>
-      <span class="faint">Backups are plain .tar.gz archives of the whole server directory.</span>
+      <span class="faint" style="flex:1;min-width:200px">${
+        data.mode === 'incremental'
+          ? `Incremental${data.encrypt ? ', encrypted' : ''}: each backup stores only what changed.${data.vault ? ` All of them take ${fmtBytes(data.vault.bytes)}.` : ''}`
+          : 'Backups are plain .tar.gz archives of the whole server directory.'
+      }</span>
+      <button class="btn btn-sm btn-ghost" id="backup-mode">Backup type…</button>
     </div>
     <div class="card card-flush">
       <div class="table-wrap"><table>
@@ -31,8 +36,8 @@ export async function renderBackupsTab(host, server) {
               ? data.backups
                   .map(
                     (b) => `<tr>
-                      <td class="mono">${esc(b.name)}</td>
-                      <td class="faint nowrap">${fmtBytes(b.size)}</td>
+                      <td class="mono">${esc(b.name)}${b.kind === 'incremental' ? ` <span class="chip chip-sm" title="Only what changed since the backup before">${b.encrypted ? '🔒 ' : ''}incremental</span>` : ''}</td>
+                      <td class="faint nowrap" ${b.total ? `title="Stored ${esc(fmtBytes(b.size))} new; restores ${esc(fmtBytes(b.total))}"` : ''}>${b.kind === 'incremental' ? `+${fmtBytes(b.size)}` : fmtBytes(b.size)}</td>
                       <td class="faint nowrap">${fmtTime(b.createdAt)}</td>
                       <td class="nowrap" data-check-cell="${esc(b.name)}">${checkLabel(b.check)}</td>
                       <td class="cloud-col hidden nowrap" data-cloud="${esc(b.name)}"></td>
@@ -53,6 +58,7 @@ export async function renderBackupsTab(host, server) {
     <div id="cloud-only"></div>`;
 
   renderCloudState(host, server, data.backups);
+  $('#backup-mode').addEventListener('click', () => openBackupMode(server, data, () => renderBackupsTab(host, server)));
 
   $('#backup-create').addEventListener('click', async (event) => {
     const btn = event.currentTarget;
@@ -105,7 +111,11 @@ export async function renderBackupsTab(host, server) {
   host.querySelectorAll('[data-del-backup]').forEach((el) =>
     el.addEventListener('click', async () => {
       if (!(await confirmModal('Delete backup', `Delete ${el.dataset.delBackup}?`))) return;
-      await api(`/api/servers/${server.id}/backups/${encodeURIComponent(el.dataset.delBackup)}`, { method: 'DELETE' });
+      try {
+        await api(`/api/servers/${server.id}/backups/${encodeURIComponent(el.dataset.delBackup)}`, { method: 'DELETE' });
+      } catch (err) {
+        toast(err.message, 'error');
+      }
       renderBackupsTab(host, server);
     })
   );
@@ -122,7 +132,8 @@ async function renderCloudState(host, server, local) {
   host.querySelectorAll('[data-cloud]').forEach((cell) => {
     const name = cell.dataset.cloud;
     const upload = cloud.uploads[name];
-    if (remote.has(name)) cell.innerHTML = '<span class="badge" style="color:var(--lime-text)">✓ copied</span>';
+    if (name.endsWith('.snap')) cell.innerHTML = '<span class="faint" title="Cloud copies are for archive backups">—</span>';
+    else if (remote.has(name)) cell.innerHTML = '<span class="badge" style="color:var(--lime-text)">✓ copied</span>';
     else if (upload === 'queued' || upload === 'uploading') cell.innerHTML = `<span class="faint"><span class="spinner"></span> ${upload}</span>`;
     else
       cell.innerHTML = `${upload ? `<span class="badge bad" title="${esc(upload)}">failed</span> ` : ''}<button class="btn btn-sm" data-upload="${esc(name)}">Copy</button>`;
@@ -283,4 +294,45 @@ async function browseBackup(server, name) {
       btn.disabled = false;
     }
   }
+}
+
+/** Archive or incremental backups, and encryption. */
+function openBackupMode(server, data, done) {
+  const modal = openModal({
+    title: 'Backup type',
+    width: 540,
+    body: `
+      <div class="choice-list">
+        <label class="choice"><input type="radio" name="bm" value="archive" ${data.mode !== 'incremental' ? 'checked' : ''} />
+          <div><b>Archive</b> <span class="faint">(the default)</span><div class="faint">Each backup is a complete .tar.gz you can open anywhere with tar, and copy to the cloud.</div></div></label>
+        <label class="choice"><input type="radio" name="bm" value="incremental" ${data.mode === 'incremental' ? 'checked' : ''} />
+          <div><b>Incremental</b><div class="faint">Files are stored in pieces, each piece once: the second backup of a big world only adds what changed, and runs faster. Restore, browse, check and download (as .tar.gz) work the same. Cloud copies stay archive-only.</div></div></label>
+      </div>
+      <div class="checkbox-row mt-16" id="bm-enc-row"><input type="checkbox" id="bm-enc" ${data.encrypt ? 'checked' : ''} ${data.passphraseSet ? '' : 'disabled'} />
+        <label for="bm-enc">Encrypt them (AES-256)${data.passphraseSet ? '' : ' · an administrator sets the passphrase under Settings → Backups first'}</label></div>
+      <div class="hint">Switching keeps the backups you have; they stay restorable from the list.</div>`,
+    actions: [
+      { label: 'Cancel', close: true },
+      {
+        label: 'Save',
+        primary: true,
+        onClick: async (btn) => {
+          btn.disabled = true;
+          const mode = document.querySelector('input[name="bm"]:checked').value;
+          try {
+            await api(`/api/servers/${server.id}/backup-mode`, { method: 'PUT', body: { mode, encrypt: $('#bm-enc').checked } });
+            modal.close();
+            toast(mode === 'incremental' ? 'New backups are incremental' : 'New backups are archives');
+            done();
+          } catch (err) {
+            toast(err.message, 'error');
+            btn.disabled = false;
+          }
+        },
+      },
+    ],
+  });
+  const sync = () => $('#bm-enc-row').classList.toggle('hidden', document.querySelector('input[name="bm"]:checked').value !== 'incremental');
+  document.querySelectorAll('input[name="bm"]').forEach((r) => r.addEventListener('change', sync));
+  sync();
 }

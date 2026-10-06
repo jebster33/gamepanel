@@ -114,6 +114,18 @@ export async function renderSettings(view) {
       <div class="hint">Runs in the background, one at a time; needs free disk space about the size of the server. You can also check any backup by hand on a server's Backups tab.</div>
     </div>
 
+    <div class="card mb-16" id="backups">
+      <h4>Backup encryption</h4>
+      <div class="faint" style="margin-bottom:12px">Servers using incremental backups (their Backups tab → Backup type) can encrypt them with this passphrase. ${
+        s.backupPassphraseSet ? '<b>A passphrase is set.</b> Changing it keeps every encrypted backup readable.' : 'No passphrase yet.'
+      }</div>
+      <div class="input-row">
+        <input type="password" id="s-bpass" placeholder="${s.backupPassphraseSet ? 'New passphrase' : 'At least 12 characters'}" autocomplete="new-password" />
+        <button class="btn" id="s-bpass-save">${s.backupPassphraseSet ? 'Change' : 'Set'}</button>
+      </div>
+      <div class="hint">Write it down somewhere safe. Without it, encrypted backups cannot be restored on another machine, or if this panel's data is lost.</div>
+    </div>
+
     <div class="card mb-16" id="events">
       <h4>Scheduled events</h4>
       <div class="faint" style="margin-bottom:12px">Change game settings for a while and put them back automatically, like a double XP weekend. Set them up on a server's Schedules tab.</div>
@@ -295,6 +307,23 @@ export async function renderSettings(view) {
       toast(err.message, 'error');
       event.target.checked = !event.target.checked;
     }
+  });
+
+  $('#s-bpass-save').addEventListener('click', async (event) => {
+    const btn = event.currentTarget;
+    const value = $('#s-bpass').value;
+    if (s.backupPassphraseSet && !(await confirmModal('Change the backup passphrase', 'Encrypted backups will open with the new passphrase only. Make sure you have written it down.', 'Change'))) return;
+    btn.disabled = true;
+    try {
+      await api('/api/settings/backup-passphrase', { method: 'PUT', body: { passphrase: value } });
+      s.backupPassphraseSet = true;
+      $('#s-bpass').value = '';
+      btn.textContent = 'Change';
+      toast('Backup passphrase saved');
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+    btn.disabled = false;
   });
 
   $('#s-events').addEventListener('change', async (event) => {

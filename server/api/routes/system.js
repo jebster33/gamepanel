@@ -102,7 +102,7 @@ module.exports = (router, { store, auth, manager, hostMetrics, notifier, bridge 
   router.get('/api/settings', ({ user }) => {
     requireAdmin(user);
     // Sign-in provider secrets have their own endpoint that never sends them back.
-    return { settings: { ...store.state.settings, nodes: undefined, oauth: undefined }, notificationEvents: EVENT_CHOICES };
+    return { settings: { ...store.state.settings, nodes: undefined, oauth: undefined, backupPassphrase: undefined, backupPassphraseSet: Boolean(store.state.settings.backupPassphrase) }, notificationEvents: EVENT_CHOICES };
   });
 
   router.patch('/api/settings', ({ user, body }) => {
@@ -155,7 +155,7 @@ module.exports = (router, { store, auth, manager, hostMetrics, notifier, bridge 
       }
     }
     store.save();
-    return { settings: { ...s, oauth: undefined } };
+    return { settings: { ...s, oauth: undefined, backupPassphrase: undefined, backupPassphraseSet: Boolean(s.backupPassphrase) } };
   });
 
   router.post('/api/settings/notifications/test', async ({ user, body }) => {

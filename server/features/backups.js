@@ -10,6 +10,7 @@ const path = require('path');
 const { spawn } = require('child_process');
 const { config } = require('../core/config');
 const { fail, uid, logger } = require('../core/util');
+const vault = require('./vault');
 
 function backupDirFor(serverId) {
   const dir = path.join(config.backupsDir, serverId);
@@ -17,16 +18,17 @@ function backupDirFor(serverId) {
   return dir;
 }
 
+/** Archives and incremental snapshots together, newest first. */
 function list(serverId) {
   const dir = backupDirFor(serverId);
-  return fs
+  const archives = fs
     .readdirSync(dir)
     .filter((f) => f.endsWith('.tar.gz'))
     .map((name) => {
       const stat = fs.statSync(path.join(dir, name));
-      return { name, size: stat.size, createdAt: stat.mtimeMs };
-    })
-    .sort((a, b) => b.createdAt - a.createdAt);
+      return { name, size: stat.size, createdAt: stat.mtimeMs, kind: 'archive' };
+    });
+  return [...archives, ...vault.list(dir)].sort((a, b) => b.createdAt - a.createdAt);
 }
 
 const isWindows = process.platform === 'win32';
@@ -57,6 +59,8 @@ function runTar(args, cwd) {
 
 async function create(server, label = '') {
   const dir = backupDirFor(server.id);
+  // Incremental mode (Backups tab): only what changed is stored, optionally encrypted.
+  if (server.backupMode === 'incremental') return vault.create(dir, server, label, { encrypt: Boolean(server.backupEncrypt) });
   const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
   const safeLabel = String(label).replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 24);
   const name = `${stamp}${safeLabel ? '-' + safeLabel : ''}-${uid(4)}.tar.gz`;
@@ -79,11 +83,19 @@ function prune(serverId, keep) {
   const n = Number(keep) || 0;
   if (n <= 0) return [];
   const removed = list(serverId).slice(n);
-  for (const b of removed) fs.rmSync(path.join(backupDirFor(serverId), b.name), { force: true });
+  const snaps = removed.filter((b) => vault.isSnapshot(b.name));
+  for (const b of removed) if (!vault.isSnapshot(b.name)) fs.rmSync(path.join(backupDirFor(serverId), b.name), { force: true });
+  // One at a time: each removal also clears the pieces nothing uses any more.
+  if (snaps.length) {
+    snaps
+      .reduce((chain, b) => chain.then(() => vault.remove(backupDirFor(serverId), b.name)), Promise.resolve())
+      .catch((err) => logger.warn(`Pruning incremental backups of ${serverId}: ${err.message}`));
+  }
   return removed.map((b) => b.name);
 }
 
 async function restore(server, name) {
+  if (vault.isSnapshot(name)) return vault.restore(backupDirFor(server.id), name, server.dir);
   const file = resolve(server.id, name);
   await runTar(['-xzf', file, '-C', server.dir], server.dir);
   return { ok: true };
@@ -93,6 +105,7 @@ const MAX_ENTRIES = 50_000;
 
 /** Every file and folder in a backup, with sizes, without unpacking it. */
 function contents(serverId, name) {
+  if (vault.isSnapshot(name)) return Promise.resolve(vault.contents(backupDirFor(serverId), name));
   const file = resolve(serverId, name);
   return new Promise((ok, reject) => {
     // GNU tar escapes non-ASCII names (caf\303\251) under the C locale unless told not to.
@@ -124,11 +137,12 @@ function contents(serverId, name) {
 
 /** Put chosen files or folders from a backup back, leaving everything else alone. */
 async function restorePaths(server, name, paths) {
-  const file = resolve(server.id, name);
   const wanted = [...new Set((Array.isArray(paths) ? paths : []).map((p) => String(p).replace(/\\/g, '/').replace(/^\.?\/+/, '').replace(/\/+$/, '')))];
   if (!wanted.length) fail(400, 'Pick at least one file or folder');
   if (wanted.length > 500) fail(400, 'Pick at most 500 files or folders at a time');
   if (wanted.some((p) => !p || p.split('/').some((part) => part === '..' || part === '') || /^[A-Za-z]:/.test(p))) fail(400, 'Invalid path');
+  if (vault.isSnapshot(name)) return { ...(await vault.restore(backupDirFor(server.id), name, server.dir, wanted)), restored: wanted };
+  const file = resolve(server.id, name);
   const { entries } = await contents(server.id, name);
   const known = new Set(entries.map((e) => e.path));
   const missing = wanted.find((p) => !known.has(p));
@@ -146,8 +160,28 @@ function resolve(serverId, name) {
 }
 
 function remove(serverId, name) {
+  if (vault.isSnapshot(name)) return vault.remove(backupDirFor(serverId), name);
   fs.unlinkSync(resolve(serverId, name));
   return { ok: true };
+}
+
+/** An incremental backup as a plain .tar.gz download: put back into a scratch folder, then packed. */
+async function downloadSnapshot(server, name, res) {
+  const scratch = path.join(config.cacheDir, `download-${server.id}-${uid(6)}`);
+  fs.mkdirSync(scratch, { recursive: true });
+  try {
+    await vault.restore(backupDirFor(server.id), name, scratch);
+  } catch (err) {
+    fs.rmSync(scratch, { recursive: true, force: true });
+    throw err;
+  }
+  res.writeHead(200, { 'Content-Type': 'application/gzip', 'Content-Disposition': `attachment; filename="${name.replace(/\.snap$/, '.tar.gz')}"` });
+  const proc = spawn(TAR, ['-czf', '-', '-C', scratch, '.'], { stdio: ['ignore', 'pipe', 'ignore'], windowsHide: true });
+  proc.stdout.pipe(res);
+  const tidy = () => fs.rmSync(scratch, { recursive: true, force: true });
+  proc.on('close', tidy);
+  proc.on('error', () => res.destroy());
+  res.on('close', () => proc.kill());
 }
 
 /* -------------------------------------------------------------- checks -- */
@@ -205,9 +239,19 @@ function walk(dir) {
  * to end instead, which still catches a corrupt or cut-off file.
  */
 async function verify(server, name) {
-  const file = resolve(server.id, name);
   const started = Date.now();
   let result;
+  if (vault.isSnapshot(name)) {
+    try {
+      result = await vault.verify(backupDirFor(server.id), name);
+    } catch (err) {
+      result = { ok: false, error: String(err.message).slice(0, 300) };
+    }
+    result = { ...result, at: Date.now(), ms: Date.now() - started };
+    saveCheck(server.id, name, result);
+    return result;
+  }
+  const file = resolve(server.id, name);
   try {
     const { entries, truncated } = await contents(server.id, name);
     const listed = entries.filter((e) => !e.dir);
@@ -253,4 +297,4 @@ async function verify(server, name) {
   return result;
 }
 
-module.exports = { list, create, restore, restorePaths, contents, remove, resolve, prune, dirFor: backupDirFor, verify, checks };
+module.exports = { list, create, restore, restorePaths, contents, remove, resolve, prune, dirFor: backupDirFor, verify, checks, downloadSnapshot, vault };
