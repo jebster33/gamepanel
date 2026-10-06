@@ -1,4 +1,5 @@
 import { api } from './api.js';
+import { passkeysSupported } from './passkey.js';
 import { connectWebSocket } from './live.js';
 import { handleRoute } from './router.js';
 import { state } from './state.js';
@@ -32,12 +33,14 @@ async function showOauthButtons(show) {
   if (!box) return;
   const data = show ? await api('/api/auth/oauth/providers').catch(() => null) : null;
   const providers = data?.providers || [];
-  box.classList.toggle('hidden', !providers.length);
-  box.innerHTML = providers.length
-    ? `<div class="oauth-or"><span>or</span></div>${providers
-        .map((p) => `<a class="btn btn-block oauth-btn oauth-${esc(p.id)}" href="/api/auth/oauth/${encodeURIComponent(p.id)}/start">Sign in with ${esc(p.label)}</a>`)
-        .join('')}`
-    : '';
+  const passkey = show && passkeysSupported();
+  box.classList.toggle('hidden', !providers.length && !passkey);
+  box.innerHTML =
+    providers.length || passkey
+      ? `<div class="oauth-or"><span>or</span></div>${passkey ? '<button type="button" class="btn btn-block oauth-btn" data-passkey-signin>Sign in with a passkey</button>' : ''}${providers
+          .map((p) => `<a class="btn btn-block oauth-btn oauth-${esc(p.id)}" href="/api/auth/oauth/${encodeURIComponent(p.id)}/start">Sign in with ${esc(p.label)}</a>`)
+          .join('')}`
+      : '';
 }
 
 export async function bootstrap() {

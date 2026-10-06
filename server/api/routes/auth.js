@@ -49,6 +49,42 @@ module.exports = (router, app) => {
     { public: true }
   );
 
+  /* ------------------------------------------------------------ passkeys -- */
+
+  const passkeys = require('../../features/passkeys');
+
+  router.post('/api/auth/passkey/options', ({ req }) => passkeys.loginOptions(req), { public: true });
+
+  router.post(
+    '/api/auth/passkey/login',
+    async ({ body, req, res }) => {
+      const ip = clientIp(req);
+      const result = passkeys.login(auth, store, req, ip, body || {});
+      if (result.twoFactor) return { ok: true, twoFactor: true, ticket: result.ticket };
+      return finishLogin(req, res, result, ip, ` with a passkey (${result.passkey})`);
+    },
+    { public: true }
+  );
+
+  router.post('/api/auth/passkeys/options', ({ user, req }) => passkeys.registerOptions(auth, store, user, req));
+
+  router.post('/api/auth/passkeys', ({ user, req, body }) => {
+    const passkey = passkeys.register(auth, store, user, req, body || {});
+    store.addEvent('user.passkey', `${user.username} added a passkey (${passkey.name})`, { ip: clientIp(req) });
+    return { user: auth.publicUser(auth.users.find((u) => u.id === user.id)) };
+  });
+
+  router.patch('/api/auth/passkeys/:id', ({ user, params, body }) => {
+    passkeys.rename(auth, store, user, params.id, body?.name);
+    return { user: auth.publicUser(auth.users.find((u) => u.id === user.id)) };
+  });
+
+  router.delete('/api/auth/passkeys/:id', ({ user, params, req }) => {
+    passkeys.remove(auth, store, user, params.id);
+    store.addEvent('user.passkey', `${user.username} removed a passkey`, { ip: clientIp(req) });
+    return { user: auth.publicUser(auth.users.find((u) => u.id === user.id)) };
+  });
+
   function finishLogin(req, res, { token, user }, ip, how = '') {
     res.setHeader('Set-Cookie', auth.cookieHeader(token, isSecure(req)));
     const record = auth.users.find((u) => u.id === user.id);

@@ -43,6 +43,7 @@ const TITLES = {
   'user.lockout': 'Repeated failed sign-ins',
   'user.password': 'Password changed',
   'user.2fa_disabled': 'Two-factor sign-in turned off',
+  'user.passkey': 'Passkeys changed',
   'user.sessions_revoked': 'Signed out of other devices',
 };
 

@@ -31,7 +31,8 @@ module.exports = (router, { store, auth, manager }, { requireAdmin }) => {
     if (body.requireAdmin2fa !== undefined) {
       const on = Boolean(body.requireAdmin2fa);
       // Don't let anyone lock themselves out of the page that turns it off.
-      if (on && !auth.users.find((u) => u.id === user.id)?.totp?.secret) fail(400, 'Turn on two-factor for your own account first (Account page).');
+      const me = auth.users.find((u) => u.id === user.id);
+      if (on && !me?.totp?.secret && !me?.passkeys?.length) fail(400, 'Turn on two-factor (or add a passkey) for your own account first (Account page).');
       store.state.settings.requireAdmin2fa = on;
       store.addEvent('user.policy', `${user.username} ${on ? 'now requires' : 'no longer requires'} two-factor sign-in for administrators`);
     }

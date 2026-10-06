@@ -379,7 +379,8 @@ class Auth {
    * only reach their own account pages until they set it up.
    */
   requireTwoFactor(user, req) {
-    if (!user || user.role !== 'admin' || user.totp?.secret || !this.store.state.settings?.requireAdmin2fa) return user;
+    // A passkey counts: it is a second factor on its own.
+    if (!user || user.role !== 'admin' || user.totp?.secret || user.passkeys?.length || !this.store.state.settings?.requireAdmin2fa) return user;
     const path = new URL(req.url, 'http://localhost').pathname;
     // Only sign-in and account setup are open; everything else, the live WebSocket included, waits for 2FA.
     if (path === '/ws') return null; // refused like a signed-out socket (the upgrade handler cannot take a throw)
@@ -473,6 +474,7 @@ class Auth {
       createdAt: user.createdAt,
       lastLogin: user.lastLogin || null,
       twoFactor: Boolean(user.totp?.secret),
+      passkeys: require('../features/passkeys').publicList(user),
       recoveryCodesLeft: user.totp ? (user.totp.recovery || []).length : undefined,
       quota: user.role === 'admin' ? null : require('../features/quotas').quotaFor(user),
       identities: Object.fromEntries(Object.entries(user.identities || {}).map(([p, i]) => [p, i.name || i.id])),
