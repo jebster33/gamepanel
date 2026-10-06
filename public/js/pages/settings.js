@@ -112,6 +112,11 @@ export async function renderSettings(view) {
       <div id="tls-body"><span class="spinner"></span></div>
     </div>
 
+    <div class="card mb-16" id="sftp">
+      <div class="card-head"><h4>SFTP</h4><div class="spacer"></div><label class="switch"><input type="checkbox" id="sftp-on" /><i></i></label></div>
+      <div id="sftp-body"><span class="spinner"></span></div>
+    </div>
+
     <div class="card mb-16" id="backup-checks">
       <h4>Backup checks</h4>
       <div class="faint" style="margin-bottom:12px">A backup you have never restored is a guess. A check unpacks it into a scratch folder and makes sure every file came back.</div>
@@ -315,6 +320,7 @@ export async function renderSettings(view) {
   });
 
   renderHttps();
+  renderSftp();
 
   $('#s-bpass-save').addEventListener('click', async (event) => {
     const btn = event.currentTarget;
@@ -966,4 +972,37 @@ async function renderHttps() {
     renderHttps();
     setTimeout(poll, 1500);
   };
+}
+
+/* ------------------------------------------------------------------ SFTP */
+
+async function renderSftp() {
+  const body = $('#sftp-body');
+  if (!body) return;
+  const st = await api('/api/settings/sftp').catch((err) => ({ error: err.message }));
+  if (!body.isConnected) return;
+  if (st.error) {
+    body.innerHTML = `<span class="faint">${esc(st.error)}</span>`;
+    return;
+  }
+  $('#sftp-on').checked = st.settings.enabled;
+  body.innerHTML = `
+    <div class="faint" style="margin-bottom:12px">FileZilla, WinSCP and other SFTP apps sign in with panel accounts (and the authenticator code, for accounts that have one) and see the server folders each account may browse. Changing files needs "Upload, edit and delete files". There is no shell: SFTP only.</div>
+    ${st.listening ? `<div class="filter-note mb-16">${icon('check', 12)} Listening on port ${st.listening}. Host key <span class="mono">${esc(st.fingerprint || '')}</span></div>` : ''}
+    <div class="row" style="gap:8px;align-items:flex-end">
+      <label class="field" style="margin:0;width:140px"><span>Port</span><input type="number" id="sftp-port" min="1" max="65535" value="${st.settings.port}" /></label>
+      <button class="btn" id="sftp-save">Save</button>
+    </div>
+    <div class="hint">Open this port on the firewall (or router) to use it from elsewhere. Usernames: <span class="mono">alice</span> for every server, or <span class="mono">alice.&lt;server id&gt;</span> for one.</div>`;
+  const save = async () => {
+    try {
+      await api('/api/settings/sftp', { method: 'PUT', body: { enabled: $('#sftp-on').checked, port: Number($('#sftp-port').value) } });
+      toast($('#sftp-on').checked ? 'SFTP is on' : 'SFTP is off');
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+    renderSftp();
+  };
+  $('#sftp-on').onchange = save;
+  $('#sftp-save').onclick = save;
 }

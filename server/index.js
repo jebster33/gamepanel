@@ -261,6 +261,9 @@ async function main() {
 
   logger.info(`GamePanel ${VERSION} listening on http://${config.host}:${config.port}`);
   await httpsFeature.start(store, handleRequest, handleUpgrade);
+  require('./features/sftp')
+    .start({ store, auth, manager })
+    .catch((err) => logger.warn(`SFTP did not start: ${err.message}`));
   logger.info(`Host: ${describeHost()} — data in ${config.dataDir}`);
   if (auth.needsSetup()) logger.info('No users yet — open the panel in a browser to create the first administrator.');
 

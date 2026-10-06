@@ -180,6 +180,30 @@ module.exports = (router, { store, auth, manager, hostMetrics, notifier, bridge 
     return httpsFeature.status(store);
   });
 
+  /* --------------------------------------------------------------- SFTP -- */
+
+  const sftp = require('../../features/sftp');
+  /** For the Files tab: whether SFTP is on, and where. */
+  router.get('/api/sftp', () => {
+    const st = sftp.status(store);
+    return { enabled: Boolean(st.listening), port: st.listening, fingerprint: st.fingerprint };
+  });
+  router.get('/api/settings/sftp', ({ user }) => {
+    requireAdmin(user);
+    return sftp.status(store);
+  });
+  router.put('/api/settings/sftp', async ({ user, body }) => {
+    requireAdmin(user);
+    try {
+      sftp.update(store, body || {});
+      await sftp.start({ store, auth, manager });
+    } catch (err) {
+      fail(400, err.message);
+    }
+    store.addEvent('panel.settings', `${user.username} ${store.state.settings.sftp.enabled ? 'turned on' : 'turned off'} SFTP`);
+    return sftp.status(store);
+  });
+
   router.post('/api/settings/notifications/test', async ({ user, body }) => {
     requireAdmin(user);
     try {
