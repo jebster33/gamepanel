@@ -145,8 +145,20 @@ module.exports = (router, { store, manager, scheduler }, { requireAdmin, require
     // An empty URL with keep:true changes only the switches on the webhook already saved.
     const webhook = String(body?.webhook || '').trim() || (body?.keep ? server.discordFeed?.webhook || '' : '');
     if (webhook && !/^https:\/\/(?:[a-z]+\.)?(?:discord|discordapp)\.com\/api\/webhooks\//.test(webhook)) fail(400, 'Paste a Discord webhook URL (Channel settings, Integrations, Webhooks)');
-    server.discordFeed = webhook ? { webhook, chat: body.chat !== false, joins: body.joins !== false, status: body.status !== false } : undefined;
+    const before = server.discordFeed;
+    let channelId = webhook && webhook === before?.webhook ? before.channelId : undefined;
+    if (webhook && body.fromDiscord && !channelId) {
+      // The webhook knows its own channel, so Discord → game needs nothing else pasted.
+      const info = await fetch(webhook, { signal: AbortSignal.timeout(10_000) })
+        .then((r) => (r.ok ? r.json() : null))
+        .catch(() => null);
+      if (!/^\d+$/.test(String(info?.channel_id || ''))) fail(400, 'Discord did not recognise that webhook');
+      channelId = String(info.channel_id);
+    }
+    server.discordFeed = webhook ? { webhook, chat: body.chat !== false, joins: body.joins !== false, status: body.status !== false, fromDiscord: Boolean(body.fromDiscord), channelId } : undefined;
     store.save();
+    // The bot only asks Discord for message content while some server wants it.
+    if (Boolean(before?.fromDiscord) !== Boolean(server.discordFeed?.fromDiscord)) require('../../features/discord-bot').init({ store, manager }).reload();
     if (webhook && body.test) {
       try {
         await require('../../features/discord-feed').post(webhook, { content: `✅ ${server.name} is connected to this channel.`, username: server.name.slice(0, 80) });
@@ -154,7 +166,7 @@ module.exports = (router, { store, manager, scheduler }, { requireAdmin, require
         fail(400, `Discord did not accept the message: ${err.message}`);
       }
     }
-    return { discordFeed: server.discordFeed ? { ...server.discordFeed, webhook: undefined, connected: true } : null };
+    return { discordFeed: server.discordFeed ? { ...server.discordFeed, webhook: undefined, channelId: undefined, connected: true } : null };
   });
 
   /** The whole server as one archive another panel can import. */

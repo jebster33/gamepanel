@@ -62,7 +62,7 @@ PUT    /api/servers/:id/announcements    {"enabled","every","messages","welcome?
 GET    /api/servers/:id/logs             ?q= search logs/ (gzipped days too), ?file= read one
 PUT    /api/servers/:id/maintenance      {"enabled","message?"} whitelist on, kick non-ops, MOTD
 PUT    /api/players/:name/note           {"note","watch"} staff note; watch = alert on join
-PUT    /api/servers/:id/discord-feed      {"webhook","chat","joins","status","test?"} chat relay to a channel
+PUT    /api/servers/:id/discord-feed      {"webhook","chat","joins","status","fromDiscord","test?"} chat relay to a channel and back
 POST   /api/system/panel-backup          {"password"} accounts, settings, keys, player history as .tar.gz (admins)
 GET    /api/servers/:id/export           whole server as .tar.gz with gamepanel-server.json (admins)
 GET    /api/servers/:id/diagnose         crash doctor findings

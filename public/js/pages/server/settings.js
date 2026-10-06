@@ -79,7 +79,9 @@ export function renderServerSettingsTab(host, server) {
         <div class="checkbox-row" style="margin:0"><input type="checkbox" id="feed-chat" ${server.discordFeed?.chat === false ? '' : 'checked'} /><label for="feed-chat">Chat</label></div>
         <div class="checkbox-row" style="margin:0"><input type="checkbox" id="feed-joins" ${server.discordFeed?.joins === false ? '' : 'checked'} /><label for="feed-joins">Joins and leaves</label></div>
         <div class="checkbox-row" style="margin:0"><input type="checkbox" id="feed-status" ${server.discordFeed?.status === false ? '' : 'checked'} /><label for="feed-status">Online, stopped, crashed</label></div>
+        <div class="checkbox-row" style="margin:0"><input type="checkbox" id="feed-in" ${server.discordFeed?.fromDiscord ? 'checked' : ''} /><label for="feed-in">Messages in the channel show up in game</label></div>
       </div>
+      <div class="hint">Discord to game uses the panel's Discord bot (panel Settings), which must be in that Discord server with Message Content Intent turned on.</div>
       <div class="row mt-16" style="gap:8px">
         <button class="btn" id="feed-save">${server.discordFeed?.connected ? 'Save' : 'Save and send a test'}</button>
         ${server.discordFeed ? '<button class="btn btn-ghost" id="feed-off">Disconnect</button>' : ''}
@@ -145,7 +147,7 @@ export function renderServerSettingsTab(host, server) {
     try {
       const { discordFeed } = await api(`/api/servers/${server.id}/discord-feed`, {
         method: 'PUT',
-        body: { webhook, keep: webhook !== '' || !btn.matches('#feed-off'), chat: $('#feed-chat').checked, joins: $('#feed-joins').checked, status: $('#feed-status').checked, test: Boolean(webhook) || !server.discordFeed?.connected },
+        body: { webhook, keep: webhook !== '' || !btn.matches('#feed-off'), chat: $('#feed-chat').checked, joins: $('#feed-joins').checked, status: $('#feed-status').checked, fromDiscord: $('#feed-in').checked, test: Boolean(webhook) || !server.discordFeed?.connected },
       });
       server.discordFeed = discordFeed || undefined;
       toast(webhook ? 'Connected. Check the channel for a test message.' : 'Disconnected from Discord');

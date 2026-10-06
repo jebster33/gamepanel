@@ -46,11 +46,13 @@ class DiscordBot {
 
   status() {
     const s = this.settings;
-    return { ...this.state, configured: Boolean(s.token), controllers: s.controllers || '', invite: this.state.appId ? `https://discord.com/oauth2/authorize?client_id=${this.state.appId}&scope=bot%20applications.commands&permissions=0` : null };
+    const notice = this.noContent ? 'Discord chat into the game is off: turn on Message Content Intent on the Bot page of the Discord developer portal, then save the bot again.' : null;
+    return { ...this.state, notice, configured: Boolean(s.token), controllers: s.controllers || '', invite: this.state.appId ? `https://discord.com/oauth2/authorize?client_id=${this.state.appId}&scope=bot%20applications.commands&permissions=0` : null };
   }
 
   reload() {
     this.stop();
+    this.noContent = false;
     if (!this.settings.token) return;
     if (typeof WebSocket !== 'function') {
       this.state = { status: 'error', error: 'The Discord bot needs Node.js 22 or newer.' };
@@ -82,6 +84,13 @@ class DiscordBot {
     ws.onmessage = (event) => this.onPayload(JSON.parse(event.data)).catch((err) => logger.debug(`Discord bot: ${err.message}`));
     ws.onclose = (event) => {
       clearInterval(this.timer);
+      // Discord → game chat needs the privileged Message Content intent; without
+      // it, carry on with slash commands only and say what to switch on.
+      if (event.code === 4014 && this.asked) {
+        this.noContent = true;
+        this.reconnectTimer = setTimeout(() => this.connect(), 1000);
+        return;
+      }
       // 4004: bad token. 4014: intents not allowed. Neither gets better by retrying.
       if ([4004, 4010, 4011, 4012, 4013, 4014].includes(event.code)) {
         this.state = { status: 'error', error: event.code === 4004 ? 'Discord rejected the bot token' : `Discord closed the connection (${event.code})` };
@@ -93,6 +102,34 @@ class DiscordBot {
     };
   }
 
+  /** Guild messages + message content, only while a server relays Discord chat into the game. */
+  intents() {
+    this.asked = !this.noContent && this.manager.servers.some((s) => s.discordFeed?.fromDiscord && s.discordFeed.channelId);
+    return this.asked ? (1 << 9) | (1 << 15) : 0;
+  }
+
+  /** A message in a channel some server's feed posts to: say it in that game's chat. */
+  async onMessage(d) {
+    if (d.webhook_id || d.author?.bot) return;
+    const text = String(d.content || '').replace(/[\r\n]+/g, ' ').trim().slice(0, 200);
+    if (!text) return;
+    const who = String(d.member?.nick || d.author?.global_name || d.author?.username || 'someone').replace(/[\r\n"]/g, '').slice(0, 32);
+    const players = require('../games/players');
+    for (const s of this.manager.servers) {
+      if (!s.discordFeed?.fromDiscord || s.discordFeed.channelId !== d.channel_id || !this.manager.isActive(s.id)) continue;
+      const template = this.manager.template(s);
+      let command;
+      if (template?.query?.type === 'minecraft' && template.id !== 'minecraft-bedrock') {
+        command = `tellraw @a ${JSON.stringify([{ text: '[Discord] ', color: 'blue' }, { text: `${who}: `, color: 'aqua' }, { text, color: 'white' }])}`;
+      } else {
+        const line = players.broadcastCommand(template);
+        if (!line) continue;
+        command = line.replace('{msg}', `[Discord] ${who}: ${text}`.replace(/"/g, "'"));
+      }
+      await this.manager.sendCommand(s.id, command).catch(() => {});
+    }
+  }
+
   send(op, d) {
     if (this.ws?.readyState === 1) this.ws.send(JSON.stringify({ op, d }));
   }
@@ -102,7 +139,7 @@ class DiscordBot {
     if (op === 10) {
       clearInterval(this.timer);
       this.timer = setInterval(() => this.send(1, this.seq), d.heartbeat_interval);
-      this.send(2, { token: this.settings.token, intents: 0, properties: { os: process.platform, browser: 'gamepanel', device: 'gamepanel' } });
+      this.send(2, { token: this.settings.token, intents: this.intents(), properties: { os: process.platform, browser: 'gamepanel', device: 'gamepanel' } });
     } else if (op === 1) {
       this.send(1, this.seq);
     } else if (op === 7 || op === 9) {
@@ -116,6 +153,8 @@ class DiscordBot {
       logger.info(`Discord bot online as ${d.user.username}`);
     } else if (op === 0 && t === 'INTERACTION_CREATE') {
       await this.onInteraction(d);
+    } else if (op === 0 && t === 'MESSAGE_CREATE') {
+      await this.onMessage(d);
     }
   }
 

@@ -540,7 +540,7 @@ async function renderDiscordBot() {
   host.classList.remove('faint');
   host.innerHTML = `
     <p class="faint" style="margin:0 0 12px">Lets your Discord use <span class="mono">/status</span>, <span class="mono">/players</span>, <span class="mono">/whois</span>, <span class="mono">/start</span>, <span class="mono">/stop</span> and <span class="mono">/restart</span>. It connects out to Discord, so no port needs opening.</p>
-    <div style="margin-bottom:12px">${pill}${st.error ? ` <span class="faint">${esc(st.error)}</span>` : ''}${st.invite ? ` <a href="${esc(st.invite)}" target="_blank" rel="noopener">Add the bot to your Discord</a>` : ''}</div>
+    <div style="margin-bottom:12px">${pill}${st.error ? ` <span class="faint">${esc(st.error)}</span>` : ''}${st.notice ? ` <span class="faint">${esc(st.notice)}</span>` : ''}${st.invite ? ` <a href="${esc(st.invite)}" target="_blank" rel="noopener">Add the bot to your Discord</a>` : ''}</div>
     <div class="form-grid">
       <label><span>Bot token</span><input id="db-token" type="password" placeholder="${st.configured ? 'Saved (leave empty to keep)' : 'From discord.com/developers'}" autocomplete="off" /></label>
       <label><span>Who can start/stop (Discord user IDs)</span><input id="db-controllers" value="${esc(st.controllers)}" placeholder="123456789012345678, …" /></label>

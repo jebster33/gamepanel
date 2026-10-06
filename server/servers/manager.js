@@ -287,7 +287,7 @@ class ServerManager extends EventEmitter {
       playerList: rt.playerList,
       tps: rt.tps ?? null,
       // The webhook URL lets anyone post to that channel: only say whether one is set.
-      discordFeed: server.discordFeed ? { ...server.discordFeed, webhook: undefined, connected: true } : undefined,
+      discordFeed: server.discordFeed ? { ...server.discordFeed, webhook: undefined, channelId: undefined, connected: true } : undefined,
       playerDetails: playerDetails(rt),
       playerCommands: Object.keys(playerCommands(tpl)),
       playerLists: Object.keys(listsFor(tpl) || {}),
