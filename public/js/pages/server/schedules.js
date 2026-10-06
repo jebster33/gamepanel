@@ -17,6 +17,7 @@ const ACTIONS = [
   ['start', 'Start the server'],
   ['stop', 'Stop the server'],
   ['update', 'Update the game (while stopped)'],
+  ['mods', 'Update mods and plugins'],
 ];
 
 const PRESETS = [

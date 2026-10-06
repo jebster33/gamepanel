@@ -6,13 +6,13 @@
  * ("minute hour day month weekday") in the panel host's local time.
  *
  * A schedule: { id, name, cron, action, command?, enabled, lastRun, lastResult }
- * Actions: restart, start, stop, backup, command, update.
+ * Actions: restart, start, stop, backup, command, update, mods (update mods/plugins).
  */
 
 const { logger, uid, fail } = require('../core/util');
 const backups = require('./backups');
 
-const ACTIONS = ['restart', 'start', 'stop', 'backup', 'command', 'update'];
+const ACTIONS = ['restart', 'start', 'stop', 'backup', 'command', 'update', 'mods'];
 
 const FIELDS = [
   { name: 'minute', min: 0, max: 59 },
@@ -205,6 +205,27 @@ class Scheduler {
               if (!r.ok) throw new Error(r.error);
             }
             break;
+          case 'mods': {
+            // Takes effect on the next restart, so pair it with a restart schedule.
+            const mods = require('./mods');
+            const template = m.template(server);
+            if (!template?.mods) {
+              result = 'skipped (no mod support)';
+              break;
+            }
+            const keys = this.store.state.settings.integrations || {};
+            const liveVersion = m.rt?.(server.id)?.version;
+            const { updates } = await mods.checkUpdates(server, template, keys, { liveVersion });
+            const picked = updates.filter((u) => !u.fromPack).map((u) => u.key);
+            if (!picked.length) {
+              result = 'nothing to update';
+              break;
+            }
+            const r = await mods.update(server, template, picked, keys, { liveVersion, manager: m, integrations: keys });
+            result = `updated ${r.updated.length}${r.failed.length ? `, ${r.failed.length} failed` : ''}`;
+            if (r.updated.length) this.store.addEvent('mod.updated', `${r.updated.length} mod(s) updated on ${server.name} by a schedule`, { serverId: server.id });
+            break;
+          }
           case 'backup': {
             const backup = await backups.create(server, 'auto');
             const pruned = backups.prune(server.id, server.backupRetention);
