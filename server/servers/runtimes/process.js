@@ -17,10 +17,18 @@ const { isWindows, spawnShell, signalTree, killTree, exe } = require('../../core
 function privateJavaHome(server, vars) {
   // A version number, never a path: "../../somewhere" must not pick the java that runs.
   const version = /^\d{1,3}$/.test(String(vars.JAVA_VERSION)) ? String(vars.JAVA_VERSION) : '21';
+  // The Java the installer chose (gp_pin_java), when it is still there.
+  let pinned = null;
+  try {
+    pinned = fs.readFileSync(path.join(server.dir, '.gamepanel', 'java-home'), 'utf8').trim() || null;
+  } catch {
+    pinned = null;
+  }
   const candidates = [
     server.javaHome,
     path.join(config.toolsDir, `java-${version}`),
     path.join(server.dir, '.java'),
+    pinned && path.isAbsolute(pinned) ? pinned : null,
   ].filter(Boolean);
   for (const home of candidates) {
     if (fs.existsSync(path.join(home, 'bin', exe('java')))) return home;

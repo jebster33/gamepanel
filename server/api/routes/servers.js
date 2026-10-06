@@ -67,6 +67,25 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
     return require('../../features/move').start({ manager, store }, { serverId: String(body?.serverId || ''), to: String(body?.to || ''), keepSource: Boolean(body?.keepSource) }, user);
   });
 
+  /** Minecraft networks: a Velocity proxy in front of Paper/Purpur servers. */
+  const networks = require('../../features/networks');
+  router.get('/api/networks', ({ user }) => {
+    requireAdmin(user);
+    return networks.list(manager, store);
+  });
+  router.post('/api/networks', ({ user, body }) => {
+    requireAdmin(user);
+    return networks.create(manager, store, body || {}, user);
+  });
+  router.put('/api/networks/:id', ({ user, params, body }) => {
+    requireAdmin(user);
+    return networks.update(manager, store, params.id, body || {});
+  });
+  router.delete('/api/networks/:id', ({ user, params }) => {
+    requireAdmin(user);
+    return networks.remove(manager, store, params.id);
+  });
+
   /** Servers other panels (Pterodactyl, AMP, LinuxGSM) left on this machine, ready to import. */
   router.get('/api/import/scan', ({ user }) => {
     requireAdmin(user);

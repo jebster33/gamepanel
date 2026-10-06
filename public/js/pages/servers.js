@@ -121,7 +121,7 @@ export function renderServers(view) {
       <div class="spacer"></div>
       ${can('power') && state.servers.length > 1 ? '<button class="btn btn-ghost" id="start-all" title="Start every installed server that is stopped">Start all</button><button class="btn btn-ghost" id="stop-all" title="Stop every running server">Stop all</button>' : ''}
       ${can('command') && state.servers.length ? '<button class="btn" id="broadcast-all" title="Say something in the chat of every running server">Message all</button>' : ''}
-      ${state.user.role === 'admin' ? '<button class="btn" data-import>Import existing</button><a class="btn btn-primary" href="#/templates">New server</a>' : ''}
+      ${state.user.role === 'admin' ? '<a class="btn btn-ghost" href="#/networks" title="Velocity proxy networks">Networks</a><button class="btn" data-import>Import existing</button><a class="btn btn-primary" href="#/templates">New server</a>' : ''}
     </div>
     <div class="batch-bar hidden" id="batch-bar">
       <b id="batch-count"></b>

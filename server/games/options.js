@@ -70,6 +70,16 @@ const PROVIDERS = {
     };
   },
 
+  /** Velocity proxy releases. */
+  'velocity-version': async () => {
+    const data = await getJson('https://fill.papermc.io/v3/projects/velocity');
+    const stable = Object.values(data.versions || {})
+      .flat()
+      .filter((v) => !isPrerelease(v))
+      .sort(compareVersions);
+    return { options: stable.slice(0, 30).map((v) => ({ value: v, label: v, recommended: v === stable[0] })), recommended: stable[0] };
+  },
+
   /** Fabric's stable game versions. */
   'fabric-game-version': async () => {
     const data = await getJson('https://meta.fabricmc.net/v2/versions/game');

@@ -12,6 +12,7 @@ import { renderSettings } from '../pages/settings.js';
 import { renderTemplates } from '../pages/templates.js';
 import { renderAudit } from '../pages/audit.js';
 import { renderBans } from '../pages/bans.js';
+import { renderNetworks } from '../pages/networks.js';
 import { renderUsers } from '../pages/users.js';
 import { closeSidebar, renderSidebarServers } from '../ui/sidebar.js';
 
@@ -29,6 +30,7 @@ const ROUTES = [
   { pattern: /^\/activity$/, name: 'activity', page: renderActivity },
   { pattern: /^\/audit$/, name: 'audit', page: renderAudit },
   { pattern: /^\/bans$/, name: 'bans', page: renderBans },
+  { pattern: /^\/networks$/, name: 'networks', page: renderNetworks },
   { pattern: /^\/nodes$/, name: 'nodes', page: renderNodes },
   { pattern: /^\/account$/, name: 'account', page: renderAccount },
   { pattern: /^\/users$/, name: 'users', page: renderUsers },
