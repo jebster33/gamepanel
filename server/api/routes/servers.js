@@ -25,8 +25,10 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
       // The same rules as a sub-user's edits (servers/untrusted.js), measured against the template's defaults.
       const defaults = Object.fromEntries((template.variables || []).map((v) => [v.name, v.default ?? '']));
       require('../../servers/untrusted').checkPatch(template, { name: body.name, vars: body.vars || {} }, { name: '', vars: defaults });
-      quotas.checkCreate(manager, user, Number(body.memory) || Number(template.defaultMemory) || 2048);
-      server = manager.create({ templateId: body.templateId, name: body.name, memory: body.memory, maxPlayers: body.maxPlayers, autoStart: body.autoStart, autoRestart: body.autoRestart, vars: body.vars, ports: body.ports }, user);
+      const memory = Number(body.memory) > 0 ? Math.max(256, Math.round(Number(body.memory))) : Number(template.defaultMemory) || 2048;
+      quotas.checkCreate(manager, user, memory);
+      // The panel picks the ports: a self-service account cannot ask for 22 or 3306.
+      server = manager.create({ templateId: body.templateId, name: body.name, memory, maxPlayers: body.maxPlayers, autoStart: body.autoStart, autoRestart: body.autoRestart, vars: body.vars }, user);
       server.ownerId = user.id;
       const record = store.state.users.find((u) => u.id === user.id);
       record.servers = [...new Set([...(record.servers || []), server.id])];
@@ -335,8 +337,9 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
   });
 
   /** The whole server as one archive another panel can import. */
-  router.get('/api/servers/:id/export', async ({ user, params, res, url }) => {
+  router.get('/api/servers/:id/export', async ({ user, params, res, url, req }) => {
     requireAdmin(user);
+    if (req.gpApiKey?.readOnly && url.searchParams.get('move') === '1') fail(403, 'A read-only API key cannot export the secret variables');
     // ?move=1 (a move to another node) carries secret variables in the clear; administrators only, as above.
     await manager.exportServer(serverFor(user, params.id, 'files'), res, { forMove: url.searchParams.get('move') === '1' });
     return undefined;
@@ -675,9 +678,12 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
   });
 
   // A schedule does its action later on the user's behalf, so it needs the same permission.
-  const SCHEDULE_CAPS = { command: 'command', backup: 'backups', mods: 'mods', start: 'power', stop: 'power', restart: 'power', update: 'power' };
+  // A wipe deletes saves, so it needs what the direct wipe does; an action not listed here is administrators only.
+  const SCHEDULE_CAPS = { command: ['command'], backup: ['backups'], mods: ['mods'], start: ['power'], stop: ['power'], restart: ['power'], update: ['power'], wipe: ['files.write', 'power'] };
   const requireScheduleCap = (user, server, action) => {
-    if (SCHEDULE_CAPS[action]) requireCap(user, SCHEDULE_CAPS[action], server.id);
+    if (!SCHEDULE_CAPS[action]) return requireAdmin(user);
+    for (const cap of SCHEDULE_CAPS[action]) requireCap(user, cap, server.id);
+    return undefined;
   };
 
   router.post('/api/servers/:id/schedules', ({ user, params, body }) => {

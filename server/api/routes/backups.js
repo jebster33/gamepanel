@@ -62,7 +62,14 @@ module.exports = (router, { store, manager }, { requireAdmin, requireCap, server
       store.addEvent('backup.failed', `Backup of ${server.name} failed: ${err.message}`, { serverId: server.id });
       throw err;
     }
-    const pruned = backups.prune(server.id, server.backupRetention);
+    // Pruning deletes older backups: only for people who are allowed to delete them.
+    let mayDelete = true;
+    try {
+      requireCap(user, 'backups.restore', server.id);
+    } catch {
+      mayDelete = false;
+    }
+    const pruned = mayDelete ? backups.prune(server.id, server.backupRetention) : [];
     store.addEvent('backup.created', `Backup created for ${server.name}`, { serverId: server.id, backup: backup.name });
     return { backup, pruned };
   });

@@ -411,7 +411,7 @@ class ServerManager extends EventEmitter {
       ip: input.ip || '0.0.0.0',
       ports: this.assignPorts(template, input.ports || {}),
       vars,
-      memory: Number(input.memory) || Number(template.defaultMemory) || 2048,
+      memory: Number(input.memory) > 0 ? Math.max(256, Math.round(Number(input.memory))) : Number(template.defaultMemory) || 2048,
       cpuLimit: Number(input.cpuLimit) || 0,
       maxPlayers: Number(input.maxPlayers) || Number(vars.MAX_PLAYERS) || 20,
       autoStart: input.autoStart !== false,
@@ -480,6 +480,9 @@ class ServerManager extends EventEmitter {
       for (const [name, value] of Object.entries(patch.ports)) {
         const port = Number(value);
         if (!Number.isInteger(port) || port < 1 || port > 65535) fail(400, `Invalid port for ${name}`);
+        // Ports can be opened in the firewall and on the router: a non-administrator may only move this
+        // server's own ports among unprivileged ones, never name a new one or take 22, 3306…
+        if (!trusted && (!Object.prototype.hasOwnProperty.call(server.ports, name) || port < 1024)) fail(403, 'Only administrators can use that port');
         if (used.has(port)) fail(409, `Port ${port} is already used by another server`);
         server.ports[name] = port;
       }

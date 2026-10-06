@@ -317,6 +317,8 @@ module.exports = {
       } else {
         value = String(raw ?? '');
         if (/[\r\n]/.test(value)) fail(400, `${field.label} must be on one line`);
+        // The world folder is a name inside the server, never a path: ../other-server/world would load someone else's.
+        if (key === 'level-name' && (/[\\/]/.test(value) || value === '.' || value === '..' || /^[A-Za-z]:/.test(value))) fail(400, `${field.label} must be a folder name, not a path`);
         if (field.type === 'select') {
           const allowed = field.options.map((o) => String(typeof o === 'object' ? o.value : o));
           if (!allowed.includes(value)) fail(400, `${field.label} must be one of: ${allowed.join(', ')}`);

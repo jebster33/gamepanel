@@ -137,6 +137,9 @@ const hashKey = (key) => crypto.createHash('sha256').update(String(key)).digest(
 /** A request's path the way the router matches it: empty segments dropped. */
 const routePath = (url) => `/${new URL(url, 'http://localhost').pathname.split('/').filter(Boolean).join('/')}`;
 
+/** Routes that change accounts, keys, 2FA or who can reach a server: a person signed in, never an API key. */
+const isAccountRoute = (url) => /^\/api\/(auth|users)(\/|$)|^\/api\/servers\/[^/]+\/access(\/|$)/.test(routePath(url));
+
 const publicKey = (k) => ({ id: k.id, name: k.name, readOnly: k.readOnly, prefix: k.prefix, createdAt: k.createdAt, lastUsed: k.lastUsed });
 
 class Auth {
@@ -410,8 +413,7 @@ class Auth {
     if (token && token.startsWith('gp_')) {
       // Account changes (passwords, 2FA, keys, users, sub-users) need a person signed in, not a script.
       // Checked on the path as the router sees it: it skips empty segments, so /api//auth is /api/auth.
-      const path = routePath(req.url);
-      if (req.method !== 'GET' && /^\/api\/(auth|users)(\/|$)|^\/api\/servers\/[^/]+\/access(\/|$)/.test(path)) return null;
+      if (req.method !== 'GET' && isAccountRoute(req.url)) return null;
       const user = this.requireTwoFactor(this.userFromApiKey(token, req.method), req);
       // Remembered on the request, so the WebSocket and account linking can tell a script from a person.
       if (user) req.gpApiKey = { readOnly: this.apiKeyIsReadOnly(token) };
@@ -587,6 +589,7 @@ function sanitizePermissions(list) {
 }
 
 module.exports = {
+  isAccountRoute,
   Auth,
   hashPassword,
   verifyPassword,
