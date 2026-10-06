@@ -4016,3 +4016,45 @@ pre.code-block {
     grid-column: 1 / -1;
   }
 }
+.advice-list {
+  display: grid;
+  gap: 2px;
+}
+.advice {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  gap: 4px 12px;
+  align-items: start;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+  font-size: 13.5px;
+}
+.advice:first-child {
+  border-top: 0;
+}
+.advice .faint {
+  margin-top: 2px;
+  line-height: 1.5;
+}
+.advice .btn {
+  flex: none;
+}
+.advice-icon {
+  text-align: center;
+}
+.advice.warn .advice-icon {
+  color: var(--warning, #f5a524);
+}
+.advice.good .advice-icon {
+  color: var(--lime);
+}
+@media (max-width: 600px) {
+  .advice {
+    grid-template-columns: 22px minmax(0, 1fr);
+  }
+  .advice .btn {
+    grid-column: 2;
+    justify-self: start;
+    margin-top: 6px;
+  }
+}

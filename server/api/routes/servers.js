@@ -379,6 +379,13 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
     return manager.pregen(server.id, { action: String(body?.action || ''), radius: body?.radius }, user);
   });
 
+  /** Memory and settings advice, and applying one piece of it. */
+  router.get('/api/servers/:id/advice', ({ user, params }) => require('../../features/advice').advise(manager, serverFor(user, params.id)));
+  router.post('/api/servers/:id/advice/:adviceId/apply', ({ user, params }) => {
+    requireAdmin(user);
+    return require('../../features/advice').apply(manager, store, serverFor(user, params.id), params.adviceId, user.username);
+  });
+
   /** Datapacks in the loaded world (Minecraft Java). */
   const datapacks = require('../../features/datapacks');
   router.get('/api/servers/:id/datapacks', ({ user, params }) => datapacks.list(manager, serverFor(user, params.id, 'mods')));
