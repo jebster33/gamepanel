@@ -186,8 +186,8 @@ async function main() {
   step('starting the panel');
   let panel = await startPanel();
 
-  await api('POST', '/api/setup', { username: 'admin', password: 'admin-password' });
-  TOKEN = (await api('POST', '/api/auth/login', { username: 'admin', password: 'admin-password' })).token;
+  await api('POST', '/api/setup', { username: 'admin', password: 'Correct-Horse-42' });
+  TOKEN = (await api('POST', '/api/auth/login', { username: 'admin', password: 'Correct-Horse-42' })).token;
 
   step('tunnel is closed while the bridge is off');
   assert.strictEqual(await upgradeStatus(port), 404, 'tunnel must not answer while off');
@@ -209,10 +209,11 @@ async function main() {
   fs.writeFileSync(exe, await api('GET', `/api/bridge/connections/${id}/client?platform=${PLATFORM}`), { mode: 0o755 });
 
   step('first launch sets the password');
-  let c = client(exe, 'short\nhunter2222\nhunter2222\n');
+  let c = client(exe, 'short\npassword123\npassword123\nhunter2222\nhunter2222\n');
   await c.waitFor('Choose a password');
   await c.waitFor(`127.0.0.1:${localUdp}`);
   assert.ok(c.out.includes('shorter than 8'), 'short passwords are refused');
+  assert.ok(c.out.includes('attackers try'), 'common passwords are refused');
   let conn = (await api('GET', '/api/bridge')).connections[0];
   assert.strictEqual(conn.passwordSet, true);
   assert.strictEqual(conn.online, true);

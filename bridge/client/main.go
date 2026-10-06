@@ -157,6 +157,10 @@ func signIn(cfg *config, d *dialer) (string, error) {
 			a, err := d.call(map[string]any{"op": "set-password", "password": pw, "device": device})
 			if err != nil {
 				var pe *panelError
+				if errors.As(err, &pe) && pe.Code == "weak-password" {
+					warnf("%s", pe.Message)
+					continue
+				}
 				if errors.As(err, &pe) && pe.Code == "exists" {
 					// Someone (probably you, on another computer) just set it.
 					return signInWithPassword(cfg, d, device)

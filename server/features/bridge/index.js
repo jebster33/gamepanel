@@ -33,7 +33,7 @@ const path = require('path');
 const tls = require('tls');
 const { config } = require('../../core/config');
 const { logger, uid, fail } = require('../../core/util');
-const { hashPassword, verifyPassword } = require('../../core/auth');
+const { hashPassword, verifyPassword, checkPasswordStrength } = require('../../core/auth');
 const { serverPorts } = require('../network');
 const { loadIdentity } = require('./identity');
 const { acceptUpgrade, WsStream } = require('./wsstream');
@@ -401,7 +401,12 @@ class Bridge {
       case 'set-password': {
         if (conn.password) return reject(socket, 'exists', 'This account already has a password. Sign in instead.');
         const password = String(req.password || '');
-        if (password.length < 8 || password.length > 256) return reject(socket, 'weak-password', 'The password must be 8 to 256 characters');
+        // Same rules as panel passwords.
+        try {
+          checkPasswordStrength(password, conn.username);
+        } catch (err) {
+          return reject(socket, 'weak-password', err.message);
+        }
         conn.password = hashPassword(password);
         const token = this.issueDevice(conn, req.device, ip);
         this.store.addEvent('bridge.password_set', `${conn.username} set their bridge password`, { ip });
