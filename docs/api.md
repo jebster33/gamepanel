@@ -39,7 +39,7 @@ GET    /api/servers/:id/schedules        scheduled tasks
 POST   /api/servers/:id/schedules        {"name","action","cron","command?"}
 GET    /api/servers/:id/backups          backups
 GET    /api/servers/:id/player-history   players, sessions, peaks
-GET    /api/servers/:id/activity         joins, leaves, chat, kicks (?types=&q=&before=)
+GET    /api/servers/:id/activity         joins, leaves, chat, kicks (?types=&q=&before=, &format=csv to download)
 GET    /api/servers/:id/player-lists     whitelist, ops, bans (Minecraft)
 POST   /api/servers/:id/player-lists     {"list","action":"add|remove","name"}
 GET    /api/servers/:id/version          version fields and server types

@@ -478,6 +478,7 @@ function renderActivity(box, server) {
     <div class="row mb-16" style="gap:6px">
       ${FILTERS.map(([id, label], i) => `<button class="chip ${i ? '' : 'active'}" data-filter="${id}">${label}</button>`).join('')}
       <input class="search-input" id="act-search" placeholder="Search names and chat…" />
+      <a class="btn btn-sm btn-ghost" id="act-csv" href="/api/servers/${esc(server.id)}/activity?format=csv" download title="Download what's shown as a spreadsheet">CSV</a>
     </div>
     <div class="card card-flush"><div class="act-list" id="act-list"></div></div>
     <div style="text-align:center;margin-top:12px"><button class="btn hidden" id="act-more">Load older</button></div>`;
@@ -487,6 +488,11 @@ function renderActivity(box, server) {
     if (filter[2]) qs.set('types', filter[2]);
     if (term) qs.set('q', term);
     if (before) qs.set('before', before);
+    const csv = new URLSearchParams(qs);
+    csv.delete('limit');
+    csv.delete('before');
+    csv.set('format', 'csv');
+    box.querySelector('#act-csv')?.setAttribute('href', `/api/servers/${server.id}/activity?${csv}`);
     return api(`/api/servers/${server.id}/activity?${qs}`);
   };
 

@@ -368,9 +368,20 @@ module.exports = (router, { store, manager, scheduler }, { requireAdmin, require
     return { note };
   });
 
-  router.get('/api/servers/:id/activity', ({ user, params, url }) => {
+  router.get('/api/servers/:id/activity', ({ user, params, url, res }) => {
     const qs = Object.fromEntries(url.searchParams);
     const server = serverFor(user, params.id, 'console');
+    if (qs.format === 'csv') {
+      // The whole log (or the filtered part) for a spreadsheet or an appeal.
+      const { entries } = manager.activityLog(server.id, { types: qs.types ? String(qs.types).split(',') : undefined, q: qs.q, limit: 200_000 });
+      // A leading = + - @ would run as a formula when the file is opened.
+      const cell = (v) => `"${String(v ?? '').replace(/^([=+\-@\t\r])/, "'$1").replace(/"/g, '""')}"`;
+      const rows = entries.reverse().map((e) => [new Date(e.t).toISOString(), e.type, e.name, e.text, e.by, e.dur ? Math.round(e.dur / 1000) : ''].map(cell).join(','));
+      const safe = server.name.replace(/[^\w.-]+/g, '-').slice(0, 40) || 'server';
+      res.writeHead(200, { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="${safe}-activity.csv"` });
+      res.end(['time,type,player,text,by,seconds', ...rows].join('\r\n'));
+      return;
+    }
     return manager.activityLog(server.id, {
       before: Number(qs.before) || undefined,
       types: qs.types ? String(qs.types).split(',') : undefined,
