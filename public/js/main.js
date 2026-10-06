@@ -179,8 +179,22 @@ window.addEventListener('resize', () => {
   if (state.route.name === 'server' && state.route.params.tab === 'metrics') drawServerCharts(state.route.params.id);
 });
 
-bootstrap().catch((err) => {
-  document.body.innerHTML = `<div class="empty"><h3>GamePanel could not start</h3><p>${esc(
-    err.message
-  )}</p></div>`;
-});
+// Back from Google/Discord/GitHub: an error to show, a code step, or a freshly linked account.
+const returned = new URLSearchParams(location.search);
+if (returned.has('oauth_error') || returned.has('oauth2fa') || returned.has('oauth_linked')) history.replaceState(null, '', `/${location.hash}`);
+
+bootstrap()
+  .then(() => {
+    if (returned.get('oauth2fa') && !state.user) showOtpStep(returned.get('oauth2fa'));
+    if (returned.get('oauth_error')) {
+      if (state.user) toast(returned.get('oauth_error'), 'error', 9000);
+      else {
+        $('#auth-error').textContent = returned.get('oauth_error');
+        $('#auth-error').classList.remove('hidden');
+      }
+    }
+    if (returned.get('oauth_linked') && state.user) toast(`${returned.get('oauth_linked')} linked. You can sign in with it from now on.`);
+  })
+  .catch((err) => {
+    document.body.innerHTML = `<div class="empty"><h3>GamePanel could not start</h3><p>${esc(err.message)}</p></div>`;
+  });

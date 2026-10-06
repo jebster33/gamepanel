@@ -3479,3 +3479,31 @@ tr.clickable:hover td {
   font-size: 13px;
   margin-bottom: 4px;
 }
+
+/* Sign in with Google / Discord / GitHub. */
+.oauth-buttons {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+.oauth-or {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--faint);
+}
+.oauth-or::before,
+.oauth-or::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+.oauth-btn {
+  height: 38px;
+}
+.oauth-provider {
+  padding: 12px 0;
+  border-top: 1px solid var(--border);
+}

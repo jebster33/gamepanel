@@ -3,7 +3,7 @@ import { copyToClipboard } from '../ui/clipboard.js';
 import { loadTemplates } from '../core/boot.js';
 import { setCrumbs } from '../core/router.js';
 import { state } from '../core/state.js';
-import { $, esc, fmtBytes, fmtDuration, fmtTime, toast } from '../core/util.js';
+import { $, esc, fmtBytes, fmtDuration, fmtTime, icon, toast } from '../core/util.js';
 import { confirmModal } from '../ui/modal.js';
 import { setBridgeNav } from '../ui/sidebar.js';
 
@@ -155,6 +155,15 @@ export async function renderSettings(view) {
         Works with Backblaze B2, Cloudflare R2, Amazon S3, Wasabi and MinIO. Use a key that can only reach this one bucket.
       </p>
       <div id="cloud-form" class="faint"><span class="spinner"></span> Loading…</div>
+    </div>
+
+    <div class="card mb-16" id="oauth">
+      <h4>Sign in with Google, Discord or GitHub</h4>
+      <p class="faint" style="margin:0 0 14px;line-height:1.6">
+        People link one of these on their Account page, then sign in with it instead of their password. No account is ever created this way.
+        Register the panel as an app with the service and paste its client ID and secret here.
+      </p>
+      <div id="oauth-form" class="faint"><span class="spinner"></span> Loading…</div>
     </div>
 
     <div class="card mb-16" id="status-page">
@@ -398,9 +407,55 @@ export async function renderSettings(view) {
 
   renderCloudForm();
   renderStatusPageForm();
+  renderOauthForm();
 }
 
 /* ---------------------------------------------------- public status page */
+
+async function renderOauthForm() {
+  const host = $('#oauth-form');
+  if (!host) return;
+  const data = await api('/api/settings/oauth').catch((err) => ({ error: err.message }));
+  if (!host.isConnected) return;
+  if (data.error) {
+    host.textContent = data.error;
+    return;
+  }
+  host.classList.remove('faint');
+  host.innerHTML = `
+    <label class="field"><span>Panel address people use</span><input id="oa-url" value="${esc(data.publicUrl)}" placeholder="${esc(location.origin)}" /><div class="hint">Leave empty to use the address this page is open on. Google only accepts https:// addresses (or localhost).</div></label>
+    ${data.providers
+      .map(
+        (p) => `<div class="oauth-provider">
+          <div class="row" style="gap:8px;align-items:center;margin-bottom:8px">
+            <b style="flex:1">${esc(p.label)} ${p.clientId && p.hasSecret ? '<span class="badge accent">On</span>' : ''}</b>
+            <a class="btn btn-sm btn-ghost" href="${esc(p.console)}" target="_blank" rel="noopener">${icon('external', 12)} Developer console</a>
+          </div>
+          <div class="form-grid">
+            <label><span>Client ID</span><input data-oa-id="${esc(p.id)}" value="${esc(p.clientId)}" autocomplete="off" /></label>
+            <label><span>Client secret</span><input data-oa-secret="${esc(p.id)}" type="password" placeholder="${p.hasSecret ? 'Saved (leave empty to keep)' : ''}" autocomplete="off" /></label>
+          </div>
+          <div class="hint" style="margin-top:-6px">Redirect URL to register: <span class="mono" style="overflow-wrap:anywhere">${esc(p.redirectUri)}</span></div>
+        </div>`
+      )
+      .join('')}
+    <button class="btn btn-primary mt-16" id="oa-save">Save sign-in providers</button>`;
+  $('#oa-save').addEventListener('click', async () => {
+    const body = { publicUrl: $('#oa-url').value };
+    for (const p of data.providers) {
+      const clientId = $(`[data-oa-id="${p.id}"]`).value.trim();
+      const clientSecret = $(`[data-oa-secret="${p.id}"]`).value.trim();
+      body[p.id] = clientId ? { clientId, ...(clientSecret ? { clientSecret } : {}) } : { clear: true };
+    }
+    try {
+      await api('/api/settings/oauth', { method: 'PUT', body });
+      toast('Sign-in providers saved');
+      renderOauthForm();
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+  });
+}
 
 async function renderStatusPageForm() {
   const host = $('#sp-form');

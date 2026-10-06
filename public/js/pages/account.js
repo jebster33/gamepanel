@@ -50,6 +50,8 @@ export async function renderAccount(view) {
       <div class="hint">Changing it signs you out on every other device.</div>
     </div>
 
+    <div id="linked-card"></div>
+
     <div class="card mb-16" id="prefs">
       <h4>This browser</h4>
       <div class="row" style="gap:12px;align-items:center">
@@ -81,6 +83,7 @@ export async function renderAccount(view) {
   renderApiKeys();
 
   $('#a-tour').addEventListener('click', () => startTour());
+  renderLinkedAccounts($('#linked-card'));
   $('#a-revoke').addEventListener('click', async () => {
     try {
       await api('/api/auth/sessions/revoke', { method: 'POST' });
@@ -288,4 +291,40 @@ function askPassword(title, message, withCode, onConfirm) {
       },
     ],
   });
+}
+
+/** Google, Discord and GitHub accounts this panel account can sign in with. */
+async function renderLinkedAccounts(host) {
+  const data = await api('/api/auth/oauth/providers').catch(() => null);
+  if (!data?.providers.length || !host?.isConnected) return;
+  const linked = state.user.identities || {};
+  host.innerHTML = `
+    <div class="card mb-16">
+      <h4>Sign in with another account</h4>
+      <div class="faint" style="margin-bottom:12px">Link one and you can use its button on the sign-in page instead of your password. Two-factor sign-in still applies.</div>
+      <div class="list">${data.providers
+        .map(
+          (p) => `<div class="list-row">
+            <div class="grow"><div class="title">${esc(p.label)}</div><div class="sub">${linked[p.id] ? `Linked to ${esc(linked[p.id])}` : 'Not linked'}</div></div>
+            ${
+              linked[p.id]
+                ? `<button class="btn btn-sm btn-ghost btn-danger" data-unlink="${esc(p.id)}">Unlink</button>`
+                : `<a class="btn btn-sm" href="/api/auth/oauth/${encodeURIComponent(p.id)}/start?link=1">Link ${esc(p.label)}</a>`
+            }
+          </div>`
+        )
+        .join('')}</div>
+    </div>`;
+  host.querySelectorAll('[data-unlink]').forEach((btn) =>
+    btn.addEventListener('click', async () => {
+      try {
+        const { user } = await api(`/api/auth/oauth/${btn.dataset.unlink}`, { method: 'DELETE' });
+        state.user = { ...state.user, ...user };
+        toast('Unlinked');
+        renderLinkedAccounts(host);
+      } catch (err) {
+        toast(err.message, 'error');
+      }
+    })
+  );
 }
