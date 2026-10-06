@@ -55,6 +55,7 @@ module.exports = {
         playerList: rt.playerList,
         playerDetails: playerDetails(rt),
         ping: rt.ping,
+        tps: rt.tps ?? null,
         connections: rt.connections,
         networkRx: rt.networkRx || 0,
         networkTx: rt.networkTx || 0,
@@ -63,6 +64,7 @@ module.exports = {
     }
     if (summary.length) this.bus.broadcast('stats', { servers: summary });
     this.observePlayers();
+    this.pollTps();
     this.checkAlerts();
   },
 

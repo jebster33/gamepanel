@@ -20,6 +20,7 @@
  *   crossplay.js       Bedrock players on Java servers (Geyser + Floodgate)
  *   livemap.js         a web map of the world (BlueMap)
  *   pregen.js          world pre-generation (Chunky)
+ *   tps.js             ticks per second over RCON (Paper, Purpur)
  *   watchers.js        tailing game log files, port-based readiness
  *   runtimes/container.js   running a server in Docker (Linux isolation)
  *   runtimes/process.js     running a server as a plain process (Linux or Windows)
@@ -284,6 +285,7 @@ class ServerManager extends EventEmitter {
       players: rt.players,
       maxPlayers: rt.maxPlayers ?? server.maxPlayers ?? null,
       playerList: rt.playerList,
+      tps: rt.tps ?? null,
       playerDetails: playerDetails(rt),
       playerCommands: Object.keys(playerCommands(tpl)),
       playerLists: Object.keys(listsFor(tpl) || {}),
@@ -566,6 +568,7 @@ Object.assign(
   require('./crossplay'),
   require('./livemap'),
   require('./pregen'),
+  require('./tps'),
   require('./watchers'),
   require('./runtimes/container'),
   require('./runtimes/process')

@@ -133,3 +133,11 @@ test('Chunky progress is read from its console lines', () => {
   assert.deepStrictEqual(p, { state: 'running', world: 'world', chunks: 1600, percent: 1.02, eta: '0:12:34', rate: 125.3 });
   assert.strictEqual(readProgress([line('[Chunky] Task running for world. Processed: 1 chunks (0.00%), ETA: 1:00:00, Rate: 1.0 cps'), line('[Chunky] Task finished for world. Processed: 157609 chunks (100.00%), Total time: 0:21:00')]).state, 'finished');
 });
+
+test('Paper TPS output is parsed', () => {
+  const { parseTps } = require('../../server/servers/tps');
+  assert.strictEqual(parseTps('§6TPS from last 1m, 5m, 15m: §a20.0, §a20.0, §a19.97'), 20);
+  assert.strictEqual(parseTps('TPS from last 1m, 5m, 15m: *20.01, 19.9, 19.8'), 20);
+  assert.strictEqual(parseTps('TPS from last 1m, 5m, 15m: 14.2, 18.0, 19.0'), 14.2);
+  assert.strictEqual(parseTps('Unknown command'), null);
+});

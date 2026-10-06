@@ -77,7 +77,7 @@ export function renderServerDetail(view) {
       ${tile('CPU', 'cpu', `${(server.cpu || 0).toFixed(1)}<span class="unit">%</span>`)}
       ${tile('Memory', 'mem', `${fmtBytes(server.memory)}<span class="unit">/ ${fmtBytes(server.memoryLimit)}</span>`)}
       ${tile('Players', 'players', `${server.players ?? (server.playerList?.length || '—')}<span class="unit">${server.maxPlayers ? '/ ' + server.maxPlayers : ''}</span>`)}
-      ${tile('Ping', 'ping', server.ping != null ? server.ping + '<span class="unit">ms</span>' : '—')}
+      ${hasTps(server) ? tile('TPS', 'ping', tpsHtml(server)) : tile('Ping', 'ping', server.ping != null ? server.ping + '<span class="unit">ms</span>' : '—')}
       ${tile(
         'Network',
         'net',
@@ -139,7 +139,7 @@ export function patchServerDetail() {
     'players',
     `${server.players ?? (server.playerList?.length || '—')}<span class="unit">${server.maxPlayers ? '/ ' + server.maxPlayers : ''}</span>`
   );
-  set('ping', server.ping != null ? `${server.ping}<span class="unit">ms</span>` : '—');
+  set('ping', hasTps(server) ? tpsHtml(server) : server.ping != null ? `${server.ping}<span class="unit">ms</span>` : '—');
   set('conns', String(server.connections ?? 0));
   set('crashes', String(server.crashCount || 0));
   if (server.runtime === 'docker') set('net', `<span style="font-size:12.5px;white-space:nowrap">↓ ${fmtRate(server.networkRx)} ↑ ${fmtRate(server.networkTx)}</span>`);
@@ -184,4 +184,13 @@ function renderServerTab(server, tab) {
       renderConsoleTab(host, server);
       break;
   }
+}
+
+/** Paper and Purpur report ticks per second; 20 is perfect, under 15 players feel lag. */
+const hasTps = (server) => ['minecraft-paper', 'minecraft-purpur'].includes(server.templateId);
+
+function tpsHtml(server) {
+  if (server.tps == null) return '—';
+  const tone = server.tps >= 18 ? 'var(--success)' : server.tps >= 15 ? 'var(--warning)' : 'var(--danger)';
+  return `<span style="color:${tone}">${server.tps.toFixed(1)}</span><span class="unit">/ 20</span>`;
 }
