@@ -106,3 +106,14 @@ test('admins without two-factor only reach their account when it is required', (
   assert.strictEqual(auth.noteSignInAddress(u, '2.2.2.2'), true);
   assert.strictEqual(auth.noteSignInAddress(u, '1.1.1.1'), false);
 });
+
+test('rate limiter allows a burst, then refuses until the window ends', () => {
+  const { RateLimiter } = require('../../server/core/ratelimit');
+  const rl = new RateLimiter({ limit: 3, windowMs: 1000, maxKeys: 2 });
+  assert.ok(rl.take('a', 0) && rl.take('a', 10) && rl.take('a', 20));
+  assert.ok(!rl.take('a', 30));
+  assert.ok(rl.take('b', 30));
+  assert.ok(rl.take('a', 1000), 'a new window starts');
+  rl.take('c', 1500);
+  assert.ok(rl.hits.size <= 2, 'never grows past maxKeys');
+});

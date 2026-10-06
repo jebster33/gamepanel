@@ -2,6 +2,10 @@
 
 Everything the UI does is a REST call. Authenticate with the session cookie, `Authorization: Bearer <token>` from `POST /api/auth/login`, or an API key.
 
+## Rate limits
+
+Signed-in accounts (and their keys) get 1200 requests a minute; anything anonymous, like the sign-in and public status endpoints, gets 120 a minute per address. Past that the API answers `429` with a `Retry-After` header.
+
 ## API keys
 
 Create one on the Account page (or `POST /api/auth/api-keys {"name","readOnly"}`; the key is shown once). Send it as `Authorization: Bearer gp_…`. A key acts as your account, with two limits: read-only keys can only `GET`, and no key can change accounts (passwords, two-factor, keys, users). Keys are stored hashed.
