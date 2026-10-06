@@ -245,6 +245,12 @@ module.exports = (router, { store, manager, scheduler }, { requireAdmin, require
     return manager.applyFix(server.id, body || {}, user);
   });
 
+  /** Search logs/latest.log and the archived days (?q=, or ?file= to read one). */
+  router.get('/api/servers/:id/logs', ({ user, params, url }) => {
+    const server = serverFor(user, params.id, 'console');
+    return manager.searchLogs(server, url.searchParams.get('q'), { file: url.searchParams.get('file') || undefined });
+  });
+
   /** Upload the console to mclo.gs so it can be shown to someone helping. */
   router.post('/api/servers/:id/share-log', async ({ user, params }) => {
     const server = serverFor(user, params.id, 'console');

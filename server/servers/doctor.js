@@ -6,6 +6,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const zlib = require('zlib');
 const { fail, logger } = require('../core/util');
 const { containedPath } = require('../features/files');
 const { diagnose } = require('../games/diagnose');
@@ -108,6 +109,58 @@ module.exports = {
   },
 
   /** Upload the console to mclo.gs (which hides IP addresses) and return the link. */
+  /**
+   * Search the game's own log files (logs/latest.log and the gzipped days
+   * before it), newest first: "when did Steve last say anything", "when did
+   * the server last crash". Capped so a year of logs can't stall the panel.
+   */
+  searchLogs(server, q, { file } = {}) {
+    const dir = containedPath(server.dir, 'logs');
+    let files;
+    try {
+      files = fs
+        .readdirSync(dir)
+        .filter((f) => /\.log(\.gz)?$/.test(f))
+        .map((f) => {
+          const st = fs.statSync(path.join(dir, f));
+          return { name: f, size: st.size, modifiedAt: st.mtimeMs };
+        })
+        .sort((a, b) => b.modifiedAt - a.modifiedAt);
+    } catch {
+      return { files: [], matches: [], truncated: false };
+    }
+    const needle = String(q || '').trim().toLowerCase().slice(0, 200);
+    const matches = [];
+    let truncated = false;
+    let budget = 200 * 1024 * 1024; // uncompressed bytes read per search
+    const targets = file ? files.filter((f) => f.name === file) : files;
+    if (file && !targets.length) fail(404, 'Log file not found');
+    for (const f of targets) {
+      if (!needle && !file) break;
+      let text;
+      try {
+        const raw = fs.readFileSync(path.join(dir, f.name));
+        text = (f.name.endsWith('.gz') ? zlib.gunzipSync(raw, { maxOutputLength: 64 * 1024 * 1024 }) : raw).toString('utf8');
+      } catch {
+        continue;
+      }
+      budget -= text.length;
+      const lines = text.split(/\r?\n/);
+      // Reading a whole file shows its end, where the latest lines are.
+      for (let i = needle ? 0 : Math.max(0, lines.length - 1000); i < lines.length; i++) {
+        if (needle && !lines[i].toLowerCase().includes(needle)) continue;
+        if (!lines[i]) continue;
+        matches.push({ file: f.name, line: i + 1, text: lines[i].slice(0, 1000) });
+        if (matches.length >= 1000) break;
+      }
+      if (matches.length >= 1000 || budget <= 0) {
+        truncated = true;
+        break;
+      }
+    }
+    return { files, matches, truncated };
+  },
+
   async shareLog(id) {
     const server = this.require(id);
     const rt = this.rt(id);

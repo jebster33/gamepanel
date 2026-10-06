@@ -2753,6 +2753,13 @@ tr.clickable:hover td {
   font-family: var(--mono);
 }
 
+.old-logs {
+  height: min(60vh, 520px);
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 .recovery-codes {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

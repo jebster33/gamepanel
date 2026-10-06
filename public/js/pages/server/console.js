@@ -12,6 +12,7 @@ export function renderConsoleTab(host, server) {
     <div id="doctor"></div>
     <div class="console-tools">
       <input class="search-input console-find" id="console-find" placeholder="Filter lines (e.g. error, a player's name)" />
+      <button class="btn btn-sm btn-ghost" id="old-logs" title="Search the game's saved log files from earlier days">Old logs</button>
       <button class="btn btn-sm btn-ghost" id="share-log" title="Upload the console to mclo.gs so someone can help">Share log</button>
     </div>
     <div class="console-wrap">
@@ -49,6 +50,7 @@ export function renderConsoleTab(host, server) {
   patchDoctor(server);
   $('#doctor').addEventListener('click', (event) => onDoctorClick(event, server));
   $('#share-log').addEventListener('click', () => shareLog(server));
+  $('#old-logs').addEventListener('click', () => openOldLogs(server));
 
   const history = loadHistory(server.id);
   let cursor = history.length;
@@ -245,4 +247,53 @@ async function shareLog(server) {
   } catch (err) {
     toast(err.message, 'error');
   }
+}
+
+/** Search logs/latest.log and the gzipped days before it. */
+function openOldLogs(server) {
+  openModal({
+    title: 'Old logs',
+    width: 900,
+    body: `<div class="input-row">
+        <input class="search-input" id="ol-q" style="flex:1;min-width:0;max-width:none;width:auto" placeholder="Search every log (a player, an error, a command)" />
+        <select id="ol-file" style="flex:0 0 190px;width:190px"><option value="">All files</option></select>
+        <button class="btn btn-primary" id="ol-go">Search</button>
+      </div>
+      <p class="faint" id="ol-note" style="margin:8px 0">Pick a file to read its last lines, or search all of them.</p>
+      <div class="console old-logs" id="ol-out"></div>`,
+  });
+  const out = document.getElementById('ol-out');
+  const note = document.getElementById('ol-note');
+  const select = document.getElementById('ol-file');
+  const run = async () => {
+    const q = document.getElementById('ol-q').value.trim();
+    const file = select.value;
+    if (!q && !file) return;
+    note.textContent = 'Searching…';
+    try {
+      const params = new URLSearchParams();
+      if (q) params.set('q', q);
+      if (file) params.set('file', file);
+      const data = await api(`/api/servers/${server.id}/logs?${params}`);
+      const many = !file;
+      out.innerHTML = data.matches
+        .map((m) => `<div class="line">${many ? `<span class="faint">${esc(m.file)}:${m.line}</span> ` : ''}${esc(m.text)}</div>`)
+        .join('');
+      note.textContent = data.matches.length
+        ? `${data.matches.length}${data.truncated ? '+' : ''} line${data.matches.length === 1 ? '' : 's'}${data.truncated ? ' (stopped early, narrow the search)' : ''}`
+        : 'Nothing found.';
+      if (file && !q) out.scrollTop = out.scrollHeight;
+    } catch (err) {
+      note.textContent = err.message;
+    }
+  };
+  api(`/api/servers/${server.id}/logs`)
+    .then(({ files }) => {
+      select.insertAdjacentHTML('beforeend', files.map((f) => `<option value="${esc(f.name)}">${esc(f.name)}</option>`).join(''));
+      if (!files.length) note.textContent = 'This server has no saved log files yet.';
+    })
+    .catch(() => {});
+  document.getElementById('ol-go').addEventListener('click', run);
+  document.getElementById('ol-q').addEventListener('keydown', (e) => e.key === 'Enter' && run());
+  select.addEventListener('change', run);
 }
