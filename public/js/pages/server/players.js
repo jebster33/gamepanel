@@ -23,6 +23,7 @@ export function renderPlayersTab(host, server) {
   current = { view: current.server === server.id ? current.view : 'online', server: server.id, templateId: server.templateId, lists: (server.playerLists || []).includes('bans'), timer: null };
   const views = [...VIEWS];
   if (server.playerLists?.length && can('command')) views.push(['lists', 'Whitelist & bans']);
+  if (server.canModerate && can('command')) views.push(['moderation', 'Chat rules']);
   host.innerHTML = `
     <div class="seg pl-seg">${views
       .map(([id, label]) => `<button class="seg-item ${id === current.view ? 'active' : ''}" data-pl-view="${id}">${label}</button>`)
@@ -48,6 +49,7 @@ function showView(box, server) {
   } else if (current.view === 'history') renderHistory(box, server);
   else if (current.view === 'activity') renderActivity(box, server);
   else if (current.view === 'lists') import('./player-lists.js').then((m) => m.renderLists(box, server));
+  else if (current.view === 'moderation') import('./moderation.js').then((m) => m.renderModeration(box, server));
 }
 
 // A head that fails to load (offline, blocked) turns back into the letter tile.
@@ -434,7 +436,7 @@ const FILTERS = [
   ['all', 'All', null],
   ['sessions', 'Joins & leaves', 'join,leave'],
   ['chat', 'Chat', 'chat'],
-  ['admin', 'Moderation', 'kick,ban,unban,whitelist,unwhitelist,op,deop,whitelist-on,whitelist-off'],
+  ['admin', 'Moderation', 'kick,ban,unban,automod,whitelist,unwhitelist,op,deop,whitelist-on,whitelist-off'],
   ['server', 'Server', 'start,stop,crash,version,idle'],
 ];
 
@@ -444,6 +446,7 @@ const LOG_TEXT = {
   chat: (e) => `<b>${esc(e.name)}</b> <span class="act-chat">${esc(e.text)}</span>`,
   kick: (e) => `<b>${esc(e.name)}</b> was kicked${e.by ? ` by ${esc(e.by)}` : ''}`,
   ban: (e) => `<b>${esc(e.name)}</b> was banned${e.by ? ` by ${esc(e.by)}` : ''}${e.text ? ` <span class="faint">(${esc(e.text)})</span>` : ''}`,
+  automod: (e) => `<b>${esc(e.name)}</b> ${esc(e.text)}${e.said ? ` <span class="faint">for "${esc(e.said)}"</span>` : ''}`,
   unban: (e) => `<b>${esc(e.name)}</b> was unbanned${e.by ? ` by ${esc(e.by)}` : ''}`,
   whitelist: (e) => `<b>${esc(e.name)}</b> added to the whitelist${e.by ? ` by ${esc(e.by)}` : ''}`,
   unwhitelist: (e) => `<b>${esc(e.name)}</b> removed from the whitelist${e.by ? ` by ${esc(e.by)}` : ''}`,
@@ -457,7 +460,7 @@ const LOG_TEXT = {
   stop: () => 'Server stopped',
   crash: () => '<span class="bad-text">Server crashed</span>',
 };
-const LOG_ICON = { join: '→', leave: '←', chat: '💬', kick: '⤫', ban: '⛔', unban: '✓', whitelist: '＋', unwhitelist: '−', op: '★', deop: '☆', start: '▶', stop: '■', crash: '⚠', version: '⇅' };
+const LOG_ICON = { automod: '🛡', join: '→', leave: '←', chat: '💬', kick: '⤫', ban: '⛔', unban: '✓', whitelist: '＋', unwhitelist: '−', op: '★', deop: '☆', start: '▶', stop: '■', crash: '⚠', version: '⇅' };
 
 function logRow(e) {
   const text = (LOG_TEXT[e.type] || ((x) => esc(x.type)))(e);

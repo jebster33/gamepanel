@@ -138,6 +138,7 @@ class Scheduler {
     if (minute === this.lastMinute) return;
     this.lastMinute = minute;
     require('./events').tick(this.manager, this.store, now).catch(() => {});
+    require('./chat-moderation').tick(this.manager, now.getTime()).catch(() => {});
     for (const server of this.manager.servers) {
       this.announce(server, minute).catch(() => {});
       for (const schedule of server.schedules || []) {

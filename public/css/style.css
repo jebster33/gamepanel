@@ -2433,6 +2433,21 @@ tbody tr:hover {
   background: var(--amber-soft);
   border-color: rgba(255, 179, 64, 0.35);
 }
+.md-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+}
+.md-ladder {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+}
+@media (max-width: 760px) {
+  .md-grid {
+    grid-template-columns: 1fr;
+  }
+}
 .cfg-layout {
   display: grid;
   grid-template-columns: 260px minmax(0, 1fr);
@@ -2529,11 +2544,17 @@ tbody tr:hover {
 }
 /* Players tab: history, KPIs, the players-online graph and the activity log. */
 .pl-seg {
-  max-width: 520px;
+  width: max-content;
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
   background: var(--raised);
   border-color: var(--border);
 }
 .pl-seg .seg-item {
+  flex: none;
+  padding: 7px 16px;
+  white-space: nowrap;
   color: var(--muted);
 }
 .pl-seg .seg-item.active {

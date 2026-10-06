@@ -143,6 +143,27 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
   });
 
   /** Kick or ban someone on the Players tab, through the game's own console command. */
+  /** Chat moderation: word list, links, caps, spam, and what happens to players who break them. */
+  router.get('/api/servers/:id/moderation', ({ user, params }) => require('../../features/chat-moderation').view(manager, serverFor(user, params.id, 'command')));
+
+  router.put('/api/servers/:id/moderation', ({ user, params, body }) => {
+    const server = serverFor(user, params.id, 'command');
+    const result = require('../../features/chat-moderation').update(manager, server, body || {});
+    store.addEvent('server.settings', `${user.username} changed chat moderation on ${server.name} (${result.settings.enabled ? 'on' : 'off'})`, { serverId: server.id });
+    return result;
+  });
+
+  router.delete('/api/servers/:id/moderation/bans/:name', async ({ user, params }) => {
+    const server = serverFor(user, params.id, 'command');
+    const ban = (server.tempBans || []).find((b) => b.name.toLowerCase() === String(params.name).toLowerCase());
+    if (!ban) fail(404, 'No temporary ban for that player');
+    // Lifted early: tick() pardons it on the next minute.
+    ban.until = 0;
+    store.save();
+    await require('../../features/chat-moderation').tick(manager);
+    return require('../../features/chat-moderation').view(manager, server);
+  });
+
   router.post('/api/servers/:id/players/action', async ({ user, params, body }) => {
     const server = serverFor(user, params.id, 'command');
     const commands = require('../../games/players').playerCommands(manager.template(server));

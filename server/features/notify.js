@@ -23,6 +23,7 @@ const TITLES = {
   'server.wiped': 'Server wiped',
   'server.resource_alert': 'Resource alert',
   'player.watched': 'Watched player joined',
+  'player.moderated': 'Chat moderation acted',
   'panel.disk_low': 'Disk almost full',
   'user.api_key': 'API key created',
   'user.new_ip': 'Sign-in from a new address',

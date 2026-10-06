@@ -163,7 +163,10 @@ module.exports = {
     const java = template.query?.type === 'minecraft';
     for (const line of text.split('\n')) {
       const m = line.match(pattern);
-      if (m) this.logActivity(server.id, { type: 'chat', name: m[1], text: String(m[2] || '').trim().slice(0, 500) });
+      if (m) {
+        this.logActivity(server.id, { type: 'chat', name: m[1], text: String(m[2] || '').trim().slice(0, 500) });
+        if (server.moderation?.enabled) require('../features/chat-moderation').onChat(this, server, m[1], String(m[2] || '')).catch(() => {});
+      }
       const login = java && line.match(MC_LOGIN);
       if (login) this.noteAddress(server.id, login[1], login[2]);
     }

@@ -306,6 +306,7 @@ class ServerManager extends EventEmitter {
       diskBytes: rt.diskBytes,
       task: rt.task,
       canWipe: Boolean(tpl?.wipe),
+      canModerate: require('../features/chat-moderation').supported(tpl),
       templateName: tpl?.name || server.templateId,
       templateIcon: tpl?.icon || '🎮',
       templateLogo: tpl?.logo || null,
