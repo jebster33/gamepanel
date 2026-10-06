@@ -1,5 +1,7 @@
 'use strict';
 
+const { fail } = require('../../core/util');
+
 module.exports = (router, { templates, manager, auth }, { requireAdmin, requireCap }) => {
   router.get('/api/templates', ({ user }) => {
     // People who may create their own servers need the catalogue to pick from.
@@ -26,9 +28,28 @@ module.exports = (router, { templates, manager, auth }, { requireAdmin, requireC
     require('../../games/options').getOptions(params.source, url.searchParams.get('q') || '', Object.fromEntries(url.searchParams))
   );
 
+  /** The template builder: check a template and show its install script, without saving. */
+  router.post('/api/templates/check', ({ user, body }) => {
+    requireAdmin(user);
+    return require('../../games/template-builder').check(body?.template, templates);
+  });
+
   router.post('/api/templates', ({ user, body }) => {
     requireAdmin(user);
-    return { template: templates.saveCustom(body) };
+    // The builder sends { template, replace }; older callers send the template itself.
+    const input = body?.template && typeof body.template === 'object' ? body.template : body;
+    const { template, errors } = require('../../games/template-builder').check(input, templates);
+    if (errors.length) fail(400, errors[0]);
+    if (templates.get(template.id) && !(body?.replace === template.id)) fail(409, `There is already a game with the id ${template.id}. Pick another id.`);
+    return { template: templates.saveCustom(template) };
+  });
+
+  /** A custom template's file as it is saved, for the builder to edit. */
+  router.get('/api/templates/:id/source', ({ user, params }) => {
+    requireAdmin(user);
+    const tpl = templates.require(params.id);
+    const { custom, ...rest } = tpl;
+    return { template: rest, custom: Boolean(custom) };
   });
 
   router.delete('/api/templates/:id', ({ user, params }) => {

@@ -3968,3 +3968,51 @@ tr.clickable:hover td {
   width: 22%;
   text-align: right;
 }
+.tb-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 110px 90px auto;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.tb-row.tb-var {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) auto;
+}
+.tb-step {
+  padding: 12px 0;
+  border-top: 1px solid var(--border);
+}
+.tb-step .field {
+  margin-bottom: 8px;
+}
+.tb-msgs {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  font-size: 13px;
+}
+.tb-msgs li {
+  margin: 3px 0;
+}
+pre.code-block {
+  max-height: 360px;
+  overflow: auto;
+  padding: 12px;
+  font-size: 12px;
+  background: var(--inset);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 600px) {
+  .tb-row {
+    grid-template-columns: minmax(0, 1fr) 76px 72px auto;
+    gap: 6px;
+  }
+  .tb-row.tb-var {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  }
+  .tb-row.tb-var input:first-child {
+    grid-column: 1 / -1;
+  }
+}

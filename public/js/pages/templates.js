@@ -57,6 +57,7 @@ export function renderTemplates(view) {
       <div><h1>Games</h1><div class="lede">Pick one and the panel installs it, gives it ports and starts it.</div></div>
       <div class="spacer"></div>
       <input class="search-input" id="tpl-search" placeholder="Search games…" value="${esc(templateFilter.search)}" />
+      ${state.user.role === 'admin' ? '<a class="btn" href="#/templates/new" title="Add a game the panel does not ship">Build a game</a>' : ''}
     </div>
     <div id="quota-note"></div>
     ${templateFilter.category === 'all' && !templateFilter.search ? '<div id="setups"></div>' : ''}
@@ -89,6 +90,7 @@ export function renderTemplates(view) {
           <div class="t-foot">
             ${tpl.defaultMemory ? `<span class="badge" title="Recommended memory for this game">${fmtRam(tpl.defaultMemory)} RAM</span>` : ''}
             ${portBadge(tpl.ports || [])}
+            ${tpl.custom && state.user.role === 'admin' ? `<a class="btn btn-sm btn-ghost" href="#/templates/edit/${esc(tpl.id)}" data-no-deploy>Edit</a>` : ''}
             ${canDeploy(tpl) ? '<button class="btn btn-sm t-deploy">Deploy</button>' : ''}
           </div>
         </div>`
@@ -114,7 +116,8 @@ export function renderTemplates(view) {
     })
   );
   view.querySelectorAll('[data-template]').forEach((el) =>
-    el.addEventListener('click', () => {
+    el.addEventListener('click', (event) => {
+      if (event.target.closest('[data-no-deploy]')) return;
       const tpl = state.templates.find((t) => t.id === el.dataset.template);
       if (!canDeploy(tpl)) return toast(can('deploy') ? 'Only administrators can create this kind of server' : 'Only administrators can create servers', 'warn');
       openCreateServerModal(el.dataset.template);
