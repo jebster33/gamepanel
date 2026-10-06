@@ -184,7 +184,10 @@ export function renderServerSettingsTab(host, server) {
     const ports = {};
     host.querySelectorAll('[data-port]').forEach((el) => (ports[el.dataset.port] = Number(el.value)));
     const vars = {};
-    host.querySelectorAll('[data-var]').forEach((el) => (vars[el.dataset.var] = el.value));
+    // Only what changed: some variables (scripts, launch commands) are administrator-only.
+    host.querySelectorAll('[data-var]').forEach((el) => {
+      if (el.value !== String(server.vars?.[el.dataset.var] ?? '')) vars[el.dataset.var] = el.value;
+    });
     try {
       await api(`/api/servers/${server.id}`, {
         method: 'PATCH',

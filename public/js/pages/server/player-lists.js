@@ -114,7 +114,7 @@ function draw(box, server, data) {
   box.querySelectorAll('[data-list-remove]').forEach((btn) =>
     btn.addEventListener('click', async () => {
       const { listRemove: list, name } = btn.dataset;
-      if (list === 'ops' && !(await confirmModal(`Remove ${name} as operator`, `${name} loses access to operator commands.`, 'Remove'))) return;
+      if (list === 'ops' && !(await confirmModal(`Remove ${esc(name)} as operator`, `${name} loses access to operator commands.`, 'Remove'))) return;
       btn.disabled = true;
       try {
         const next = await api(`/api/servers/${server.id}/player-lists`, { method: 'POST', body: { list, action: 'remove', name } });

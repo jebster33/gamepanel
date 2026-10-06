@@ -15,9 +15,11 @@ const { isWindows, spawnShell, signalTree, killTree, exe } = require('../../core
 
 /** A Java runtime the installer fetched for this server, if it needed one. */
 function privateJavaHome(server, vars) {
+  // A version number, never a path: "../../somewhere" must not pick the java that runs.
+  const version = /^\d{1,3}$/.test(String(vars.JAVA_VERSION)) ? String(vars.JAVA_VERSION) : '21';
   const candidates = [
     server.javaHome,
-    path.join(config.toolsDir, `java-${vars.JAVA_VERSION || '21'}`),
+    path.join(config.toolsDir, `java-${version}`),
     path.join(server.dir, '.java'),
   ].filter(Boolean);
   for (const home of candidates) {

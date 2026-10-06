@@ -4,7 +4,7 @@ const { fail, logger } = require('../../core/util');
 const { rconCommand } = require('../../games/rcon');
 const { query } = require('../../games/query');
 
-module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin, requireCap, serverFor, visibleServers }) => {
+module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin, requireCap, serverFor, visibleServers, serverView }) => {
   router.get('/api/servers', ({ user }) => ({ servers: visibleServers(user) }));
 
   router.post('/api/servers', async ({ user, body }) => {
@@ -25,16 +25,14 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
   router.get('/api/servers/:id', ({ user, params }) => {
     const server = serverFor(user, params.id);
     const template = manager.template(server);
-    return { server: manager.publicServer(server), template: template ? { ...template, install: undefined, windows: undefined, linux: undefined } : null };
+    return { server: serverView(user, server), template: template ? { ...template, install: undefined, windows: undefined, linux: undefined } : null };
   });
 
   router.patch('/api/servers/:id', ({ user, params, body }) => {
-    if (user.role !== 'admin') {
-      serverFor(user, params.id, 'settings');
-      // The start command runs in a shell on the host: administrators only.
-      if (body.startCommand !== undefined) fail(403, 'Only administrators can change the start command');
-    }
-    return { server: manager.publicServer(manager.update(params.id, body)) };
+    const admin = user.role === 'admin';
+    // Names and variables reach a shell on the host: non-admins get checked values only (servers/untrusted.js).
+    if (!admin) serverFor(user, params.id, 'settings');
+    return { server: manager.publicServer(manager.update(params.id, body, { trusted: admin })) };
   });
 
   router.delete('/api/servers/:id', async ({ user, params, url }) => {
@@ -88,7 +86,7 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
 
   router.put('/api/servers/:id/game-settings', ({ user, params, body }) => {
     const server = serverFor(user, params.id, 'settings');
-    const result = require('../../games/settings').writeGameSettings(manager, server, body.values);
+    const result = require('../../games/settings').writeGameSettings(manager, server, body.values, { trusted: user.role === 'admin' });
     if (result.changed) store.addEvent('server.settings', `${user.username} changed ${result.changed} game setting${result.changed === 1 ? '' : 's'} on ${server.name}`, { serverId: server.id });
     return { ...result, restartNeeded: manager.isActive(server.id) };
   });
@@ -480,9 +478,15 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
     return { schedules: scheduler.list(server) };
   });
 
+  // A schedule does its action later on the user's behalf, so it needs the same permission.
+  const SCHEDULE_CAPS = { command: 'command', backup: 'backups', mods: 'mods', start: 'power', stop: 'power', restart: 'power', update: 'power' };
+  const requireScheduleCap = (user, server, action) => {
+    if (SCHEDULE_CAPS[action]) requireCap(user, SCHEDULE_CAPS[action], server.id);
+  };
+
   router.post('/api/servers/:id/schedules', ({ user, params, body }) => {
     const server = serverFor(user, params.id, 'schedules');
-    if (body.action === 'command' && user.role !== 'admin') requireCap(user, 'command', server.id);
+    requireScheduleCap(user, server, body.action);
     const schedule = scheduler.add(server, body);
     store.addEvent('schedule.created', `${schedule.name} scheduled on ${server.name} (${schedule.cron})`, { serverId: server.id });
     return { schedule };
@@ -490,6 +494,8 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
 
   router.patch('/api/servers/:id/schedules/:sid', ({ user, params, body }) => {
     const server = serverFor(user, params.id, 'schedules');
+    const existing = (server.schedules || []).find((s) => s.id === params.sid);
+    requireScheduleCap(user, server, body.action ?? existing?.action);
     return { schedule: scheduler.update(server, params.sid, body) };
   });
 
@@ -497,6 +503,7 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
     const server = serverFor(user, params.id, 'schedules');
     const schedule = (server.schedules || []).find((s) => s.id === params.sid);
     if (!schedule) fail(404, 'Schedule not found');
+    requireScheduleCap(user, server, schedule.action);
     return { result: await scheduler.run(server, schedule) };
   });
 

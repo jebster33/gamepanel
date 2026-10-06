@@ -42,10 +42,10 @@ const DEFAULT_STATE = {
 };
 
 class Store extends EventEmitter {
-  constructor(file) {
+  constructor(file, { tmpDir } = {}) {
     super();
     this.file = file;
-    this.tmp = file + '.tmp';
+    this.tmp = tmpDir ? path.join(tmpDir, path.basename(file) + '.tmp') : file + '.tmp';
     this.state = null;
     this._writeTimer = null;
     this._writing = false;
@@ -94,6 +94,7 @@ class Store extends EventEmitter {
     this._dirty = false;
     try {
       fs.mkdirSync(path.dirname(this.file), { recursive: true });
+      fs.mkdirSync(path.dirname(this.tmp), { recursive: true });
       // This file holds password hashes, RCON passwords and API keys — it must
       // not be readable by other accounts on the machine.
       fs.writeFileSync(this.tmp, JSON.stringify(this.state, null, 2), { mode: 0o600 });

@@ -17,7 +17,7 @@
 
 const { json, readJson, HttpError } = require('../core/util');
 const { Router } = require('./router');
-const { createHelpers, clientIp } = require('./helpers');
+const { createHelpers, clientIp, sameOrigin } = require('./helpers');
 const { RateLimiter } = require('../core/ratelimit');
 const audit = require('../features/audit');
 
@@ -65,17 +65,9 @@ function createApi(app) {
       path = `/api/servers/${encodeURIComponent(target.remoteId)}${viaId[2] || ''}`;
     }
     if (!node) return false;
-    if (req.method !== 'GET' && req.headers.origin) {
-      let same = false;
-      try {
-        same = new URL(req.headers.origin).host === req.headers.host;
-      } catch {
-        same = false;
-      }
-      if (!same) {
-        json(res, 403, { error: 'Cross-origin request refused' });
-        return true;
-      }
+    if (req.method !== 'GET' && !sameOrigin(req)) {
+      json(res, 403, { error: 'Cross-origin request refused' });
+      return true;
     }
     const user = app.auth.userFromRequest(req);
     if (!user) {
@@ -104,17 +96,9 @@ function createApi(app) {
     const writes = ['POST', 'PATCH', 'PUT', 'DELETE'].includes(req.method);
 
     // CSRF: the session cookie is SameSite=Lax, and the Origin is checked too.
-    if (writes && req.headers.origin) {
-      let sameOrigin = false;
-      try {
-        sameOrigin = new URL(req.headers.origin).host === req.headers.host;
-      } catch {
-        sameOrigin = false;
-      }
-      if (!sameOrigin) {
-        json(res, 403, { error: 'Cross-origin request refused' });
-        return;
-      }
+    if (writes && !sameOrigin(req)) {
+      json(res, 403, { error: 'Cross-origin request refused' });
+      return;
     }
 
     let user = null;

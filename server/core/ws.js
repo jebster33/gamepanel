@@ -274,13 +274,16 @@ class WebSocketServer extends EventEmitter {
     return conn;
   }
 
-  /** Send to every authenticated client subscribed to `topic`. */
+  /**
+   * Send to every authenticated client subscribed to `topic`. When `scope` is
+   * set, it decides per client what that client may see (null: nothing).
+   */
   broadcast(topic, payload) {
-    const message = { topic, ...payload };
     for (const client of this.clients) {
       if (!client.user) continue;
       if (client.subscriptions.has(topic) || client.subscriptions.has('*')) {
-        client.send(message);
+        const visible = this.scope ? this.scope(client, topic, payload) : payload;
+        if (visible) client.send({ topic, ...visible });
       }
     }
   }

@@ -25,7 +25,12 @@ const CAPABILITIES = [
   },
   { id: 'schedules', label: 'Manage scheduled tasks', group: 'Server' },
   { id: 'files', label: 'Browse and download files', group: 'Files' },
-  { id: 'files.write', label: 'Upload, edit and delete files', group: 'Files' },
+  {
+    id: 'files.write',
+    label: 'Upload, edit and delete files',
+    group: 'Files',
+    warning: 'Trusted: uploaded plugins, mods and scripts run with the game server, so this can run code on this machine unless the server is in a container.',
+  },
   { id: 'mods', label: 'Install and remove mods', group: 'Content' },
   { id: 'backups', label: 'Create and download backups', group: 'Backups' },
   { id: 'backups.restore', label: 'Restore and delete backups', group: 'Backups' },
@@ -243,8 +248,16 @@ class Auth {
     if (!payload || payload.purpose !== '2fa') fail(401, 'That sign-in took too long. Enter your password again.');
     const user = this.users.find((u) => u.id === payload.sub);
     if (!user?.totp?.secret) fail(401, 'That sign-in took too long. Enter your password again.');
+    // Someone who has the password can fetch fresh tickets from many addresses;
+    // the account's own limit stops them cycling through codes.
+    const account = `2fa:${user.id}`;
+    this.checkLockout(account);
     const how = this.checkSecondFactor(user, code);
-    if (!how) this.recordFailure(ip, 'That code is not right');
+    if (!how) {
+      this.noteAccountFailure(account);
+      this.recordFailure(ip, 'That code is not right');
+    }
+    this.failures.delete(account);
     return { ...this.startSession(user, ip), usedRecoveryCode: how === 'recovery', recoveryCodesLeft: (user.totp.recovery || []).length };
   }
 
@@ -324,15 +337,12 @@ class Auth {
     const cookies = parseCookies(req.headers.cookie);
     let token = cookies[COOKIE_NAME];
     const authHeader = req.headers.authorization;
+    // Never from the query string: URLs end up in logs, history and Referer headers.
     if (!token && authHeader && authHeader.startsWith('Bearer ')) token = authHeader.slice(7);
-    if (!token) {
-      const url = new URL(req.url, 'http://localhost');
-      token = url.searchParams.get('token');
-    }
     if (token && token.startsWith('gp_')) {
-      // Account changes (passwords, 2FA, keys, users) need a person signed in, not a script.
+      // Account changes (passwords, 2FA, keys, users, sub-users) need a person signed in, not a script.
       const path = new URL(req.url, 'http://localhost').pathname;
-      if (req.method !== 'GET' && /^\/api\/(auth|users)(\/|$)/.test(path)) return null;
+      if (req.method !== 'GET' && /^\/api\/(auth|users)(\/|$)|^\/api\/servers\/[^/]+\/access(\/|$)/.test(path)) return null;
       return this.requireTwoFactor(this.userFromApiKey(token, req.method), req);
     }
     return this.requireTwoFactor(this.userFromToken(token), req);

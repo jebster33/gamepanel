@@ -186,4 +186,5 @@ module.exports = {
   timingSafeEqual,
   stripAnsi,
   redactSecrets,
+  SECRET_NAME,
 };

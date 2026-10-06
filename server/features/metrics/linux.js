@@ -8,7 +8,7 @@
 
 const fs = require('fs');
 const os = require('os');
-const { logger, sh } = require('../../core/util');
+const { logger } = require('../../core/util');
 
 const isLinux = process.platform === 'linux';
 const CLK_TCK = 100; // USER_HZ is 100 on every mainstream Linux build
@@ -257,7 +257,8 @@ function cpuPercentFrom(prev, next) {
 async function directorySize(dir) {
   try {
     if (isLinux) {
-      const { stdout } = await sh(`du -sb ${JSON.stringify(dir)} 2>/dev/null`, { timeout: 30000 });
+      // No shell: a folder name with $(…) in it must stay a folder name.
+      const { stdout } = await require('../../core/platform').run('du', ['-sb', '--', dir], { timeout: 30000 });
       const n = Number(String(stdout).split(/\s+/)[0]);
       return Number.isFinite(n) ? n : 0;
     }

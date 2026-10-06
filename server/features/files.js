@@ -30,6 +30,15 @@ function containedPath(root, rel) {
   const missing = [];
   let probe = target;
   while (!fs.existsSync(probe)) {
+    // existsSync follows links: a link whose target is missing would be
+    // followed by the write that comes next, wherever it points.
+    let dangling = false;
+    try {
+      dangling = fs.lstatSync(probe).isSymbolicLink();
+    } catch {
+      dangling = false;
+    }
+    if (dangling) fail(400, 'That path goes through a broken symlink');
     missing.unshift(path.basename(probe));
     const parent = path.dirname(probe);
     if (parent === probe) break;
@@ -72,18 +81,27 @@ function assertArchiveIsSafe(file, cwd) {
     } else if (lower.endsWith('.zip')) {
       const out = execFileSync('unzip', ['-Z1', path.basename(file)], { cwd, encoding: 'utf8', maxBuffer: 8e6 });
       entries = out.split('\n').filter(Boolean).map((name) => ({ name, link: false }));
+      // -Z1 shows names only; the long listing starts symlinks with "l" (unzip extracts them as links).
+      const long = execFileSync('unzip', ['-Z', path.basename(file)], { cwd, encoding: 'utf8', maxBuffer: 8e6 });
+      if (long.split('\n').some((l) => /^l[rwxsStT-]{9}\s/.test(l))) entries.push({ name: 'symlink', link: true });
     } else {
       const out = execFileSync('tar', ['-tvf', path.basename(file)], { cwd, encoding: 'utf8', maxBuffer: 8e6 });
       entries = out
         .split('\n')
         .filter(Boolean)
-        .map((line) => ({ name: (line.split(/\s+/).slice(5).join(' ') || '').split(' -> ')[0], link: line.startsWith('l') }));
+        .map((line) => {
+          const [name, target] = (line.split(/\s+/).slice(5).join(' ') || '').split(/ -> | link to /);
+          // A hard link is fine inside the archive; its target gets the same checks as a name.
+          return { name, link: line.startsWith('l'), target: line.startsWith('h') ? target : undefined };
+        });
     }
-  } catch {
-    return; // cannot inspect it; the extractor itself will fail loudly enough
+  } catch (err) {
+    // Unpacking what could not be checked would skip the checks: refuse instead.
+    if (err.code === 'ENOENT') fail(400, `${err.path || 'The archive tool'} is not installed on this host`);
+    fail(400, `Could not read that archive: ${String(err.stderr || err.message).trim().split('\n')[0]}`);
   }
 
-  for (const entry of entries) {
+  for (const entry of entries.flatMap((e) => (e.target ? [e, { name: e.target, link: false }] : [e]))) {
     const name = entry.name.trim();
     if (!name) continue;
     if (name.startsWith('/') || /^[A-Za-z]:/.test(name)) {

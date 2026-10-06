@@ -189,6 +189,8 @@ module.exports = (router, { store, manager }, { serverFor, integrations }) => {
     if (!template?.modpacks) fail(400, 'This server does not use modpacks');
     if (manager.isActive(server.id)) fail(409, 'Stop the server before changing its modpack');
     if (!body.project) fail(400, 'Pick a modpack first');
+    // Both end up in the install script's variables: ids only.
+    if (!/^[A-Za-z0-9._-]{1,100}$/.test(String(body.project)) || !/^[A-Za-z0-9._-]{0,100}$/.test(String(body.versionId || ''))) fail(400, 'That is not a modpack id');
     const source = body.source === 'curseforge' ? 'curseforge' : 'modrinth';
     if (source === 'curseforge' && !integrations().curseforgeKey) fail(400, 'Add a CurseForge API key in Settings, Integrations first.');
     manager.update(server.id, { vars: { MODPACK: String(body.project), MODPACK_VERSION: String(body.versionId || ''), MODPACK_SOURCE: source } });
