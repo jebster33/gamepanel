@@ -2,6 +2,7 @@ import { api } from '../../core/api.js';
 import { loadServers } from '../../core/boot.js';
 import { render } from '../../core/router.js';
 import { state } from '../../core/state.js';
+import { stagingCard, wireStagingCard } from './staging.js';
 import { $, can, esc, toast } from '../../core/util.js';
 import { confirmModal, openModal } from '../../ui/modal.js';
 
@@ -155,6 +156,7 @@ export function renderServerSettingsTab(host, server) {
       <div class="hint">Applied on the next start (and to config files the template manages).</div>
     </div>
 
+    ${stagingCard(server)}
     ${
       isOwner
         ? `<div class="card">
@@ -326,6 +328,7 @@ export function renderServerSettingsTab(host, server) {
     }
   });
 
+  wireStagingCard(host, server);
   $('#set-clone').addEventListener('click', () => {
     openModal({
       title: 'Duplicate server',

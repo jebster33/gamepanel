@@ -14,6 +14,7 @@ import { patchPlayersTab, renderPlayersTab } from './players.js';
 import { renderSchedulesTab } from './schedules.js';
 import { renderServerSettingsTab } from './settings.js';
 import { serverAddress } from '../servers.js';
+import { openPushModal, stagingBanner } from './staging.js';
 
 /* --------------------------------------------------------- server detail */
 
@@ -80,6 +81,7 @@ export function renderServerDetail(view) {
       </div>
       <div class="row" id="detail-power">${powerButtons(server)}</div>
     </div>
+    ${stagingBanner(server)}
 
     <div class="metrics compact" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr))">
       ${tile('CPU', 'cpu', `${(server.cpu || 0).toFixed(1)}<span class="unit">%</span>`)}
@@ -103,6 +105,7 @@ export function renderServerDetail(view) {
     </nav>
     <div id="tab-content"></div>`;
 
+  $('#staging-push')?.addEventListener('click', () => openPushModal(server));
   renderServerTab(server, tab);
   if (state.route.params.tab === 'network') setTimeout(() => $('#network-card')?.scrollIntoView({ behavior: 'smooth' }), 300);
 }

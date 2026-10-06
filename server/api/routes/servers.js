@@ -283,6 +283,21 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
     return { ok: true };
   });
 
+  /** Staging copies: make one, see what differs from live, push changes to live. */
+  const staging = require('../../features/staging');
+  router.post('/api/servers/:id/staging', ({ user, params, body }) => {
+    requireAdmin(user);
+    return staging.create(manager, store, manager.require(params.id).id, { name: body?.name, withWorld: body?.withWorld !== false }, user);
+  });
+  router.get('/api/servers/:id/staging/diff', ({ user, params }) => {
+    requireAdmin(user);
+    return staging.diff(manager, params.id);
+  });
+  router.post('/api/servers/:id/staging/push', ({ user, params, body }) => {
+    requireAdmin(user);
+    return staging.push(manager, store, params.id, { entries: body?.entries, properties: body?.properties !== false, version: Boolean(body?.version) }, user);
+  });
+
   /** Duplicate a server onto fresh ports, optionally with its files. */
   router.post('/api/servers/:id/clone', async ({ user, params, body }) => {
     requireAdmin(user);

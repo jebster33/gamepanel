@@ -4058,3 +4058,58 @@ pre.code-block {
     margin-top: 6px;
   }
 }
+.staging-banner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  align-items: center;
+  justify-content: space-between;
+  margin: -6px 0 16px;
+  padding: 10px 14px;
+  font-size: 13.5px;
+  background: var(--lime-soft);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.sp-list {
+  display: grid;
+  gap: 2px;
+}
+.sp-item {
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+}
+.sp-item:first-child {
+  border-top: 0;
+}
+.sp-item .badge {
+  margin-left: 4px;
+}
+.sp-item details summary {
+  cursor: pointer;
+  margin: 6px 0 0 26px;
+  font-size: 12.5px;
+}
+.sp-files {
+  margin: 6px 0 0 26px;
+  max-height: 180px;
+  overflow: auto;
+  font-size: 12.5px;
+  overflow-wrap: anywhere;
+}
+.sp-item details .sp-files {
+  margin-left: 26px;
+}
+.sp-added {
+  color: var(--lime);
+}
+.sp-removed {
+  color: var(--danger);
+}
+.sp-changed {
+  color: var(--warning, #f5a524);
+}
+.warn-text {
+  margin-left: 26px;
+  color: var(--warning, #f5a524);
+}
