@@ -8,6 +8,9 @@ administrator. Passwords need 8 or more characters, can't be a common password a
 username.
 
 Do this straight after installing: until an account exists, whoever opens the page first gets to make it.
+From the machine itself that is all there is to it. From another computer the form also asks for a
+**setup code**, so a stranger who finds the panel first cannot claim it: the panel prints the code in
+its log when it starts (`journalctl -u gamepanel` on Linux, or the console it runs in).
 
 <img src="../screenshots/sign-in.png" alt="Sign-in page" width="700" />
 

@@ -214,7 +214,8 @@ module.exports = {
         server.maintenance = { since: Date.now(), by, message: text, whitelist: readProperty(server, lists.whitelist.toggle.property) === 'true', motd: server.vars?.MOTD };
       } else server.maintenance.message = text;
       await module.exports.setWhitelist(manager, server, true, by);
-      if (server.vars && server.vars.MOTD !== undefined) server.vars.MOTD = text;
+      // The MOTD is a template variable, so it gets the same character limits a non-admin's own edit would.
+      if (server.vars && server.vars.MOTD !== undefined) server.vars.MOTD = text.replace(new RegExp(require('../servers/untrusted').UNSAFE.source, 'g'), ' ');
       const rt = manager.rt(server.id);
       if (rt.status === 'running') {
         const allowed = new Set(['ops', 'whitelist'].flatMap((id) => (lists[id] ? readJson(server, lists[id].file).map((e) => String(e.name || '').toLowerCase()) : [])));

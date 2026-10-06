@@ -403,6 +403,8 @@ async function upload(manager, store, server, name, buf, actor) {
 function locate(ctx, name) {
   const safe = path.basename(String(name || ''));
   if (!safe || safe !== name) fail(400, 'Bad datapack name');
+  // The name goes into a console command in quotes: only plain characters.
+  if (!/^[\w.+\- ()\[\]]+$/.test(safe)) fail(400, 'This datapack has a name the panel will not send to the game. Rename it on the Files tab (letters, numbers, spaces and . _ + - only).');
   for (const [dir, moved] of [
     [ctx.dir, false],
     [ctx.offDir, true],
