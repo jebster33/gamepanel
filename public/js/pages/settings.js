@@ -26,7 +26,16 @@ const EVENT_LABELS = {
   'backup.upload_failed': 'Copying a backup to the cloud fails',
   'schedule.failed': 'A scheduled task fails',
   'panel.updated': 'The panel updates itself',
+  'panel.backup': "Someone downloads the panel's settings backup",
   'user.login': 'Someone signs in',
+  'server.hung': 'A frozen server is restarted',
+  'server.world_reset': 'A world is reset',
+  'player.watched': 'A player on the watchlist joins',
+  'user.api_key': 'Someone creates an API key',
+  'user.policy': 'Sign-in rules change',
+  'user.password': 'Someone changes their password',
+  'user.2fa_disabled': 'Someone turns off two-factor sign-in',
+  'user.sessions_revoked': 'Someone signs out of their other devices',
 };
 
 export async function renderSettings(view) {

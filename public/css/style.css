@@ -158,9 +158,19 @@ kbd {
 /* ----------------------------------------------------------------- forms */
 
 form label,
-label.field {
+label.field,
+label:not([class]):not([for]) {
   display: block;
   margin-bottom: 14px;
+}
+/* A field right after a row of checkboxes needs its own breathing room. */
+.checkbox-row + label:not([class]) {
+  margin-top: 14px;
+}
+/* The last field of a form-grid sits on the grid's own bottom edge. */
+.form-grid + .btn,
+.form-grid + button {
+  margin-top: 2px;
 }
 
 form label > span,
