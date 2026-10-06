@@ -2,8 +2,9 @@
 
 /**
  * Alerts to Discord (any webhook that speaks Discord's format, which
- * includes Guilded and most chat bridges). Fire-and-forget: a webhook that
- * is down never affects the panel.
+ * includes Guilded and most chat bridges), Slack, or ntfy (phone push with
+ * no account: https://ntfy.sh/<topic>, or a self-hosted ntfy). Fire-and-forget:
+ * a webhook that is down never affects the panel.
  */
 
 const { logger } = require('../core/util');
@@ -48,6 +49,13 @@ function colorFor(type) {
 
 async function postDiscord(url, event, panelName) {
   if (!/^https:\/\//.test(url)) throw new Error('The webhook must be an https:// URL');
+  const title = TITLES[event.type] || event.type;
+  const host = new URL(url).hostname;
+  if (host === 'hooks.slack.com') return send(url, { 'Content-Type': 'application/json' }, JSON.stringify({ text: `*${title}*\n${event.message}` }));
+  if (!/(^|\.)(discord|discordapp)\.com$/.test(host) && !/\/api\/webhooks\//.test(url)) {
+    // ntfy: the body is the message, headers carry the rest.
+    return send(url, { 'Content-Type': 'text/plain; charset=utf-8', Title: `${panelName || 'GamePanel'}: ${title}`.replace(/[^\x20-\x7e]/g, ''), Tags: colorFor(event.type) === 0xff5f57 ? 'rotating_light' : 'video_game' }, event.message);
+  }
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -64,6 +72,11 @@ async function postDiscord(url, event, panelName) {
     }),
     signal: AbortSignal.timeout(10000),
   });
+  if (!res.ok) throw new Error(`the webhook answered ${res.status}`);
+}
+
+async function send(url, headers, body) {
+  const res = await fetch(url, { method: 'POST', headers, body, signal: AbortSignal.timeout(10000) });
   if (!res.ok) throw new Error(`the webhook answered ${res.status}`);
 }
 

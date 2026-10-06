@@ -38,8 +38,8 @@ export async function renderSettings(view) {
 
     <div class="card mb-16" id="notifications">
       <h4>Alerts</h4>
-      <p class="faint" style="margin:0 0 14px">Post to a Discord channel when something needs you. In Discord: channel settings, Integrations, Webhooks, New webhook, Copy URL.</p>
-      <label class="field"><span>Discord webhook URL</span>
+      <p class="faint" style="margin:0 0 14px">Post to a Discord channel when something needs you. In Discord: channel settings, Integrations, Webhooks, New webhook, Copy URL. A Slack webhook or an ntfy topic (https://ntfy.sh/your-secret-topic, for phone push with no account) works too.</p>
+      <label class="field"><span>Webhook URL (Discord, Slack or ntfy)</span>
         <div class="input-row">
           <input id="n-webhook" type="url" value="${esc(s.notifications?.discordWebhook || '')}" placeholder="https://discord.com/api/webhooks/…" />
           <button class="btn" id="n-test">Send test</button>
