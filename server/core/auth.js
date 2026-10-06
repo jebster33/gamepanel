@@ -50,6 +50,9 @@ function hashPassword(password) {
   return `scrypt$${SCRYPT_PARAMS.N}$${SCRYPT_PARAMS.r}$${SCRYPT_PARAMS.p}$${salt.toString('base64')}$${key.toString('base64')}`;
 }
 
+let decoy;
+const decoyHash = () => (decoy ||= hashPassword(crypto.randomBytes(16).toString('hex')));
+
 function verifyPassword(password, stored) {
   try {
     const [scheme, N, r, p, saltB64, keyB64] = String(stored).split('$');
@@ -220,7 +223,8 @@ class Auth {
     const account = `user:${String(username || '').toLowerCase()}`;
     this.checkLockout(account);
     const user = this.findByUsername(username);
-    const ok = user && verifyPassword(password, user.password);
+    // Unknown names still pay for one hash, so response time doesn't reveal which accounts exist.
+    const ok = verifyPassword(password, user ? user.password : decoyHash()) && Boolean(user);
     if (!ok) {
       this.noteAccountFailure(account);
       this.recordFailure(ip, 'Incorrect username or password');
