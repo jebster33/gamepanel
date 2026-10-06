@@ -51,10 +51,12 @@ The installers set up everything else: Node.js, the background service, the fire
 | No Docker | `curl … \| sudo GP_SKIP_DOCKER=1 bash` | not used on Windows |
 | Portable, no service | `git clone` then `node server/index.js` | unzip `GamePanel-…-windows-x64.zip`, run `start.cmd` |
 | Update | Settings → Panel updates, or run the installer again | same |
-| Uninstall | `sudo /opt/gamepanel/uninstall.sh` | Apps → GamePanel, or `windows\uninstall.ps1` |
+| Uninstall (removes everything) | `sudo /opt/gamepanel/uninstall.sh` | Apps → GamePanel, or `windows\uninstall.ps1` |
+| Uninstall, keep servers | `sudo /opt/gamepanel/uninstall.sh --keep-data` | `windows\uninstall.ps1 -KeepData` |
 
-Your servers, backups and settings stay through updates and uninstalls:
-`/var/lib/gamepanel` on Linux, `C:\ProgramData\GamePanel` on Windows.
+Your servers, backups and settings stay through updates:
+`/var/lib/gamepanel` on Linux, `C:\ProgramData\GamePanel` on Windows. Uninstalling removes them
+too (after asking), along with users, bridge connections and the containers GamePanel built.
 </details>
 
 ## What you get
@@ -73,6 +75,7 @@ Your servers, backups and settings stay through updates and uninstalls:
 | **Alerts** | Crashes and failed backups posted to Discord. |
 | **Sharing** | Give friends access to one server and only the buttons you choose. |
 | **Reachability** | Opens the server's ports in the firewall and on your router (UPnP), or tells you exactly what to forward. |
+| **Bridge** | Or skip port forwarding: friends run a personal client and your servers appear on their computer, encrypted end to end. [How it works](docs/bridge.md) |
 | **Isolation on Linux** | Every server in its own Docker container with hard memory and CPU limits. |
 
 <table>

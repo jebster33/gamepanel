@@ -7,7 +7,7 @@ const updater = require('../../features/updater');
 const { EVENT_CHOICES } = require('../../features/notify');
 const VERSION = require('../../../package.json').version;
 
-module.exports = (router, { store, auth, manager, hostMetrics, notifier }, { requireAdmin, requireCap }) => {
+module.exports = (router, { store, auth, manager, hostMetrics, notifier, bridge }, { requireAdmin, requireCap }) => {
   router.get('/api/system', ({ user }) => ({
     host: hostMetrics.last,
     overview: manager.overview(),
@@ -16,6 +16,7 @@ module.exports = (router, { store, auth, manager, hostMetrics, notifier }, { req
     os: describeHost(),
     docker: { available: manager.dockerAvailable },
     isAdmin: user.role === 'admin',
+    bridgeEnabled: user.role === 'admin' ? bridge.enabled : undefined,
     dataDir: user.role === 'admin' ? config.dataDir : undefined,
   }));
 

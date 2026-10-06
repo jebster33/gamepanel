@@ -1,0 +1,124 @@
+name: Bridge client
+
+# Builds the GamePanel Bridge client (bridge/client) for every platform the
+# panel offers, runs the end-to-end test against a real panel on Linux and
+# Windows, and on main publishes the binaries as the "bridge-v<version>"
+# release that panels download from. That release is never marked latest, so
+# panel updates keep following the normal v* releases.
+
+on:
+  push:
+    branches: ['**']
+    paths:
+      - 'bridge/**'
+      - 'server/**'
+      - 'test/bridge-e2e.js'
+      - 'package.json'
+      - '.github/workflows/bridge.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: bridge-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: bridge/client/go.mod
+          cache: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - id: version
+        run: echo "version=$(node -p "require('./package.json').bridgeClientVersion")" >> "$GITHUB_OUTPUT"
+
+      - name: Icon and version resources
+        working-directory: bridge/client
+        run: |
+          go install github.com/tc-hib/go-winres@v0.3.3
+          v="${{ steps.version.outputs.version }}.0"
+          "$(go env GOPATH)/bin/go-winres" make --arch amd64,arm64 --product-version "$v" --file-version "$v"
+
+      - name: Vet
+        working-directory: bridge/client
+        run: |
+          test -z "$(gofmt -l .)" || { gofmt -l .; exit 1; }
+          go vet ./...
+          GOOS=windows go vet ./...
+
+      - name: Build
+        working-directory: bridge/client
+        run: |
+          mkdir -p ../../dist
+          for target in windows/amd64 linux/amd64 linux/arm64; do
+            os="${target%/*}"; arch="${target#*/}"; ext=""
+            [ "$os" = windows ] && ext=".exe"
+            CGO_ENABLED=0 GOOS="$os" GOARCH="$arch" go build -trimpath \
+              -ldflags "-s -w -X main.version=${{ steps.version.outputs.version }}" \
+              -o "../../dist/gamepanel-bridge-$os-$arch$ext" .
+          done
+          ls -la ../../dist
+
+      - name: End-to-end test (Linux)
+        run: node test/bridge-e2e.js dist/gamepanel-bridge-linux-amd64
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gamepanel-bridge
+          path: dist/gamepanel-bridge-*
+
+  windows:
+    needs: build
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/download-artifact@v4
+        with:
+          name: gamepanel-bridge
+          path: dist
+      - name: End-to-end test (Windows)
+        run: node test/bridge-e2e.js dist/gamepanel-bridge-windows-amd64.exe
+
+  release:
+    needs: [build, windows]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: gamepanel-bridge
+          path: dist
+      - name: Is this version already published?
+        id: exists
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "bridge-v${{ needs.build.outputs.version }}" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            echo "published=true" >> "$GITHUB_OUTPUT"
+            echo "bridge-v${{ needs.build.outputs.version }} already exists; bump bridgeClientVersion in package.json to publish a new client."
+          fi
+      - name: Publish
+        if: steps.exists.outputs.published != 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: bridge-v${{ needs.build.outputs.version }}
+          target_commitish: ${{ github.sha }}
+          name: GamePanel Bridge client ${{ needs.build.outputs.version }}
+          make_latest: 'false'
+          body: |
+            The client that GamePanel's Connections page hands out. You do not need to download these yourself:
+            the panel fetches them and stamps a personal copy for each connection.
+          files: dist/gamepanel-bridge-*

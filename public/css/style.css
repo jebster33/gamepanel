@@ -3066,3 +3066,35 @@ tr.clickable:hover td {
 :root[data-theme="light"] .line-art {
   filter: invert(1) hue-rotate(180deg);
 }
+
+/* -------------------------------------------------- bridge: extra ports */
+
+.bridge-port {
+  display: grid;
+  grid-template-columns: minmax(90px, 1.4fr) 84px 84px 92px minmax(90px, 1.2fr) 30px;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.bridge-port input,
+.bridge-port select {
+  min-width: 0;
+}
+.bridge-port-head {
+  font-size: 11.5px;
+  margin-bottom: 4px;
+}
+@media (max-width: 760px) {
+  .bridge-port {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+  .bridge-port-head {
+    display: none;
+  }
+}
+.hint.warn-text {
+  color: var(--amber);
+}
+.hint.warn-text:empty {
+  display: none;
+}
