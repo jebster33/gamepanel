@@ -12,7 +12,7 @@
   <a href="#install">Install</a> ·
   <a href="#games">Games</a> ·
   <a href="#one-click-mods">Mods</a> ·
-  <a href="docs/templates.md">Add a game</a> ·
+  <a href="docs/guide/README.md">User guide</a> ·
   <a href="docs/troubleshooting.md">Help</a>
 </p>
 
@@ -41,6 +41,7 @@ curl -fsSL https://raw.githubusercontent.com/jebster33/gamepanel/main/install.sh
 
 Then open **http://localhost:8420** (or `http://<server-ip>:8420`) and create your admin account.
 The installers set up everything else: Node.js, the background service, the firewall rule and, on Linux, Docker.
+Step by step: [Linux](docs/guide/install-linux.md) · [Windows](docs/guide/install-windows.md) · [First setup](docs/guide/first-setup.md)
 
 <details>
 <summary>Install options</summary>
@@ -61,44 +62,67 @@ too (after asking), along with users, bridge connections and the containers Game
 
 ## What you get
 
+**Servers**
+
 | | |
 |---|---|
-| **Create a server in a minute** | Pick a game, the panel downloads it, gives it free ports and starts it. |
-| **Live console** | Colour-coded output you can type into, with RCON where the game has it. |
-| **Live player list** | Who is on, for how long, and their score where the game reports it, with kick and ban. |
-| **Import existing** | Already have a server on this machine? Point the panel at its folder; nothing is reinstalled. |
-| **Two-factor sign-in** | Codes from any authenticator app: Apple Passwords, Google or Microsoft Authenticator, 2FAS, Aegis… |
-| **One-click modpacks** | Install Modrinth and CurseForge packs, loader and all. |
-| **One-click mods** | Modrinth, CurseForge, uMod, Steam Workshop and the Factorio portal, filtered to your loader and version. |
-| **Schedules** | Nightly restarts, backups every few hours, a console message on the hour. |
-| **Backups** | One click, scheduled, downloadable, restorable, and optionally copied to Backblaze B2, Cloudflare R2, S3 or MinIO. |
-| **Files** | Browse, edit, drag-and-drop upload, unzip in place. |
-| **Alerts** | Crashes and failed backups posted to Discord. |
-| **Sharing** | Give friends access to one server (console only, start/stop, files only or custom) from the server's Access tab. |
-| **Multiple machines** | Add other GamePanel installs as named nodes and run their servers from one panel. |
-| **Graphs with history** | CPU, memory and players per server for the last hour up to 30 days. |
-| **Audit log** | Every change anyone makes, with who, what, which server and from where. |
+| **Create a server in a minute** | Pick a game; the panel downloads it, gives it free ports and starts it. Or [import one you already run](docs/guide/create-server.md#import-a-server-you-already-have). |
+| **Live console** | Colour-coded, with command history, Tab completion and RCON. When a server crashes, the **Crash doctor** says why in plain words and offers the fix. |
+| **Mods and modpacks** | Modrinth, CurseForge, Hangar, SpigotMC, uMod, Steam Workshop and the Factorio portal, filtered to your loader and version. Modrinth and CurseForge packs in one click. [Guide](docs/guide/mods-and-modpacks.md) |
+| **Minecraft extras** | Switch version or loader, manage worlds, edit game rules, MOTD and icon, Bedrock crossplay, BlueMap, Chunky pre-generation. |
+| **Schedules** | Restarts with in-game warnings, backups, commands, game and mod updates; skip while people are playing. |
+| **Backups** | One click or scheduled, restore whole or single files, copied to Backblaze B2, Cloudflare R2, S3 or MinIO. [Guide](docs/guide/backups.md) |
+| **Files** | Browse, edit, search, drag-and-drop upload, unzip in place. |
+| **Graphs with history** | CPU, memory, players and ping for the last hour up to 30 days. |
 | **Automatic updates** | Steam games update themselves when a new build is out and nobody is playing. |
-| **Reachability** | Opens the server's ports in the firewall and on your router (UPnP), or tells you exactly what to forward. |
+
+**Players and community**
+
+| | |
+|---|---|
+| **Players** | Who is on, history and play time, profiles with stats, kick and ban, whitelist, ops, maintenance mode. [Guide](docs/guide/players.md) |
+| **Discord** | Alerts by webhook, a bot with `/status`, `/players`, `/start`…, and two-way chat per server. Slack and ntfy too. [Guide](docs/guide/alerts-and-discord.md) |
+| **Status page** | A public page with who is on, uptime and leaderboards. |
+| **Phone app** | Home-screen app with console, players and push notifications. |
+
+**Running the panel**
+
+| | |
+|---|---|
+| **Sharing** | Give friends one server (console only, start/stop, files only or custom) from its Access tab. [Guide](docs/guide/users-and-2fa.md) |
+| **Two-factor sign-in** | Codes from any authenticator app, and an option to require it for admins. |
+| **Multiple machines** | Add other GamePanel installs as [nodes](docs/guide/nodes.md) and run their servers from one panel. |
+| **Limits** | Caps on total memory, CPU per server and storage. [Guide](docs/guide/panel-settings.md#limits) |
+| **Audit log** | Every change anyone makes, with who, what, which server and from where. |
+| **Reachability** | Opens ports in the firewall and on your router (UPnP), or tells you exactly what to forward. |
 | **Bridge** | Or skip port forwarding: friends run a personal client and your servers appear on their computer, encrypted end to end. [How it works](docs/bridge.md) |
 | **Isolation on Linux** | Every server in its own Docker container with hard memory and CPU limits. |
+| **API** | Keys for scripts and bots, read-only or full. [Reference](docs/api.md) |
 
 <table>
   <tr>
     <td><img src="docs/screenshots/console.png" alt="Console" /></td>
-    <td><img src="docs/screenshots/schedules.png" alt="Schedules" /></td>
+    <td><img src="docs/screenshots/players.png" alt="Players" /></td>
   </tr>
   <tr>
     <td align="center">Console</td>
-    <td align="center">Schedules</td>
+    <td align="center">Players</td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/metrics.png" alt="Graphs" /></td>
+    <td><img src="docs/screenshots/access.png" alt="Sharing a server" /></td>
+  </tr>
+  <tr>
+    <td align="center">Graphs with history</td>
+    <td align="center">Sharing a server</td>
   </tr>
   <tr>
     <td><img src="docs/screenshots/games.png" alt="Games" /></td>
-    <td><img src="docs/screenshots/dashboard-light.png" alt="Light theme" /></td>
+    <td><img src="docs/screenshots/nodes.png" alt="Nodes" /></td>
   </tr>
   <tr>
     <td align="center">Pick a game</td>
-    <td align="center">Light theme</td>
+    <td align="center">Several machines</td>
   </tr>
 </table>
 
@@ -144,6 +168,10 @@ Missing one? A template is a short JSON file: see [docs/templates.md](docs/templ
 
 <img src="docs/screenshots/mod-install.png" alt="Install plan with dependencies" width="700" />
 
+**Modpacks:** create a *Minecraft: Modpack* server, pick a Modrinth or CurseForge pack and a version, and the
+panel installs the loader, every mod and the pack's configs. Changing the pack later keeps your world.
+More in the [mods guide](docs/guide/mods-and-modpacks.md).
+
 ## Compared with other panels
 
 | | GamePanel | Pterodactyl / Pelican | AMP | WindowsGSM | LinuxGSM |
@@ -168,23 +196,31 @@ Linux and runs games as normal processes on Windows.
 
 ## Settings from the environment
 
-| Variable | Default | |
-|---|---|---|
-| `GP_PORT` | `8420` | Panel port |
-| `GP_HOST` | `0.0.0.0` | Address to listen on |
-| `GP_DATA_DIR` | see above | Where servers and settings live |
-| `GP_BEHIND_PROXY` | `0` | Trust `X-Forwarded-*` headers behind a reverse proxy |
-| `GP_DOCKER_SOCKET` | `/var/run/docker.sock` | Docker socket |
-| `GP_LOG_LEVEL` | `info` | `debug`, `info`, `warn`, `error` |
+`GP_PORT`, `GP_HOST`, `GP_DATA_DIR`, `GP_BEHIND_PROXY`, `GP_DOCKER_SOCKET` and `GP_LOG_LEVEL`: see
+[Panel settings](docs/guide/panel-settings.md#environment-variables).
 
 **HTTPS:** put it behind Caddy (`panel.example.com { reverse_proxy 127.0.0.1:8420 }`) and set `GP_BEHIND_PROXY=1`.
 
-## More
+## Documentation
 
-- [Add a game (templates)](docs/templates.md)
-- [Security and isolation](docs/security.md), please read before exposing the panel to the internet
-- [Troubleshooting](docs/troubleshooting.md)
-- [HTTP API](docs/api.md)
+**[User guide](docs/guide/README.md)**, start to finish:
+[Install on Linux](docs/guide/install-linux.md) ·
+[Install on Windows](docs/guide/install-windows.md) ·
+[First setup](docs/guide/first-setup.md) ·
+[Create a server](docs/guide/create-server.md) ·
+[Running a server](docs/guide/running-a-server.md) ·
+[Mods and modpacks](docs/guide/mods-and-modpacks.md) ·
+[Players](docs/guide/players.md) ·
+[Backups](docs/guide/backups.md) ·
+[Alerts and Discord](docs/guide/alerts-and-discord.md) ·
+[Bridge](docs/bridge.md) ·
+[Nodes](docs/guide/nodes.md) ·
+[Users and 2FA](docs/guide/users-and-2fa.md) ·
+[Panel settings and limits](docs/guide/panel-settings.md) ·
+[Updating and uninstalling](docs/guide/uninstall.md)
+
+Reference: [Add a game (templates)](docs/templates.md) · [Security](docs/security.md), please read before
+exposing the panel to the internet · [Troubleshooting](docs/troubleshooting.md) · [HTTP API](docs/api.md)
 
 **Developing:** `node server/index.js` runs the panel from a checkout. `npm test` checks every template and
 the UI modules; `node test/smoke.js --template=valheim` installs and boots a real server. The UI is plain
