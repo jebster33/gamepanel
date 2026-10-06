@@ -63,6 +63,8 @@ module.exports = {
     h.log.push({ t: Date.now(), ...entry });
     if (h.log.length > MAX_LOG) h.log.splice(0, h.log.length - MAX_LOG);
     h.dirty = true;
+    const server = this.servers?.find((s) => s.id === id);
+    if (server?.discordFeed) require('../features/discord-feed').relay(server, entry);
   },
 
   closeSession(h, name, start, end) {

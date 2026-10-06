@@ -139,6 +139,23 @@ module.exports = (router, { store, manager, scheduler }, { requireAdmin, require
     return manager.cloneServer(params.id, { name: body?.name, copyFiles: body?.copyFiles !== false }, user);
   });
 
+  /** This server's own Discord channel: chat, joins and leaves, and status. */
+  router.put('/api/servers/:id/discord-feed', async ({ user, params, body }) => {
+    const server = serverFor(user, params.id, 'settings');
+    const webhook = String(body?.webhook || '').trim();
+    if (webhook && !/^https:\/\/(?:[a-z]+\.)?(?:discord|discordapp)\.com\/api\/webhooks\//.test(webhook)) fail(400, 'Paste a Discord webhook URL (Channel settings, Integrations, Webhooks)');
+    server.discordFeed = webhook ? { webhook, chat: body.chat !== false, joins: body.joins !== false, status: body.status !== false } : undefined;
+    store.save();
+    if (webhook && body.test) {
+      try {
+        await require('../../features/discord-feed').post(webhook, { content: `✅ ${server.name} is connected to this channel.`, username: server.name.slice(0, 80) });
+      } catch (err) {
+        fail(400, `Discord did not accept the message: ${err.message}`);
+      }
+    }
+    return { discordFeed: server.discordFeed || null };
+  });
+
   /** The whole server as one archive another panel can import. */
   router.get('/api/servers/:id/export', async ({ user, params, res }) => {
     requireAdmin(user);

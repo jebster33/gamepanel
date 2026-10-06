@@ -68,6 +68,25 @@ export function renderServerSettingsTab(host, server) {
         : ''
     }
 
+    ${
+      isAdmin
+        ? `<div class="card mb-16" id="feed-card">
+      <h4 style="margin:0 0 6px">Discord channel</h4>
+      <p class="faint" style="margin:0 0 12px">Post this server's chat, joins and leaves, and starts and crashes into a Discord channel. In Discord: channel settings, Integrations, Webhooks, New Webhook, Copy URL.</p>
+      <input id="feed-url" class="mono" placeholder="https://discord.com/api/webhooks/…" value="${esc(server.discordFeed?.webhook || '')}" spellcheck="false" />
+      <div class="row" style="gap:16px;flex-wrap:wrap;margin-top:10px">
+        <div class="checkbox-row" style="margin:0"><input type="checkbox" id="feed-chat" ${server.discordFeed?.chat === false ? '' : 'checked'} /><label for="feed-chat">Chat</label></div>
+        <div class="checkbox-row" style="margin:0"><input type="checkbox" id="feed-joins" ${server.discordFeed?.joins === false ? '' : 'checked'} /><label for="feed-joins">Joins and leaves</label></div>
+        <div class="checkbox-row" style="margin:0"><input type="checkbox" id="feed-status" ${server.discordFeed?.status === false ? '' : 'checked'} /><label for="feed-status">Online, stopped, crashed</label></div>
+      </div>
+      <div class="row mt-16" style="gap:8px">
+        <button class="btn" id="feed-save">Save and send a test</button>
+        ${server.discordFeed ? '<button class="btn btn-ghost" id="feed-off">Disconnect</button>' : ''}
+      </div>
+    </div>`
+        : ''
+    }
+
     <div class="card mb-16" id="network-card">
       <h4 style="margin:0 0 6px">Reachability</h4>
       <p class="faint" style="margin:0 0 12px">Checking the firewall and your router…</p>
@@ -119,6 +138,24 @@ export function renderServerSettingsTab(host, server) {
     }`;
 
   renderNetworkCard(server);
+
+  const saveFeed = async (webhook, btn) => {
+    btn.disabled = true;
+    try {
+      const { discordFeed } = await api(`/api/servers/${server.id}/discord-feed`, {
+        method: 'PUT',
+        body: { webhook, chat: $('#feed-chat').checked, joins: $('#feed-joins').checked, status: $('#feed-status').checked, test: Boolean(webhook) },
+      });
+      server.discordFeed = discordFeed || undefined;
+      toast(webhook ? 'Connected. Check the channel for a test message.' : 'Disconnected from Discord');
+      renderServerSettingsTab(host, server);
+    } catch (err) {
+      toast(err.message, 'error');
+      btn.disabled = false;
+    }
+  };
+  $('#feed-save')?.addEventListener('click', (e) => saveFeed($('#feed-url').value.trim(), e.currentTarget));
+  $('#feed-off')?.addEventListener('click', (e) => saveFeed('', e.currentTarget));
 
   if (!isAdmin) return;
 

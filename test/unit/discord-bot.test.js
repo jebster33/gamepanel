@@ -37,3 +37,25 @@ test('discord bot: only listed users can start servers', async () => {
   assert.deepStrictEqual(started, ['b']);
   assert.match(events[0], /chris used \/start on Creative/);
 });
+
+test('a server Discord feed batches chat and keeps mentions out', async () => {
+  const feed = require('../../server/features/discord-feed');
+  const sent = [];
+  const realFetch = global.fetch;
+  global.fetch = async (url, opts) => {
+    sent.push(JSON.parse(opts.body));
+    return { ok: true, status: 204 };
+  };
+  try {
+    const server = { id: 'f1', name: 'SMP', discordFeed: { webhook: 'https://discord.com/api/webhooks/1/x', chat: true, joins: false, status: true } };
+    feed.relay(server, { type: 'join', name: 'Steve' });
+    feed.relay(server, { type: 'chat', name: 'Steve', text: 'hi @everyone *bold*' });
+    feed.relay(server, { type: 'crash' });
+    await feed.flush(server);
+    assert.strictEqual(sent.length, 1);
+    assert.strictEqual(sent[0].content, '**Steve**: hi @​everyone \\*bold\\*\n💥 Server crashed');
+    assert.deepStrictEqual(sent[0].allowed_mentions, { parse: [] });
+  } finally {
+    global.fetch = realFetch;
+  }
+});
