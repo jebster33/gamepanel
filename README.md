@@ -98,6 +98,15 @@ too (after asking), along with users, bridge connections and the containers Game
 | **Bridge** | Or skip port forwarding: friends run a personal client and your servers appear on their computer, encrypted end to end. [How it works](docs/bridge.md) |
 | **Isolation on Linux** | Every server in its own Docker container with hard memory and CPU limits. |
 | **API** | Keys for scripts and bots, read-only or full. [Reference](docs/api.md) |
+| **Ready-made setups** | A Survival SMP with LuckPerms and EssentialsX, a fast Fabric server, a Rust community server… in one click. |
+| **Quotas** | Let friends create their own servers, up to a number, memory and disk you set. |
+| **Config history** | Every config save is kept: see what changed and put an older version back. |
+| **Scheduled events** | Optional: a double XP weekend that turns itself on and off. |
+| **Server list page** | A public page with who is on, the MOTD, Join buttons and your Discord and vote links. |
+| **World maps** | Rust (RustMaps), Valheim (valheim-map.world) and Terraria (TerraMap), next to Minecraft's live BlueMap. |
+| **Sign in with Google, Discord or GitHub** | Link one on your Account page and skip the password. |
+| **Languages** | English, Nederlands, Deutsch, Español, Français, Português. |
+| **Notifications** | A bell for crashes, installs and backups, with pop-ups and desktop alerts. |
 
 <table>
   <tr>
