@@ -27,10 +27,12 @@ function createHelpers({ auth, manager, store }) {
   };
 
   const visibleServers = (user) => manager.servers.filter((s) => auth.canAccessServer(user, s.id)).map((s) => manager.publicServer(s));
+  // Local servers plus, for administrators, the ones on other nodes.
+  const allVisibleServers = (user) => [...visibleServers(user), ...(user?.role === 'admin' && manager.nodes ? manager.nodes.remoteServers() : [])];
 
   const integrations = () => store.state.settings.integrations || {};
 
-  return { requireAdmin, requireCap, serverFor, visibleServers, integrations };
+  return { requireAdmin, requireCap, serverFor, visibleServers, allVisibleServers, integrations };
 }
 
 function clientIp(req) {

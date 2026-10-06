@@ -21,7 +21,7 @@ const { RateLimiter } = require('../core/ratelimit');
 const audit = require('../features/audit');
 
 const VERSION = require('../../package.json').version;
-const ROUTES = ['auth', 'system', 'templates', 'servers', 'files', 'mods', 'network', 'backups', 'users'];
+const ROUTES = ['auth', 'system', 'templates', 'servers', 'files', 'mods', 'network', 'backups', 'users', 'nodes'];
 
 /** @param {{store, auth, manager, templates, hostMetrics, scheduler, notifier}} app */
 function createApi(app) {
@@ -36,7 +36,57 @@ function createApi(app) {
     json(res, 429, { error: 'Too many requests. Slow down and try again in a moment.' });
   };
 
+  /**
+   * Requests for a server on another node ("<node>~<id>"), or sent straight
+   * to a node, are passed through to that panel. Administrators only.
+   */
+  async function proxyToNode(req, res, url) {
+    const nodes = app.nodes;
+    if (!nodes?.list.length) return false;
+    let node;
+    let path;
+    const direct = url.pathname.match(/^\/api\/nodes\/([^/]+)\/proxy(\/api\/.*)$/);
+    const viaId = url.pathname.match(/^\/api\/servers\/([^/]+)(\/.*)?$/);
+    if (direct) {
+      node = nodes.list.find((n) => n.id === direct[1]);
+      path = direct[2];
+    } else if (viaId) {
+      const target = nodes.parseId(decodeURIComponent(viaId[1]));
+      if (!target) return false;
+      node = target.node;
+      path = `/api/servers/${encodeURIComponent(target.remoteId)}${viaId[2] || ''}`;
+    }
+    if (!node) return false;
+    if (req.method !== 'GET' && req.headers.origin) {
+      let same = false;
+      try {
+        same = new URL(req.headers.origin).host === req.headers.host;
+      } catch {
+        same = false;
+      }
+      if (!same) {
+        json(res, 403, { error: 'Cross-origin request refused' });
+        return true;
+      }
+    }
+    const user = app.auth.userFromRequest(req);
+    if (!user) {
+      json(res, 401, { error: 'Not signed in' });
+      return true;
+    }
+    if (user.role !== 'admin') {
+      json(res, 403, { error: 'Only administrators can manage servers on other nodes' });
+      return true;
+    }
+    if (req.method !== 'GET') {
+      audit.record({ user: user.username, ip: clientIp(req), action: `${req.method.toLowerCase()} ${path.replace(/^\/api\//, '')} on node ${node.name}`, path, status: 200 });
+    }
+    await nodes.proxy(req, res, node, path + url.search);
+    return true;
+  }
+
   async function handle(req, res, url) {
+    if (await proxyToNode(req, res, url)) return;
     const match = router.match(req.method, url.pathname);
     if (!match) {
       json(res, 404, { error: 'Endpoint not found' });

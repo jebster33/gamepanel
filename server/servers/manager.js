@@ -487,7 +487,9 @@ class ServerManager extends EventEmitter {
   }
 
   broadcastServers() {
-    this.bus.broadcast('servers', { servers: this.servers.map((s) => this.publicServer(s)) });
+    const local = this.servers.map((s) => this.publicServer(s));
+    for (const s of local) s.node = null;
+    this.bus.broadcast('servers', { servers: [...local, ...(this.nodes?.remoteServers() || [])] });
   }
 
   /** Snapshot for the dashboard header. */

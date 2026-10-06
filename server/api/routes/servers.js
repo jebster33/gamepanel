@@ -4,8 +4,8 @@ const { fail, logger } = require('../../core/util');
 const { rconCommand } = require('../../games/rcon');
 const { query } = require('../../games/query');
 
-module.exports = (router, { store, manager, scheduler, auth }, { requireAdmin, requireCap, serverFor, visibleServers }) => {
-  router.get('/api/servers', ({ user }) => ({ servers: visibleServers(user) }));
+module.exports = (router, { store, manager, scheduler, auth }, { requireAdmin, requireCap, serverFor, visibleServers, allVisibleServers }) => {
+  router.get('/api/servers', ({ user, url }) => ({ servers: url.searchParams.get('local') === '1' ? visibleServers(user) : allVisibleServers(user) }));
 
   router.post('/api/servers', async ({ user, body }) => {
     requireAdmin(user);

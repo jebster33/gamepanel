@@ -20,6 +20,7 @@ const { ServerManager } = require('./servers/manager');
 const { HostMetrics, stopSampler } = require('./features/metrics');
 const { Scheduler } = require('./features/scheduler');
 const { Notifier } = require('./features/notify');
+const { Nodes } = require('./features/nodes');
 const { createApi, VERSION } = require('./api');
 
 const MIME = {
@@ -47,7 +48,9 @@ async function main() {
   const manager = new ServerManager(store, templates, wss);
   const scheduler = new Scheduler(manager, store);
   const notifier = new Notifier(store);
-  const api = createApi({ store, auth, manager, templates, hostMetrics, scheduler, notifier });
+  const nodes = new Nodes({ store, manager, wss });
+  manager.nodes = nodes;
+  const api = createApi({ store, auth, manager, templates, hostMetrics, scheduler, notifier, nodes });
 
   /* ------------------------------------------------------ static assets -- */
 
@@ -179,7 +182,7 @@ async function main() {
     conn.subscriptions.add('server:status');
 
     conn.send({ topic: 'hello', version: VERSION, user: auth.publicUser(user) });
-    conn.send({ topic: 'servers', servers: manager.servers.filter((s) => auth.canAccessServer(user, s.id)).map((s) => manager.publicServer(s)) });
+    conn.send({ topic: 'servers', servers: [...manager.servers.filter((s) => auth.canAccessServer(user, s.id)).map((s) => manager.publicServer(s)), ...(user.role === 'admin' ? nodes.remoteServers() : [])] });
 
     conn.on('message', async (msg) => {
       try {
@@ -225,6 +228,7 @@ async function main() {
 
   await manager.init();
   scheduler.start();
+  nodes.start();
 
   let shuttingDown = false;
   const shutdown = async (signal) => {
@@ -233,6 +237,7 @@ async function main() {
     logger.info(`Received ${signal}, shutting down…`);
     clearInterval(systemTimer);
     scheduler.stop();
+    nodes.stop();
     stopSampler();
     wss.close();
     server.close();

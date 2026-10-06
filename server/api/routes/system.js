@@ -12,6 +12,7 @@ module.exports = (router, { store, auth, manager, hostMetrics, notifier }, { req
     host: hostMetrics.last,
     overview: manager.overview(),
     version: VERSION,
+    nodeName: store.state.settings.nodeName || require('os').hostname(),
     platform: HOST_PLATFORM,
     os: describeHost(),
     docker: { available: manager.dockerAvailable },
@@ -96,7 +97,7 @@ module.exports = (router, { store, auth, manager, hostMetrics, notifier }, { req
 
   router.get('/api/settings', ({ user }) => {
     requireAdmin(user);
-    return { settings: store.state.settings, notificationEvents: EVENT_CHOICES };
+    return { settings: { ...store.state.settings, nodes: undefined }, notificationEvents: EVENT_CHOICES };
   });
 
   router.patch('/api/settings', ({ user, body }) => {

@@ -55,10 +55,16 @@ export async function enterApp() {
 
   // Restricted accounts may not be allowed every one of these; a refused
   // request must not stop the panel from loading.
-  await Promise.allSettled([loadServers(), loadTemplates(), loadSystem()]);
+  await Promise.allSettled([loadServers(), loadTemplates(), loadSystem(), loadNodes()]);
   connectWebSocket();
   renderSidebarServers();
   handleRoute();
+}
+
+/** Other machines this panel controls (administrators only). */
+export async function loadNodes() {
+  if (state.user?.role !== 'admin') return;
+  state.nodes = await api('/api/nodes').catch(() => null);
 }
 
 export async function loadServers() {
