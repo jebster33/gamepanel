@@ -120,6 +120,27 @@ module.exports = {
     };
   },
 
+  /** Top three per stat across everyone who has played, for the status page. Cached 10 minutes. */
+  leaderboards(server) {
+    this.boardCache ||= new Map();
+    const hit = this.boardCache.get(server.id);
+    if (hit && Date.now() - hit.at < 10 * 60_000) return hit.value;
+    const names = (this.playerHistory?.(server.id)?.players || []).slice(0, 300).map((p) => p.name);
+    const rows = names.map((name) => ({ name, st: this.playerStats(server, name) })).filter((r) => r.st);
+    const board = (label, key, unit = '') =>
+      ({
+        label,
+        top: rows
+          .filter((r) => r.st[key] > 0)
+          .sort((a, b) => b.st[key] - a.st[key])
+          .slice(0, 3)
+          .map((r) => ({ name: r.name, value: `${Number(r.st[key]).toLocaleString('en-US')}${unit}` })),
+      });
+    const value = rows.length ? [board('Mob kills', 'mobKills'), board('Player kills', 'playerKills'), board('Blocks mined', 'mined'), board('Travelled', 'km', ' km'), board('Deaths', 'deaths')].filter((b) => b.top.length) : [];
+    this.boardCache.set(server.id, { at: Date.now(), value });
+    return value;
+  },
+
   activeWorld(server) {
     const m = this.readProperties(server).match(/^level-name=(.*)$/m);
     return (m && m[1].trim()) || (isBedrock(server) ? 'Bedrock level' : 'world');

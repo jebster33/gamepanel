@@ -93,7 +93,8 @@ function render(data) {
         ${uptimeBars(s.uptime30)}
         ${
           s.topPlayers?.length
-            ? `<div class="most"><span class="meta">Most played</span> ${s.topPlayers.map((p) => `<span>${esc(p.name)} <b>${p.hours}h</b></span>`).join('')}</div>`
+            ? `<div class="most"><span class="meta">Most played</span> ${s.topPlayers.map((p) => `<span>${esc(p.name)} <b>${p.hours}h</b></span>`).join('')}</div>` +
+              (s.leaderboards || []).map((b) => `<div class="most"><span class="meta">${esc(b.label)}</span> ${b.top.map((p) => `<span>${esc(p.name)} <b>${esc(p.value)}</b></span>`).join('')}</div>`).join('')
             : ''
         }
         ${s.playerNames?.length ? `<div class="names">${s.playerNames.map((n) => `<span>${esc(n)}</span>`).join('')}</div>` : ''}
