@@ -20,6 +20,7 @@ const TITLES = {
   'server.idle_stopped': 'Stopped while empty',
   'server.hung': 'Frozen server restarted',
   'server.world_reset': 'World reset',
+  'server.wiped': 'Server wiped',
   'server.resource_alert': 'Resource alert',
   'player.watched': 'Watched player joined',
   'panel.disk_low': 'Disk almost full',

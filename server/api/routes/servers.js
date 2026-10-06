@@ -107,6 +107,23 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
     return { ok: true, started: true };
   });
 
+  /** Wipes (games whose template has a "wipe" spec, like Rust). */
+  router.get('/api/servers/:id/wipe', ({ user, params, url }) => {
+    const server = serverFor(user, params.id, 'files.write');
+    const { files } = require('../../features/wipe').plan(manager, server, { blueprints: url.searchParams.get('blueprints') === '1' });
+    return { files, lastWipe: server.lastWipe || null };
+  });
+
+  router.post('/api/servers/:id/wipe', async ({ user, params, body }) => {
+    const server = serverFor(user, params.id, 'files.write');
+    requireCap(user, 'power', server.id);
+    const opts = { blueprints: Boolean(body?.blueprints), newSeed: Boolean(body?.newSeed), updateFirst: Boolean(body?.updateFirst) };
+    const log = (line) => manager.pushConsole(server, line, 'system');
+    const result = await require('../../features/wipe').wipe(manager, server, opts, log);
+    store.addEvent('server.wiped', `${server.name} was wiped by ${user.username}${opts.blueprints ? ' (blueprints too)' : ''}`, { serverId: server.id });
+    return { ok: true, ...result };
+  });
+
   router.get('/api/servers/:id/console', ({ user, params }) => {
     const server = serverFor(user, params.id, 'console');
     return { lines: manager.getConsole(server.id) };

@@ -305,6 +305,7 @@ class ServerManager extends EventEmitter {
       queryError: rt.queryError,
       diskBytes: rt.diskBytes,
       task: rt.task,
+      canWipe: Boolean(tpl?.wipe),
       templateName: tpl?.name || server.templateId,
       templateIcon: tpl?.icon || '🎮',
       templateLogo: tpl?.logo || null,

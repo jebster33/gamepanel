@@ -12,7 +12,7 @@
 const { logger, uid, fail } = require('../core/util');
 const backups = require('./backups');
 
-const ACTIONS = ['restart', 'start', 'stop', 'backup', 'command', 'update', 'mods'];
+const ACTIONS = ['restart', 'start', 'stop', 'backup', 'command', 'update', 'mods', 'wipe'];
 
 const FIELDS = [
   { name: 'minute', min: 0, max: 59 },
@@ -55,7 +55,7 @@ function matches(cron, date) {
 }
 
 /** The next time an expression fires, for display. */
-function nextRun(expr, from = new Date()) {
+function nextRun(expr, from = new Date(), { firstOfMonth = false } = {}) {
   let cron;
   try {
     cron = parseCron(expr);
@@ -66,7 +66,7 @@ function nextRun(expr, from = new Date()) {
   d.setSeconds(0, 0);
   for (let i = 0; i < 60 * 24 * 366; i++) {
     d.setMinutes(d.getMinutes() + 1);
-    if (matches(cron, d)) return d.getTime();
+    if (matches(cron, d) && (!firstOfMonth || d.getDate() <= 7)) return d.getTime();
   }
   return null;
 }
@@ -89,8 +89,11 @@ function validate(input) {
     // "Restart at 5am, but not while people are playing."
     onlyWhenEmpty: action !== 'start' && Boolean(input.onlyWhenEmpty),
     enabled: input.enabled !== false,
-    // Minutes of in-game countdown before a restart or stop.
-    warnMinutes: ['restart', 'stop'].includes(action) ? Math.max(0, Math.min(30, Math.round(Number(input.warnMinutes) || 0))) : 0,
+    // Minutes of in-game countdown before a restart, stop or wipe.
+    warnMinutes: ['restart', 'stop', 'wipe'].includes(action) ? Math.max(0, Math.min(60, Math.round(Number(input.warnMinutes) || 0))) : 0,
+    // "The first Thursday of the month": the weekday in the cron, in days 1 to 7 only.
+    firstOfMonth: Boolean(input.firstOfMonth),
+    wipe: action === 'wipe' ? { blueprints: Boolean(input.wipe?.blueprints), newSeed: input.wipe?.newSeed !== false, updateFirst: input.wipe?.updateFirst !== false } : undefined,
   };
 }
 
@@ -101,7 +104,7 @@ async function countdown(m, server, minutes, verb) {
   const command = require('../games/players').broadcastCommand(m.template(server));
   if (!command || !minutes) return false;
   const say = (text) => m.sendCommand(server.id, require('../games/players').fillBroadcast(command, text)).catch(() => {});
-  const marks = [minutes * 60, 300, 60, 30, 10, 5].filter((s, i, all) => s <= minutes * 60 && all.indexOf(s) === i).sort((a, b) => b - a);
+  const marks = [minutes * 60, 1800, 900, 300, 60, 30, 10, 5].filter((s, i, all) => s <= minutes * 60 && all.indexOf(s) === i).sort((a, b) => b - a);
   let left = minutes * 60;
   for (const mark of marks) {
     await sleep((left - mark) * 1000);
@@ -145,6 +148,7 @@ class Scheduler {
         } catch {
           continue;
         }
+        if (schedule.firstOfMonth && !require('./wipe').isFirstWeekOfMonth(now)) continue;
         if (matches(cron, now)) this.run(server, schedule).catch(() => {});
       }
     }
@@ -227,6 +231,13 @@ class Scheduler {
             if (r.updated.length) this.store.addEvent('mod.updated', `${r.updated.length} mod(s) updated on ${server.name} by a schedule`, { serverId: server.id });
             break;
           }
+          case 'wipe': {
+            if (running && schedule.warnMinutes) await countdown(m, server, schedule.warnMinutes, 'wiping');
+            const r = await require('./wipe').wipe(m, server, schedule.wipe || {}, (line) => m.pushConsole(server, `Wipe: ${line}`, 'system'));
+            result = `wiped ${r.deleted} file(s)${r.blueprints ? ' and blueprints' : ''}${r.seed ? `, seed ${r.seed}` : ''}`;
+            this.store.addEvent('server.wiped', `${server.name} was wiped (${result})`, { serverId: server.id });
+            break;
+          }
           case 'backup': {
             m.checkDiskRoom('make a backup');
             const backup = await backups.create(server, 'auto');
@@ -255,7 +266,7 @@ class Scheduler {
   /* ------------------------------------------------------------- CRUD -- */
 
   list(server) {
-    return (server.schedules || []).map((s) => ({ ...s, nextRun: s.enabled ? nextRun(s.cron) : null }));
+    return (server.schedules || []).map((s) => ({ ...s, nextRun: s.enabled ? nextRun(s.cron, new Date(), { firstOfMonth: s.firstOfMonth }) : null }));
   }
 
   add(server, input) {
