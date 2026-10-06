@@ -124,6 +124,11 @@ class Push {
       fail(400, 'That is not a push service the panel knows');
     }
     if (!subscription.keys?.p256dh || !subscription.keys?.auth) fail(400, 'The subscription is missing its keys');
+    // Real subscriptions have short endpoints and 65-byte / 16-byte keys; and nobody needs hundreds.
+    if (endpoint.length > 600 || String(subscription.keys.p256dh).length > 130 || String(subscription.keys.auth).length > 40) fail(400, 'That subscription is not valid');
+    const mine = this.subs.filter((s) => s.userId === user.id && s.endpoint !== endpoint);
+    if (mine.length >= 20) fail(409, 'This account has too many phones subscribed. Remove some first.');
+    if (this.subs.length >= 5000) fail(503, 'Too many phone subscriptions on this panel');
     const picked = Array.isArray(events) ? events.filter((e) => EVENT_CHOICES[e]) : DEFAULT_EVENTS;
     this.subs = this.subs.filter((s) => s.endpoint !== endpoint);
     this.subs.push({ userId: user.id, endpoint, keys: { p256dh: subscription.keys.p256dh, auth: subscription.keys.auth }, events: picked, device: String(device || '').slice(0, 60), at: Date.now() });

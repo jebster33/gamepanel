@@ -141,14 +141,36 @@ function allowed(server, name) {
 
 /* ------------------------------------------------------------- a socket -- */
 
+// The status reply (with its icon) is built at most once every 10 seconds per server and protocol.
+const statusCache = new Map();
+function cachedStatus(server, protocol, waking) {
+  const key = `${server.id}:${protocol}:${waking}`;
+  const hit = statusCache.get(key);
+  if (hit && Date.now() - hit.at < 10_000) return hit.value;
+  const value = statusJson(server, protocol, waking);
+  statusCache.set(key, { at: Date.now(), value });
+  if (statusCache.size > 200) statusCache.clear();
+  return value;
+}
+
 function handle(server, socket) {
   let buf = Buffer.alloc(0);
   let stage = 'handshake';
   let protocol = -1;
+  let answered = false;
   socket.setTimeout(10_000, () => socket.destroy());
   socket.on('error', () => {});
   socket.on('data', (chunk) => {
+    try {
+      onData(chunk);
+    } catch {
+      socket.destroy(); // anything unexpected from the internet just ends the connection
+    }
+  });
+  const onData = (chunk) => {
     buf = Buffer.concat([buf, chunk]);
+    // Nobody reading what we send is not our problem to buffer.
+    if (socket.writableLength > 64 * 1024) return socket.destroy();
     if (buf.length > MAX_PACKET * 2) return socket.destroy();
     // The pre-1.7 server list ping starts with 0xFE: nothing useful to say to it.
     if (stage === 'handshake' && buf[0] === 0xfe) return socket.destroy();
@@ -168,7 +190,10 @@ function handle(server, socket) {
         protocol = v[0];
         stage = next[0] === 1 ? 'status' : 'login';
       } else if (stage === 'status' && p.id === 0x00) {
-        socket.write(packet(0x00, str(statusJson(server, protocol, Boolean(state.get(server.id)?.waking)))));
+        // One status reply per connection, like the game itself: thousands of requests in one burst get one answer.
+        if (answered) return socket.destroy();
+        answered = true;
+        socket.write(packet(0x00, str(cachedStatus(server, protocol, Boolean(state.get(server.id)?.waking)))));
       } else if (stage === 'status' && p.id === 0x01) {
         socket.end(packet(0x01, p.data.subarray(0, 8)));
       } else if (stage === 'login' && p.id === 0x00) {
@@ -178,7 +203,7 @@ function handle(server, socket) {
         socket.end(packet(0x00, str(JSON.stringify({ text: message }))));
       }
     }
-  });
+  };
 }
 
 /** Start the server for a player. Returns what they are told. */

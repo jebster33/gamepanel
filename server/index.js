@@ -40,6 +40,10 @@ const MIME = {
 const { Nodes } = require('./features/nodes');
 
 async function main() {
+  // Before anything listens: an error in the first seconds (a request while servers are still auto-starting) must not end the process.
+  process.on('uncaughtException', (err) => logger.error('Uncaught exception:', err));
+  process.on('unhandledRejection', (err) => logger.error('Unhandled rejection:', err));
+
   ensureDirs();
   const secret = loadSecret();
   // Windows: the state file is written in run\ (locked down below) and renamed into place, so it keeps that ACL.
@@ -148,12 +152,32 @@ async function main() {
 
   // Shared by the HTTP and (Settings → HTTPS) HTTPS listeners.
   const handleRequest = async (req, res) => {
-    const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+    // Anything that cannot be parsed is answered, never left hanging: a half-handled request holds its socket for good.
+    let url;
+    try {
+      url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+    } catch {
+      try {
+        url = new URL(req.url, 'http://localhost'); // a Host header that is not a host
+      } catch {
+        res.writeHead(400, { 'Content-Type': 'text/plain' });
+        res.end('Bad request');
+        return;
+      }
+    }
     res.setHeader('X-Frame-Options', 'SAMEORIGIN');
     res.setHeader('Referrer-Policy', 'same-origin');
     securityHeaders(req, res);
 
-    if (!url.pathname.startsWith('/api/')) return serveStatic(req, res, url.pathname);
+    if (!url.pathname.startsWith('/api/')) {
+      try {
+        return serveStatic(req, res, url.pathname);
+      } catch {
+        if (!res.headersSent) res.writeHead(400, { 'Content-Type': 'text/plain' });
+        res.end('Bad request');
+        return undefined;
+      }
+    }
 
     try {
       await api.handle(req, res, url);
@@ -304,8 +328,6 @@ async function main() {
   // Windows services and consoles send these instead of SIGTERM.
   process.on('SIGBREAK', () => shutdown('SIGBREAK'));
   process.on('SIGHUP', () => shutdown('SIGHUP'));
-  process.on('uncaughtException', (err) => logger.error('Uncaught exception:', err));
-  process.on('unhandledRejection', (err) => logger.error('Unhandled rejection:', err));
 }
 
 main().catch((err) => {

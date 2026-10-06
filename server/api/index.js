@@ -122,7 +122,8 @@ function createApi(app) {
       if (!anonymousLimit.take(ip)) return tooMany(res, anonymousLimit, ip);
     }
 
-    const body = !route.rawBody && writes ? await readJson(req) : {};
+    // Sign-in and other public routes take small bodies only: anyone on the internet can send one.
+    const body = !route.rawBody && writes ? await readJson(req, route.public ? 64 * 1024 : undefined) : {};
     // Every change goes in the audit log, including refused ones.
     const note = (status, error) => {
       if (!writes) return;

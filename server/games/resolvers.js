@@ -447,7 +447,7 @@ async function readZipJson(url, entryName) {
       const start = localOffset + 30 + localNameLength + localExtraLength;
       const raw = zip.subarray(start, start + compressedSize);
       const zlib = require('zlib');
-      const json = method === 0 ? raw : zlib.inflateRawSync(raw);
+      const json = method === 0 ? raw : zlib.inflateRawSync(raw, { maxOutputLength: 32 * 1024 * 1024 });
       return JSON.parse(json.toString('utf8'));
     }
     offset += 46 + nameLength + extraLength + commentLength;
