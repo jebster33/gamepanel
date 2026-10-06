@@ -12,8 +12,8 @@ function createHelpers({ auth, manager, store }) {
   };
 
   /** Capability gate for non-admin accounts. */
-  const requireCap = (user, capability) => {
-    if (!auth.can(user, capability)) {
+  const requireCap = (user, capability, serverId) => {
+    if (!auth.can(user, capability, serverId)) {
       const label = CAPABILITIES.find((c) => c.id === capability)?.label || capability;
       fail(403, `Your account is not allowed to: ${label.toLowerCase()}`);
     }
@@ -22,7 +22,7 @@ function createHelpers({ auth, manager, store }) {
   const serverFor = (user, id, capability) => {
     const server = manager.require(id);
     if (!auth.canAccessServer(user, server.id)) fail(403, 'You do not have access to this server');
-    if (capability) requireCap(user, capability);
+    if (capability) requireCap(user, capability, server.id);
     return server;
   };
 

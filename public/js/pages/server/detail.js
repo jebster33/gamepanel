@@ -1,6 +1,7 @@
 import { setCrumbs } from '../../core/router.js';
 import { state } from '../../core/state.js';
 import { $, can, esc, fmtBytes, fmtDuration, fmtRate, icon, statusPill } from '../../core/util.js';
+import { renderAccessTab } from './access.js';
 import { renderBackupsTab } from './backups.js';
 import { patchDoctor, renderConsoleTab } from './console.js';
 import { renderFilesTab } from './files.js';
@@ -27,6 +28,7 @@ function serverTabs(server) {
     can('schedules') && ['schedules', 'Schedules'],
     can('settings') && ['game', 'Game settings'],
     can('settings') && ['settings', 'Settings'],
+    state.user.role === 'admin' && ['access', 'Access'],
   ].filter(Boolean);
 }
 
@@ -178,6 +180,9 @@ function renderServerTab(server, tab) {
       break;
     case 'settings':
       renderServerSettingsTab(host, server);
+      break;
+    case 'access':
+      renderAccessTab(host, server);
       break;
     case 'console':
     default:

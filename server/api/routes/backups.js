@@ -55,7 +55,7 @@ module.exports = (router, { store, manager }, { requireAdmin, requireCap, server
 
   router.delete('/api/servers/:id/backups/:name', ({ user, params }) => {
     const server = serverFor(user, params.id);
-    requireCap(user, 'backups.restore');
+    requireCap(user, 'backups.restore', server.id);
     return backups.remove(server.id, params.name);
   });
 
@@ -93,14 +93,14 @@ module.exports = (router, { store, manager }, { requireAdmin, requireCap, server
 
   router.post('/api/servers/:id/backups/cloud/:name/fetch', async ({ user, params }) => {
     const server = serverFor(user, params.id, 'backups');
-    requireCap(user, 'backups.restore');
+    requireCap(user, 'backups.restore', server.id);
     if (!cloud.enabled) fail(400, 'Turn on cloud backups in Settings first');
     return cloud.fetch(server.id, params.name);
   });
 
   router.delete('/api/servers/:id/backups/cloud/:name', async ({ user, params }) => {
     const server = serverFor(user, params.id);
-    requireCap(user, 'backups.restore');
+    requireCap(user, 'backups.restore', server.id);
     if (!cloud.enabled) fail(400, 'Turn on cloud backups in Settings first');
     await cloud.removeRemote(server.id, params.name);
     return { ok: true };
