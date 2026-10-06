@@ -37,6 +37,18 @@ while the server runs and straight into the files while it's stopped.
 **Maintenance mode** turns the whitelist on, kicks everyone who isn't an op or whitelisted, and changes
 the MOTD and status page. Turning it off puts everything back.
 
+## Chat moderation
+
+**Players → Chat rules** (Minecraft Java): blocked words (matched as whole words, also when written as b4d or b.a.d), links and server addresses (with sites you allow), shouting and spam. Each time a player breaks a rule they go one step up the ladder you set: warn, mute (with EssentialsX, LiteBans, AdvancedBan or CMI; a kick otherwise), kick, ban for a while. Strikes are forgotten after a quiet while, and staff can be left out. Every action is in the activity log.
+
+## Shared bans and appeals
+
+The **Bans** page holds one ban list for every server that can ban players, including servers that are stopped (Minecraft) or come back later. Lifting a ban lifts it everywhere; servers can opt out. Turn on the appeals page and banned players can ask to be let back in at `/appeal`; you accept (which lifts the ban) or deny with a reply.
+
+## Whitelist from Discord roles
+
+On **Whitelist & bans**, *Whitelist from Discord roles* puts members with the roles you pick on the whitelist and takes them off when they lose the role. Players link their Minecraft name with the bot's `/link` command. It needs the Discord bot (Settings) with "Server Members Intent" turned on in the Discord developer portal.
+
 ## Find a player anywhere
 
 **Activity** in the sidebar has **Find a player on any server**; administrators can also search by address.

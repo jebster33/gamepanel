@@ -33,3 +33,7 @@ If the node is reached over the internet rather than your home network, give it 
 
 **Edit** changes a node's name, address or key. The bin button removes it from this panel only; nothing on
 that machine is touched and its servers keep running.
+
+## Moving a server
+
+On a server's **Settings → Danger zone**, **Move to another node** sends it to another machine (or back to this one): it stops, its files go straight across, and it is set up there with the same game, settings and schedules. It gets free ports on the new machine, so players need the new address. Tick *Keep the original* for a copy instead.

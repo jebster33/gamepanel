@@ -16,6 +16,18 @@
 | **General** | Panel name, port range for new servers, crash auto-restart and how often, automatic Steam game updates, sign-in locations |
 | **System** | Version and host details, **Reload templates**, **Back up panel settings** |
 
+## HTTPS
+
+**Settings → HTTPS** gets a free Let's Encrypt certificate so the panel opens at `https://your.domain` with no reverse proxy (passkeys and the phone app away from home need this). Point the domain at the machine, enter it, and press **Get a certificate**. Let's Encrypt checks the domain over port 80, which has to reach this machine while the certificate is issued; if it cannot, pick **Cloudflare DNS** and add a Cloudflare token under Integrations. The certificate renews itself. Plain-HTTP visits to the domain are sent to HTTPS, while the IP address and the usual port keep working.
+
+## SFTP
+
+**Settings → SFTP** turns on an SFTP server (port 2022 by default) for FileZilla, WinSCP, Cyberduck or `sftp`. People sign in with their panel username and password (plus their authenticator code if they use one) and see the folders of the servers they may browse; changing files needs "Upload, edit and delete files". Sign in as `alice.<server id>` to open one server directly. The server's key fingerprint is shown in Settings and on each server's Files tab (the **SFTP** button). There is no shell.
+
+## Update channels
+
+Under Panel updates, pick **Stable** (tagged releases) or **Beta** (newer builds as they land).
+
 ## Limits
 
 <img src="../screenshots/settings-limits.png" alt="Limits" width="800" />

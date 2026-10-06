@@ -53,6 +53,10 @@ Locked out? Another administrator can press **Reset 2FA** for you, or see
 [Locked out by two-factor sign-in](../troubleshooting.md#locked-out-by-two-factor-sign-in) to turn it off
 from the machine.
 
+## Passkeys
+
+On the Account page, **Add a passkey** lets you sign in with your fingerprint, face or a security key: choose **Sign in with a passkey** on the sign-in page, no username or password needed. A passkey that checks it is you counts as two-factor sign-in on its own (also for "require two-factor for administrators"). Browsers only offer passkeys when the panel is opened at its HTTPS address, at a name rather than an IP address: see [HTTPS](panel-settings.md#https).
+
 ## Passwords and sessions
 
 - Passwords need 8 or more characters, can't be a common password and can't be just the username.

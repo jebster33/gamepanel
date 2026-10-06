@@ -91,6 +91,39 @@ GET    /api/auth/oauth/providers         sign-in buttons that are set up
 GET    /api/auth/oauth/:p/start          sign in with google|discord|github (?link=1 links instead)
 GET    /api/settings/oauth               providers, client ids and redirect URLs (admins)
 PUT    /api/settings/oauth               {"publicUrl","discord":{"clientId","clientSecret"}} (admins)
+GET    /api/servers/:id/wipe             ?blueprints=1 files a wipe would delete (games with a wipe spec)
+POST   /api/servers/:id/wipe             {"blueprints","newSeed","updateFirst"} wipe now
+POST   /api/servers/:id/save-as-setup    {"name","description"} keep it as a ready-made setup (admins)
+POST   /api/servers/:id/backups/:name/verify          test-restore one backup
+PUT    /api/servers/:id/backup-mode      {"mode":"archive|incremental","encrypt"}
+PUT    /api/settings/backup-passphrase   {"passphrase"} for encrypted backups (admins)
+GET    /api/servers/:id/mods/check       mod check: wrong loader, missing dependencies, clashes
+GET    /api/servers/:id/configs          plugin and mod config files
+GET    /api/servers/:id/configs/form     ?path= one file as a form
+PUT    /api/servers/:id/configs/form     ?path= {"version","changes":{id:value}}
+GET    /api/servers/:id/moderation       chat moderation settings and temporary bans
+PUT    /api/servers/:id/moderation       {"enabled","words","links","allowDomains","caps","spam","ladder","muteMinutes","banHours","forgetHours","exempt"}
+GET    /api/bans                         shared ban list, appeals, servers (admins)
+POST   /api/bans                         {"name","reason","hours?"} ban on every server
+DELETE /api/bans/:id                     lift it everywhere
+POST   /api/bans/appeals/:id             {"decision":"accept|deny","reply"}
+POST   /api/public/appeals               {"name","message","contact"} (public; returns a code)
+GET    /api/public/appeals/:code         an appeal's status (public)
+GET    /api/servers/:id/discord-whitelist     whitelist from Discord roles
+PUT    /api/servers/:id/discord-whitelist     {"enabled","guildId","roles","source":"link|nickname"}
+GET    /api/import/scan                  Pterodactyl, AMP and LinuxGSM servers on this machine (admins)
+POST   /api/import/pterodactyl           {"url","key"} names and ports from a Pterodactyl panel
+POST   /api/import/inspect               {"path"} which game a folder holds
+POST   /api/move                         {"serverId","to":"local|<node id>","keepSource"} move to another node
+GET    /api/networks                     Velocity networks (admins)
+POST   /api/networks                     {"name","proxyId","servers":[{"serverId","name"}]}
+GET    /api/settings/https               HTTPS settings and certificate (admins)
+PUT    /api/settings/https               {"enabled","domain","email","method":"http|cloudflare","port","redirect","staging"}
+POST   /api/settings/https/issue         get or renew the certificate now
+GET    /api/settings/sftp                SFTP settings and host key (admins)
+PUT    /api/settings/sftp                {"enabled","port"}
+POST   /api/auth/passkeys/options        start adding a passkey; POST /api/auth/passkeys finishes it
+POST   /api/auth/passkey/options         start a passkey sign-in; POST /api/auth/passkey/login finishes it
 GET    /api/system                       host metrics
 GET    /api/system/runtime               Docker status
 GET    /api/system/update                pending panel updates

@@ -1,6 +1,6 @@
 {
   "name": "gamepanel",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "bridgeClientVersion": "1.0.0",
   "description": "Self-hosted game server panel for Linux and Windows. One-click games and mods, zero npm dependencies.",
   "main": "server/index.js",

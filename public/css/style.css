@@ -2586,6 +2586,9 @@ tbody tr:hover {
 .lime {
   color: var(--lime-text);
 }
+.filter-note .mono {
+  overflow-wrap: anywhere;
+}
 .tls-log {
   max-height: 160px;
   overflow: auto;
