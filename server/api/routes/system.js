@@ -23,7 +23,8 @@ module.exports = (router, { store, auth, manager, hostMetrics, notifier }, { req
     requireCap(user, 'activity');
     const limit = clamp(url.searchParams.get('limit') || 100, 1, 500);
     const all = store.state.events;
-    const visible = user.role === 'admin' ? all : all.filter((e) => !e.serverId || auth.canAccessServer(user, e.serverId));
+    // Account events carry addresses and locations: administrators only.
+    const visible = user.role === 'admin' ? all : all.filter((e) => (e.serverId ? auth.canAccessServer(user, e.serverId) : !e.type.startsWith('user.')));
     return { events: visible.slice(0, limit) };
   });
 
@@ -118,6 +119,12 @@ module.exports = (router, { store, auth, manager, hostMetrics, notifier }, { req
       const { curseforgeKey, steamApiKey, factorio } = body.integrations;
       if (curseforgeKey !== undefined) s.integrations.curseforgeKey = String(curseforgeKey).trim();
       if (steamApiKey !== undefined) s.integrations.steamApiKey = String(steamApiKey).trim();
+      const { cloudflare } = body.integrations;
+      if (cloudflare !== undefined) {
+        const domain = String(cloudflare.domain || '').trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+        if (domain && !/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(domain)) fail(400, 'Enter the domain like example.com');
+        s.integrations.cloudflare = { token: String(cloudflare.token || '').trim(), domain };
+      }
       if (factorio !== undefined) {
         s.integrations.factorio = { username: String(factorio.username || '').trim(), token: String(factorio.token || '').trim() };
       }
@@ -133,5 +140,53 @@ module.exports = (router, { store, auth, manager, hostMetrics, notifier }, { req
     } catch (err) {
       return fail(400, `Discord did not accept the message: ${err.message}`);
     }
+  });
+
+  /**
+   * The panel's own state (accounts, settings, keys, player history) as one
+   * .tar.gz, for moving to a new machine or recovering from a dead disk.
+   * Server files and backups are left out; they have their own exports.
+   * Holds password hashes and secrets, so it asks for the password again.
+   */
+  router.post('/api/system/panel-backup', ({ user, body, res }) => {
+    requireAdmin(user);
+    const record = auth.users.find((u) => u.id === user.id);
+    if (!require('../../core/auth').verifyPassword(String(body?.password || ''), record?.password)) fail(403, 'Your password is not right');
+    const fs = require('fs');
+    const path = require('path');
+    const { spawn } = require('child_process');
+    const parts = ['panel.json', 'secret.key', 'push-keys.json', 'players', 'templates'].filter((p) => fs.existsSync(path.join(config.dataDir, p)));
+    const tar = process.platform === 'win32' ? path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'tar.exe') : 'tar';
+    store.addEvent('panel.backup', `${user.username} downloaded a backup of the panel's settings and accounts`);
+    store.saveNow();
+    manager.saveHistories?.();
+    res.writeHead(200, { 'Content-Type': 'application/gzip', 'Content-Disposition': `attachment; filename="gamepanel-settings-${new Date().toISOString().slice(0, 10)}.tar.gz"` });
+    const proc = spawn(tar, ['-czf', '-', ...parts], { cwd: config.dataDir, stdio: ['ignore', 'pipe', 'ignore'], windowsHide: true });
+    proc.stdout.pipe(res);
+    proc.on('error', () => res.destroy());
+    res.on('close', () => proc.kill());
+    return undefined;
+  });
+
+  /** The Discord bot (slash commands). */
+  const discordBot = require('../../features/discord-bot').init({ store, manager });
+
+  router.get('/api/settings/discord-bot', ({ user }) => {
+    requireAdmin(user);
+    return discordBot.status();
+  });
+
+  router.put('/api/settings/discord-bot', ({ user, body }) => {
+    requireAdmin(user);
+    const s = store.state.settings;
+    const controllers = String(body?.controllers || '')
+      .split(/[\s,]+/)
+      .filter((id) => /^\d{15,22}$/.test(id))
+      .join(',');
+    const token = body?.token === undefined ? s.integrations?.discordBot?.token || '' : String(body.token).trim();
+    s.integrations = { ...(s.integrations || {}), discordBot: { token, controllers } };
+    store.save();
+    discordBot.reload();
+    return discordBot.status();
   });
 };

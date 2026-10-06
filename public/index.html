@@ -43,6 +43,41 @@
           <p id="auth-error" class="auth-error hidden"></p>
           <button id="auth-submit" class="btn btn-primary btn-block" type="submit">Sign in</button>
         </form>
+
+        <!-- Second step for accounts with two-factor sign-in -->
+        <form id="otp-form" class="otp hidden" autocomplete="off">
+          <div class="seg" role="tablist">
+            <button type="button" class="seg-item active" data-otp-mode="app">Authenticator</button>
+            <button type="button" class="seg-item" data-otp-mode="recovery">Recovery code</button>
+          </div>
+          <div class="otp-wrap" data-otp-pane="app">
+            <div class="otp-row">
+              <input class="otp-digit" inputmode="numeric" maxlength="1" autocomplete="one-time-code" aria-label="Digit 1" style="--i:0" />
+              <input class="otp-digit" inputmode="numeric" maxlength="1" aria-label="Digit 2" style="--i:1" />
+              <input class="otp-digit" inputmode="numeric" maxlength="1" aria-label="Digit 3" style="--i:2" />
+              <span class="otp-gap"></span>
+              <input class="otp-digit" inputmode="numeric" maxlength="1" aria-label="Digit 4" style="--i:3" />
+              <input class="otp-digit" inputmode="numeric" maxlength="1" aria-label="Digit 5" style="--i:4" />
+              <input class="otp-digit" inputmode="numeric" maxlength="1" aria-label="Digit 6" style="--i:5" />
+            </div>
+            <svg class="otp-phone" viewBox="0 0 80 120" aria-hidden="true">
+              <rect class="otp-phone-body" x="14" y="4" width="52" height="104" rx="10" />
+              <rect class="otp-phone-screen" x="18" y="12" width="44" height="88" rx="6" />
+              <rect class="otp-phone-notch" x="33" y="8" width="14" height="3" rx="1.5" />
+              <circle class="otp-phone-ring" cx="40" cy="56" r="14" />
+              <path class="otp-phone-check" d="M33 56.5l5 5 9.5-10.5" />
+            </svg>
+          </div>
+          <div class="otp-recovery hidden" data-otp-pane="recovery">
+            <label>
+              <span>Recovery code</span>
+              <input id="otp-recovery" type="text" placeholder="xxxx-xxxx" spellcheck="false" autocapitalize="off" />
+            </label>
+            <button class="btn btn-primary btn-block" type="submit">Sign in</button>
+          </div>
+          <p id="otp-error" class="auth-error hidden"></p>
+          <button type="button" class="otp-back" id="otp-back">Use a different account</button>
+        </form>
       </div>
     </div>
 
@@ -92,11 +127,13 @@
         <div class="sidebar-footer">
           <div class="host-mini" id="host-mini"></div>
           <div class="user-row">
-            <div class="avatar" id="user-avatar">?</div>
-            <div class="user-meta">
-              <div class="user-name" id="user-name">—</div>
-              <div class="user-role" id="user-role"></div>
-            </div>
+            <a class="user-link" href="#/account" title="Account and two-factor sign-in">
+              <div class="avatar" id="user-avatar">?</div>
+              <div class="user-meta">
+                <div class="user-name" id="user-name">—</div>
+                <div class="user-role" id="user-role"></div>
+              </div>
+            </a>
             <button class="icon-btn" id="logout-btn" title="Sign out">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
             </button>

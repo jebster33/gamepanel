@@ -10,6 +10,8 @@ import { renderSidebarServers } from '../ui/sidebar.js';
 export function showAuth(setupRequired = false) {
   $('#app').classList.add('hidden');
   $('#auth-screen').classList.remove('hidden');
+  $('#auth-form').classList.remove('hidden');
+  $('#otp-form').classList.add('hidden');
   $('#auth-confirm-wrap').classList.toggle('hidden', !setupRequired);
   $('#auth-title').textContent = setupRequired ? 'Set up your panel' : 'Welcome back';
   $('#auth-subtitle').textContent = setupRequired

@@ -36,7 +36,9 @@ function createHelpers({ auth, manager, store }) {
 function clientIp(req) {
   if (config.behindProxy) {
     const fwd = req.headers['x-forwarded-for'];
-    if (fwd) return String(fwd).split(',')[0].trim();
+    // The last hop is the one our proxy added; earlier entries are whatever
+    // the client sent and could be forged to dodge the sign-in lockout.
+    if (fwd) return String(fwd).split(',').pop().trim();
   }
   return req.socket.remoteAddress || 'unknown';
 }

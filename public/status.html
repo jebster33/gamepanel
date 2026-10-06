@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="theme-color" content="#111210" />
+    <meta name="robots" content="noindex" />
+    <title>Server status</title>
+    <link rel="icon" type="image/png" href="/img/favicon-64.png" />
+    <link rel="apple-touch-icon" href="/img/apple-touch-icon.png" />
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #111210;
+        --card: rgba(32, 33, 30, 0.72);
+        --border: rgba(255, 255, 255, 0.08);
+        --text: #ecebe6;
+        --muted: #a19f96;
+        --faint: #6f6d66;
+        --lime: #c6f432;
+        --lime-text: #c6f432;
+        --lime-soft: rgba(198, 244, 50, 0.12);
+        --red: #ff5f57;
+        --amber: #ffb340;
+        --mono: "JetBrains Mono", "Cascadia Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      }
+      @media (prefers-color-scheme: light) {
+        :root {
+          color-scheme: light;
+          --bg: #f3f2ed;
+          --card: rgba(255, 255, 255, 0.78);
+          --border: rgba(0, 0, 0, 0.08);
+          --text: #1b1c18;
+          --muted: #5d5b53;
+          --faint: #8c8a81;
+          --lime-text: #4f6e00;
+          --lime-soft: rgba(120, 160, 0, 0.12);
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font: 15px/1.5 "Inter", ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+        color: var(--text);
+        background:
+          radial-gradient(1200px 500px at 10% -10%, rgba(198, 244, 50, 0.1), transparent 60%),
+          radial-gradient(900px 500px at 110% 10%, rgba(108, 182, 255, 0.08), transparent 60%),
+          var(--bg);
+      }
+      main {
+        max-width: 760px;
+        margin: 0 auto;
+        padding: 44px 16px 60px;
+      }
+      header {
+        margin-bottom: 26px;
+      }
+      .brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 18px;
+        padding: 5px 12px 5px 6px;
+        font-size: 12.5px;
+        color: var(--muted);
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        backdrop-filter: blur(16px) saturate(1.4);
+        -webkit-backdrop-filter: blur(16px) saturate(1.4);
+      }
+      h1 {
+        margin: 0;
+        font-size: clamp(26px, 6vw, 36px);
+        letter-spacing: -0.02em;
+        line-height: 1.15;
+      }
+      .lede {
+        margin: 8px 0 0;
+        color: var(--muted);
+      }
+      .summary {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 18px;
+      }
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 12px;
+        font-size: 13px;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+      }
+      .led {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--faint);
+        flex-shrink: 0;
+      }
+      .online .led,
+      .led.on {
+        background: var(--lime);
+        box-shadow: 0 0 10px rgba(198, 244, 50, 0.7);
+      }
+      .starting .led {
+        background: var(--amber);
+      }
+      .cards {
+        display: grid;
+        gap: 12px;
+      }
+      .card {
+        padding: 18px 20px;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        backdrop-filter: blur(20px) saturate(1.4);
+        -webkit-backdrop-filter: blur(20px) saturate(1.4);
+        animation: rise 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+      }
+      .top {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+      }
+      .icon {
+        display: grid;
+        place-items: center;
+        width: 44px;
+        height: 44px;
+        font-size: 22px;
+        border-radius: 14px;
+        background: var(--lime-soft);
+        flex-shrink: 0;
+      }
+      .name {
+        font-weight: 650;
+        font-size: 16.5px;
+        overflow-wrap: anywhere;
+      }
+      .game {
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .state {
+        margin-left: auto;
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        font-size: 13px;
+        white-space: nowrap;
+      }
+      .count {
+        font-family: var(--mono);
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .count b {
+        font-size: 18px;
+        color: var(--lime-text);
+      }
+      .meter {
+        height: 4px;
+        margin: 14px 0 0;
+        border-radius: 4px;
+        background: var(--border);
+        overflow: hidden;
+      }
+      .meter i {
+        display: block;
+        height: 100%;
+        background: var(--lime);
+        border-radius: 4px;
+        transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+      }
+      .uptime {
+        margin-top: 14px;
+      }
+      .bars {
+        display: grid;
+        grid-template-columns: repeat(30, 1fr);
+        gap: 2px;
+        height: 26px;
+      }
+      .bars i {
+        border-radius: 2px;
+        background: var(--border);
+      }
+      .bars i.up {
+        background: var(--lime);
+      }
+      .bars i.some {
+        background: var(--amber);
+      }
+      .bars i.down {
+        background: var(--red);
+      }
+      .uptime-legend {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 6px;
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--faint);
+      }
+      .row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px 14px;
+        margin-top: 12px;
+      }
+      .address {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 6px 6px 12px;
+        font-family: var(--mono);
+        font-size: 13px;
+        border: 1px dashed var(--border);
+        border-radius: 12px;
+      }
+      button {
+        padding: 5px 11px;
+        font: inherit;
+        font-size: 12.5px;
+        font-weight: 600;
+        color: #111210;
+        background: var(--lime);
+        border: 0;
+        border-radius: 8px;
+        cursor: pointer;
+      }
+      .names {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 12px;
+      }
+      .names span {
+        padding: 3px 9px;
+        font-size: 12.5px;
+        background: var(--lime-soft);
+        border-radius: 999px;
+      }
+      .most {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px 14px;
+        margin-top: 12px;
+        font-size: 13px;
+      }
+      .most b {
+        font-weight: 500;
+        color: var(--faint);
+        font-variant-numeric: tabular-nums;
+      }
+      .meta {
+        font-size: 12.5px;
+        color: var(--faint);
+      }
+      footer {
+        margin-top: 26px;
+        font-size: 12px;
+        color: var(--faint);
+        text-align: center;
+      }
+      .empty {
+        padding: 50px 20px;
+        text-align: center;
+        color: var(--muted);
+      }
+      @keyframes rise {
+        from {
+          opacity: 0;
+          transform: translateY(8px);
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        * {
+          animation: none !important;
+          transition: none !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div class="brand"><svg width="18" height="18" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="13" fill="none" stroke="#c6f432" stroke-width="3.2"/><path d="M16 9.5v13M9.5 16h13" stroke="#c6f432" stroke-width="3.6" stroke-linecap="round"/></svg> Server status</div>
+        <h1 id="title">Loading…</h1>
+        <p class="lede" id="description" hidden></p>
+        <div class="summary" id="summary"></div>
+      </header>
+      <section class="cards" id="cards"></section>
+      <footer id="footer">Updates every 15 seconds</footer>
+    </main>
+    <script src="/js/status-page.js" type="module"></script>
+  </body>
+</html>

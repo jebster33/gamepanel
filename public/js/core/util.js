@@ -26,8 +26,19 @@ export function gameArt(game, { wide = false } = {}) {
   const steam = game?.storeAppId ? `${STEAM_ART}/${Number(game.storeAppId)}/${wide ? 'header.jpg' : 'library_600x900.jpg'}` : '';
   const src = game?.logo || steam;
   if (!src) return emoji;
-  return `<img src="${esc(src)}" alt="" loading="lazy" class="${game?.logo ? 'art-contain' : ''}" data-fallback="${emoji}" onerror="this.replaceWith(this.dataset.fallback)" />`;
+  return `<img src="${esc(src)}" alt="" loading="lazy" class="${game?.logo ? 'art-contain' : ''}" data-fallback="${emoji}" />`;
 }
+
+// The CSP blocks inline onerror handlers, so swap broken art for its emoji here.
+// Image errors don't bubble, hence the capture listener.
+document.addEventListener(
+  'error',
+  (event) => {
+    const img = event.target;
+    if (img instanceof HTMLImageElement && img.dataset.fallback !== undefined) img.replaceWith(img.dataset.fallback);
+  },
+  true
+);
 
 export function fmtBytes(bytes, decimals = 1) {
   const n = Number(bytes) || 0;

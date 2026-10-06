@@ -4,7 +4,7 @@
  * One-click mods.
  *
  *   compat.js     works out what a server can load (loader, game version)
- *   providers/    Modrinth, CurseForge, uMod, Factorio, Steam Workshop
+ *   providers/    Modrinth, Hangar, CurseForge, uMod, Factorio, Steam Workshop
  *   manifest.js   what the panel installed, from where, and why
  *   workshop.js   getting Workshop items onto each kind of game
  *
@@ -27,6 +27,8 @@ const PROVIDERS = {
   modrinth: require('./providers/modrinth'),
   curseforge: require('./providers/curseforge'),
   umod: require('./providers/umod'),
+  hangar: require('./providers/hangar'),
+  spigot: require('./providers/spigot'),
   factorio: require('./providers/factorio'),
   workshop: require('./providers/workshop'),
 };

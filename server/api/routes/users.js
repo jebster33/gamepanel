@@ -6,7 +6,21 @@ const { CAPABILITIES, DEFAULT_PERMISSIONS, sanitizePermissions } = require('../.
 module.exports = (router, { store, auth }, { requireAdmin }) => {
   router.get('/api/users', ({ user }) => {
     requireAdmin(user);
-    return { users: auth.users.map((u) => auth.publicUser(u)), capabilities: CAPABILITIES, defaults: DEFAULT_PERMISSIONS };
+    return { users: auth.users.map((u) => auth.publicUser(u)), capabilities: CAPABILITIES, defaults: DEFAULT_PERMISSIONS, requireAdmin2fa: Boolean(store.state.settings.requireAdmin2fa) };
+  });
+
+  /** Sign-in rules for everyone. */
+  router.put('/api/users/policy', ({ user, body }) => {
+    requireAdmin(user);
+    if (body.requireAdmin2fa !== undefined) {
+      const on = Boolean(body.requireAdmin2fa);
+      // Don't let anyone lock themselves out of the page that turns it off.
+      if (on && !auth.users.find((u) => u.id === user.id)?.totp?.secret) fail(400, 'Turn on two-factor for your own account first (Account page).');
+      store.state.settings.requireAdmin2fa = on;
+      store.addEvent('user.policy', `${user.username} ${on ? 'now requires' : 'no longer requires'} two-factor sign-in for administrators`);
+    }
+    store.save();
+    return { requireAdmin2fa: Boolean(store.state.settings.requireAdmin2fa) };
   });
 
   router.post('/api/users', ({ user, body }) => {
@@ -27,6 +41,9 @@ module.exports = (router, { store, auth }, { requireAdmin }) => {
     if (Array.isArray(body.servers)) target.servers = body.servers;
     if (Array.isArray(body.permissions)) target.permissions = sanitizePermissions(body.permissions);
     if (body.password) auth.setPassword(target.id, body.password);
+    // For someone who lost their phone and their recovery codes.
+    if (body.resetTwoFactor) auth.disableTwoFactor(target.id);
+    if (body.revokeSessions) auth.revokeSessions(target.id);
     store.save();
     store.addEvent('user.updated', `${target.username} updated by ${user.username}`);
     return { user: auth.publicUser(target) };

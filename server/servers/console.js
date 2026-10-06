@@ -10,6 +10,7 @@ const path = require('path');
 const { config } = require('../core/config');
 const { stripAnsi, fail } = require('../core/util');
 const { rconCommand } = require('../games/rcon');
+const { setPlayers } = require('../games/players');
 
 module.exports = {
   openLogStream(server) {
@@ -126,18 +127,21 @@ module.exports = {
 
   /** Track joins/leaves from log output, for games without a query protocol. */
   trackPlayers(server, template, text) {
+    this.trackChat(server, template, text);
     const patterns = template.logPatterns || {};
     if (!patterns.join && !patterns.leave) return;
     const rt = this.rt(server.id);
+    let list = rt.playerList;
     for (const line of text.split('\n')) {
       const joined = patterns.join && line.match(new RegExp(patterns.join));
       if (joined) {
         const name = joined[1] || 'player';
-        if (!rt.playerList.includes(name)) rt.playerList.push(name);
+        if (!list.includes(name)) list = [...list, name];
       }
       const left = patterns.leave && line.match(new RegExp(patterns.leave));
-      if (left) rt.playerList = rt.playerList.filter((p) => p !== (left[1] || 'player'));
+      if (left) list = list.filter((p) => p !== (left[1] || 'player'));
     }
+    if (list !== rt.playerList) setPlayers(rt, list);
     if (!template.query || template.query.type === 'none') rt.players = rt.playerList.length;
   },
 };

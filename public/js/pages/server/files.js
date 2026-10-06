@@ -29,6 +29,7 @@ export async function renderFilesTab(host, server, dirPath) {
       <span class="faint" id="file-selection" style="font-size:12.5px"></span>
       <button class="btn btn-sm hidden" id="file-compress">${icon('archive',12)} Compress</button>
       <button class="btn btn-sm btn-danger hidden" id="file-delete-selected">${icon('trash',12)} Delete</button>
+      <button class="btn btn-sm" id="file-search" title="Find a file, or a setting inside config files">Search</button>
       <button class="btn btn-sm" id="file-new-folder">New folder</button>
       <button class="btn btn-sm" id="file-new-file">New file</button>
       <button class="btn btn-sm btn-primary" id="file-upload">${icon('upload',12)} Upload</button>
@@ -91,6 +92,7 @@ export async function renderFilesTab(host, server, dirPath) {
   host.querySelectorAll('[data-file]').forEach((el) =>
     el.addEventListener('click', () => openFileEditor(server, el.dataset.file, refresh))
   );
+  $('#file-search').addEventListener('click', () => openFileSearch(server, host));
 
   /* selection ------------------------------------------------------------ */
 
@@ -262,6 +264,8 @@ async function openFileEditor(server, filePath, onClose) {
         label: 'Save',
         primary: true,
         onClick: async () => {
+          const problem = lintConfig(filePath, $('#file-editor').value);
+          if (problem && !(await confirmModal('This file has a mistake', `${problem} The server may refuse to load it, or reset it to defaults. Save anyway?`))) return;
           try {
             await api(`/api/servers/${server.id}/files/content?path=${encodeURIComponent(filePath)}`, {
               method: 'PUT',
@@ -276,5 +280,66 @@ async function openFileEditor(server, filePath, onClose) {
         },
       },
     ],
+  });
+}
+
+/**
+ * Catch the config mistakes that most often stop a server: broken JSON, and
+ * tabs in YAML (plugin configs), which YAML does not allow for indenting.
+ */
+export function lintConfig(filePath, text) {
+  const ext = filePath.toLowerCase().split('.').pop();
+  if (ext === 'json' || ext === 'mcmeta') {
+    try {
+      if (text.trim()) JSON.parse(text);
+    } catch (err) {
+      const pos = Number(/position (\d+)/.exec(err.message)?.[1]);
+      const line = Number.isFinite(pos) ? text.slice(0, pos).split('\n').length : null;
+      return `The JSON is not valid${line ? ` around line ${line}` : ''} (${err.message}).`;
+    }
+  }
+  if (ext === 'yml' || ext === 'yaml') {
+    const lines = text.split('\n');
+    const tab = lines.findIndex((l) => /^ *\t/.test(l));
+    if (tab >= 0) return `Line ${tab + 1} is indented with a tab. YAML only allows spaces.`;
+  }
+  return null;
+}
+
+/** Find files by name, or text inside config files. */
+function openFileSearch(server, host) {
+  const modal = openModal({
+    title: 'Search files',
+    width: 760,
+    body: `<div class="input-row"><input id="fs-q" class="search-input" style="flex:1;max-width:none;width:auto" placeholder="A file name or a setting, e.g. max-players or spawn-protection" /><button class="btn btn-primary" id="fs-go">Search</button></div>
+      <p class="faint" id="fs-note" style="margin:8px 0">Searches names and text in config files. Worlds, logs and libraries are skipped.</p>
+      <div id="fs-out" class="fs-results"></div>`,
+  });
+  const out = document.getElementById('fs-out');
+  const note = document.getElementById('fs-note');
+  const run = async () => {
+    const q = document.getElementById('fs-q').value.trim();
+    if (q.length < 2) return;
+    note.textContent = 'Searching…';
+    try {
+      const { results, truncated } = await api(`/api/servers/${server.id}/files/search?q=${encodeURIComponent(q)}`);
+      note.textContent = results.length ? `${results.length}${truncated ? '+' : ''} match${results.length === 1 ? '' : 'es'}` : 'Nothing found.';
+      out.innerHTML = results
+        .map((r) => `<a href="#" class="fs-hit" data-open="${esc(r.path)}"><span class="mono">${esc(r.path)}${r.line ? `<span class="faint">:${r.line}</span>` : ''}</span>${r.text ? `<span class="faint mono">${esc(r.text)}</span>` : ''}</a>`)
+        .join('');
+    } catch (err) {
+      note.textContent = err.message;
+    }
+  };
+  document.getElementById('fs-go').addEventListener('click', run);
+  document.getElementById('fs-q').addEventListener('keydown', (e) => e.key === 'Enter' && run());
+  out.addEventListener('click', (event) => {
+    const hit = event.target.closest('[data-open]');
+    if (!hit) return;
+    event.preventDefault();
+    modal.close();
+    const file = hit.dataset.open;
+    const dir = file.includes('/') ? file.slice(0, file.lastIndexOf('/')) : '';
+    renderFilesTab(host, server, dir).then(() => openFileEditor(server, file, () => renderFilesTab(host, server, dir)));
   });
 }

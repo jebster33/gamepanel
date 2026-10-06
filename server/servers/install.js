@@ -80,6 +80,8 @@ module.exports = {
       };
     }
     // Saved so every later start uses the same Java as the install did.
+    // The crash doctor can pin a newer Java when mods need more than the game does.
+    if (server.javaOverride && Number(server.javaOverride) > Number(extra.JAVA_VERSION || 0)) extra.JAVA_VERSION = String(server.javaOverride);
     if (extra.JAVA_VERSION) server.vars = { ...server.vars, JAVA_VERSION: String(extra.JAVA_VERSION) };
     this.store.save();
     this.pushConsole(server, `Using ${extra.RESOLVED_VERSION || 'the latest build'}`, 'system');

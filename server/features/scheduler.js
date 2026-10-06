@@ -6,13 +6,13 @@
  * ("minute hour day month weekday") in the panel host's local time.
  *
  * A schedule: { id, name, cron, action, command?, enabled, lastRun, lastResult }
- * Actions: restart, start, stop, backup, command, update.
+ * Actions: restart, start, stop, backup, command, update, mods (update mods/plugins).
  */
 
 const { logger, uid, fail } = require('../core/util');
 const backups = require('./backups');
 
-const ACTIONS = ['restart', 'start', 'stop', 'backup', 'command', 'update'];
+const ACTIONS = ['restart', 'start', 'stop', 'backup', 'command', 'update', 'mods'];
 
 const FIELDS = [
   { name: 'minute', min: 0, max: 59 },
@@ -86,8 +86,31 @@ function validate(input) {
     action,
     command: action === 'command' ? String(input.command).trim() : undefined,
     onlyIfRunning: input.onlyIfRunning !== false,
+    // "Restart at 5am, but not while people are playing."
+    onlyWhenEmpty: action !== 'start' && Boolean(input.onlyWhenEmpty),
     enabled: input.enabled !== false,
+    // Minutes of in-game countdown before a restart or stop.
+    warnMinutes: ['restart', 'stop'].includes(action) ? Math.max(0, Math.min(30, Math.round(Number(input.warnMinutes) || 0))) : 0,
   };
+}
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/** "Server restarting in 5 minutes" … "in 10 seconds", in game chat. */
+async function countdown(m, server, minutes, verb) {
+  const command = require('../games/players').broadcastCommand(m.template(server));
+  if (!command || !minutes) return false;
+  const say = (text) => m.sendCommand(server.id, require('../games/players').fillBroadcast(command, text)).catch(() => {});
+  const marks = [minutes * 60, 300, 60, 30, 10, 5].filter((s, i, all) => s <= minutes * 60 && all.indexOf(s) === i).sort((a, b) => b - a);
+  let left = minutes * 60;
+  for (const mark of marks) {
+    await sleep((left - mark) * 1000);
+    left = mark;
+    if (!m.isActive(server.id)) return true;
+    await say(`Server ${verb} in ${mark >= 60 ? `${mark / 60} minute${mark === 60 ? '' : 's'}` : `${mark} seconds`}`);
+  }
+  await sleep(left * 1000);
+  return true;
 }
 
 class Scheduler {
@@ -112,6 +135,7 @@ class Scheduler {
     if (minute === this.lastMinute) return;
     this.lastMinute = minute;
     for (const server of this.manager.servers) {
+      this.announce(server, minute).catch(() => {});
       for (const schedule of server.schedules || []) {
         if (!schedule.enabled) continue;
         let cron;
@@ -125,46 +149,93 @@ class Scheduler {
     }
   }
 
+  /**
+   * Rotating chat announcements ("Join our Discord…"), one every N minutes,
+   * only while someone is online to read them.
+   * server.announcements = { enabled, every: minutes, messages: [], next: index }
+   */
+  async announce(server, minute) {
+    const a = server.announcements;
+    if (!a?.enabled || !a.messages?.length || !a.every || minute % a.every !== 0) return;
+    const m = this.manager;
+    const rt = m.rt?.(server.id);
+    if (!m.isActive(server.id) || rt?.status !== 'running' || !(rt.players ?? rt.playerList?.length ?? 0)) return;
+    const command = require('../games/players').broadcastCommand(m.template(server));
+    if (!command) return;
+    const i = (a.next || 0) % a.messages.length;
+    a.next = i + 1;
+    await m.sendCommand(server.id, require('../games/players').fillBroadcast(command, a.messages[i]));
+  }
+
   async run(server, schedule) {
     const m = this.manager;
     const running = m.isActive(server.id);
     let result = 'ok';
+    const rt = m.rt?.(server.id);
+    const online = rt ? rt.players ?? rt.playerList?.length ?? 0 : 0;
     try {
-      switch (schedule.action) {
-        case 'restart':
-          if (running) await m.restart(server.id);
-          else if (!schedule.onlyIfRunning) await m.start(server.id);
-          else result = 'skipped (not running)';
-          break;
-        case 'start':
-          if (!running && server.installedAt) await m.start(server.id);
-          else result = 'skipped';
-          break;
-        case 'stop':
-          if (running) await m.stop(server.id);
-          else result = 'skipped (not running)';
-          break;
-        case 'command':
-          if (running) await m.sendCommand(server.id, schedule.command);
-          else result = 'skipped (not running)';
-          break;
-        case 'update':
-          if (running) {
-            result = 'skipped (stop the server first, or turn on "update on start")';
-          } else {
-            const r = await m.updateGame(server.id);
-            if (!r.ok) throw new Error(r.error);
+      if (schedule.onlyWhenEmpty && running && online > 0) {
+        result = `skipped (${online} player${online === 1 ? '' : 's'} online)`;
+      } else {
+        switch (schedule.action) {
+          case 'restart':
+            if (running && schedule.warnMinutes) await countdown(m, server, schedule.warnMinutes, 'restarting');
+            if (running && m.isActive(server.id)) await m.restart(server.id);
+            else if (!schedule.onlyIfRunning) await m.start(server.id);
+            else result = 'skipped (not running)';
+            break;
+          case 'start':
+            if (!running && server.installedAt) await m.start(server.id);
+            else result = 'skipped';
+            break;
+          case 'stop':
+            if (running && schedule.warnMinutes) await countdown(m, server, schedule.warnMinutes, 'shutting down');
+            if (running && m.isActive(server.id)) await m.stop(server.id);
+            else result = 'skipped (not running)';
+            break;
+          case 'command':
+            if (running) await m.sendCommand(server.id, schedule.command);
+            else result = 'skipped (not running)';
+            break;
+          case 'update':
+            if (running) {
+              result = 'skipped (stop the server first, or turn on "update on start")';
+            } else {
+              const r = await m.updateGame(server.id);
+              if (!r.ok) throw new Error(r.error);
+            }
+            break;
+          case 'mods': {
+            // Takes effect on the next restart, so pair it with a restart schedule.
+            const mods = require('./mods');
+            const template = m.template(server);
+            if (!template?.mods) {
+              result = 'skipped (no mod support)';
+              break;
+            }
+            const keys = this.store.state.settings.integrations || {};
+            const liveVersion = m.rt?.(server.id)?.version;
+            const { updates } = await mods.checkUpdates(server, template, keys, { liveVersion });
+            const picked = updates.filter((u) => !u.fromPack).map((u) => u.key);
+            if (!picked.length) {
+              result = 'nothing to update';
+              break;
+            }
+            const r = await mods.update(server, template, picked, keys, { liveVersion, manager: m, integrations: keys });
+            result = `updated ${r.updated.length}${r.failed.length ? `, ${r.failed.length} failed` : ''}`;
+            if (r.updated.length) this.store.addEvent('mod.updated', `${r.updated.length} mod(s) updated on ${server.name} by a schedule`, { serverId: server.id });
+            break;
           }
-          break;
-        case 'backup': {
-          m.checkDiskRoom('make a backup');
-          await backups.create(server, 'auto');
-          const pruned = backups.prune(server.id, server.backupRetention);
-          this.store.addEvent('backup.created', `Scheduled backup of ${server.name}${pruned.length ? ` (removed ${pruned.length} old)` : ''}`, { serverId: server.id });
-          break;
+          case 'backup': {
+            m.checkDiskRoom('make a backup');
+            const backup = await backups.create(server, 'auto');
+            const pruned = backups.prune(server.id, server.backupRetention);
+            this.store.addEvent('backup.created', `Scheduled backup of ${server.name}${pruned.length ? ` (removed ${pruned.length} old)` : ''}`, { serverId: server.id, backup: backup.name });
+            break;
+          }
+          default:
+            result = 'unknown action';
         }
-        default:
-          result = 'unknown action';
       }
     } catch (err) {
       result = `failed: ${err.message}`;

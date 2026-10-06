@@ -12,7 +12,7 @@ const crypto = require('crypto');
 const { EventEmitter } = require('events');
 const { logger } = require('./util');
 
-const GUID = '258EAFA5-E914-47DA-95CA-5AB0DC85B11F';
+const GUID = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11'; // RFC 6455 §1.3
 
 const OPCODE = {
   CONT: 0x0,
@@ -239,6 +239,22 @@ class WebSocketServer extends EventEmitter {
       socket.write('HTTP/1.1 400 Bad Request\r\n\r\n');
       socket.destroy();
       return null;
+    }
+    // Cross-site WebSocket hijacking: a page on another origin (even another
+    // port on this host, like a game's web map) must not ride the session cookie.
+    const origin = req.headers.origin;
+    if (origin) {
+      let host = null;
+      try {
+        host = new URL(origin).host;
+      } catch {
+        /* malformed: refuse below */
+      }
+      if (host !== req.headers.host) {
+        socket.write('HTTP/1.1 403 Forbidden\r\n\r\n');
+        socket.destroy();
+        return null;
+      }
     }
     const accept = crypto.createHash('sha1').update(key + GUID).digest('base64');
     socket.write(

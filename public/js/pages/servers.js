@@ -1,11 +1,14 @@
 import { setCrumbs } from '../core/router.js';
 import { state } from '../core/state.js';
-import { $, esc, fmtBytes, gameArt, icon, statusPill } from '../core/util.js';
+import { api } from '../core/api.js';
+import { $, can, esc, fmtBytes, gameArt, icon, statusPill, toast } from '../core/util.js';
 import { revealChildren } from '../ui/fx.js';
 
 /* --------------------------------------------------------- server cards */
 
 export function serverAddress(server) {
+  const sub = server.subdomain;
+  if (sub) return sub.srv || !sub.port ? sub.host : `${sub.host}:${sub.port}`;
   const port = server.ports?.game ?? Object.values(server.ports || {})[0];
   return `${location.hostname}:${port}`;
 }
@@ -16,7 +19,7 @@ export function renderServerCards() {
       <img class="line-art" src="/img/empty-rack.png" alt="" width="140" height="135" />
       <h3>No servers yet</h3>
       <p>Pick a game and the panel installs it, opens the ports and starts it for you.</p>
-      ${state.user?.role === 'admin' ? '<a class="btn btn-primary" href="#/templates">Pick a game</a>' : ''}
+      ${state.user?.role === 'admin' ? '<div class="row" style="justify-content:center"><a class="btn btn-primary" href="#/templates">Pick a game</a><button class="btn" data-import>Import existing</button></div>' : ''}
     </div>`;
   }
   return `
@@ -63,7 +66,7 @@ function serverRow(server) {
     </span>
 
     <span class="srv-metric hide-md hide-sm" data-field="players">${
-      server.players ?? '—'
+      server.players ?? (server.playerList?.length || '—')
     }${server.maxPlayers ? ` <span class="faint">/ ${server.maxPlayers}</span>` : ''}</span>
 
     <span class="srv-metric hide-md hide-sm" data-field="ping">${server.ping != null ? server.ping + ' ms' : '—'}</span>
@@ -99,7 +102,7 @@ export function patchServerCards() {
     set('mem', fmtBytes(server.memory));
     set(
       'players',
-      `${server.players ?? '—'}${server.maxPlayers ? ` <span class="faint">/ ${server.maxPlayers}</span>` : ''}`
+      `${server.players ?? (server.playerList?.length || '—')}${server.maxPlayers ? ` <span class="faint">/ ${server.maxPlayers}</span>` : ''}`
     );
     set('ping', server.ping != null ? `${server.ping} ms` : '—');
     const memBar = card.querySelector('[data-field="mem-bar"]');
@@ -114,7 +117,37 @@ export function renderServers(view) {
     <div class="page-head">
       <h1>Servers</h1>
       <div class="spacer"></div>
-      ${state.user.role === 'admin' ? '<a class="btn btn-primary" href="#/templates">New server</a>' : ''}
+      ${can('power') && state.servers.length > 1 ? '<button class="btn btn-ghost" id="start-all" title="Start every installed server that is stopped">Start all</button><button class="btn btn-ghost" id="stop-all" title="Stop every running server">Stop all</button>' : ''}
+      ${can('command') && state.servers.length ? '<button class="btn" id="broadcast-all" title="Say something in the chat of every running server">Message all</button>' : ''}
+      ${state.user.role === 'admin' ? '<button class="btn" data-import>Import existing</button><a class="btn btn-primary" href="#/templates">New server</a>' : ''}
     </div>
     ${renderServerCards()}`;
+  $('#broadcast-all')?.addEventListener('click', broadcastAll);
+  $('#start-all')?.addEventListener('click', () => powerAll('start'));
+  $('#stop-all')?.addEventListener('click', () => powerAll('stop'));
+}
+
+async function powerAll(action) {
+  const targets = state.servers.filter((s) => (action === 'start' ? s.status === 'stopped' && s.installedAt : ['running', 'starting'].includes(s.status)));
+  if (!targets.length) return toast(action === 'start' ? 'Everything is already running' : 'Nothing is running');
+  const { confirmModal } = await import('../ui/modal.js');
+  const names = targets.map((s) => s.name).join(', ');
+  if (!(await confirmModal(`${action === 'start' ? 'Start' : 'Stop'} ${targets.length} server${targets.length === 1 ? '' : 's'}`, names, action === 'start' ? 'Start all' : 'Stop all'))) return;
+  const results = await Promise.allSettled(targets.map((s) => api(`/api/servers/${s.id}/power`, { method: 'POST', body: { action } })));
+  const failed = results.filter((r) => r.status === 'rejected').length;
+  toast(`${action === 'start' ? 'Starting' : 'Stopping'} ${targets.length - failed} server${targets.length - failed === 1 ? '' : 's'}${failed ? `, ${failed} failed` : ''}`, failed ? 'warn' : 'info');
+}
+
+async function broadcastAll() {
+  const { promptModal } = await import('../ui/modal.js');
+  const message = await promptModal('Message every server', 'Shown in the chat of every running server', '', { hint: 'Handy for "Restarting everything in 5 minutes".' });
+  if (!message?.trim()) return;
+  try {
+    const { results } = await api('/api/servers/broadcast', { method: 'POST', body: { message } });
+    const ok = results.filter((r) => r.ok).length;
+    const failed = results.filter((r) => !r.ok);
+    toast(`Sent to ${ok} server${ok === 1 ? '' : 's'}${failed.length ? `. Failed on ${failed.map((r) => r.server).join(', ')}` : ''}`, failed.length ? 'warn' : 'info');
+  } catch (err) {
+    toast(err.message, 'error');
+  }
 }

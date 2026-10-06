@@ -19,3 +19,37 @@ test('next run', () => {
   const next = nextRun('0 */6 * * *', new Date('2026-01-01T07:10:00'));
   assert.strictEqual(new Date(next).getHours(), 12);
 });
+
+test('"skip while players are online" holds a restart', async () => {
+  const { Scheduler } = require('../../server/features/scheduler');
+  const calls = [];
+  const rt = { players: 2 };
+  const m = { isActive: () => true, rt: () => rt, restart: async () => calls.push('restart'), pushConsole: () => {} };
+  const s = new Scheduler(m, { addEvent: () => {}, save: () => {} });
+  const schedule = { name: 'Nightly', action: 'restart', onlyWhenEmpty: true };
+  await s.run({ id: 'a', name: 'SMP' }, schedule);
+  assert.deepStrictEqual(calls, []);
+  assert.match(schedule.lastResult, /2 players online/);
+  rt.players = 0;
+  await s.run({ id: 'a', name: 'SMP' }, schedule);
+  assert.deepStrictEqual(calls, ['restart']);
+});
+
+test('announcements rotate, and only when someone is online', async () => {
+  const { Scheduler } = require('../../server/features/scheduler');
+  const sent = [];
+  const rt = { status: 'running', players: 1 };
+  const m = { isActive: () => true, rt: () => rt, template: () => ({ id: 'minecraft-paper', query: { type: 'minecraft' } }), sendCommand: async (id, c) => sent.push(c) };
+  const s = new Scheduler(m, {});
+  const server = { id: 'a', announcements: { enabled: true, every: 15, messages: ['one', 'two'] } };
+  await s.announce(server, 30);
+  await s.announce(server, 31); // not on the interval
+  await s.announce(server, 45);
+  await s.announce(server, 60);
+  rt.players = 0;
+  await s.announce(server, 75);
+  assert.strictEqual(sent.length, 3);
+  assert.match(sent[0], /one/);
+  assert.match(sent[1], /two/);
+  assert.match(sent[2], /one/);
+});
