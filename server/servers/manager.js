@@ -248,6 +248,10 @@ class ServerManager extends EventEmitter {
     };
     if (!out.JAVA_VERSION) out.JAVA_VERSION = '21';
     for (const [name, value] of Object.entries(ports)) out[`PORT_${name.toUpperCase()}`] = value;
+    // Arma 3 and DayZ load mods through -mod=: the Workshop ones installed here, then any listed by hand.
+    if (this.template(server)?.mods?.workshop?.strategy === 'bohemia') {
+      out.WORKSHOP_MODS = [require('../features/mods/workshop').modArgument(server), out.EXTRA_MODS].filter(Boolean).join(';');
+    }
     return out;
   }
 

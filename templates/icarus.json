@@ -1,0 +1,112 @@
+{
+  "id": "icarus",
+  "name": "ICARUS",
+  "category": "Survival",
+  "icon": "🪐",
+  "storeAppId": 1149460,
+  "description": "Session-based survival on a hostile alien planet. On Linux the Windows server runs under Wine, which the installer sets up.",
+  "platforms": [
+    "linux",
+    "windows"
+  ],
+  "defaultMemory": 12288,
+  "variables": [
+    {
+      "name": "MAX_PLAYERS",
+      "label": "Max players",
+      "default": 8,
+      "type": "number"
+    },
+    {
+      "name": "SERVER_PASSWORD",
+      "label": "Join password",
+      "default": "",
+      "description": "Leave empty for an open server."
+    },
+    {
+      "name": "ADMIN_PASSWORD",
+      "label": "Admin password",
+      "default": "",
+      "generate": "password"
+    }
+  ],
+  "ports": [
+    {
+      "name": "game",
+      "default": 17777,
+      "protocol": "udp"
+    },
+    {
+      "name": "query",
+      "default": 27015,
+      "protocol": "udp",
+      "offset": 9238
+    }
+  ],
+  "image": "cm2network/steamcmd:root",
+  "packages": [
+    "wine",
+    "wine64",
+    "xvfb",
+    "xauth"
+  ],
+  "install": [
+    {
+      "type": "apt",
+      "packages": [
+        "wine64",
+        "xvfb",
+        "xauth"
+      ],
+      "label": "Install Wine (this server ships a Windows build)"
+    },
+    {
+      "type": "steamcmd",
+      "appid": "2089300",
+      "platform": "windows",
+      "label": "Install the ICARUS dedicated server"
+    }
+  ],
+  "patchProperties": [
+    {
+      "path": "Icarus/Saved/Config/WindowsServer/ServerSettings.ini",
+      "format": "ini",
+      "section": "/Script/Icarus.DedicatedServerSettings",
+      "createIfMissing": true,
+      "set": {
+        "SessionName": "{{SERVER_NAME}}",
+        "JoinPassword": "{{SERVER_PASSWORD}}",
+        "MaxPlayers": "{{MAX_PLAYERS}}",
+        "AdminPassword": "{{ADMIN_PASSWORD}}"
+      }
+    }
+  ],
+  "startCommand": "WINEDEBUG=-all WINEPREFIX={{SERVER_DIR}}/.wine xvfb-run -a wine64 IcarusServer.exe -Log -SteamServerName=\"{{SERVER_NAME}}\" -PORT={{PORT}} -QueryPort={{PORT_QUERY}}",
+  "stopTimeout": 60,
+  "readyOnPort": "game",
+  "tailFiles": [
+    "Icarus/Saved/Logs/Icarus.log"
+  ],
+  "query": {
+    "type": "a2s",
+    "port": "query"
+  },
+  "logPatterns": {
+    "ready": "Session 'GameSession' is being set as 'listening'|LogIcarusDedicatedServer"
+  },
+  "windows": {
+    "install": [
+      {
+        "type": "steamcmd",
+        "appid": "2089300",
+        "label": "Install the ICARUS dedicated server"
+      },
+      {
+        "type": "vcredist",
+        "label": "Install the Visual C++ runtime"
+      }
+    ],
+    "startCommand": "IcarusServer.exe -Log -SteamServerName=\"{{SERVER_NAME}}\" -PORT={{PORT}} -QueryPort={{PORT_QUERY}}",
+    "consoleInput": false
+  }
+}

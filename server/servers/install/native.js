@@ -170,7 +170,7 @@ async function copySteamClient(steamcmdDir, dir) {
 }
 
 /** Download one Workshop item into `dest` (replacing what was there). */
-async function workshopItem({ appid, item, dest, dir, log, track }) {
+async function workshopItem({ appid, item, dest, login = 'anonymous', dir, log, track }) {
   const binary = await ensureSteamcmd(log);
   const stage = path.join(dir, '.gamepanel', 'steam-workshop');
   const src = path.join(stage, 'steamapps', 'workshop', 'content', String(appid), String(item));
@@ -179,7 +179,7 @@ async function workshopItem({ appid, item, dest, dir, log, track }) {
     log(`SteamCMD: downloading Workshop item ${item} (attempt ${attempt})`);
     await streamProcess(
       binary,
-      ['+force_install_dir', stage, '+login', 'anonymous', '+workshop_download_item', String(appid), String(item), 'validate', '+quit'],
+      ['+@NoPromptForPassword', '1', '+force_install_dir', stage, '+login', ...String(login || 'anonymous').split(/\s+/), '+workshop_download_item', String(appid), String(item), 'validate', '+quit'],
       { cwd: path.dirname(binary), log, track }
     );
   }
@@ -282,7 +282,7 @@ async function runStep(step, ctx) {
       });
 
     case 'workshop':
-      return workshopItem({ appid: val(step.appid), item: val(step.item), dest: inDir(step.dest), dir, log, track: ctx.track });
+      return workshopItem({ appid: val(step.appid), item: val(step.item), dest: inDir(step.dest), login: val(step.login || 'anonymous'), dir, log, track: ctx.track });
 
     case 'download':
       return download(val(step.url), inDir(step.dest || 'download.bin'), log, step.userAgent ? { userAgent: val(step.userAgent) } : {});

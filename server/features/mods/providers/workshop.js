@@ -14,6 +14,11 @@
  *   list     the game downloads Workshop items itself; add the ID to its config
  *            (Unturned's WorkshopDownloadConfig.json, ARK's ActiveMods)
  *   zomboid  Project Zomboid: WorkshopItems= and Mods= in the server ini
+ *   bohemia  Arma 3, DayZ: an @id folder, its keys in keys/, loaded with -mod=
+ *   modlist  Conan Exiles: .pak files in Mods, listed in modlist.txt
+ *   tmodloader  newest .tmod into Mods, switched on in enabled.json
+ *   spaceengineers  <Mods> in the server cfg and its worlds; the game downloads it
+ *   dst      Don't Starve Together: ServerModSetup plus modoverrides.lua
  */
 
 const { fail } = require('../../../core/util');

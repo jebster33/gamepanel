@@ -274,7 +274,7 @@ function variableField(v) {
   const isLong = String(v.default || '').length > 60;
   const field = isLong
     ? `<textarea id="${id}" data-var="${esc(v.name)}" rows="3">${esc(v.default ?? '')}</textarea>`
-    : `<input id="${id}" data-var="${esc(v.name)}" type="${v.type === 'number' ? 'number' : 'text'}" value="${esc(
+    : `<input id="${id}" data-var="${esc(v.name)}" type="${v.type === 'number' ? 'number' : v.secret ? 'password' : 'text'}" ${v.secret ? 'autocomplete="new-password"' : ''} value="${esc(
         v.default ?? ''
       )}" ${v.generate === 'password' ? 'placeholder="generated automatically"' : ''} />`;
   return `<label><span>${esc(v.label || v.name)}</span>${field}${

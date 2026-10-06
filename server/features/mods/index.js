@@ -352,8 +352,14 @@ async function listInstalled(server, template) {
     /* the folder appears once the first mod is installed */
   }
   const seen = new Set();
+  // Workshop folders and .pak files the panel tracks are listed once, below; so is the game's own mod list file.
+  const owned = new Set(mods.flatMap((m) => [m.folder && path.basename(m.folder), ...(m.paks || [])]).filter(Boolean));
+  if (ctx.workshop?.file) owned.add(path.basename(ctx.workshop.file));
+  // Arma 3 and DayZ keep mods in the server root: only @folders are mods there.
+  const onlyAtFolders = ctx.workshop?.strategy === 'bohemia';
   for (const entry of entries) {
-    if (entry.name.startsWith('.') || entry.name === '_client-only') continue;
+    if (entry.name.startsWith('.') || entry.name === '_client-only' || owned.has(entry.name)) continue;
+    if (onlyAtFolders && !(entry.isDirectory() && entry.name.startsWith('@'))) continue;
     const full = path.join(dirOf(server, ctx), entry.name);
     const stat = await fsp.stat(full).catch(() => null);
     if (!stat) continue;
@@ -425,7 +431,10 @@ async function remove(server, template, nameOrKey, { keepDependencies = false } 
     const drop = [entry, ...(keepDependencies ? [] : manifest.orphans(left))];
     for (const mod of drop) {
       if (mod.file) await removeFile(server, ctx, mod.file);
-      else await require('./workshop').unlist(server, template, mod);
+      else {
+        await require('./workshop').unlist(server, template, mod);
+        await require('./workshop').purge(server, template, mod);
+      }
       removed.push(mod.name);
     }
     manifest.save(server, mods.filter((m) => !drop.includes(m)));

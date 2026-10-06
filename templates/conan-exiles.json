@@ -4,7 +4,7 @@
   "category": "Survival",
   "icon": "⚔️",
   "storeAppId": 440900,
-  "description": "Open-world survival in the lands of Conan the Barbarian. Windows only.",
+  "description": "Open-world survival in the lands of Conan the Barbarian. Windows only. Workshop mods are copied into ConanSandbox/Mods and listed in modlist.txt for you.",
   "platforms": [
     "windows"
   ],
@@ -122,5 +122,16 @@
   "logPatterns": {
     "ready": "LogServerStats|Server is ready"
   },
-  "stopTimeout": 90
+  "stopTimeout": 90,
+  "mods": {
+    "providers": [
+      "workshop"
+    ],
+    "dir": "ConanSandbox/Mods",
+    "appId": 440900,
+    "workshop": {
+      "strategy": "modlist",
+      "file": "ConanSandbox/Mods/modlist.txt"
+    }
+  }
 }

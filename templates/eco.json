@@ -1,0 +1,83 @@
+{
+  "id": "eco",
+  "name": "Eco",
+  "category": "Sandbox",
+  "icon": "🌱",
+  "storeAppId": 382310,
+  "description": "Build a civilisation together without wrecking the ecosystem before the meteor hits. The first start writes Eco's own config; the name, password and ports set here apply from the second start on.",
+  "platforms": [
+    "linux",
+    "windows"
+  ],
+  "defaultMemory": 6144,
+  "variables": [
+    {
+      "name": "SERVER_PASSWORD",
+      "label": "Join password",
+      "default": "",
+      "description": "Leave empty for an open server."
+    }
+  ],
+  "ports": [
+    {
+      "name": "game",
+      "default": 3000,
+      "protocol": "udp"
+    },
+    {
+      "name": "web",
+      "default": 3001,
+      "protocol": "tcp",
+      "offset": 1
+    }
+  ],
+  "image": "cm2network/steamcmd:root",
+  "install": [
+    {
+      "type": "steamcmd",
+      "appid": "739590",
+      "label": "Install the Eco server"
+    },
+    {
+      "type": "chmod",
+      "path": "EcoServer",
+      "mode": "+x"
+    }
+  ],
+  "patchProperties": [
+    {
+      "path": "Configs/Network.eco",
+      "format": "json",
+      "set": {
+        "GameServerPort": "{{PORT}}",
+        "WebServerPort": "{{PORT_WEB}}",
+        "Description": "{{SERVER_NAME}}",
+        "Password": "{{SERVER_PASSWORD}}"
+      }
+    }
+  ],
+  "startCommand": "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1 ./EcoServer -nogui",
+  "stopTimeout": 120,
+  "readyOnPort": "web",
+  "query": {
+    "type": "tcp",
+    "port": "web"
+  },
+  "logPatterns": {
+    "ready": "Server Started|Web server started"
+  },
+  "windows": {
+    "install": [
+      {
+        "type": "steamcmd",
+        "appid": "739590",
+        "label": "Install the Eco server"
+      },
+      {
+        "type": "vcredist",
+        "label": "Install the Visual C++ runtime"
+      }
+    ],
+    "startCommand": "EcoServer.exe -nogui"
+  }
+}

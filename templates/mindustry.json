@@ -1,0 +1,54 @@
+{
+  "id": "mindustry",
+  "name": "Mindustry",
+  "category": "Sandbox",
+  "icon": "🏭",
+  "storeAppId": 1127400,
+  "description": "Open-source factory tower defence. The official headless server, straight from the Mindustry releases.",
+  "platforms": [
+    "linux",
+    "windows"
+  ],
+  "defaultMemory": 1024,
+  "variables": [],
+  "ports": [
+    {
+      "name": "game",
+      "default": 6567,
+      "protocol": "both"
+    }
+  ],
+  "image": "eclipse-temurin:17-jre",
+  "packages": [
+    "curl",
+    "ca-certificates"
+  ],
+  "install": [
+    {
+      "type": "java",
+      "version": "17",
+      "label": "Install Java 17"
+    },
+    {
+      "type": "download",
+      "label": "Download the Mindustry server",
+      "url": "https://github.com/Anuken/Mindustry/releases/latest/download/server-release.jar",
+      "dest": "server-release.jar"
+    }
+  ],
+  "startCommand": "java -Xmx{{MEMORY}}M -jar server-release.jar \"config name {{SERVER_NAME}},config port {{PORT}},config autosave true,host\"",
+  "stopCommand": "exit",
+  "stopTimeout": 30,
+  "query": {
+    "type": "tcp",
+    "port": "game"
+  },
+  "logPatterns": {
+    "ready": "Opened a server on port",
+    "join": "\\[I\\] (.+?) has connected",
+    "leave": "\\[I\\] (.+?) has disconnected"
+  },
+  "windows": {
+    "startCommand": "java -Xmx{{MEMORY}}M -jar server-release.jar \"config name {{SERVER_NAME}},config port {{PORT}},config autosave true,host\""
+  }
+}

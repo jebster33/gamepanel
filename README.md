@@ -5,7 +5,7 @@
 
 <p align="center">
   <b>Run game servers from your browser, on Linux or Windows.</b><br />
-  One install command. 41 games. Mods that only list what fits your server.
+  One install command. 61 games. Mods that only list what fits your server.
 </p>
 
 <p align="center">
@@ -138,7 +138,12 @@ Games marked ‡ are too big for the CI machines on that system, so CI skips the
 | **Minecraft** any Modrinth modpack | ✓ | ✓ | the pack, plus extra mods |
 | **Minecraft** Vanilla · Bedrock | ✓ | ✓ | |
 | Counter-Strike 2 ‡ (Windows) · Team Fortress 2 · Left 4 Dead 2 | ✓ | ✓ | |
-| Squad · Insurgency: Sandstorm · Arma Reforger | ✓ | ✓ | |
+| Counter-Strike: Source · Day of Defeat: Source · Half-Life 2: Deathmatch | ✓ | ✓ | |
+| Left 4 Dead · No More Room in Hell · Sven Co-op | ✓ | ✓ | |
+| Insurgency (2014) · Day of Infamy · Killing Floor 2 · MORDHAU | ✓ | ✓ | |
+| Squad · Squad 44 · Insurgency: Sandstorm · Arma Reforger | ✓ | ✓ | |
+| SCP: Secret Laboratory | ✓ | ✓ | |
+| Arma 3 · DayZ (need a Steam login) | ✓ | ✓ | Steam Workshop |
 | Rust | ✓ | ✓ | uMod / Oxide |
 | ARK: Survival Evolved | ✓ | ✓ | Steam Workshop |
 | ARK: Survival Ascended | | ✓ | |
@@ -146,10 +151,14 @@ Games marked ‡ are too big for the CI machines on that system, so CI skips the
 | 7 Days to Die · Core Keeper · Barotrauma | ✓ | ✓ | |
 | Project Zomboid · Unturned | ✓ | ✓ | Steam Workshop |
 | Garry's Mod | ✓ | ✓ | Steam Workshop |
-| Terraria · Satisfactory · Necesse | ✓ | ✓ | |
+| Terraria · Satisfactory · Necesse · Avorion · Eco · Mindustry | ✓ | ✓ | |
+| Terraria with tModLoader | ✓ | ✓ | Steam Workshop |
+| ICARUS · Empyrion (Wine on Linux) | ✓ | ✓ | |
 | Factorio | ✓ | | Factorio mod portal |
-| Sons of the Forest · Conan Exiles · Space Engineers · Abiotic Factor | | ✓ | |
-| FiveM (GTA V roleplay) † · Don't Starve Together † | ✓ | ✓ | |
+| Conan Exiles · Space Engineers | | ✓ | Steam Workshop |
+| Sons of the Forest · Abiotic Factor | | ✓ | |
+| FiveM (GTA V roleplay) † | ✓ | ✓ | |
+| Don't Starve Together † | ✓ | ✓ | Steam Workshop |
 | Any Steam game by App ID · any custom command | ✓ | ✓ | |
 
 Missing one? A template is a short JSON file: see [docs/templates.md](docs/templates.md).
@@ -165,6 +174,8 @@ Missing one? A template is a short JSON file: see [docs/templates.md](docs/templ
 - **Updates stay compatible.** "Updates" only offers newer releases for the same loader and version.
 - **Removing cleans up.** Dependencies nothing else needs are removed with the mod; disabling is a switch.
 - **Steam Workshop works per game**: Garry's Mod addons are unpacked, Unturned and ARK get the item added to their own mod lists, Project Zomboid gets `WorkshopItems` and `Mods` written for you.
+  Arma 3 and DayZ mods become `@` folders on `-mod=` with their keys copied, Conan Exiles `.pak` files land in `modlist.txt`,
+  tModLoader mods are switched on in `enabled.json`, and Space Engineers and Don't Starve Together get the item added to their configs and download it themselves.
 
 <img src="docs/screenshots/mod-install.png" alt="Install plan with dependencies" width="700" />
 

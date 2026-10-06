@@ -5,7 +5,7 @@ and watch a game. Drop it into the panel's `templates` folder inside its data
 directory (`/var/lib/gamepanel/templates` on Linux, `C:\ProgramData\GamePanel\templates`
 on Windows) and press **Reload templates** in Settings.
 
-The 41 built-in templates in [`templates/`](../templates) are the best examples.
+The 61 built-in templates in [`templates/`](../templates) are the best examples.
 
 ## The shape
 
@@ -69,8 +69,8 @@ On Windows the start command runs through `cmd.exe`, so no `./`, `export` or `$(
 
 | Step | Linux | Windows | What it does |
 |---|:-:|:-:|---|
-| `steamcmd` | ✓ | ✓ | Install or update a Steam app (`appid`, optional `branch`, `login`) |
-| `workshop` | ✓ | ✓ | Download Workshop items with SteamCMD |
+| `steamcmd` | ✓ | ✓ | Install or update a Steam app (`appid`, optional `branch`, `login`, and `platform: "windows"` to fetch the Windows build for Wine) |
+| `workshop` | ✓ | ✓ | Download Workshop items with SteamCMD (optional `login`) |
 | `download` | ✓ | ✓ | Fetch a URL to `dest` |
 | `fetchlist` | ✓ | ✓ | Fetch a list of `{url, path}` files (resolvers use it for modpacks) |
 | `extract` | ✓ | ✓ | Unpack zip, tar.gz, tar.xz or 7z |
@@ -116,6 +116,14 @@ For the Steam Workshop, `mods.workshop` says how the game loads items:
 | `gma` | Garry's Mod | Extracts the `.gma` into `addons` |
 | `list` | Unturned, ARK | Writes the item ID into the game's own mod list (`file`, `key`) and lets the game download it |
 | `zomboid` | Project Zomboid | Adds `WorkshopItems=` and `Mods=` to the server ini |
+| `bohemia` | Arma 3, DayZ | Downloads into an `@id` folder, copies its `.bikey` files into `keys` (lowercases names on Linux with `lowercase: true`), and fills `{{WORKSHOP_MODS}}` for `-mod=` |
+| `modlist` | Conan Exiles | Copies the item's `.pak` files into `dir` and lists them in `file` (modlist.txt) |
+| `tmodloader` | tModLoader | Copies the newest `.tmod` into `dir` and switches it on in `file` (enabled.json) |
+| `spaceengineers` | Space Engineers | Adds the item to `<Mods>` in `file` and in every world matching `worlds`; the game downloads it |
+| `dst` | Don't Starve Together | Adds `ServerModSetup` to `file` and enables it in each `overrides` modoverrides.lua |
+
+Games that only hand Workshop files to an account that owns them set `mods.workshop.login`, e.g.
+`"{{STEAM_USER}} {{STEAM_PASSWORD}}"`. Mark a variable `"secret": true` to show it as a password field.
 
 ## Other keys
 
