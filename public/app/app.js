@@ -658,7 +658,11 @@ function serverScreen(el, id) {
         <div class="stat"><span>CPU</span><b>${on ? (s.cpu ?? 0).toFixed(0) : 0}<small>%</small></b><div class="meter"><i style="width:${Math.min(100, s.cpu || 0)}%"></i></div></div>
         <div class="stat"><span>Memory</span><b>${on ? fmtBytes(s.memory) : '0 MB'}</b><div class="meter"><i style="width:${on ? mem : 0}%"></i></div></div>
         <div class="stat"><span>Players</span><b>${on ? playerCount(s) : 0}<small>/${s.maxPlayers || '—'}</small></b></div>
-        <div class="stat"><span>Ping</span><b>${s.ping != null && on ? s.ping : '—'}<small>${s.ping != null && on ? 'ms' : ''}</small></b></div>
+        ${
+          s.tps != null && on
+            ? `<div class="stat"><span>TPS</span><b style="color:${s.tps >= 18 ? 'inherit' : s.tps >= 15 ? '#ffb340' : '#ff5f57'}">${s.tps.toFixed(1)}<small>/20</small></b></div>`
+            : `<div class="stat"><span>Ping</span><b>${s.ping != null && on ? s.ping : '—'}<small>${s.ping != null && on ? 'ms' : ''}</small></b></div>`
+        }
       </div>
       <div class="section-label">Connect</div>
       <div class="group flat"><button class="row" id="o-copy"><span class="row-main"><div class="row-title" style="font-family:var(--mono);font-size:15px">${esc(address)}</div><div class="row-sub">Tap to copy the address</div></span>${ICON.copy.replace('<svg', '<svg width="20" height="20" style="color:var(--faint)"')}</button></div>

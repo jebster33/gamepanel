@@ -3,7 +3,7 @@
  * Network first, so a panel update shows up on the next launch; the API and
  * the WebSocket are never cached.
  */
-const CACHE = 'gp-app-v4';
+const CACHE = 'gp-app-v5';
 const SHELL = ['/app/', '/app/app.css', '/app/app.js', '/img/logo-192.png'];
 
 self.addEventListener('install', (event) => {
