@@ -12,7 +12,7 @@
 const fs = require('fs');
 const path = require('path');
 const { config } = require('../core/config');
-const { logger } = require('../core/util');
+const { fail, logger } = require('../core/util');
 const { STATUS } = require('./constants');
 
 const DIR = path.join(config.dataDir, 'players');
@@ -105,6 +105,8 @@ module.exports = {
         h.open[name] = since && since < now ? since : now;
         if (p.first > h.open[name]) p.first = h.open[name];
         this.logActivity(server.id, { type: 'join', name });
+        const flag = this.playerNote(name);
+        if (flag?.watch) this.store.addEvent('player.watched', `${name} joined ${server.name}${flag.note ? ` (note: ${flag.note.slice(0, 120)})` : ''}`, { serverId: server.id });
       }
       for (const name of h.known) {
         if (online.has(name)) continue;
@@ -270,6 +272,7 @@ module.exports = {
       recent: sessions.reverse(),
       log: h.log.filter((e) => e.name === name).slice(-200).reverse(),
     };
+    out.note = this.playerNote(name);
     if (withAddresses) {
       const mine = h.ips?.[name] || [];
       const shared = new Set(mine.map((e) => e.ip).filter((ip) => !/^(127\.|::1$)/.test(ip)));
@@ -280,6 +283,22 @@ module.exports = {
         .map(([other, list]) => ({ name: other, ip: list.find((e) => shared.has(e.ip)).ip }));
     }
     return out;
+  },
+
+  /** Staff notes and the join watchlist, shared by every server (keyed by lower-case name). */
+  playerNote(name) {
+    return this.store.state.playerNotes?.[String(name).toLowerCase()] || null;
+  },
+
+  setPlayerNote(name, { note, watch }, actor) {
+    const key = String(name || '').trim().toLowerCase();
+    if (!/^[a-z0-9_.\- ]{1,32}$/.test(key)) fail(400, 'That is not a player name');
+    const notes = (this.store.state.playerNotes ||= {});
+    const text = String(note || '').trim().slice(0, 1000);
+    if (!text && !watch) delete notes[key];
+    else notes[key] = { note: text, watch: Boolean(watch), by: actor?.username || null, at: Date.now() };
+    this.store.save();
+    return notes[key] || null;
   },
 
   /** The activity log, newest first, filtered by type and text. */

@@ -282,6 +282,14 @@ module.exports = (router, { store, manager, scheduler }, { requireAdmin, require
     return profile;
   });
 
+  /** A staff note on a player, and whether to alert when they join any server. */
+  router.put('/api/players/:name/note', ({ user, params, body }) => {
+    requireCap(user, 'command');
+    const note = manager.setPlayerNote(params.name, { note: body?.note, watch: body?.watch }, user);
+    store.addEvent('player.note', `${user.username} ${note?.watch ? 'put' : 'updated'} ${params.name}${note?.watch ? ' on the watchlist' : "'s note"}`);
+    return { note };
+  });
+
   router.get('/api/servers/:id/activity', ({ user, params, url }) => {
     const qs = Object.fromEntries(url.searchParams);
     const server = serverFor(user, params.id, 'console');

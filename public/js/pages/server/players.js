@@ -351,6 +351,19 @@ async function openProfile(serverId, name) {
              ${p.alts?.length ? `<div class="card warn-card" style="margin-top:10px;font-size:13px">Same address as ${p.alts.map((a) => `<a href="#" data-profile="${esc(a.name)}">${esc(a.name)}</a>`).join(', ')}. Could be an alt account, or someone in the same house.</div>` : ''}`
           : ''
       }
+      ${
+        can('command')
+          ? `<h4 style="margin:18px 0 6px">Staff note</h4>
+             <textarea id="pl-note" rows="2" maxlength="1000" placeholder="Only staff see this. Shared across every server.">${esc(p.note?.note || '')}</textarea>
+             <div class="row" style="justify-content:space-between;margin-top:8px">
+               <div class="checkbox-row" style="margin:0"><input type="checkbox" id="pl-watch" ${p.note?.watch ? 'checked' : ''} /><label for="pl-watch">Alert me when they join any server</label></div>
+               <button class="btn btn-sm" id="pl-note-save">Save note</button>
+             </div>
+             ${p.note?.by ? `<div class="faint" style="font-size:12px;margin-top:4px">Last edited by ${esc(p.note.by)} ${esc(ago(p.note.at))}</div>` : ''}`
+          : p.note?.note
+            ? `<div class="card warn-card" style="margin-top:14px;font-size:13px">${esc(p.note.note)}</div>`
+            : ''
+      }
       ${p.log.length ? `<h4 style="margin:18px 0 6px">Activity</h4><div class="act-list act-compact">${p.log.slice(0, 60).map(logRow).join('')}</div>` : ''}`,
     actions:
       can('command') && current.lists
@@ -359,6 +372,16 @@ async function openProfile(serverId, name) {
             { label: 'Ban on all servers', danger: true, onClick: () => banEverywhere(p.name, false) },
           ]
         : [],
+  });
+  document.querySelector('#pl-note-save')?.addEventListener('click', async (event) => {
+    event.target.disabled = true;
+    try {
+      await api(`/api/players/${encodeURIComponent(p.name)}/note`, { method: 'PUT', body: { note: document.querySelector('#pl-note').value, watch: document.querySelector('#pl-watch').checked } });
+      toast(document.querySelector('#pl-watch').checked ? `Saved. You'll get an alert when ${p.name} joins.` : 'Note saved');
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+    event.target.disabled = false;
   });
   document.querySelector('.modal-backdrop:last-child')?.querySelectorAll('[data-profile]').forEach((a) =>
     a.addEventListener('click', (event) => {
