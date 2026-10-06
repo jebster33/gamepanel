@@ -3,6 +3,7 @@ import { state } from '../../core/state.js';
 import { $, can, esc, fmtBytes, fmtDuration, fmtRate, gameArt, icon, statusPill } from '../../core/util.js';
 import { renderAccessTab } from './access.js';
 import { renderBackupsTab } from './backups.js';
+import { renderConfigsTab } from './configs.js';
 import { patchDoctor, renderConsoleTab } from './console.js';
 import { renderFilesTab } from './files.js';
 import { renderGameTab } from './game.js';
@@ -24,6 +25,7 @@ function serverTabs(server) {
     can('files') && ['files', 'Files'],
     server.hasModpacks && can('mods') && ['modpacks', 'Modpack'],
     server.hasMods && can('mods') && ['mods', 'Mods'],
+    server.hasMods && can('files') && ['configs', 'Configs'],
     can('backups') && ['backups', 'Backups'],
     can('schedules') && ['schedules', 'Schedules'],
     can('settings') && ['game', 'Game settings'],
@@ -175,6 +177,9 @@ function renderServerTab(server, tab) {
       break;
     case 'mods':
       renderModsTab(host, server);
+      break;
+    case 'configs':
+      renderConfigsTab(host, server);
       break;
     case 'backups':
       renderBackupsTab(host, server);

@@ -2433,6 +2433,75 @@ tbody tr:hover {
   background: var(--amber-soft);
   border-color: rgba(255, 179, 64, 0.35);
 }
+.cfg-layout {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+.cfg-files {
+  position: sticky;
+  top: 16px;
+  max-height: calc(100vh - 120px);
+  overflow: auto;
+}
+.cfg-group + .cfg-group {
+  margin-top: 10px;
+}
+.cfg-group-name {
+  margin: 10px 0 4px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+.cfg-group .cfg-group-name {
+  margin-top: 0;
+}
+.cfg-file {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 8px;
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  color: var(--text);
+  background: none;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.cfg-file .grow {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cfg-file:hover {
+  background: var(--raised);
+}
+.cfg-file.active {
+  background: var(--lime-soft);
+  color: var(--lime-text, var(--lime));
+}
+.cf-section + .cf-section {
+  margin-top: 8px;
+}
+.gs-field.is-list textarea {
+  font-family: var(--mono);
+  font-size: 12.5px;
+}
+@media (max-width: 860px) {
+  .cfg-layout {
+    grid-template-columns: 1fr;
+  }
+  .cfg-files {
+    position: static;
+    max-height: 260px;
+  }
+}
 .save-bar {
   position: sticky;
   bottom: 16px;
