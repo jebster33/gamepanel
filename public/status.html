@@ -242,6 +242,17 @@
         border-radius: 8px;
         cursor: pointer;
       }
+      .brand-logo {
+        padding: 0;
+        background: none;
+        border: 0;
+      }
+      .brand-logo img {
+        display: block;
+        max-height: 56px;
+        max-width: min(260px, 70vw);
+        border-radius: 10px;
+      }
       .links {
         display: flex;
         flex-wrap: wrap;
@@ -343,7 +354,7 @@
   <body>
     <main>
       <header>
-        <div class="brand"><svg width="18" height="18" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="13" fill="none" stroke="#c6f432" stroke-width="3.2"/><path d="M16 9.5v13M9.5 16h13" stroke="#c6f432" stroke-width="3.6" stroke-linecap="round"/></svg> Server status</div>
+        <div class="brand" id="brand"><svg width="18" height="18" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="13" fill="none" stroke="#c6f432" stroke-width="3.2"/><path d="M16 9.5v13M9.5 16h13" stroke="#c6f432" stroke-width="3.6" stroke-linecap="round"/></svg> Server status</div>
         <h1 id="title">Loading…</h1>
         <p class="lede" id="description" hidden></p>
         <div class="summary" id="summary"></div>

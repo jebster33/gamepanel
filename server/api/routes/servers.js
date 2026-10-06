@@ -623,6 +623,28 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
     return { settings };
   });
 
+  router.put('/api/status-page/logo', ({ user, body }) => {
+    requireAdmin(user);
+    return { settings: statusPage.setLogo(store, body?.image) };
+  });
+
+  router.delete('/api/status-page/logo', ({ user }) => {
+    requireAdmin(user);
+    return { settings: statusPage.removeLogo(store) };
+  });
+
+  router.get(
+    '/api/public/status/:slug/logo',
+    ({ params, res }) => {
+      const logo = statusPage.readLogo(store, params.slug);
+      if (!logo) fail(404, 'No logo');
+      res.writeHead(200, { 'Content-Type': logo.type, 'Content-Length': logo.data.length, 'Cache-Control': 'public, max-age=86400', 'X-Content-Type-Options': 'nosniff' });
+      res.end(logo.data);
+      return undefined;
+    },
+    { public: true }
+  );
+
   router.get(
     '/api/public/status/:slug',
     ({ params, res }) => {

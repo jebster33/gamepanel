@@ -525,6 +525,18 @@ async function renderStatusPageForm() {
     <div class="checkbox-row mt-16"><input type="checkbox" id="sp-players" ${sp.showPlayers ? 'checked' : ''} /><label for="sp-players">Show the names of players who are on</label></div>
     <div class="checkbox-row"><input type="checkbox" id="sp-address" ${sp.showAddress ? 'checked' : ''} /><label for="sp-address">Show the address to join</label></div>
     <div class="checkbox-row"><input type="checkbox" id="sp-motd" ${sp.showMotd !== false ? 'checked' : ''} /><label for="sp-motd">Show Minecraft's message of the day</label></div>
+    <div class="field-label mt-16">Your look</div>
+    <div class="sp-brand">
+      <div class="sp-logo">${sp.logo ? `<img src="/api/public/status/${esc(sp.slug)}/logo?v=${sp.logo.v}" alt="Logo" />` : '<span class="faint">No logo</span>'}</div>
+      <div class="row" style="gap:8px">
+        <label class="btn btn-sm" style="margin:0">Upload logo<input type="file" id="sp-logo-file" accept="image/png,image/jpeg,image/webp" class="hidden" /></label>
+        ${sp.logo ? '<button class="btn btn-sm btn-ghost" id="sp-logo-remove">Remove</button>' : ''}
+        <label style="margin:0;display:flex;align-items:center;gap:8px"><span style="margin:0">Accent</span><input type="color" id="sp-accent" value="${esc(sp.accent || '#c6f432')}" style="width:44px;height:32px;padding:2px" /></label>
+        <button class="btn btn-sm btn-ghost" id="sp-accent-reset" title="Back to GamePanel's lime">Default colour</button>
+      </div>
+    </div>
+    <div class="hint">PNG, JPEG or WebP up to 512 KB. It replaces the GamePanel badge and the tab icon.</div>
+    <div class="checkbox-row"><input type="checkbox" id="sp-badge" ${sp.hideBadge ? 'checked' : ''} /><label for="sp-badge">Hide the GamePanel badge when there is no logo</label></div>
     <button class="btn btn-primary mt-16" id="sp-save">Save server list</button>`;
 
   const save = async (extra = {}) => {
@@ -540,6 +552,8 @@ async function renderStatusPageForm() {
           showPlayers: $('#sp-players').checked,
           showAddress: $('#sp-address').checked,
           showMotd: $('#sp-motd').checked,
+          accent: accentTouched ? $('#sp-accent').value : sp.accent || '',
+          hideBadge: $('#sp-badge').checked,
           links: { discord: $('#sp-discord').value, vote: $('#sp-vote').value, website: $('#sp-website').value },
           blurbs: Object.fromEntries([...document.querySelectorAll('[data-sp-blurb]')].map((el) => [el.dataset.spBlurb, el.value])),
           ...extra,
@@ -551,6 +565,34 @@ async function renderStatusPageForm() {
       toast(err.message, 'error');
     }
   };
+  let accentTouched = false;
+  $('#sp-accent').addEventListener('input', () => (accentTouched = true));
+  $('#sp-accent-reset').addEventListener('click', () => {
+    accentTouched = false;
+    sp.accent = '';
+    $('#sp-accent').value = '#c6f432';
+    save();
+  });
+  $('#sp-logo-file').addEventListener('change', (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+    if (file.size > 512 * 1024) return toast('The logo must be at most 512 KB', 'error');
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        await api('/api/status-page/logo', { method: 'PUT', body: { image: reader.result } });
+        toast('Logo uploaded');
+        renderStatusPageForm();
+      } catch (err) {
+        toast(err.message, 'error');
+      }
+    };
+    reader.readAsDataURL(file);
+  });
+  $('#sp-logo-remove')?.addEventListener('click', async () => {
+    await api('/api/status-page/logo', { method: 'DELETE' }).catch((err) => toast(err.message, 'error'));
+    renderStatusPageForm();
+  });
   $('#sp-save').addEventListener('click', () => save());
   $('#sp-copy')?.addEventListener('click', (e) => copyToClipboard(link, e.currentTarget));
   $('#sp-new')?.addEventListener('click', async () => {

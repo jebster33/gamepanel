@@ -3557,3 +3557,26 @@ tr.clickable:hover td {
   border-radius: var(--radius);
   box-shadow: var(--shadow);
 }
+
+/* Settings: the public page's logo and colour. */
+.sp-brand {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+}
+.sp-logo {
+  display: grid;
+  place-items: center;
+  min-width: 96px;
+  height: 56px;
+  padding: 6px;
+  background: var(--inset);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius);
+  font-size: 12px;
+}
+.sp-logo img {
+  max-height: 44px;
+  max-width: 200px;
+}
