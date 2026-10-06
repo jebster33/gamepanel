@@ -2767,6 +2767,12 @@ tr.clickable:hover td {
   margin-top: 10px;
 }
 
+.con-player {
+  color: inherit;
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+}
+
 .recovery-codes {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

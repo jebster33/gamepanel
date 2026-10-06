@@ -40,8 +40,10 @@ export function openModal({ title, body, actions = [], width = 620 }) {
   };
   document.addEventListener('keydown', onKey);
 
+  // Focus the first field only if it's in view, so a long modal opens at the top.
   const firstInput = backdrop.querySelector('input, textarea, select');
-  firstInput?.focus();
+  const bodyBox = backdrop.querySelector('.modal-body').getBoundingClientRect();
+  if (firstInput && firstInput.getBoundingClientRect().bottom <= bodyBox.bottom) firstInput.focus();
   return api;
 }
 

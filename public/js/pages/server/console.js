@@ -51,6 +51,13 @@ export function renderConsoleTab(host, server) {
   $('#doctor').addEventListener('click', (event) => onDoctorClick(event, server));
   $('#share-log').addEventListener('click', () => shareLog(server));
   $('#old-logs').addEventListener('click', () => openOldLogs(server));
+  $('#console').addEventListener('click', async (event) => {
+    const a = event.target.closest('[data-player]');
+    if (!a) return;
+    event.preventDefault();
+    const { openProfile } = await import('./players.js');
+    openProfile(server.id, a.dataset.player, { templateId: server.templateId });
+  });
 
   const history = loadHistory(server.id);
   let cursor = history.length;
@@ -153,7 +160,15 @@ function consoleLineHtml(entry) {
   const body = match ? match[2] : raw;
   const prefix = match ? match[1] : '';
 
-  return `<div class="l ${esc(tone)}">${prefix ? `<span class="ts">${esc(prefix)}</span>` : ''}${esc(body)}</div>`;
+  return `<div class="l ${esc(tone)}">${prefix ? `<span class="ts">${esc(prefix)}</span>` : ''}${linkPlayers(esc(body))}</div>`;
+}
+
+/** Player names in joins, leaves and chat open their profile (Minecraft-style lines). */
+function linkPlayers(html) {
+  const link = (name) => `<a href="#" class="con-player" data-player="${name}">${name}</a>`;
+  return html
+    .replace(/^(\w{3,16})( (?:joined|left) the game)/, (m, name, rest) => link(name) + rest)
+    .replace(/^&lt;(\w{3,16})&gt;/, (m, name) => `&lt;${link(name)}&gt;`);
 }
 
 let consoleFilter = '';
