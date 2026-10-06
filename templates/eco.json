@@ -4,7 +4,7 @@
   "category": "Sandbox",
   "icon": "🌱",
   "storeAppId": 382310,
-  "description": "Build a civilisation together without wrecking the ecosystem before the meteor hits. The first start writes Eco's own config; the name, password and ports set here apply from the second start on.",
+  "description": "Build a civilisation together without wrecking the ecosystem before the meteor hits. The server name, password and ports set here are written into Eco's Network.eco before every start.",
   "platforms": [
     "linux",
     "windows"
@@ -53,10 +53,12 @@
         "WebServerPort": "{{PORT_WEB}}",
         "Description": "{{SERVER_NAME}}",
         "Password": "{{SERVER_PASSWORD}}"
-      }
+      },
+      "seedFrom": "Configs/Network.eco.template"
     }
   ],
-  "startCommand": "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1 ./EcoServer -nogui",
+  "startCommand": "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1 ./EcoServer",
+  "stopCommand": "exit",
   "stopTimeout": 120,
   "readyOnPort": "web",
   "query": {
@@ -64,7 +66,7 @@
     "port": "web"
   },
   "logPatterns": {
-    "ready": "Server Started|Web server started"
+    "ready": "Web Server now listening on|Server Started"
   },
   "windows": {
     "install": [

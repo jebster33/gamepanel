@@ -200,6 +200,91 @@ function editDst(server, spec, { add = [], remove = [], disable = [] }) {
   }
 }
 
+/**
+ * Add or remove repeated `key=value` lines inside one [section] of an
+ * Unreal-style ini, where a list is written as the same key on many lines.
+ * `first: true` puts added lines before the section's other `key=` lines.
+ */
+function editIniLines(text, section, key, { add = [], remove = [], first = false }) {
+  const nl = text.includes('\r\n') ? '\r\n' : '\n';
+  const lines = text ? text.split(/\r?\n/) : [];
+  const valueOf = (line) => line.match(/^\s*([^=;\s]+)\s*=\s*(.*?)\s*$/);
+  let start = lines.findIndex((l) => l.trim() === `[${section}]`);
+  if (start < 0) {
+    while (lines.length && !lines[lines.length - 1].trim()) lines.pop();
+    if (lines.length) lines.push('');
+    lines.push(`[${section}]`);
+    start = lines.length - 1;
+  }
+  let end = lines.findIndex((l, i) => i > start && /^\s*\[[^\]]+\]\s*$/.test(l));
+  if (end < 0) end = lines.length;
+
+  const body = lines.slice(start + 1, end).filter((l) => {
+    const m = valueOf(l);
+    return !(m && m[1] === key && (remove.includes(m[2]) || (first && add.includes(m[2]))));
+  });
+  const have = new Set(body.map(valueOf).filter((m) => m && m[1] === key).map((m) => m[2]));
+  const fresh = add.filter((v) => first || !have.has(v)).map((v) => `${key}=${v}`);
+  if (first) {
+    const at = body.findIndex((l) => valueOf(l)?.[1] === key);
+    body.splice(at < 0 ? 0 : at, 0, ...fresh);
+  } else {
+    let at = body.length;
+    while (at > 0 && !body[at - 1].trim()) at--;
+    body.splice(at, 0, ...fresh);
+  }
+  lines.splice(start + 1, end - start - 1, ...body);
+  return `${lines.join(nl).replace(/\s*$/, '')}${nl}`;
+}
+
+const KF2 = {
+  section: 'OnlineSubsystemSteamworks.KFWorkshopSteamworks',
+  key: 'ServerSubscribedWorkshopItems',
+  // Players fetch the server's Workshop items from Steam instead of the server's slow redirect.
+  net: 'IpDrv.TcpNetDriver',
+  manager: 'OnlineSubsystemSteamworks.SteamWorkshopDownload',
+};
+
+/** Killing Floor 2: one ServerSubscribedWorkshopItems= line per item in each KFEngine.ini. */
+function editKf2(server, spec, { add = [], remove = [] }) {
+  const files = globFiles(server.dir, interpolate(spec.file, server.vars || {}));
+  for (const file of files) {
+    let text = editIniLines(readText(file), KF2.section, KF2.key, { add, remove });
+    if (add.length) text = editIniLines(text, KF2.net, 'DownloadManagers', { add: [KF2.manager], first: true });
+    fs.writeFileSync(file, text);
+  }
+  return files.length;
+}
+
+/** Avorion: {workshopid = "id"} entries in the galaxy's modconfig.lua; the server downloads them. */
+function editAvorion(server, spec, { add = [], remove = [] }) {
+  const file = configPath(server, spec);
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  let lua = readText(file);
+  if (!lua.trim()) lua = 'modLocation = ""\nforceEnabling = false\n\nmods =\n{\n}\n\nallowed =\n{\n}\n';
+  const head = lua.match(/(^|\n)[ \t]*mods\s*=\s*\{/);
+  let open = -1;
+  let close = -1;
+  if (head) {
+    open = head.index + head[0].length - 1;
+    for (let i = open, depth = 0; i < lua.length; i++) {
+      if (lua[i] === '{') depth++;
+      if (lua[i] === '}' && --depth === 0) {
+        close = i;
+        break;
+      }
+    }
+  }
+  const inner = close > open ? lua.slice(open + 1, close) : '';
+  const idOf = (entry) => entry.match(/workshopid\s*=\s*"?(\d+)"?/)?.[1];
+  const entries = [...inner.matchAll(/\{[^{}]*\}/g)].map((m) => m[0]).filter((e) => !remove.includes(idOf(e)));
+  const have = new Set(entries.map(idOf));
+  for (const id of add) if (!have.has(id)) entries.push(`{workshopid = "${id}"}`);
+  const block = `{\n${entries.map((e) => `    ${e.trim()},\n`).join('')}}`;
+  lua = close > open ? `${lua.slice(0, open)}${block}${lua.slice(close + 1)}` : `${lua.replace(/\s*$/, '')}\n\nmods =\n${block}\n`;
+  fs.writeFileSync(file, lua);
+}
+
 /** Highest-versioned file whose name matches, e.g. tModLoader's 2024.x/Mod.tmod. */
 function newest(files) {
   const version = (f) => (path.basename(path.dirname(f)).match(/^\d+(\.\d+)*$/) ? path.basename(path.dirname(f)).split('.').map(Number) : [0]);
@@ -480,6 +565,20 @@ const STRATEGIES = {
     return items.map((i) => entryFor(i, { strategy: 'dst' }));
   },
 
+  /** Killing Floor 2 downloads Workshop items itself once they are in KFEngine.ini. */
+  async kf2(server, ctx, spec, items) {
+    if (!editKf2(server, spec, { add: items.map((i) => i.id) })) {
+      fail(409, 'Start the server once so it writes its config, then add Workshop items.');
+    }
+    return items.map((i) => entryFor(i, { strategy: 'kf2' }));
+  },
+
+  /** Avorion downloads Workshop mods itself once they are in modconfig.lua. */
+  async avorion(server, ctx, spec, items) {
+    editAvorion(server, spec, { add: items.map((i) => i.id) });
+    return items.map((i) => entryFor(i, { strategy: 'avorion' }));
+  },
+
   /** Everything else: the item's folder goes into the mod directory. */
   async copy(server, ctx, spec, items, manager) {
     const entries = [];
@@ -492,7 +591,7 @@ const STRATEGIES = {
 };
 
 /** Strategies where the game downloads items itself, so installing finishes at once. */
-const LISTED = new Set(['list', 'spaceengineers', 'dst']);
+const LISTED = new Set(['list', 'spaceengineers', 'dst', 'kf2', 'avorion']);
 
 /**
  * Install Workshop items (or a whole collection). List-style games finish at
@@ -534,6 +633,8 @@ async function unlist(server, template, entry) {
   if (entry.strategy === 'modlist') editLines(configPath(server, spec), { remove: entry.paks || [] });
   if (entry.strategy === 'spaceengineers') editSpaceEngineers(server, spec, { remove: [entry.projectId] });
   if (entry.strategy === 'dst') editDst(server, spec, { disable: [entry.projectId] });
+  if (entry.strategy === 'kf2') editKf2(server, spec, { remove: [entry.projectId] });
+  if (entry.strategy === 'avorion') editAvorion(server, spec, { remove: [entry.projectId] });
   // bohemia: {{WORKSHOP_MODS}} leaves out disabled entries on the next start.
   if (entry.strategy === 'zomboid') {
     editList(server, { ...spec, separator: ';' }, 'WorkshopItems', { remove: [entry.projectId] });
@@ -547,6 +648,8 @@ async function relist(server, template, entry) {
   if (entry.strategy === 'modlist') editLines(configPath(server, spec), { add: entry.paks || [] });
   if (entry.strategy === 'spaceengineers') editSpaceEngineers(server, spec, { add: [{ id: entry.projectId, title: entry.name }] });
   if (entry.strategy === 'dst') editDst(server, spec, { add: [entry.projectId] });
+  if (entry.strategy === 'kf2') editKf2(server, spec, { add: [entry.projectId] });
+  if (entry.strategy === 'avorion') editAvorion(server, spec, { add: [entry.projectId] });
   if (entry.strategy === 'zomboid') {
     editList(server, { ...spec, separator: ';' }, 'WorkshopItems', { add: [entry.projectId] });
     editList(server, { ...spec, separator: ';' }, 'Mods', { add: entry.modIds || [] });
@@ -589,4 +692,4 @@ async function refresh(server, template, mod, { manager, integrations } = {}) {
   return installWorkshop(server, template, manager, { input: mod.projectId }, integrations);
 }
 
-module.exports = { installWorkshop, unlist, relist, purge, checkUpdates, refresh, editList, readKey, modArgument, editXmlMods, editDst, SE };
+module.exports = { installWorkshop, unlist, relist, purge, checkUpdates, refresh, editList, readKey, modArgument, editXmlMods, editDst, editIniLines, editKf2, editAvorion, SE };

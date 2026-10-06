@@ -140,7 +140,8 @@ Games marked ‡ are too big for the CI machines on that system, so CI skips the
 | Counter-Strike 2 ‡ (Windows) · Team Fortress 2 · Left 4 Dead 2 | ✓ | ✓ | |
 | Counter-Strike: Source · Day of Defeat: Source · Half-Life 2: Deathmatch | ✓ | ✓ | |
 | Left 4 Dead · No More Room in Hell · Sven Co-op | ✓ | ✓ | |
-| Insurgency (2014) · Day of Infamy · Killing Floor 2 · MORDHAU | ✓ | ✓ | |
+| Insurgency (2014) · Day of Infamy · MORDHAU | ✓ | ✓ | |
+| Killing Floor 2 | ✓ | ✓ | Steam Workshop |
 | Squad · Squad 44 · Insurgency: Sandstorm · Arma Reforger | ✓ | ✓ | |
 | SCP: Secret Laboratory | ✓ | ✓ | |
 | Arma 3 · DayZ (need a Steam login) | ✓ | ✓ | Steam Workshop |
@@ -151,7 +152,8 @@ Games marked ‡ are too big for the CI machines on that system, so CI skips the
 | 7 Days to Die · Core Keeper · Barotrauma | ✓ | ✓ | |
 | Project Zomboid · Unturned | ✓ | ✓ | Steam Workshop |
 | Garry's Mod | ✓ | ✓ | Steam Workshop |
-| Terraria · Satisfactory · Necesse · Avorion · Eco · Mindustry | ✓ | ✓ | |
+| Terraria · Satisfactory · Necesse · Eco · Mindustry | ✓ | ✓ | |
+| Avorion | ✓ | ✓ | Steam Workshop |
 | Terraria with tModLoader | ✓ | ✓ | Steam Workshop |
 | ICARUS · Empyrion (Wine on Linux) | ✓ | ✓ | |
 | Factorio | ✓ | | Factorio mod portal |

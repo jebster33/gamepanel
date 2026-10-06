@@ -121,6 +121,8 @@ For the Steam Workshop, `mods.workshop` says how the game loads items:
 | `tmodloader` | tModLoader | Copies the newest `.tmod` into `dir` and switches it on in `file` (enabled.json) |
 | `spaceengineers` | Space Engineers | Adds the item to `<Mods>` in `file` and in every world matching `worlds`; the game downloads it |
 | `dst` | Don't Starve Together | Adds `ServerModSetup` to `file` and enables it in each `overrides` modoverrides.lua |
+| `kf2` | Killing Floor 2 | Adds a `ServerSubscribedWorkshopItems=` line to every ini matching `file` (KFEngine.ini) and puts the Steam Workshop download manager first; the game downloads it |
+| `avorion` | Avorion | Adds `{workshopid = "id"}` to `mods` in `file` (the galaxy's modconfig.lua); the game downloads it |
 
 Games that only hand Workshop files to an account that owns them set `mods.workshop.login`, e.g.
 `"{{STEAM_USER}} {{STEAM_PASSWORD}}"`. Mark a variable `"secret": true` to show it as a password field.
@@ -128,7 +130,8 @@ Games that only hand Workshop files to an account that owns them set `mods.works
 ## Other keys
 
 - `configFiles` writes files on install (`mode: "create"` keeps user edits, `"overwrite"` replaces).
-- `patchProperties` re-applies listed keys before every start (`properties`, `ini`, `json`).
+- `patchProperties` re-applies listed keys before every start (`properties`, `ini`, `json`). A missing file is
+  skipped unless `createIfMissing` is set or `seedFrom` names a default to start from (Eco's `Network.eco.template`).
 - `wizard`: `[{ "title", "description", "fields": ["VAR", …] }]` turns the create form into steps (see `fivem.json`).
 - `sidecars` start companion containers, such as a private MariaDB for FiveM.
 - `container: false` forces a plain process even when Docker is available.

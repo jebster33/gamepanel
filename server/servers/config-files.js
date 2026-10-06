@@ -77,6 +77,7 @@ module.exports = {
   /**
    * Re-apply the panel-owned keys (ports, passwords, slots) before each boot.
    * Formats: properties, ini (with optional "section"), json (dotted keys).
+ * A missing file is skipped unless `createIfMissing` or a `seedFrom` file exists.
    */
   applyPropertyPatches(server, template) {
     const vars = this.vars(server);
@@ -91,7 +92,13 @@ module.exports = {
       try {
         existing = fs.readFileSync(target, 'utf8');
       } catch {
-        if (!patch.createIfMissing) continue;
+        // `seedFrom`: start from the game's shipped default (Eco's Network.eco.template).
+        try {
+          if (patch.seedFrom) existing = fs.readFileSync(containedPath(server.dir, interpolate(patch.seedFrom, vars)), 'utf8');
+        } catch {
+          existing = '';
+        }
+        if (!existing && !patch.createIfMissing) continue;
       }
       const values = {};
       for (const [k, v] of Object.entries(patch.set || {})) values[k] = interpolate(String(v), vars);
