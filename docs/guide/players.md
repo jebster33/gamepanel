@@ -19,6 +19,11 @@ profile:
 - **In-game stats** for Minecraft: deaths, kills, distance travelled, most mined blocks, advancements.
 - **Addresses** with rough location and alt-account warnings when two players share an address (only
   administrators see this).
+- **Inventory** for Minecraft Java: armour, off-hand, inventory, hotbar and ender chest with item
+  pictures, enchantments and names, plus health, hunger, level and where they are. **Show** picks a
+  backup to see the inventory as it was then, and **Put this inventory back** restores only that
+  player's file from the backup (they must be offline; the current file is kept in
+  `.gamepanel/player-rollbacks`). Handy after a griefing or a lost-items bug, without rolling back the world.
 - **Staff note**, and **Alert me when they join any server** to put someone on a watchlist.
 - **Ban on all servers** / **Unban everywhere**.
 

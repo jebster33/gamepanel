@@ -71,23 +71,24 @@ too (after asking), along with users, bridge connections and the containers Game
 | **Mods and modpacks** | Modrinth, CurseForge, Hangar, SpigotMC, uMod, Steam Workshop and the Factorio portal, filtered to your loader and version. Modrinth and CurseForge packs in one click. A **mod check** looks inside the jars for wrong loaders, missing dependencies and clashes. [Guide](docs/guide/mods-and-modpacks.md) |
 | **Plugin and mod configs as forms** | The Configs tab shows plugin and mod config files (YAML, TOML, JSON, .cfg, .properties) as toggles, numbers and lists; comments stay as they were. |
 | **Minecraft networks** | A Velocity proxy in front of your Paper and Purpur servers, with forwarding set up on both ends. |
-| **Minecraft extras** | Switch version or loader, manage worlds, edit game rules, MOTD and icon, Bedrock crossplay, BlueMap, Chunky pre-generation. |
+| **Minecraft extras** | Switch version or loader, manage worlds, edit game rules, MOTD and icon, Bedrock crossplay, BlueMap, Chunky pre-generation. **Datapacks** from Modrinth or a zip, checked against the server's version. Optional **wake on join**: a stopped server shows as asleep in the server list and starts when someone joins. |
 | **Schedules** | Restarts with in-game warnings, backups, commands, game and mod updates; skip while people are playing. Rust wipes on the first Thursday of the month, blueprints optional. |
-| **Backups** | One click or scheduled, restore whole or single files, copied to Backblaze B2, Cloudflare R2, S3 or MinIO. Optional incremental backups (only changes are stored) with AES-256 encryption, and checks that test-restore each backup. [Guide](docs/guide/backups.md) |
+| **Backups** | One click or scheduled, restore whole or single files, copied to Backblaze B2, Cloudflare R2, S3 or MinIO, or to another of your machines. Optional incremental backups (only changes are stored) with AES-256 encryption, and checks that test-restore each backup. A **restore preview** shows what would change before anything is overwritten. [Guide](docs/guide/backups.md) |
 | **Files** | Browse, edit, search, drag-and-drop upload, unzip in place. Or use FileZilla and WinSCP over the built-in **SFTP**, signed in with panel accounts. |
 | **Many servers at once** | Select servers and start, stop, restart, update or back them up together. |
-| **Graphs with history** | CPU, memory, players and ping for the last hour up to 30 days. |
+| **Graphs with history** | CPU, memory, players and ping for the last hour up to 30 days, with **advice** on memory, Java flags and settings, applied in one click. |
+| **Staging copies** | Try plugin updates and config changes on a copy, then push them to the live server; its world and players stay. |
 | **Automatic updates** | Steam games update themselves when a new build is out and nobody is playing. |
 
 **Players and community**
 
 | | |
 |---|---|
-| **Players** | Who is on, history and play time, profiles with stats, kick and ban, whitelist, ops, maintenance mode. [Guide](docs/guide/players.md) |
+| **Players** | Who is on, history and play time, profiles with stats and **inventories** (put one player's inventory back from a backup), kick and ban, whitelist, ops, maintenance mode. [Guide](docs/guide/players.md) |
 | **Chat moderation** | Word list (it sees through leetspeak), links, shouting and spam, with a warn → mute → kick → temporary ban ladder. |
 | **Shared bans** | One ban list for every server, with a public page where banned players can appeal. |
 | **Whitelist from Discord roles** | Members with the roles you pick are whitelisted, and taken off when they lose them. |
-| **Discord** | Alerts by webhook, a bot with `/status`, `/players`, `/start`…, and two-way chat per server. Slack and ntfy too. [Guide](docs/guide/alerts-and-discord.md) |
+| **Discord** | Alerts by webhook, a bot with `/status`, `/players`, `/start`…, and two-way chat per server. **Status bots** show "25/200 players" in the member list. Slack and ntfy too. [Guide](docs/guide/alerts-and-discord.md) |
 | **Status page** | A public page with who is on, uptime and leaderboards. |
 | **Phone app** | Home-screen app with console, players and push notifications. |
 
@@ -106,6 +107,7 @@ too (after asking), along with users, bridge connections and the containers Game
 | **Isolation on Linux** | Every server in its own Docker container with hard memory and CPU limits. |
 | **API** | Keys for scripts and bots, read-only or full. [Reference](docs/api.md) |
 | **Ready-made setups** | A Survival SMP with LuckPerms and EssentialsX, a fast Fabric server, a Rust community server… in one click. Save any server as a setup of your own. |
+| **Template builder** | Add a game the panel does not ship from a form: download, install steps, ports, start and stop. [Templates](docs/templates.md#the-template-builder) |
 | **Quotas** | Let friends create their own servers, up to a number, memory and disk you set. |
 | **Config history** | Every config save is kept: see what changed and put an older version back. |
 | **Scheduled events** | Optional: a double XP weekend that turns itself on and off. |

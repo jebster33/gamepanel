@@ -14,7 +14,11 @@ A backup is a plain `.tar.gz` of the whole server folder, so you can open it any
 ## Restoring
 
 - **Restore** puts the whole server back the way it was. Stop the server first; current files are
-  overwritten.
+  overwritten. Before anything happens, the **restore preview** compares the backup with the server as it
+  is now: files that come back (deleted since), files that go back to how they were (changed since) and
+  files added since, per folder, with plugin and mod jars and `server.properties` compared by name and
+  setting. A normal restore leaves files added since in place; tick **Make it exactly like the backup**
+  to delete them too. **Back up the server as it is now first** (on by default) makes the restore undoable.
 - **Browse** opens the archive. Tick single files or folders and **Restore selected** to put back only
   those (a broken config, one world) and leave everything else alone. Administrators only.
 - The download button saves the archive to your computer.
@@ -45,6 +49,16 @@ MinIO.
 After that the Backups tab gets a **Cloud** column. **Copy** retries an upload that failed. Backups that
 are **Only in the cloud** have **Bring back**, which downloads them to the panel so you can restore them
 like any other. Failed uploads are posted to your alerts when that alert is ticked.
+
+## Copies on another node
+
+**Settings → Backup copies on another node** sends every new archive backup to one of your
+[nodes](nodes.md), another machine running GamePanel. Nothing to sign up for, and losing this machine
+does not lose the backups. Pick the node and how many copies to keep per server. The Backups tab then
+gets a column named after the node, with **Copy** for backups made before it was on, and lists copies
+that are **Only on** the node with **Bring back** and delete. The node keeps them as plain `.tar.gz` files
+in `backups-from-nodes` inside its data folder, and refuses a copy that would leave it with less than
+1 GB free. Incremental backups are not copied.
 
 ## Backing up the panel itself
 

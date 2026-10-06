@@ -35,6 +35,18 @@ The [phone app](first-setup.md#phone-app) can push the same alerts to your phone
    Developer Mode in Discord, right-click a user, **Copy User ID**). Everyone can use `/status`,
    `/players` and `/whois`.
 
+### Player count in the member list
+
+Under the bot settings, **Players in the bot's status** makes the bot's status read the number of players
+online out of the maximum, like `25/200 players`, for all servers together or one, updated every 20
+seconds. The text is yours to change (`{online}`, `{max}`, `{server}`, `{servers}`), shown as just the
+text, *Playing …* or *Watching …*. It turns
+to *Server offline* (red) and *Starting…* (yellow) by itself.
+
+For one bot per server, the way big communities list each server in the sidebar, add **status bots**:
+make an extra application and bot in the developer portal, paste its token and pick the server. Status
+bots need no permissions and read no messages.
+
 ## A server's own Discord channel
 
 Each server's **Settings → Discord channel** posts its chat, joins and leaves, and starts and crashes into

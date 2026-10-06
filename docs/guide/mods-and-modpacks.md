@@ -41,6 +41,17 @@ their own mod lists, Project Zomboid gets `WorkshopItems` and `Mods` written for
 the galaxy's modconfig.lua. Paste the
 Workshop link or item ID and press **Add item**.
 
+## Datapacks
+
+Every Minecraft Java server (vanilla, Paper, Fabric, Forge and the rest) has a **Datapacks** card on
+its Game settings tab, for the loaded world's `datapacks` folder. **Browse** searches Modrinth for packs
+with a release for the server's version; **Upload zip** adds your own (the panel tells you when
+`pack.mcmeta` sits in an extra folder, or when the zip is a mod). Each pack can be turned off without
+deleting it. Packs made for another Minecraft version are marked **Other version**, using the data pack
+format from the server jar itself. On a running server changes apply at once through `/datapack` and
+`/reload` (`minecraft:reload` on Paper, so plugins are not reloaded); otherwise on the next start.
+**Updates** checks the Modrinth ones for newer releases.
+
 ## The mod check
 
 On Minecraft servers, the Mods tab looks inside the jars (also ones you uploaded by hand) and says when a mod is made for another loader or Minecraft version, needs a mod that is missing, breaks another mod, is installed twice, or is client-only. It runs whenever you open the tab, on demand with **Check**, and after a modded server crashes.

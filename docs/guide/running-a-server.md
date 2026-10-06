@@ -38,6 +38,12 @@ CPU, memory, players and ping, with a range picker from the last hour up to 30 d
 per minute for a day and per 15 minutes for 30 days, and survives panel restarts. 100% CPU is one full
 core. Paper and Purpur servers also show TPS on the server page.
 
+**Advice** under the graphs looks at the memory and player history, crashes, the console, the number of
+mods or plugins, TPS and `server.properties`, and says what to change and why: too little memory (or an
+out-of-memory crash), more than it needs, more memory promised than the machine has, Aikar's Java flags for
+larger Minecraft servers, lag with view and simulation distance, and a CPU that is busy all day.
+Administrators can apply memory, setting and flag changes with one click; they take effect on the next start.
+
 ## Files
 
 Browse, edit, create, rename and delete; drag files onto the page to upload, and **Unpack** a zip where it
@@ -88,6 +94,8 @@ each option does. **Restart now** applies changes that need a restart. Minecraft
 | **Discord channel** | Chat, joins and status into a channel, and messages typed there show up in game |
 | **Reachability** | Open the ports in the firewall and on the router. [More](../troubleshooting.md#making-a-server-reachable) |
 | **Ports** | Changes apply on the next start |
+| **Wake on join** | Minecraft Java, optional: while the server is stopped the panel answers on its port. The server list shows it as asleep, and joining starts it; the player is told to join again in about 30 seconds. Banned players never wake it, and with the whitelist on only whitelisted players do. Goes well with **stop when empty**. |
+| **Staging copy** | Make a copy on its own ports (with or without the world) to try plugin and mod updates or new settings. The copy shows **Push to live…**: tick what to bring over (plugins and mods, config folders, `server.properties` without the live ports, the game version) and the live server takes exactly those. Its world, player lists and logs stay, and plugin data in `plugins/` is never overwritten. A backup of live is made first, and a running live server is stopped for the push and started again. |
 | **Danger zone** | Duplicate, export, reinstall, delete |
 
 ## Servers page

@@ -7,6 +7,17 @@ on Windows) and press **Reload templates** in Settings.
 
 The 61 built-in templates in [`templates/`](../templates) are the best examples.
 
+## The template builder
+
+No need to write the JSON by hand: **Games → Build a game** (administrators) is a form for all of the
+common parts: name, ports, the settings asked when a server is created, install steps (SteamCMD, download,
+unpack, run a command, write a file, make executable, Java, Linux packages, copy, delete, script), the start
+command, how it stops, the line it prints when ready and the status check. Start from nothing, a Steam
+game, a zip download, or a copy of any game already in the panel. **Check** lists mistakes (unknown step
+types, missing fields, bad ports, regexes that do not compile, `{{PLACEHOLDERS}}` nothing fills in) and
+shows the install script it would run. **Edit as JSON** covers everything else on this page. Saved games
+go to the data directory's `templates` folder and get an **Edit** button on the Games page.
+
 ## The shape
 
 ```json
