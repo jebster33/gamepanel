@@ -39,8 +39,8 @@ export function renderDashboard(view) {
       </div>
       <div class="tile spot">
         <div class="tile-label">Network</div>
-        <div class="tile-value" data-host="net" style="font-size:17px;white-space:nowrap">
-          ↓ ${fmtRate(host?.network.rxBytesPerSec)} · ↑ ${fmtRate(host?.network.txBytesPerSec)}
+        <div class="tile-value" data-host="net" style="font-size:clamp(13px,1.3vw,17px);line-height:1.25">
+          ${netRates(host)}
         </div>
         <div class="tile-sub">Total ${fmtBytes(host?.network.rxTotal)} in / ${fmtBytes(host?.network.txTotal)} out</div>
         <canvas id="chart-host-net"></canvas>
@@ -112,7 +112,7 @@ export function patchDashboard() {
   set('[data-host="cpu-sub"]', `${host.cpu.cores} cores · load ${(host.load?.[0] ?? 0).toFixed(2)}`);
   set('[data-host="mem"]', `${memPct.toFixed(0)}<span class="unit">%</span>`);
   set('[data-host="mem-sub"]', `${fmtBytes(host.memory.used)} of ${fmtBytes(host.memory.total)}`);
-  set('[data-host="net"]', `↓ ${fmtRate(host.network.rxBytesPerSec)} · ↑ ${fmtRate(host.network.txBytesPerSec)}`);
+  set('[data-host="net"]', netRates(host));
   if (overview) {
     // The "/ total" unit lives in a sibling span, so only the number is patched.
     set('[data-ov="running"]', String(overview.running));
@@ -156,4 +156,9 @@ async function renderChecklist() {
     box.innerHTML = '';
     await api('/api/settings', { method: 'PATCH', body: { checklistDismissed: true } }).catch(() => {});
   });
+}
+
+/** Down and up rates; they wrap onto two lines when the tile is narrow. */
+function netRates(host) {
+  return `<span class="nowrap">↓ ${fmtRate(host?.network.rxBytesPerSec)}</span> <span class="nowrap">↑ ${fmtRate(host?.network.txBytesPerSec)}</span>`;
 }

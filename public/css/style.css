@@ -2722,6 +2722,14 @@ tr.clickable:hover td {
   padding: 10px 12px;
 }
 
+/* Between phone and wide desktop the server rows tighten up instead of clipping the buttons. */
+@media (max-width: 1320px) {
+  .srv-row {
+    grid-template-columns: minmax(180px, 2fr) 100px 60px 100px 64px 56px minmax(170px, auto);
+    gap: 10px;
+  }
+}
+
 .recovery-codes {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
