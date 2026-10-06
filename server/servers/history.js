@@ -175,7 +175,20 @@ module.exports = {
     const list = (h.ips[name] = h.ips[name] || []);
     const hit = list.find((e) => e.ip === ip);
     if (hit) hit.last = Date.now();
-    else list.push({ ip, first: Date.now(), last: Date.now() });
+    else {
+      const entry = { ip, first: Date.now(), last: Date.now() };
+      list.push(entry);
+      // Where it is, like BattleMetrics shows (same lookup and setting as sign-in locations).
+      require('../features/geoip')
+        .locate(ip, { enabled: this.store?.state.settings.geoLookup !== false })
+        .then((where) => {
+          if (where) {
+            entry.where = where;
+            h.dirty = true;
+          }
+        })
+        .catch(() => {});
+    }
     list.sort((a, b) => b.last - a.last);
     list.splice(10);
     h.dirty = true;

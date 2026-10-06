@@ -348,7 +348,7 @@ export async function openProfile(serverId, name, ctx = current) {
       ${
         p.addresses
           ? `<h4 style="margin:18px 0 6px">Addresses <span class="faint" style="font-weight:400;font-size:12px">(only admins see this)</span></h4>
-             ${p.addresses.length ? `<div class="pl-sessions">${p.addresses.map((a) => `<div class="pl-session"><span class="mono">${esc(a.ip)}</span><span class="faint">${esc(ago(a.last))}</span></div>`).join('')}</div>` : '<div class="faint">None recorded yet. Minecraft logs it when they join.</div>'}
+             ${p.addresses.length ? `<div class="pl-sessions">${p.addresses.map((a) => `<div class="pl-session"><span><span class="mono">${esc(a.ip)}</span>${a.where ? ` <span class="faint">· ${esc(a.where)}</span>` : ''}</span><span class="faint">${esc(ago(a.last))}</span></div>`).join('')}</div>` : '<div class="faint">None recorded yet. Minecraft logs it when they join.</div>'}
              ${p.alts?.length ? `<div class="card warn-card" style="margin-top:10px;font-size:13px">Same address as ${p.alts.map((a) => `<a href="#" data-profile="${esc(a.name)}">${esc(a.name)}</a>`).join(', ')}. Could be an alt account, or someone in the same house.</div>` : ''}`
           : ''
       }
