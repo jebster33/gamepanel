@@ -28,6 +28,7 @@ const PROVIDERS = {
   curseforge: require('./providers/curseforge'),
   umod: require('./providers/umod'),
   hangar: require('./providers/hangar'),
+  spigot: require('./providers/spigot'),
   factorio: require('./providers/factorio'),
   workshop: require('./providers/workshop'),
 };
