@@ -262,6 +262,8 @@ async function openFileEditor(server, filePath, onClose) {
         label: 'Save',
         primary: true,
         onClick: async () => {
+          const problem = lintConfig(filePath, $('#file-editor').value);
+          if (problem && !(await confirmModal('This file has a mistake', `${problem} The server may refuse to load it, or reset it to defaults. Save anyway?`))) return;
           try {
             await api(`/api/servers/${server.id}/files/content?path=${encodeURIComponent(filePath)}`, {
               method: 'PUT',
@@ -277,4 +279,27 @@ async function openFileEditor(server, filePath, onClose) {
       },
     ],
   });
+}
+
+/**
+ * Catch the config mistakes that most often stop a server: broken JSON, and
+ * tabs in YAML (plugin configs), which YAML does not allow for indenting.
+ */
+export function lintConfig(filePath, text) {
+  const ext = filePath.toLowerCase().split('.').pop();
+  if (ext === 'json' || ext === 'mcmeta') {
+    try {
+      if (text.trim()) JSON.parse(text);
+    } catch (err) {
+      const pos = Number(/position (\d+)/.exec(err.message)?.[1]);
+      const line = Number.isFinite(pos) ? text.slice(0, pos).split('\n').length : null;
+      return `The JSON is not valid${line ? ` around line ${line}` : ''} (${err.message}).`;
+    }
+  }
+  if (ext === 'yml' || ext === 'yaml') {
+    const lines = text.split('\n');
+    const tab = lines.findIndex((l) => /^ *\t/.test(l));
+    if (tab >= 0) return `Line ${tab + 1} is indented with a tab. YAML only allows spaces.`;
+  }
+  return null;
 }
