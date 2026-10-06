@@ -3352,3 +3352,15 @@ tr.clickable:hover td {
     margin-bottom: 6px;
   }
 }
+
+/* Scheduled events: one row per setting the event changes. */
+.ev-change {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.ev-value > * {
+  width: 100%;
+}

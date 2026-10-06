@@ -528,6 +528,45 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
     return { ok: true };
   });
 
+  /* ---------------------------------------------------- scheduled events -- */
+
+  const events = require('../../features/events');
+  const eventServer = (user, id) => {
+    const server = serverFor(user, id, 'schedules');
+    requireCap(user, 'settings', server.id);
+    return server;
+  };
+
+  router.get('/api/servers/:id/events', ({ user, params }) => {
+    const server = serverFor(user, params.id, 'schedules');
+    return { enabled: events.enabled(store), events: events.list(server) };
+  });
+
+  router.post('/api/servers/:id/events', ({ user, params, body }) => {
+    const server = eventServer(user, params.id);
+    if (!events.enabled(store)) fail(400, 'Scheduled events are off. An administrator can turn them on in Settings.');
+    const event = events.add(manager, store, server, body || {});
+    store.addEvent('schedule.created', `${user.username} scheduled the event ${event.name} on ${server.name}`, { serverId: server.id });
+    return { event };
+  });
+
+  router.patch('/api/servers/:id/events/:eid', ({ user, params, body }) => ({ event: events.update(manager, store, eventServer(user, params.id), params.eid, body || {}) }));
+
+  router.delete('/api/servers/:id/events/:eid', async ({ user, params }) => {
+    await events.remove(manager, store, eventServer(user, params.id), params.eid);
+    return { ok: true };
+  });
+
+  /** Start or end one now, outside its schedule. */
+  router.post('/api/servers/:id/events/:eid/:action', async ({ user, params }) => {
+    const server = eventServer(user, params.id);
+    const event = (server.events || []).find((e) => e.id === params.eid);
+    if (!event) fail(404, 'Event not found');
+    if (params.action === 'start') return { event: await events.begin(manager, store, server, event) };
+    if (params.action === 'end') return { event: await events.finish(manager, store, server, event) };
+    return fail(400, 'Use start or end');
+  });
+
   /* ------------------------------------------------- public status page -- */
 
   const statusPage = require('../../features/status-page');

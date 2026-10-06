@@ -98,6 +98,13 @@ export async function renderSettings(view) {
       <div class="hint">Applies the next time a server starts. Without Docker the panel falls back to plain processes.</div>
     </div>
 
+    <div class="card mb-16" id="events">
+      <h4>Scheduled events</h4>
+      <div class="faint" style="margin-bottom:12px">Change game settings for a while and put them back automatically, like a double XP weekend. Set them up on a server's Schedules tab.</div>
+      <div class="checkbox-row"><input type="checkbox" id="s-events" ${s.scheduledEvents ? 'checked' : ''} /><label for="s-events">Turn on scheduled events</label></div>
+      <div class="hint">Turning it off stops new events from starting. Ones already running still end on time and put their settings back.</div>
+    </div>
+
     <div class="card mb-16" id="limits">
       <h4>Limits</h4>
       <div class="faint" style="margin-bottom:12px">Caps for the whole panel. Leave a field at 0 for no limit.</div>
@@ -254,6 +261,16 @@ export async function renderSettings(view) {
           )}</span>. Servers run as plain processes and share the host. Install Docker and restart the panel for isolation.`;
     })
     .catch(() => {});
+
+  $('#s-events').addEventListener('change', async (event) => {
+    try {
+      await api('/api/settings', { method: 'PATCH', body: { scheduledEvents: event.target.checked } });
+      toast(event.target.checked ? 'Scheduled events on' : 'Scheduled events off');
+    } catch (err) {
+      toast(err.message, 'error');
+      event.target.checked = !event.target.checked;
+    }
+  });
 
   $('#s-containerize').addEventListener('change', async (event) => {
     try {

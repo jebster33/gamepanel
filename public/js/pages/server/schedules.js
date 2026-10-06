@@ -1,6 +1,7 @@
 import { api } from '../../core/api.js';
 import { $, esc, fmtTime, icon, toast } from '../../core/util.js';
 import { confirmModal, openModal } from '../../ui/modal.js';
+import { renderEventsCard } from './events.js';
 
 /* ------------------------------------------------------------ schedules */
 
@@ -106,6 +107,9 @@ export async function renderSchedulesTab(host, server) {
   };
   $('#an-save')?.addEventListener('click', saveAnnouncements);
   $('#an-on')?.addEventListener('change', saveAnnouncements);
+
+  host.insertAdjacentHTML('beforeend', '<div id="events-card"></div>');
+  renderEventsCard($('#events-card'), server);
 
   const refresh = () => renderSchedulesTab(host, server);
   $('#sch-add').addEventListener('click', () => openScheduleModal(server, null, refresh));
