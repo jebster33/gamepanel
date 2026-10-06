@@ -185,6 +185,14 @@ module.exports = (router, { store, manager, scheduler }, { requireAdmin, require
     return body?.enabled === false ? manager.disableCrossplay(server.id, user) : manager.enableCrossplay(server.id, user);
   });
 
+  /** A live web map (BlueMap) on Paper and Purpur. */
+  router.get('/api/servers/:id/map', ({ user, params }) => manager.mapInfo(serverFor(user, params.id, 'settings')));
+
+  router.post('/api/servers/:id/map', async ({ user, params, body }) => {
+    const server = serverFor(user, params.id, 'settings');
+    return body?.enabled === false ? manager.disableMap(server.id, user) : manager.enableMap(server.id, user);
+  });
+
   /** Minecraft worlds. */
   router.get('/api/servers/:id/worlds', async ({ user, params }) => manager.listWorlds(serverFor(user, params.id, 'files')));
 

@@ -117,3 +117,10 @@ test('rate limiter allows a burst, then refuses until the window ends', () => {
   rl.take('c', 1500);
   assert.ok(rl.hits.size <= 2, 'never grows past maxKeys');
 });
+
+test('BlueMap config values are replaced or added', () => {
+  const { setConfValue } = require('../../server/servers/livemap');
+  assert.strictEqual(setConfValue('accept-download: false\ndata: "bluemap"\n', 'accept-download', 'true'), 'accept-download: true\ndata: "bluemap"\n');
+  assert.strictEqual(setConfValue('# web\nport: 8100\n', 'port', 8123), '# web\nport: 8123\n');
+  assert.strictEqual(setConfValue('', 'port', 8101), 'port: 8101\n');
+});

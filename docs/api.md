@@ -50,6 +50,7 @@ POST   /api/servers/:id/worlds/reset     {"name","seed?","backup"}
 GET    /api/servers/:id/worlds/download  ?name= (a .tar.gz)
 POST   /api/servers/:id/clone            {"name","copyFiles"} (admins)
 POST   /api/servers/:id/crossplay        {"enabled"} Geyser + Floodgate (Paper/Purpur)
+POST   /api/servers/:id/map              {"enabled"} BlueMap live web map (Paper/Purpur)
 PUT    /api/servers/:id/subdomain        {"name"} Cloudflare A (+ SRV) record (admins)
 POST   /api/players/ban-everywhere       {"name","reason","unban?"} every Minecraft server
 GET    /api/players/search?q=            players on any visible server (admins: also by address)

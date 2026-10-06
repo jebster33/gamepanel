@@ -321,7 +321,7 @@ function serverPorts(server, template) {
   const out = [];
   for (const [name, port] of Object.entries(server.ports || {})) {
     // Ports the panel adds itself, like Geyser's Bedrock port, are not in the template.
-    const def = (template?.ports || []).find((p) => p.name === name) || (name === 'bedrock' ? { protocol: 'udp' } : null);
+    const def = (template?.ports || []).find((p) => p.name === name) || ({ bedrock: { protocol: 'udp' }, map: { protocol: 'tcp' } })[name] || null;
     const protocols = !def?.protocol || def.protocol === 'both' ? ['tcp', 'udp'] : [def.protocol];
     for (const protocol of protocols) out.push({ name, port: Number(port), protocol });
   }
