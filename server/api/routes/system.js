@@ -23,7 +23,8 @@ module.exports = (router, { store, auth, manager, hostMetrics, notifier }, { req
     requireCap(user, 'activity');
     const limit = clamp(url.searchParams.get('limit') || 100, 1, 500);
     const all = store.state.events;
-    const visible = user.role === 'admin' ? all : all.filter((e) => !e.serverId || auth.canAccessServer(user, e.serverId));
+    // Account events carry addresses and locations: administrators only.
+    const visible = user.role === 'admin' ? all : all.filter((e) => (e.serverId ? auth.canAccessServer(user, e.serverId) : !e.type.startsWith('user.')));
     return { events: visible.slice(0, limit) };
   });
 

@@ -67,24 +67,31 @@ async function assign(store, server, name, { ip } = {}) {
   const zone = await zoneId(c);
   const host = `${label}.${c.domain}`;
   const address = ip || (await publicIp());
-  if (server.subdomain) await release(store, server).catch(() => {});
-
+  // Check the new name before letting go of the old one, so a clash keeps the current address.
+  const own = new Set(server.subdomain?.records || []);
   const taken = await cf(c.token, 'GET', `/zones/${zone}/dns_records?name=${encodeURIComponent(host)}`);
-  if (taken?.length) fail(409, `${host} already exists in Cloudflare. Pick another name or delete it there.`);
+  if (taken?.some((r) => !own.has(r.id))) fail(409, `${host} already exists in Cloudflare. Pick another name or delete it there.`);
+  if (server.subdomain) await release(store, server).catch(() => {});
 
   const records = [];
   const a = await cf(c.token, 'POST', `/zones/${zone}/dns_records`, { type: 'A', name: host, content: address, ttl: 1, proxied: false, comment: `GamePanel: ${server.name}` });
   records.push(a.id);
   const port = Number(server.ports?.game);
   if (isJavaMinecraft(server) && port) {
-    const srv = await cf(c.token, 'POST', `/zones/${zone}/dns_records`, {
-      type: 'SRV',
-      name: `_minecraft._tcp.${host}`,
-      data: { priority: 0, weight: 5, port, target: host },
-      ttl: 1,
-      comment: `GamePanel: ${server.name}`,
-    });
-    records.push(srv.id);
+    try {
+      const srv = await cf(c.token, 'POST', `/zones/${zone}/dns_records`, {
+        type: 'SRV',
+        name: `_minecraft._tcp.${host}`,
+        data: { priority: 0, weight: 5, port, target: host },
+        ttl: 1,
+        comment: `GamePanel: ${server.name}`,
+      });
+      records.push(srv.id);
+    } catch (err) {
+      // Do not leave a half-made address behind that blocks the next try.
+      await cf(c.token, 'DELETE', `/zones/${zone}/dns_records/${encodeURIComponent(a.id)}`).catch(() => {});
+      throw err;
+    }
   }
   server.subdomain = { host, ip: address, port, records, srv: records.length > 1, at: Date.now() };
   store.save();

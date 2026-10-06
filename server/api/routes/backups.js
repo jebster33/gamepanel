@@ -44,8 +44,9 @@ module.exports = (router, { store, manager }, { requireAdmin, requireCap, server
   });
 
   router.post('/api/servers/:id/backups/:name/restore-files', async ({ user, params, body }) => {
+    // Same rule as a full restore: picking every folder would amount to one.
+    requireAdmin(user);
     const server = serverFor(user, params.id, 'backups');
-    requireCap(user, 'backups.restore');
     const result = await backups.restorePaths(server, params.name, body?.paths);
     const what = result.restored.length === 1 ? result.restored[0] : `${result.restored.length} files and folders`;
     store.addEvent('backup.restored', `${user.username} restored ${what} on ${server.name} from ${params.name}`, { serverId: server.id });

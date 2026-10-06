@@ -193,14 +193,18 @@ class DiscordBot {
     if (POWER.has(name)) {
       const allowed = String(this.settings.controllers || '').split(/[\s,]+/).filter(Boolean);
       if (!allowed.includes(String(userId))) return respond('Only people the panel admin listed can do that.', null, true);
+      // Discord wants an answer within 3 seconds and a start can take longer (updates, containers):
+      // say "thinking…" now, then edit that message when the action is done.
+      await this.reply(i, { type: 5 });
+      const edit = (content) => this.rest('PATCH', `/webhooks/${this.state.appId}/${i.token}/messages/@original`, { content, allowed_mentions: { parse: [] } });
       try {
         await this.manager[name](target.id);
       } catch (err) {
-        return respond(`Could not ${name} ${clean(target.name)}: ${err.message}`, null, true);
+        return edit(`Could not ${name} ${clean(target.name)}: ${err.message}`);
       }
       this.store.addEvent(`server.${name}`, `${caller} used /${name} on ${target.name} from Discord`, { serverId: target.id });
       const verb = { start: 'Starting', stop: 'Stopping', restart: 'Restarting' }[name];
-      return respond(`${verb} **${clean(target.name)}**…`);
+      return edit(`${verb} **${clean(target.name)}**…`);
     }
     return null;
   }

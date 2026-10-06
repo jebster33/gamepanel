@@ -397,7 +397,7 @@ export async function openProfile(serverId, name, ctx = current) {
 async function banEverywhere(name, unban) {
   let reason = '';
   if (!unban) {
-    reason = await promptModal(`Ban ${name} on every server`, 'Reason players see', 'Banned from the network');
+    reason = await promptModal(`Ban ${esc(name)} on every server`, 'Reason players see', 'Banned from the network');
     if (reason === null) return;
   }
   try {

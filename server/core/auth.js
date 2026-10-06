@@ -341,6 +341,8 @@ class Auth {
   requireTwoFactor(user, req) {
     if (!user || user.role !== 'admin' || user.totp?.secret || !this.store.state.settings?.requireAdmin2fa) return user;
     const path = new URL(req.url, 'http://localhost').pathname;
+    // Only sign-in and account setup are open; everything else, the live WebSocket included, waits for 2FA.
+    if (path === '/ws') return null; // refused like a signed-out socket (the upgrade handler cannot take a throw)
     if (!path.startsWith('/api/') || path.startsWith('/api/auth/')) return user;
     fail(403, 'Two-factor sign-in is required for administrators. Set it up on your Account page first.');
   }

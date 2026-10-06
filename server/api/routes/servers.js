@@ -142,7 +142,8 @@ module.exports = (router, { store, manager, scheduler }, { requireAdmin, require
   /** This server's own Discord channel: chat, joins and leaves, and status. */
   router.put('/api/servers/:id/discord-feed', async ({ user, params, body }) => {
     const server = serverFor(user, params.id, 'settings');
-    const webhook = String(body?.webhook || '').trim();
+    // An empty URL with keep:true changes only the switches on the webhook already saved.
+    const webhook = String(body?.webhook || '').trim() || (body?.keep ? server.discordFeed?.webhook || '' : '');
     if (webhook && !/^https:\/\/(?:[a-z]+\.)?(?:discord|discordapp)\.com\/api\/webhooks\//.test(webhook)) fail(400, 'Paste a Discord webhook URL (Channel settings, Integrations, Webhooks)');
     server.discordFeed = webhook ? { webhook, chat: body.chat !== false, joins: body.joins !== false, status: body.status !== false } : undefined;
     store.save();
@@ -153,7 +154,7 @@ module.exports = (router, { store, manager, scheduler }, { requireAdmin, require
         fail(400, `Discord did not accept the message: ${err.message}`);
       }
     }
-    return { discordFeed: server.discordFeed || null };
+    return { discordFeed: server.discordFeed ? { ...server.discordFeed, webhook: undefined, connected: true } : null };
   });
 
   /** The whole server as one archive another panel can import. */

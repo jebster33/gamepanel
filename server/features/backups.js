@@ -95,7 +95,8 @@ const MAX_ENTRIES = 50_000;
 function contents(serverId, name) {
   const file = resolve(serverId, name);
   return new Promise((ok, reject) => {
-    const proc = spawn(TAR, ['-tvzf', file], { stdio: ['ignore', 'pipe', 'ignore'], windowsHide: true });
+    // GNU tar escapes non-ASCII names (caf\303\251) under the C locale unless told not to.
+    const proc = spawn(TAR, [...(isWindows ? [] : ['--quoting-style=literal']), '-tvzf', file], { stdio: ['ignore', 'pipe', 'ignore'], windowsHide: true });
     const entries = [];
     let rest = '';
     let truncated = false;

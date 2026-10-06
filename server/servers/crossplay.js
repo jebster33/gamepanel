@@ -13,7 +13,7 @@ const fsp = require('fs/promises');
 const path = require('path');
 const { fail } = require('../core/util');
 const { containedPath } = require('../features/files');
-const { downloadTo } = require('../features/mods/http');
+const { downloadTo, safeFileName } = require('../features/mods/http');
 
 const SUPPORTED = ['minecraft-paper', 'minecraft-purpur'];
 const DOWNLOADS = {
@@ -62,9 +62,10 @@ module.exports = {
         .best({ projectId: '31', ctx: { gameVersion: this.gameVersion?.(server) || null } })
         .catch(() => null);
       if (via?.file) {
-        const temp = path.join(plugins, `.${via.file.filename}.download`);
+        const name = safeFileName(via.file.filename, 'ViaVersion.jar');
+        const temp = path.join(plugins, `.${name}.download`);
         await downloadTo(via.file.url, temp);
-        await fsp.rename(temp, path.join(plugins, via.file.filename));
+        await fsp.rename(temp, path.join(plugins, name));
       }
     }
     if (!server.ports.bedrock) server.ports.bedrock = this.allocatePort(19132, this.usedPorts());
