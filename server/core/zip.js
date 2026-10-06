@@ -16,7 +16,7 @@ function reader(source) {
   if (Buffer.isBuffer(source)) {
     return { size: source.length, read: (position, length) => source.subarray(position, position + length), close() {} };
   }
-  const fd = fs.openSync(source, 'r');
+  const fd = require('./safefs').openRegular(source);
   return {
     size: fs.fstatSync(fd).size,
     read(position, length) {

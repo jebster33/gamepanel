@@ -115,6 +115,7 @@ class Sftp {
     this.buf = Buffer.alloc(0);
     this.handles = new Map();
     this.queue = Promise.resolve();
+    this.waiting = 0; // requests read from the client but not handled yet
   }
 
   data(chunk) {
@@ -128,8 +129,20 @@ class Sftp {
       if (this.buf.length < 4 + len) return;
       const packet = this.buf.subarray(4, 4 + len);
       this.buf = this.buf.subarray(4 + len);
+      // A client that streams requests faster than the disk can take them is cut off, not queued without end.
+      if (this.waiting >= 128) {
+        this.buf = Buffer.alloc(0);
+        this.channel.close();
+        return;
+      }
+      this.waiting++;
       // One at a time, in order: writes to the same file must not overtake each other.
-      this.queue = this.queue.then(() => this.handle(packet)).catch((err) => logger.debug(`SFTP: ${err.message}`));
+      this.queue = this.queue
+        .then(() => this.handle(packet))
+        .catch((err) => logger.debug(`SFTP: ${err.message}`))
+        .finally(() => {
+          this.waiting--;
+        });
     }
   }
 

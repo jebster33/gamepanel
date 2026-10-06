@@ -587,6 +587,11 @@ class Connection {
     if (ch.closed || this.closed) return;
     ch.queue.push(buf);
     this.flush(ch);
+    // A client that asks for data and never opens its window would make this queue grow without end.
+    if (ch.queue.length > 64) {
+      ch.queue.length = 0;
+      this.finishClose(ch);
+    }
   }
 
   /** Send what the client's window allows; the rest waits for WINDOW_ADJUST. */

@@ -99,10 +99,19 @@ module.exports = (router, { store, auth, manager, hostMetrics, notifier, bridge 
 
   /* ----------------------------------------------------------- settings -- */
 
-  router.get('/api/settings', ({ user }) => {
+  /** Every token, key, secret, password and webhook address in a settings tree, blanked. */
+  const blankSecrets = (value) => {
+    if (Array.isArray(value)) return value.map(blankSecrets);
+    if (!value || typeof value !== 'object') return value;
+    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, /token|secret|key|password|passphrase|webhook/i.test(k) && typeof v === 'string' ? '' : blankSecrets(v)]));
+  };
+
+  router.get('/api/settings', ({ user, req }) => {
     requireAdmin(user);
     // Sign-in provider secrets have their own endpoint that never sends them back.
-    return { settings: { ...store.state.settings, nodes: undefined, oauth: undefined, backupPassphrase: undefined, backupPassphraseSet: Boolean(store.state.settings.backupPassphrase) }, notificationEvents: EVENT_CHOICES };
+    const settings = { ...store.state.settings, nodes: undefined, oauth: undefined, backupPassphrase: undefined, backupPassphraseSet: Boolean(store.state.settings.backupPassphrase) };
+    // A read-only API key (a status bot, a dashboard) never sees the keys and tokens the panel holds.
+    return { settings: req.gpApiKey?.readOnly ? blankSecrets(settings) : settings, notificationEvents: EVENT_CHOICES };
   });
 
   router.patch('/api/settings', ({ user, body }) => {
@@ -155,7 +164,19 @@ module.exports = (router, { store, auth, manager, hostMetrics, notifier, bridge 
       }
     }
     store.save();
-    return { settings: { ...s, oauth: undefined, backupPassphrase: undefined, backupPassphraseSet: Boolean(s.backupPassphrase) } };
+    return { settings: { ...s, nodes: undefined, oauth: undefined, backupPassphrase: undefined, backupPassphraseSet: Boolean(s.backupPassphrase) } };
+  });
+
+  /* --------------------------------------------------------- status bots -- */
+
+  const statusBots = require('../../features/status-bots');
+  router.get('/api/settings/status-bots', ({ user }) => {
+    requireAdmin(user);
+    return statusBots.view(store);
+  });
+  router.put('/api/settings/status-bots', ({ user, body }) => {
+    requireAdmin(user);
+    return statusBots.update(store, manager, body || {});
   });
 
   /* -------------------------------------------------------------- HTTPS -- */

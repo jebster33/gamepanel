@@ -16,6 +16,7 @@ export function showAuth(setupRequired = false) {
   $('#auth-form').classList.remove('hidden');
   $('#otp-form').classList.add('hidden');
   $('#auth-confirm-wrap').classList.toggle('hidden', !setupRequired);
+  $('#auth-code-wrap').classList.toggle('hidden', !setupRequired);
   $('#auth-title').textContent = setupRequired ? 'Set up your panel' : 'Welcome back';
   $('#auth-subtitle').textContent = setupRequired
     ? 'Create the first administrator account'

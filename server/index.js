@@ -40,6 +40,10 @@ const MIME = {
 const { Nodes } = require('./features/nodes');
 
 async function main() {
+  // Before anything listens: an error in the first seconds (a request while servers are still auto-starting) must not end the process.
+  process.on('uncaughtException', (err) => logger.error('Uncaught exception:', err));
+  process.on('unhandledRejection', (err) => logger.error('Unhandled rejection:', err));
+
   ensureDirs();
   const secret = loadSecret();
   // Windows: the state file is written in run\ (locked down below) and renamed into place, so it keeps that ACL.
@@ -148,12 +152,32 @@ async function main() {
 
   // Shared by the HTTP and (Settings → HTTPS) HTTPS listeners.
   const handleRequest = async (req, res) => {
-    const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+    // Anything that cannot be parsed is answered, never left hanging: a half-handled request holds its socket for good.
+    let url;
+    try {
+      url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+    } catch {
+      try {
+        url = new URL(req.url, 'http://localhost'); // a Host header that is not a host
+      } catch {
+        res.writeHead(400, { 'Content-Type': 'text/plain' });
+        res.end('Bad request');
+        return;
+      }
+    }
     res.setHeader('X-Frame-Options', 'SAMEORIGIN');
     res.setHeader('Referrer-Policy', 'same-origin');
     securityHeaders(req, res);
 
-    if (!url.pathname.startsWith('/api/')) return serveStatic(req, res, url.pathname);
+    if (!url.pathname.startsWith('/api/')) {
+      try {
+        return serveStatic(req, res, url.pathname);
+      } catch {
+        if (!res.headersSent) res.writeHead(400, { 'Content-Type': 'text/plain' });
+        res.end('Bad request');
+        return undefined;
+      }
+    }
 
     try {
       await api.handle(req, res, url);
@@ -210,6 +234,8 @@ async function main() {
     if (!conn) return;
     conn.user = user;
     conn.epoch = user.sessionEpoch || 0;
+    // A read-only API key may watch, never type into a console.
+    conn.readOnly = Boolean(req.gpApiKey?.readOnly);
     conn.subscriptions.add('servers');
     conn.subscriptions.add('stats');
     conn.subscriptions.add('system');
@@ -235,6 +261,7 @@ async function main() {
         } else if (msg.type === 'unsubscribe' && Array.isArray(msg.topics)) {
           for (const topic of msg.topics) conn.subscriptions.delete(topic);
         } else if (msg.type === 'command' && msg.serverId) {
+          if (conn.readOnly) return conn.send({ topic: 'error', message: 'A read-only API key cannot send commands' });
           if (!auth.canAccessServer(conn.user, msg.serverId) || !auth.can(conn.user, 'command', msg.serverId)) return;
           const server = manager.servers.find((s) => s.id === msg.serverId);
           require('./features/audit').record({ user: conn.user.username, action: 'console command', serverId: msg.serverId, server: server?.name, details: { command: String(msg.command || '').slice(0, 200) }, status: 200 });
@@ -261,11 +288,13 @@ async function main() {
 
   logger.info(`GamePanel ${VERSION} listening on http://${config.host}:${config.port}`);
   await httpsFeature.start(store, handleRequest, handleUpgrade);
+  require('./features/status-bots').start({ store, manager });
+  require('./features/wake-on-join').start({ store, manager });
   require('./features/sftp')
     .start({ store, auth, manager })
     .catch((err) => logger.warn(`SFTP did not start: ${err.message}`));
   logger.info(`Host: ${describeHost()} — data in ${config.dataDir}`);
-  if (auth.needsSetup()) logger.info('No users yet — open the panel in a browser to create the first administrator.');
+  if (auth.needsSetup()) logger.info(`No users yet — open the panel in a browser to create the first administrator. Setup code (not needed on this machine): ${auth.setupCode()}`);
 
   await manager.init();
   scheduler.start();
@@ -299,8 +328,6 @@ async function main() {
   // Windows services and consoles send these instead of SIGTERM.
   process.on('SIGBREAK', () => shutdown('SIGBREAK'));
   process.on('SIGHUP', () => shutdown('SIGHUP'));
-  process.on('uncaughtException', (err) => logger.error('Uncaught exception:', err));
-  process.on('unhandledRejection', (err) => logger.error('Unhandled rejection:', err));
 }
 
 main().catch((err) => {

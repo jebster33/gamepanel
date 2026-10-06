@@ -132,6 +132,12 @@ class DiscordBot {
     }
   }
 
+  /** The bot's status line (players online, see status-bots.js); null clears it. */
+  setPresence(presence) {
+    this.presence = presence;
+    if (this.state.status === 'online') this.send(3, presence || { since: null, afk: false, status: 'online', activities: [] });
+  }
+
   send(op, d) {
     if (this.ws?.readyState === 1) this.ws.send(JSON.stringify({ op, d }));
   }
@@ -141,7 +147,7 @@ class DiscordBot {
     if (op === 10) {
       clearInterval(this.timer);
       this.timer = setInterval(() => this.send(1, this.seq), d.heartbeat_interval);
-      this.send(2, { token: this.settings.token, intents: this.intents(), properties: { os: process.platform, browser: 'gamepanel', device: 'gamepanel' } });
+      this.send(2, { token: this.settings.token, intents: this.intents(), properties: { os: process.platform, browser: 'gamepanel', device: 'gamepanel' }, ...(this.presence ? { presence: this.presence } : {}) });
     } else if (op === 1) {
       this.send(1, this.seq);
     } else if (op === 7 || op === 9) {

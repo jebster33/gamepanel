@@ -10,6 +10,7 @@ import { renderServerDetail } from '../pages/server/detail.js';
 import { renderServers } from '../pages/servers.js';
 import { renderSettings } from '../pages/settings.js';
 import { renderTemplates } from '../pages/templates.js';
+import { renderTemplateBuilder } from '../pages/template-builder.js';
 import { renderAudit } from '../pages/audit.js';
 import { renderBans } from '../pages/bans.js';
 import { renderNetworks } from '../pages/networks.js';
@@ -27,6 +28,7 @@ const ROUTES = [
   { pattern: /^\/servers$/, name: 'servers', page: renderServers },
   { pattern: /^\/servers\/([^/]+)(?:\/([^/]+))?$/, name: 'server', keys: ['id', 'tab'], page: renderServerDetail },
   { pattern: /^\/(?:templates|deploy)$/, name: 'templates', page: renderTemplates },
+  { pattern: /^\/templates\/(new|edit)(?:\/([^/]+))?$/, name: 'template-builder', keys: ['mode', 'id'], page: renderTemplateBuilder },
   { pattern: /^\/activity$/, name: 'activity', page: renderActivity },
   { pattern: /^\/audit$/, name: 'audit', page: renderAudit },
   { pattern: /^\/bans$/, name: 'bans', page: renderBans },
@@ -66,7 +68,7 @@ export function handleRoute() {
   // A nav link is active when its page is the one showing ("Servers" stays lit on a server's page).
   $$('.nav-item').forEach((el) => {
     const page = el.dataset.page;
-    el.classList.toggle('active', page === state.route.name || (page === 'servers' && state.route.name === 'server'));
+    el.classList.toggle('active', page === state.route.name || (page === 'servers' && state.route.name === 'server') || (page === 'templates' && state.route.name === 'template-builder'));
   });
 
   closeSidebar();

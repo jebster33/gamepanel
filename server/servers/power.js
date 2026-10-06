@@ -30,6 +30,8 @@ module.exports = {
       if (!result.ok) this.pushConsole(server, `Starting anyway — the update did not finish (${result.error}).`, 'system');
     }
 
+    // Wake on join may be holding the game port while the server sleeps.
+    await require('../features/wake-on-join').release(id);
     this.writeConfigFiles(server, template);
     this.applyPropertyPatches(server, template);
     // In a Velocity network: the proxy's server list and the forwarding secret follow port changes.

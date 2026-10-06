@@ -47,7 +47,7 @@ async function applyOne(manager, server, name, action, reason) {
       await lists.changeList(manager, server, { list: 'bans', action, name, reason }, 'shared ban list');
     } catch (err) {
       // Lifting a ban that is not there (removed by hand) is fine.
-      if (action === 'remove' && err.status === 404) return true;
+      if (action === 'remove' && (err.code === 404 || err.status === 404)) return true;
       throw err;
     }
     return true;

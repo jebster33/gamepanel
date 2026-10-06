@@ -213,7 +213,11 @@ async function* walk(root, rel = '') {
     const child = rel ? `${rel}/${e.name}` : e.name;
     if (excluded(child)) continue;
     yield [child, e];
-    if (e.isDirectory()) yield* walk(root, child);
+    if (e.isDirectory()) {
+      // It may have been swapped for a link since the listing: never walk into one.
+      const now = await fsp.lstat(path.join(root, child)).catch(() => null);
+      if (now?.isDirectory()) yield* walk(root, child);
+    }
   }
 }
 
@@ -272,9 +276,13 @@ async function create(backupDir, server, label = '', { encrypt = false } = {}) {
         continue;
       }
       const chunks = [];
-      const fh = await fsp.open(full, 'r').catch(() => null);
+      // O_NOFOLLOW: a file swapped for a link after the check above is skipped, not read.
+      const fh = await fsp.open(full, fs.constants.O_RDONLY | (fs.constants.O_NOFOLLOW || 0)).catch(() => null);
       if (!fh) continue;
       try {
+        const real = await fsp.realpath(full).catch(() => null);
+        const root = await fsp.realpath(server.dir).catch(() => null);
+        if (!real || !root || !real.startsWith(root + path.sep)) continue; // its folder became a link to somewhere else
         const buf = Buffer.alloc(CHUNK);
         for (;;) {
           const { bytesRead } = await fh.read(buf, 0, CHUNK, null);
@@ -345,7 +353,7 @@ function info(backupDir, name) {
 
 function contents(backupDir, name) {
   const snap = openExisting(backupDir, name).readSnapshot(name);
-  return { entries: snap.entries.map((e) => ({ path: e.path, dir: e.type === 'dir', size: e.size || 0 })), truncated: false };
+  return { entries: snap.entries.map((e) => ({ path: e.path, dir: e.type === 'dir', size: e.size || 0, mtime: e.mtime || null })), truncated: false };
 }
 
 /** Write snapshot entries (all, or those under `paths`) into `target`. */
@@ -372,16 +380,34 @@ async function restore(backupDir, name, target, paths = null) {
     const parent = await fsp.realpath(path.dirname(full));
     if (parent !== realRoot && !parent.startsWith(realRoot + path.sep)) throw new Error(`refusing to write through a link: ${path.relative(root, full)}`);
   };
+  // Make a folder, but only after the nearest folder that exists is checked to be inside the server:
+  // mkdir -p through a link would create folders wherever it points.
+  const ensureDirInside = async (dir) => {
+    let probe = dir;
+    for (;;) {
+      try {
+        const real = await fsp.realpath(probe);
+        if (real !== realRoot && !real.startsWith(realRoot + path.sep)) throw new Error(`refusing to write through a link: ${path.relative(root, dir)}`);
+        break;
+      } catch (err) {
+        if (err.code !== 'ENOENT') throw err;
+        const up = path.dirname(probe);
+        if (up === probe) break;
+        probe = up;
+      }
+    }
+    await fsp.mkdir(dir, { recursive: true });
+  };
   let files = 0;
   let bytes = 0;
   for (const e of snap.entries) {
     if (!pick(e.path)) continue;
     const full = inside(e.path);
     if (e.type === 'dir') {
-      await fsp.mkdir(full, { recursive: true });
+      await ensureDirInside(full);
       continue;
     }
-    await fsp.mkdir(path.dirname(full), { recursive: true });
+    await ensureDirInside(path.dirname(full));
     await parentIsInside(full);
     if (e.type === 'link') {
       // Links that point outside the server folder are not put back.

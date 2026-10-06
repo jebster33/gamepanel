@@ -124,6 +124,32 @@ GET    /api/settings/sftp                SFTP settings and host key (admins)
 PUT    /api/settings/sftp                {"enabled","port"}
 POST   /api/auth/passkeys/options        start adding a passkey; POST /api/auth/passkeys finishes it
 POST   /api/auth/passkey/options         start a passkey sign-in; POST /api/auth/passkey/login finishes it
+GET    /api/settings/status-bots         players-in-status settings and status bots (admins)
+PUT    /api/settings/status-bots         {"main":{"mode":"off|all|server","serverId","format","style"},"bots":[{"id?","token?","serverId","format","style"}]}
+GET    /api/servers/:id/players/:name/inventory          ?backup= a Minecraft player's inventory, now or in a backup
+POST   /api/servers/:id/players/:name/inventory/restore  {"backup"} put one player's file back (they must be offline)
+GET    /api/servers/:id/datapacks        datapacks in the loaded world, with version check
+GET    /api/servers/:id/datapacks/search ?query= Modrinth datapacks for the server's version
+GET    /api/servers/:id/datapacks/updates
+POST   /api/servers/:id/datapacks/install          {"projectId","versionId?"}
+POST   /api/servers/:id/datapacks/upload           ?name=pack.zip (body: the zip)
+POST   /api/servers/:id/datapacks/:name/toggle     {"on"}
+DELETE /api/servers/:id/datapacks/:name
+GET    /api/servers/:id/backups/:name/preview      what a full restore would change
+POST   /api/servers/:id/backups/:name/restore      {"backupFirst","exact"}
+POST   /api/templates/check              {"template"} errors, warnings and the install script (admins)
+POST   /api/templates                    {"template","replace?"} save a custom game (admins)
+GET    /api/templates/:id/source         a template as saved, for editing (admins)
+GET    /api/node-backups                 copies-on-a-node settings (admins)
+PATCH  /api/node-backups                 {"enabled","nodeId","keep"}
+GET    /api/servers/:id/backups/node     copies on the node; POST …/node/:name/send|fetch, DELETE …/node/:name
+PUT    /api/backup-store/:panel/:server/:name    the receiving node's store (admin API key; body: the .tar.gz)
+GET    /api/servers/:id/advice           memory and settings advice
+POST   /api/servers/:id/advice/:id/apply apply one piece of advice (admins)
+POST   /api/servers/:id/staging          {"name","withWorld"} make a staging copy (admins)
+GET    /api/servers/:id/staging/diff     what a push from this staging copy would change
+POST   /api/servers/:id/staging/push     {"entries":[folders],"properties","version"}
+PATCH  /api/servers/:id                  … {"wakeOnJoin":true} turns on wake on join (Minecraft Java)
 GET    /api/system                       host metrics
 GET    /api/system/runtime               Docker status
 GET    /api/system/update                pending panel updates

@@ -2,6 +2,7 @@ import { api } from '../../core/api.js';
 import { loadServers } from '../../core/boot.js';
 import { render } from '../../core/router.js';
 import { state } from '../../core/state.js';
+import { stagingCard, wireStagingCard } from './staging.js';
 import { $, can, esc, toast } from '../../core/util.js';
 import { confirmModal, openModal } from '../../ui/modal.js';
 
@@ -48,6 +49,14 @@ export function renderServerSettingsTab(host, server) {
     isAdmin ? '' : 'disabled'
   } /><div class="hint">Restarts the server if it stops answering players while still running. 0 turns this off.</div></label>
       </div>
+      ${
+        /^minecraft-(?!bedrock$)/.test(server.templateId || '')
+          ? `<div class="checkbox-row"><input type="checkbox" id="set-wake" ${server.wakeOnJoin ? 'checked' : ''} ${isAdmin ? '' : 'disabled'} /><label for="set-wake">Wake on join</label></div>
+      <div class="hint">While the server is stopped, the panel answers on its port: the server list shows it as asleep, and joining starts it. Banned players never wake it; with the whitelist on, only whitelisted players do. Goes well with "Stop when empty".${
+        server.wake?.error ? ` <span style="color:var(--danger)">${esc(server.wake.error)}.</span>` : server.wake?.listening ? ' <span class="lime">Listening now.</span>' : ''
+      }</div>`
+          : ''
+      }
       <label style="margin-top:12px"><span>Start command</span><textarea id="set-startcmd" rows="3" placeholder="Empty uses the game's own start command" ${isOwner ? '' : 'disabled'}>${esc(
     server.startCommand || ''
   )}</textarea><div class="hint">${
@@ -147,6 +156,7 @@ export function renderServerSettingsTab(host, server) {
       <div class="hint">Applied on the next start (and to config files the template manages).</div>
     </div>
 
+    ${stagingCard(server)}
     ${
       isOwner
         ? `<div class="card">
@@ -212,6 +222,7 @@ export function renderServerSettingsTab(host, server) {
           ...($('#set-autoupdate') ? { autoUpdate: { '': null, on: true, off: false }[$('#set-autoupdate').value] } : {}),
           idleStopMinutes: Number($('#set-idle').value) || 0,
           hangRestartMinutes: Number($('#set-hang').value) || 0,
+          ...($('#set-wake') && isAdmin ? { wakeOnJoin: $('#set-wake').checked } : {}),
           // Sub-users with the settings permission may not touch it; sending it at all gets a 403.
           ...(isOwner ? { startCommand: $('#set-startcmd').value } : {}),
           ports,
@@ -317,6 +328,7 @@ export function renderServerSettingsTab(host, server) {
     }
   });
 
+  wireStagingCard(host, server);
   $('#set-clone').addEventListener('click', () => {
     openModal({
       title: 'Duplicate server',

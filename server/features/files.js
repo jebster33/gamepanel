@@ -73,19 +73,19 @@ function assertArchiveIsSafe(file, cwd) {
 
   try {
     if (isWindows) {
-      const names = execFileSync(TAR, ['-tf', path.basename(file)], { cwd, encoding: 'utf8', maxBuffer: 8e6, windowsHide: true });
-      const long = execFileSync(TAR, ['-tvf', path.basename(file)], { cwd, encoding: 'utf8', maxBuffer: 8e6, windowsHide: true });
+      const names = execFileSync(TAR, ['-tf', `./${path.basename(file)}`], { cwd, encoding: 'utf8', maxBuffer: 8e6, windowsHide: true });
+      const long = execFileSync(TAR, ['-tvf', `./${path.basename(file)}`], { cwd, encoding: 'utf8', maxBuffer: 8e6, windowsHide: true });
       const links = long.split(/\r?\n/).filter((l) => l.startsWith('l')).length;
       entries = names.split(/\r?\n/).filter(Boolean).map((name) => ({ name, link: false }));
       if (links) entries.push({ name: 'symlink', link: true });
     } else if (lower.endsWith('.zip')) {
-      const out = execFileSync('unzip', ['-Z1', path.basename(file)], { cwd, encoding: 'utf8', maxBuffer: 8e6 });
+      const out = execFileSync('unzip', ['-Z1', `./${path.basename(file)}`], { cwd, encoding: 'utf8', maxBuffer: 8e6 });
       entries = out.split('\n').filter(Boolean).map((name) => ({ name, link: false }));
       // -Z1 shows names only; the long listing starts symlinks with "l" (unzip extracts them as links).
-      const long = execFileSync('unzip', ['-Z', path.basename(file)], { cwd, encoding: 'utf8', maxBuffer: 8e6 });
+      const long = execFileSync('unzip', ['-Z', `./${path.basename(file)}`], { cwd, encoding: 'utf8', maxBuffer: 8e6 });
       if (long.split('\n').some((l) => /^l[rwxsStT-]{9}\s/.test(l))) entries.push({ name: 'symlink', link: true });
     } else {
-      const out = execFileSync('tar', ['-tvf', path.basename(file)], { cwd, encoding: 'utf8', maxBuffer: 8e6 });
+      const out = execFileSync('tar', ['-tvf', `./${path.basename(file)}`], { cwd, encoding: 'utf8', maxBuffer: 8e6 });
       entries = out
         .split('\n')
         .filter(Boolean)
@@ -256,6 +256,11 @@ async function rename(root, rel, toRel) {
 /**
  * Unpack an archive in place — the usual way mods, maps and modpacks arrive.
  * Extraction always stays inside the server directory.
+ *
+ * The archive is unpacked into a scratch folder first and then copied in
+ * piece by piece, never through a symlink: a game, a mod or an earlier
+ * upload may have left one inside the server folder pointing somewhere else,
+ * and unzip or tar would happily write through it.
  */
 async function extract(root, rel) {
   const file = containedPath(root, rel);
@@ -264,21 +269,52 @@ async function extract(root, rel) {
   const dest = path.dirname(file);
   const name = path.basename(file);
   const lower = name.toLowerCase();
-
-  // Run inside the target directory with a bare file name: absolute paths make
-  // tar unhappy on some platforms, and this keeps the command trivially safe.
-  let cmd;
-  if (isWindows) cmd = [TAR, ['-xf', name]];
-  else if (lower.endsWith('.zip')) cmd = ['unzip', ['-oq', name]];
-  else if (lower.endsWith('.tar.gz') || lower.endsWith('.tgz')) cmd = ['tar', ['-xzf', name]];
-  else if (lower.endsWith('.tar.xz')) cmd = ['tar', ['-xJf', name]];
-  else if (lower.endsWith('.tar.bz2')) cmd = ['tar', ['-xjf', name]];
-  else if (lower.endsWith('.tar')) cmd = ['tar', ['-xf', name]];
-  else fail(400, 'Unsupported archive type — use .zip, .tar.gz, .tar.xz or .tar');
+  const { config } = require('../core/config');
 
   assertArchiveIsSafe(file, dest);
-  await run(cmd[0], cmd[1], dest);
+
+  // Run inside the target directory with "./name" (a name starting with "-" is never an option).
+  await fsp.mkdir(config.cacheDir, { recursive: true });
+  const scratch = await fsp.mkdtemp(path.join(config.cacheDir, 'extract-'));
+  try {
+    let cmd;
+    if (isWindows) cmd = [TAR, ['-xf', `./${name}`, '-C', scratch]];
+    else if (lower.endsWith('.zip')) cmd = ['unzip', ['-oq', `./${name}`, '-d', scratch]];
+    else if (lower.endsWith('.tar.gz') || lower.endsWith('.tgz')) cmd = ['tar', ['-xzf', `./${name}`, '-C', scratch, '--no-same-owner']];
+    else if (lower.endsWith('.tar.xz')) cmd = ['tar', ['-xJf', `./${name}`, '-C', scratch, '--no-same-owner']];
+    else if (lower.endsWith('.tar.bz2')) cmd = ['tar', ['-xjf', `./${name}`, '-C', scratch, '--no-same-owner']];
+    else if (lower.endsWith('.tar')) cmd = ['tar', ['-xf', `./${name}`, '-C', scratch, '--no-same-owner']];
+    else fail(400, 'Unsupported archive type — use .zip, .tar.gz, .tar.xz or .tar');
+    await run(cmd[0], cmd[1], dest);
+    await mergeInto(scratch, dest);
+  } finally {
+    await fsp.rm(scratch, { recursive: true, force: true });
+  }
   return { ok: true, extractedTo: path.posix.dirname(String(rel).replace(/\\/g, '/')) };
+}
+
+/**
+ * Copy a folder's contents into `dest`, creating folders and replacing files
+ * but refusing to go through a symlink that is already there (the link
+ * itself is replaced by a real folder or file, or the unpack stops).
+ */
+async function mergeInto(from, dest) {
+  for (const entry of await fsp.readdir(from, { withFileTypes: true })) {
+    const src = path.join(from, entry.name);
+    const to = path.join(dest, entry.name);
+    const existing = await fsp.lstat(to).catch(() => null);
+    if (entry.isSymbolicLink()) continue; // the archive check refuses these; never copy one anyway
+    if (entry.isDirectory()) {
+      if (existing?.isSymbolicLink()) fail(400, `Refusing to unpack: ${path.basename(to)} is a link to somewhere else in the server folder`);
+      if (existing && !existing.isDirectory()) await fsp.rm(to, { force: true });
+      await fsp.mkdir(to, { recursive: true });
+      await mergeInto(src, to);
+    } else if (entry.isFile()) {
+      if (existing?.isDirectory() && !existing.isSymbolicLink()) fail(400, `Refusing to unpack: ${path.basename(to)} is a folder here`);
+      if (existing) await fsp.rm(to, { force: true }); // removes a link itself, never what it points at
+      await fsp.copyFile(src, to, fs.constants.COPYFILE_EXCL);
+    }
+  }
 }
 
 /** Pack files or folders into a .tar.gz next to them. */
@@ -290,7 +326,8 @@ async function compress(root, relPaths, name) {
   const target = path.join(dir, archiveName.endsWith('.tar.gz') ? archiveName : `${archiveName}.tar.gz`);
   // Verify every entry stays inside the sandbox before touching tar.
   const names = relPaths.map((rel) => path.basename(containedPath(root, rel)));
-  await run(TAR, ['-czf', path.basename(target), ...names], dir);
+  // "./name", so a file called --checkpoint-action=… is a name and never a tar option.
+  await run(TAR, ['-czf', path.basename(target), '--', ...names.map((n) => `./${n}`)], dir);
   const stat = await fsp.stat(target);
   return { name: path.basename(target), size: stat.size };
 }

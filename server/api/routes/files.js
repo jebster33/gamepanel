@@ -2,7 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { fail, readBody } = require('../../core/util');
+const { fail, HttpError } = require('../../core/util');
 const files = require('../../features/files');
 const history = require('../../features/config-history');
 
@@ -109,11 +109,25 @@ module.exports = (router, app, { serverFor }) => {
       const root = rootOf(user, params.id, 'files.write');
       const rel = url.searchParams.get('path');
       if (!rel) fail(400, 'A target path is required');
-      const buf = await readBody(req, 1024 * 1024 * 1024);
       const target = files.containedPath(root, rel);
       fs.mkdirSync(path.dirname(target), { recursive: true });
-      fs.writeFileSync(target, buf);
-      return { ok: true, path: rel, size: buf.length };
+      // Streamed to a temporary file (never held in memory), then moved into place; capped at 1 GiB.
+      const tmp = `${target}.${require('crypto').randomBytes(6).toString('hex')}.upload`;
+      let size = 0;
+      const limit = new (require('stream').Transform)({
+        transform(chunk, enc, cb) {
+          size += chunk.length;
+          cb(size > 1024 * 1024 * 1024 ? new HttpError(413, 'That file is larger than 1 GB') : null, chunk);
+        },
+      });
+      try {
+        await require('stream/promises').pipeline(req, limit, fs.createWriteStream(tmp, { flags: 'wx' }));
+        fs.renameSync(tmp, target);
+      } catch (err) {
+        fs.rmSync(tmp, { force: true });
+        throw err;
+      }
+      return { ok: true, path: rel, size };
     },
     { rawBody: true }
   );

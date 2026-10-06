@@ -88,8 +88,9 @@ module.exports = (router, { store, bridge }, { requireAdmin }) => {
   });
 
   /** The personal client for one connection, stamped on the fly. */
-  router.get('/api/bridge/connections/:id/client', async ({ user, params, url, res }) => {
+  router.get('/api/bridge/connections/:id/client', async ({ user, params, url, res, req }) => {
     requireAdmin(user);
+    if (req.gpApiKey?.readOnly) fail(403, 'A read-only API key cannot download a client: it carries the connection key');
     if (!bridge.enabled) fail(400, 'Turn the bridge on first');
     const conn = bridge.find(params.id);
     const platform = url.searchParams.get('platform') || 'windows-amd64';

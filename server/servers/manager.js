@@ -48,7 +48,7 @@ const { STATUS, CONTAINER_DIR } = require('./constants');
 const secrets = require('../core/secrets');
 
 /** Fields a PATCH may change. Anything else on a server is managed by the panel. */
-const EDITABLE = ['name', 'memory', 'cpuLimit', 'maxPlayers', 'autoStart', 'autoRestart', 'updateOnStart', 'autoUpdate', 'startCommand', 'notes', 'ip', 'backupRetention', 'idleStopMinutes', 'hangRestartMinutes', 'alerts'];
+const EDITABLE = ['name', 'memory', 'cpuLimit', 'maxPlayers', 'autoStart', 'autoRestart', 'updateOnStart', 'autoUpdate', 'startCommand', 'notes', 'ip', 'backupRetention', 'idleStopMinutes', 'hangRestartMinutes', 'alerts', 'wakeOnJoin'];
 
 class ServerManager extends EventEmitter {
   /**
@@ -281,6 +281,7 @@ class ServerManager extends EventEmitter {
       vars: Object.fromEntries(Object.entries(server.vars || {}).map(([k, v]) => [k, hidden.has(k) || secrets.isSealed(v) ? '' : v])),
       secretVars: Object.fromEntries([...hidden].map((k) => [k, Boolean(server.vars?.[k])])),
       status: rt.status,
+      wake: server.wakeOnJoin ? require('../features/wake-on-join').view(server.id) : undefined,
       startedAt: rt.startedAt,
       uptime: rt.startedAt ? Date.now() - rt.startedAt : 0,
       cpu: Number(rt.cpu.toFixed(1)),
@@ -410,7 +411,7 @@ class ServerManager extends EventEmitter {
       ip: input.ip || '0.0.0.0',
       ports: this.assignPorts(template, input.ports || {}),
       vars,
-      memory: Number(input.memory) || Number(template.defaultMemory) || 2048,
+      memory: Number(input.memory) > 0 ? Math.max(256, Math.round(Number(input.memory))) : Number(template.defaultMemory) || 2048,
       cpuLimit: Number(input.cpuLimit) || 0,
       maxPlayers: Number(input.maxPlayers) || Number(vars.MAX_PLAYERS) || 20,
       autoStart: input.autoStart !== false,
@@ -459,6 +460,10 @@ class ServerManager extends EventEmitter {
     if (patch.hangRestartMinutes !== undefined) server.hangRestartMinutes = Math.max(0, Math.min(60, Math.round(Number(patch.hangRestartMinutes) || 0)));
     if (patch.idleStopMinutes !== undefined) server.idleStopMinutes = Math.max(0, Math.min(1440, Math.round(Number(patch.idleStopMinutes) || 0)));
     if (patch.alerts !== undefined) server.alerts = this.cleanAlerts(patch.alerts);
+    if (patch.wakeOnJoin !== undefined) {
+      server.wakeOnJoin = Boolean(patch.wakeOnJoin);
+      setImmediate(() => require('../features/wake-on-join').sync());
+    }
     if (patch.vars) {
       // A secret left blank keeps its saved value (the UI never sees it); a new one is sealed.
       const hidden = secrets.secretNames(this.template(server));
@@ -475,6 +480,9 @@ class ServerManager extends EventEmitter {
       for (const [name, value] of Object.entries(patch.ports)) {
         const port = Number(value);
         if (!Number.isInteger(port) || port < 1 || port > 65535) fail(400, `Invalid port for ${name}`);
+        // Ports can be opened in the firewall and on the router: a non-administrator may only move this
+        // server's own ports among unprivileged ones, never name a new one or take 22, 3306…
+        if (!trusted && (!Object.prototype.hasOwnProperty.call(server.ports, name) || port < 1024)) fail(403, 'Only administrators can use that port');
         if (used.has(port)) fail(409, `Port ${port} is already used by another server`);
         server.ports[name] = port;
       }

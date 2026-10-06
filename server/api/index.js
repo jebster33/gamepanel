@@ -79,6 +79,11 @@ function createApi(app) {
       json(res, 403, { error: 'Only administrators can manage servers on other nodes' });
       return true;
     }
+    // The block on account changes for API keys must hold through a node's proxy too, where the node would answer to the admin key it was given.
+    if (req.method !== 'GET' && req.gpApiKey && require('../core/auth').isAccountRoute(path)) {
+      json(res, 403, { error: 'Account changes need a person signed in, not an API key' });
+      return true;
+    }
     if (req.method !== 'GET') {
       audit.record({ user: user.username, ip: clientIp(req), action: `${req.method.toLowerCase()} ${path.replace(/^\/api\//, '')} on node ${node.name}`, path, status: 200 });
     }
@@ -117,7 +122,8 @@ function createApi(app) {
       if (!anonymousLimit.take(ip)) return tooMany(res, anonymousLimit, ip);
     }
 
-    const body = !route.rawBody && writes ? await readJson(req) : {};
+    // Sign-in and other public routes take small bodies only: anyone on the internet can send one.
+    const body = !route.rawBody && writes ? await readJson(req, route.public ? 64 * 1024 : undefined) : {};
     // Every change goes in the audit log, including refused ones.
     const note = (status, error) => {
       if (!writes) return;

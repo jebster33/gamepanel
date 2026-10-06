@@ -122,11 +122,18 @@ class WebSocketConnection extends EventEmitter {
         } else {
           this._fragmentOpcode = frame.opcode;
           this._fragments = [frame.payload];
+          this._fragmentBytes = frame.payload.length;
         }
         break;
       case OPCODE.CONT: {
+        // A continuation with nothing to continue, or endless tiny ones, is a flood, not a message.
+        if (this._fragmentOpcode == null || this._fragments.length >= 1024) {
+          this.close(1002, 'Bad fragments');
+          return;
+        }
         this._fragments.push(frame.payload);
-        const total = this._fragments.reduce((n, b) => n + b.length, 0);
+        this._fragmentBytes = (this._fragmentBytes || 0) + frame.payload.length;
+        const total = this._fragmentBytes;
         if (total > MAX_MESSAGE) {
           this.close(1009, 'Message too large');
           return;

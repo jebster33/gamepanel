@@ -53,3 +53,31 @@ The bridge (Settings → GamePanel Bridge) is off until an administrator turns i
 on. While it is on, `/bridge/tunnel` accepts WebSocket connections that run
 TLS 1.3 pinned to the panel's own key, and each connection may reach only the
 ports it was given. See [bridge.md](bridge.md) for the full model.
+
+## Hardening notes
+
+Things that were tightened after a security review, and what is still on you:
+
+- **Files in a server's folder are not trusted.** A game, a mod or someone with file access can put
+  symlinks, FIFOs and edited records (`.gamepanel/*.json`) in there. The panel never follows a link out of
+  the server folder when unpacking, backing up, restoring or pushing from a staging copy, reads such
+  files without waiting on special files, and only believes plain file names in its own records.
+- **API keys are scripts, not people.** They cannot change accounts, 2FA, passkeys or who can reach a
+  server (also through a node's proxy), read-only keys cannot send console commands or read stored
+  tokens, and a key is only as safe as where you keep it.
+- **First-run setup needs a code** (printed in the log) unless it comes from the machine itself.
+- **"Require two-factor for administrators"** counts a passkey as the second factor only when the
+  administrator signs in *with* the passkey: a password alone is not enough.
+- **Non-administrators** cannot pick privileged ports, run wipes without the permissions to do it
+  directly, or point a world folder at another server.
+- **Containers matter.** On Linux with Docker, a malicious mod or plugin is contained to its server's
+  folder. Without it (Windows, or Settings → run as processes) games run as the panel's own account, and
+  anyone who may upload files to a server can run code there. Only give file access to people you trust
+  that far, or turn containers on.
+- **Wake on join** lets anyone who knows a whitelisted name (or anyone, with the whitelist off) start a
+  stopped server, at most once a minute. Leave it off for servers you do not want started by strangers.
+- **Backup copies on another node** use that node's administrator API key. Use `https://` between
+  machines you do not trust, and give each panel its own node key.
+- **Start-command arguments.** A sub-user who may edit a setting such as a map name can add extra
+  arguments to the game's own command line (not to the shell). Treat the "settings" permission as trusted.
+

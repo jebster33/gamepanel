@@ -16,6 +16,7 @@ const EVENT_LABELS = {
   'server.ready': 'A server comes online',
   'server.stopped': 'A server stops',
   'server.idle_stopped': 'A server stops because it is empty',
+  'server.woken': 'A player wakes a sleeping server by joining',
   'server.resource_alert': 'A server goes over its CPU, memory or disk alert',
   'panel.disk_low': "The panel's disk is almost full",
   'user.lockout': 'Repeated failed sign-ins',
@@ -193,6 +194,14 @@ export async function renderSettings(view) {
         Works with Backblaze B2, Cloudflare R2, Amazon S3, Wasabi and MinIO. Use a key that can only reach this one bucket.
       </p>
       <div id="cloud-form" class="faint"><span class="spinner"></span> Loading…</div>
+    </div>
+
+    <div class="card mb-16" id="node-copies">
+      <h4>Backup copies on another node</h4>
+      <p class="faint" style="margin:0 0 14px;line-height:1.6">
+        Optional. Sends every archive backup to one of your nodes (another machine running GamePanel), so losing this machine does not lose the backups. Nothing to sign up for.
+      </p>
+      <div id="node-copies-form" class="faint"><span class="spinner"></span> Loading…</div>
     </div>
 
     <div class="card mb-16" id="oauth">
@@ -483,6 +492,7 @@ export async function renderSettings(view) {
   });
 
   renderCloudForm();
+  renderNodeCopiesForm();
   renderStatusPageForm();
   renderOauthForm();
 }
@@ -669,6 +679,41 @@ const CLOUD_PRESETS = {
   wasabi: { label: 'Wasabi', endpoint: 'https://s3.eu-central-1.wasabisys.com', hint: 'Use the service URL for your bucket\'s region.' },
   other: { label: 'MinIO or other', endpoint: 'https://minio.example.com', hint: 'Any S3-compatible server.' },
 };
+
+async function renderNodeCopiesForm() {
+  const host = $('#node-copies-form');
+  if (!host) return;
+  let data;
+  try {
+    data = await api('/api/node-backups');
+  } catch (err) {
+    host.textContent = err.message;
+    return;
+  }
+  if (!host.isConnected) return;
+  const c = data.settings;
+  const stored = data.stored || [];
+  host.classList.remove('faint');
+  host.innerHTML = c.nodes.length
+    ? `
+    <div class="form-grid">
+      <label><span>Keep the copies on</span><select id="nb-node">${c.nodes.map((n) => `<option value="${esc(n.id)}" ${n.id === c.nodeId ? 'selected' : ''}>${esc(n.name)}</option>`).join('')}</select></label>
+      <label><span>Copies to keep per server</span><input id="nb-keep" type="number" min="0" value="${Number(c.keep) || 0}" /><div class="hint">0 keeps every copy.</div></label>
+    </div>
+    <div class="checkbox-row"><input type="checkbox" id="nb-on" ${c.enabled ? 'checked' : ''} /><label for="nb-on">Copy every new archive backup there</label></div>
+    <div class="hint">Incremental backups are not copied. Copies already there can be brought back from each server's Backups tab.</div>
+    <button class="btn mt-16" id="nb-save">Save</button>
+    ${stored.length ? `<div class="hint mt-16">This machine keeps ${stored.reduce((n, x) => n + x.count, 0)} backup copies (${fmtBytes(stored.reduce((n, x) => n + x.bytes, 0))}) for other panels.</div>` : ''}`
+    : `<div class="faint">Add a node on the <a href="#/nodes">Nodes</a> page first.</div>${stored.length ? `<div class="hint mt-8">This machine keeps ${stored.reduce((n, x) => n + x.count, 0)} backup copies (${fmtBytes(stored.reduce((n, x) => n + x.bytes, 0))}) for other panels.</div>` : ''}`;
+  host.querySelector('#nb-save')?.addEventListener('click', async () => {
+    try {
+      await api('/api/node-backups', { method: 'PATCH', body: { nodeId: $('#nb-node').value, keep: Number($('#nb-keep').value) || 0, enabled: $('#nb-on').checked } });
+      toast('Saved');
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+  });
+}
 
 async function renderCloudForm() {
   const host = $('#cloud-form');
@@ -866,7 +911,9 @@ async function renderDiscordBot() {
     <div class="row mt-16" style="gap:8px">
       <button class="btn" id="db-save">Save</button>
       ${st.configured ? '<button class="btn btn-ghost" id="db-off">Turn off</button>' : ''}
-    </div>`;
+    </div>
+    <div id="sb-body" class="mt-16"></div>`;
+  renderStatusBots();
   const save = async (body) => {
     try {
       await api('/api/settings/discord-bot', { method: 'PUT', body });
@@ -1005,4 +1052,92 @@ async function renderSftp() {
   };
   $('#sftp-on').onchange = save;
   $('#sftp-save').onclick = save;
+}
+
+/* ------------------------------------------------- players in Discord status */
+
+async function renderStatusBots() {
+  const box = $('#sb-body');
+  if (!box) return;
+  const data = await api('/api/settings/status-bots').catch(() => null);
+  if (!data || !box.isConnected) return;
+  const servers = state.servers.filter((x) => !x.node);
+  const serverOptions = (selected) => servers.map((x) => `<option value="${esc(x.id)}" ${x.id === selected ? 'selected' : ''}>${esc(x.name)}</option>`).join('');
+  const styleOptions = (selected) =>
+    [
+      ['custom', 'Just the text'],
+      ['playing', 'Playing …'],
+      ['watching', 'Watching …'],
+    ]
+      .map(([v, l]) => `<option value="${v}" ${v === selected ? 'selected' : ''}>${l}</option>`)
+      .join('');
+  const pill = (b) => ({ online: `<span class="badge accent">Online${b.user ? ` as ${esc(b.user)}` : ''}</span>`, connecting: '<span class="badge warn">Connecting…</span>', error: `<span class="badge bad">${esc(b.error || 'Not connected')}</span>` })[b.status] || '<span class="badge">Off</span>';
+  const m = data.main;
+  box.innerHTML = `
+    <h4 style="margin:0 0 6px">Players in the bot's status</h4>
+    <p class="faint" style="margin:0 0 10px">Shows something like <b>25/200 players</b> under the bot's name in your Discord's member list, updated every 20 seconds.</p>
+    <div class="form-grid">
+      <label><span>Show</span><select id="sb-mode">
+        <option value="off" ${m.mode === 'off' ? 'selected' : ''}>Nothing</option>
+        <option value="all" ${m.mode === 'all' ? 'selected' : ''}>All servers together</option>
+        <option value="server" ${m.mode === 'server' ? 'selected' : ''}>One server</option>
+      </select></label>
+      <label id="sb-server-wrap"><span>Server</span><select id="sb-server">${serverOptions(m.serverId)}</select></label>
+      <label><span>Text</span><input id="sb-format" value="${esc(m.format)}" placeholder="{online}/{max} players" /></label>
+      <label><span>Style</span><select id="sb-style">${styleOptions(m.style)}</select></label>
+    </div>
+    <div class="hint"><span class="mono">{online}</span>, <span class="mono">{max}</span>, <span class="mono">{server}</span> and <span class="mono">{servers}</span> are filled in.${data.preview && m.mode !== 'off' ? ` Right now: <b>${esc(data.preview)}</b>` : ''}</div>
+
+    <h4 style="margin:18px 0 6px">Status bots</h4>
+    <p class="faint" style="margin:0 0 10px">One extra bot per server, so each server shows its own count in the member list. Make a bot at discord.com/developers for each (no permissions needed), invite it, and paste its token here.</p>
+    <div class="list" id="sb-list">${
+      data.bots.length
+        ? data.bots
+            .map(
+              (b) => `<div class="list-row sb-row" data-id="${esc(b.id)}">
+          <select data-k="serverId" style="width:auto">${serverOptions(b.serverId)}</select>
+          <input data-k="format" value="${esc(b.format)}" style="flex:1;min-width:120px" />
+          <select data-k="style" style="width:auto">${styleOptions(b.style)}</select>
+          ${pill(b)}
+          <button class="btn btn-sm btn-ghost btn-danger" data-sb-remove title="Remove">${icon('trash', 12)}</button>
+        </div>`
+            )
+            .join('')
+        : '<p class="faint" style="margin:0">None yet.</p>'
+    }</div>
+    <div class="row mt-16" style="gap:8px;flex-wrap:wrap">
+      <input id="sb-token" type="password" placeholder="Token of a new status bot" autocomplete="off" style="flex:1;min-width:200px" />
+      <select id="sb-new-server" style="width:auto">${serverOptions(servers[0]?.id)}</select>
+      <button class="btn" id="sb-add">Add</button>
+    </div>
+    <div class="row mt-16"><button class="btn" id="sb-save">Save status settings</button></div>`;
+
+  const syncMode = () => $('#sb-server-wrap').classList.toggle('hidden', $('#sb-mode').value !== 'server');
+  $('#sb-mode').addEventListener('change', syncMode);
+  syncMode();
+  const collect = () => [...box.querySelectorAll('.sb-row')].map((row) => ({ id: row.dataset.id, serverId: row.querySelector('[data-k=serverId]').value, format: row.querySelector('[data-k=format]').value, style: row.querySelector('[data-k=style]').value }));
+  const save = async (bots, message) => {
+    try {
+      await api('/api/settings/status-bots', {
+        method: 'PUT',
+        body: { main: { mode: $('#sb-mode').value, serverId: $('#sb-server').value, format: $('#sb-format').value, style: $('#sb-style').value }, bots },
+      });
+      toast(message);
+      setTimeout(renderStatusBots, 2500);
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+  };
+  $('#sb-save').addEventListener('click', () => save(collect(), 'Status settings saved'));
+  $('#sb-add').addEventListener('click', () => {
+    const token = $('#sb-token').value.trim();
+    if (!token) return toast('Paste the bot token first', 'error');
+    save([...collect(), { token, serverId: $('#sb-new-server').value, format: '{online}/{max} players', style: 'custom' }], 'Status bot added. Connecting…');
+  });
+  box.querySelectorAll('[data-sb-remove]').forEach((btn) =>
+    btn.addEventListener('click', () => {
+      const id = btn.closest('.sb-row').dataset.id;
+      save(collect().filter((b) => b.id !== id), 'Status bot removed');
+    })
+  );
 }

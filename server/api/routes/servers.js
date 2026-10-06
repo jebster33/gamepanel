@@ -1,6 +1,6 @@
 'use strict';
 
-const { fail, logger } = require('../../core/util');
+const { fail, logger, readBody } = require('../../core/util');
 const { rconCommand } = require('../../games/rcon');
 const { query } = require('../../games/query');
 const quotas = require('../../features/quotas');
@@ -25,8 +25,10 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
       // The same rules as a sub-user's edits (servers/untrusted.js), measured against the template's defaults.
       const defaults = Object.fromEntries((template.variables || []).map((v) => [v.name, v.default ?? '']));
       require('../../servers/untrusted').checkPatch(template, { name: body.name, vars: body.vars || {} }, { name: '', vars: defaults });
-      quotas.checkCreate(manager, user, Number(body.memory) || Number(template.defaultMemory) || 2048);
-      server = manager.create({ templateId: body.templateId, name: body.name, memory: body.memory, maxPlayers: body.maxPlayers, autoStart: body.autoStart, autoRestart: body.autoRestart, vars: body.vars, ports: body.ports }, user);
+      const memory = Number(body.memory) > 0 ? Math.max(256, Math.round(Number(body.memory))) : Number(template.defaultMemory) || 2048;
+      quotas.checkCreate(manager, user, memory);
+      // The panel picks the ports: a self-service account cannot ask for 22 or 3306.
+      server = manager.create({ templateId: body.templateId, name: body.name, memory, maxPlayers: body.maxPlayers, autoStart: body.autoStart, autoRestart: body.autoRestart, vars: body.vars }, user);
       server.ownerId = user.id;
       const record = store.state.users.find((u) => u.id === user.id);
       record.servers = [...new Set([...(record.servers || []), server.id])];
@@ -216,6 +218,16 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
     return require('../../features/chat-moderation').view(manager, server);
   });
 
+  /** A Minecraft player's inventory, now or in a backup, and putting it back. */
+  router.get('/api/servers/:id/players/:name/inventory', ({ user, params, url }) =>
+    require('../../features/player-data').inventory(manager, serverFor(user, params.id, 'files'), params.name, { backup: url.searchParams.get('backup') || null })
+  );
+  router.post('/api/servers/:id/players/:name/inventory/restore', ({ user, params, body }) => {
+    const server = serverFor(user, params.id, 'backups.restore');
+    if (!body?.backup) fail(400, 'Pick the backup to restore from');
+    return require('../../features/player-data').restore(manager, store, server, params.name, String(body.backup), user.username);
+  });
+
   /** Whitelist from Discord roles. */
   router.get('/api/discord/guilds', async ({ user }) => {
     requireCap(user, 'command');
@@ -273,6 +285,21 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
     return { ok: true };
   });
 
+  /** Staging copies: make one, see what differs from live, push changes to live. */
+  const staging = require('../../features/staging');
+  router.post('/api/servers/:id/staging', ({ user, params, body }) => {
+    requireAdmin(user);
+    return staging.create(manager, store, manager.require(params.id).id, { name: body?.name, withWorld: body?.withWorld !== false }, user);
+  });
+  router.get('/api/servers/:id/staging/diff', ({ user, params }) => {
+    requireAdmin(user);
+    return staging.diff(manager, params.id);
+  });
+  router.post('/api/servers/:id/staging/push', ({ user, params, body }) => {
+    requireAdmin(user);
+    return staging.push(manager, store, params.id, { entries: body?.entries, properties: body?.properties !== false, version: Boolean(body?.version) }, user);
+  });
+
   /** Duplicate a server onto fresh ports, optionally with its files. */
   router.post('/api/servers/:id/clone', async ({ user, params, body }) => {
     requireAdmin(user);
@@ -310,8 +337,9 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
   });
 
   /** The whole server as one archive another panel can import. */
-  router.get('/api/servers/:id/export', async ({ user, params, res, url }) => {
+  router.get('/api/servers/:id/export', async ({ user, params, res, url, req }) => {
     requireAdmin(user);
+    if (req.gpApiKey?.readOnly && url.searchParams.get('move') === '1') fail(403, 'A read-only API key cannot export the secret variables');
     // ?move=1 (a move to another node) carries secret variables in the clear; administrators only, as above.
     await manager.exportServer(serverFor(user, params.id, 'files'), res, { forMove: url.searchParams.get('move') === '1' });
     return undefined;
@@ -369,8 +397,34 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
     return manager.pregen(server.id, { action: String(body?.action || ''), radius: body?.radius }, user);
   });
 
+  /** Memory and settings advice, and applying one piece of it. */
+  router.get('/api/servers/:id/advice', ({ user, params }) => require('../../features/advice').advise(manager, serverFor(user, params.id), { admin: user.role === 'admin' }));
+  router.post('/api/servers/:id/advice/:adviceId/apply', ({ user, params }) => {
+    requireAdmin(user);
+    return require('../../features/advice').apply(manager, store, serverFor(user, params.id), params.adviceId, user.username);
+  });
+
+  /** Datapacks in the loaded world (Minecraft Java). */
+  const datapacks = require('../../features/datapacks');
+  router.get('/api/servers/:id/datapacks', ({ user, params }) => datapacks.list(manager, serverFor(user, params.id, 'mods')));
+  router.get('/api/servers/:id/datapacks/search', ({ user, params, url }) =>
+    datapacks.search(manager, serverFor(user, params.id, 'mods'), { query: String(url.searchParams.get('query') || '').slice(0, 100), page: Math.min(50, Math.max(0, Number(url.searchParams.get('page')) || 0)) })
+  );
+  router.get('/api/servers/:id/datapacks/updates', ({ user, params }) => datapacks.updates(manager, serverFor(user, params.id, 'mods')));
+  router.post('/api/servers/:id/datapacks/install', ({ user, params, body }) => datapacks.install(manager, store, serverFor(user, params.id, 'mods'), { projectId: body?.projectId, versionId: body?.versionId }, user.username));
+  router.post(
+    '/api/servers/:id/datapacks/upload',
+    async ({ user, params, url, req }) => {
+      const server = serverFor(user, params.id, 'mods');
+      return datapacks.upload(manager, store, server, url.searchParams.get('name'), await readBody(req, 256 * 1024 * 1024), user.username);
+    },
+    { rawBody: true }
+  );
+  router.post('/api/servers/:id/datapacks/:name/toggle', ({ user, params, body }) => datapacks.toggle(manager, serverFor(user, params.id, 'mods'), params.name, Boolean(body?.on), user.username));
+  router.delete('/api/servers/:id/datapacks/:name', ({ user, params }) => datapacks.remove(manager, store, serverFor(user, params.id, 'mods'), params.name, user.username));
+
   /** Minecraft worlds. */
-  router.get('/api/servers/:id/worlds', async ({ user, params }) => manager.listWorlds(serverFor(user, params.id, 'files')));
+  router.get('/api/servers/:id/worlds',async ({ user, params }) => manager.listWorlds(serverFor(user, params.id, 'files')));
 
   router.post('/api/servers/:id/worlds/use', async ({ user, params, body }) => {
     const server = serverFor(user, params.id, 'settings');
@@ -624,9 +678,12 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
   });
 
   // A schedule does its action later on the user's behalf, so it needs the same permission.
-  const SCHEDULE_CAPS = { command: 'command', backup: 'backups', mods: 'mods', start: 'power', stop: 'power', restart: 'power', update: 'power' };
+  // A wipe deletes saves, so it needs what the direct wipe does; an action not listed here is administrators only.
+  const SCHEDULE_CAPS = { command: ['command'], backup: ['backups'], mods: ['mods'], start: ['power'], stop: ['power'], restart: ['power'], update: ['power'], wipe: ['files.write', 'power'] };
   const requireScheduleCap = (user, server, action) => {
-    if (SCHEDULE_CAPS[action]) requireCap(user, SCHEDULE_CAPS[action], server.id);
+    if (!SCHEDULE_CAPS[action]) return requireAdmin(user);
+    for (const cap of SCHEDULE_CAPS[action]) requireCap(user, cap, server.id);
+    return undefined;
   };
 
   router.post('/api/servers/:id/schedules', ({ user, params, body }) => {

@@ -1,7 +1,7 @@
 import { api } from '../../core/api.js';
 import { drawChart } from '../../core/charts.js';
 import { state } from '../../core/state.js';
-import { $, esc, fmtBytes, fmtTime } from '../../core/util.js';
+import { $, esc, fmtBytes, fmtTime, toast } from '../../core/util.js';
 import { themeColor } from '../dashboard.js';
 
 /* -------------------------------------------------------------- metrics */
@@ -29,6 +29,7 @@ export function renderMetricsTab(host, server) {
       <div class="chart-card"><h4>Players online</h4><div class="chart-value" id="mv-players">—</div><canvas id="chart-players"></canvas></div>
       <div class="chart-card"><h4>Ping</h4><div class="chart-value" id="mv-ping">—</div><canvas id="chart-ping"></canvas></div>
     </div>
+    <div class="card mt-16" id="mv-advice"><h4 style="margin:0 0 12px">Advice</h4><div class="faint"><span class="spinner"></span> Looking at how it runs…</div></div>
     <div class="card mt-16">
       <h4 style="margin:0 0 12px">Details</h4>
       <div class="table-wrap"><table>
@@ -54,6 +55,8 @@ export function renderMetricsTab(host, server) {
       renderMetricsTab(host, server);
     })
   );
+
+  renderAdvice(host.querySelector('#mv-advice'), server);
 
   if (range !== 'live') {
     api(`/api/servers/${server.id}/history?range=${range}`)
@@ -130,4 +133,53 @@ export function drawServerCharts(id) {
     set('#mv-players', `${server.players ?? 0}${server.maxPlayers ? ' / ' + server.maxPlayers : ''}`);
     set('#mv-ping', server.ping != null ? `${server.ping} ms` : '—');
   }
+}
+
+/* -------------------------------------------------------------- advice */
+
+const ADVICE_ICON = { warn: '⚠', tip: '💡', good: '✓' };
+
+/** Memory and settings advice, with one-click fixes for administrators. */
+async function renderAdvice(box, server) {
+  if (!box) return;
+  let data;
+  try {
+    data = await api(`/api/servers/${server.id}/advice`);
+  } catch (err) {
+    box.querySelector('.faint').textContent = err.message;
+    return;
+  }
+  if (!box.isConnected) return;
+  const f = data.facts;
+  const known = [
+    f.memPeak ? `memory peak ${fmtBytes(f.memPeak * 1024 * 1024)} this week` : null,
+    f.playersPeak ? `up to ${f.playersPeak} players` : null,
+    f.mods ? `${f.mods} mods` : f.plugins ? `${f.plugins} plugins` : null,
+    f.tps !== null && f.tps !== undefined ? `${f.tps} TPS` : null,
+  ].filter(Boolean);
+  const admin = state.user?.role === 'admin';
+  box.innerHTML = `
+    <div class="card-head" style="margin-bottom:8px"><h4>Advice</h4><div class="spacer"></div>${known.length ? `<span class="faint" style="font-size:12px">${esc(known.join(' · '))}</span>` : ''}</div>
+    <div class="advice-list">${data.advice
+      .map(
+        (a) => `<div class="advice ${a.level}">
+          <span class="advice-icon">${ADVICE_ICON[a.level]}</span>
+          <div class="grow"><b>${esc(a.title)}</b><div class="faint">${esc(a.detail)}</div></div>
+          ${a.action && admin ? `<button class="btn btn-sm" data-advice="${esc(a.id)}">${esc(a.action.label)}</button>` : ''}
+        </div>`
+      )
+      .join('')}</div>`;
+  box.querySelectorAll('[data-advice]').forEach((btn) =>
+    btn.addEventListener('click', async () => {
+      btn.disabled = true;
+      try {
+        const r = await api(`/api/servers/${server.id}/advice/${encodeURIComponent(btn.dataset.advice)}/apply`, { method: 'POST', body: {} });
+        toast(`${r.applied}: done${r.restartNeeded ? '. Restart the server to use it.' : ''}`);
+        renderAdvice(box, server);
+      } catch (err) {
+        toast(err.message, 'error');
+        btn.disabled = false;
+      }
+    })
+  );
 }

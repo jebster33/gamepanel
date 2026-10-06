@@ -62,7 +62,14 @@ module.exports = (router, { store, manager }, { requireAdmin, requireCap, server
       store.addEvent('backup.failed', `Backup of ${server.name} failed: ${err.message}`, { serverId: server.id });
       throw err;
     }
-    const pruned = backups.prune(server.id, server.backupRetention);
+    // Pruning deletes older backups: only for people who are allowed to delete them.
+    let mayDelete = true;
+    try {
+      requireCap(user, 'backups.restore', server.id);
+    } catch {
+      mayDelete = false;
+    }
+    const pruned = mayDelete ? backups.prune(server.id, server.backupRetention) : [];
     store.addEvent('backup.created', `Backup created for ${server.name}`, { serverId: server.id, backup: backup.name });
     return { backup, pruned };
   });
@@ -89,13 +96,20 @@ module.exports = (router, { store, manager }, { requireAdmin, requireCap, server
       .catch(() => {});
   });
 
-  router.post('/api/servers/:id/backups/:name/restore', async ({ user, params }) => {
+  router.post('/api/servers/:id/backups/:name/restore', async ({ user, params, body }) => {
     requireAdmin(user);
     const server = manager.require(params.id);
     if (manager.isActive(server.id)) fail(409, 'Stop the server before restoring a backup');
-    await backups.restore(server, params.name);
-    store.addEvent('backup.restored', `Backup ${params.name} restored to ${server.name}`, { serverId: server.id });
-    return { ok: true };
+    const result = await require('../../features/restore-preview').restore(manager, server, params.name, { backupFirst: Boolean(body?.backupFirst), exact: Boolean(body?.exact) });
+    if (result.safety) store.addEvent('backup.created', `Backup ${result.safety} of ${server.name} made before a restore`, { serverId: server.id, backup: result.safety });
+    store.addEvent('backup.restored', `Backup ${params.name} restored to ${server.name}${result.removed ? ` (${result.removed} newer files removed)` : ''}`, { serverId: server.id });
+    return result;
+  });
+
+  /** What a full restore would change, before doing it. */
+  router.get('/api/servers/:id/backups/:name/preview', async ({ user, params }) => {
+    const server = serverFor(user, params.id, 'backups');
+    return require('../../features/restore-preview').preview(manager, server, params.name);
   });
 
   /** Look inside a backup, and put single files or folders back from it. */
@@ -133,6 +147,87 @@ module.exports = (router, { store, manager }, { requireAdmin, requireCap, server
     },
     { raw: true }
   );
+  /* ------------------------------------------------- copies on a node -- */
+
+  const nb = require('../../features/node-backups');
+  const nodeCopies = nb.nodeBackups(store, manager);
+
+  router.get('/api/servers/:id/backups/node', async ({ user, params }) => {
+    const server = serverFor(user, params.id, 'backups');
+    if (!nodeCopies.enabled) return { enabled: false, backups: [], sends: {} };
+    const node = nodeCopies.node();
+    try {
+      return { enabled: true, node: node.name, backups: await nodeCopies.list(server.id), sends: nodeCopies.statusFor(server.id) };
+    } catch (err) {
+      return { enabled: true, node: node.name, backups: [], sends: nodeCopies.statusFor(server.id), error: `Could not reach ${node.name}: ${err.message}` };
+    }
+  });
+
+  router.post('/api/servers/:id/backups/node/:name/send', ({ user, params }) => {
+    const server = serverFor(user, params.id, 'backups');
+    if (!nodeCopies.enabled) fail(400, 'Turn on copies to a node in Settings first');
+    backups.resolve(server.id, params.name);
+    nodeCopies.queue(server.id, params.name);
+    return { ok: true, queued: true };
+  });
+
+  router.post('/api/servers/:id/backups/node/:name/fetch', ({ user, params }) => {
+    const server = serverFor(user, params.id, 'backups');
+    requireCap(user, 'backups.restore', server.id);
+    if (!nodeCopies.enabled) fail(400, 'Turn on copies to a node in Settings first');
+    return nodeCopies.fetch(server.id, params.name);
+  });
+
+  router.delete('/api/servers/:id/backups/node/:name', ({ user, params }) => {
+    const server = serverFor(user, params.id, 'backups');
+    requireCap(user, 'backups.restore', server.id);
+    if (!nodeCopies.enabled) fail(400, 'Turn on copies to a node in Settings first');
+    return nodeCopies.remove(server.id, params.name);
+  });
+
+  router.get('/api/node-backups', ({ user }) => {
+    requireAdmin(user);
+    return { settings: nodeCopies.publicSettings(), stored: nb.storedSummary() };
+  });
+
+  router.patch('/api/node-backups', ({ user, body }) => {
+    requireAdmin(user);
+    const settings = nodeCopies.update(body);
+    store.addEvent('settings.node_backups', `Backup copies to a node ${settings.enabled ? 'on' : 'off'} (${user.username})`);
+    return { settings };
+  });
+
+  // The other end: this panel keeping copies for another one. Administrator API keys only.
+  router.put(
+    '/api/backup-store/:source/:serverId/:name',
+    ({ user, params, req }) => {
+      requireAdmin(user);
+      return nb.receive(req, params.source, params.serverId, params.name);
+    },
+    { rawBody: true }
+  );
+  router.get('/api/backup-store/:source/:serverId', ({ user, params }) => {
+    requireAdmin(user);
+    return { backups: nb.listStored(params.source, params.serverId) };
+  });
+  router.get(
+    '/api/backup-store/:source/:serverId/:name',
+    ({ user, params, res }) => {
+      requireAdmin(user);
+      const file = nb.storeFile(params.source, params.serverId, params.name);
+      if (!fs.existsSync(file)) fail(404, 'No such copy');
+      res.writeHead(200, { 'Content-Type': 'application/gzip', 'Content-Length': fs.statSync(file).size });
+      fs.createReadStream(file).pipe(res);
+      return undefined;
+    },
+    { raw: true }
+  );
+  router.delete('/api/backup-store/:source/:serverId/:name', ({ user, params }) => {
+    requireAdmin(user);
+    fs.rmSync(nb.storeFile(params.source, params.serverId, params.name), { force: true });
+    return { ok: true };
+  });
+
   /* ------------------------------------------------------ cloud copies -- */
 
   router.get('/api/servers/:id/backups/cloud', async ({ user, params }) => {

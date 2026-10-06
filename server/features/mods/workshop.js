@@ -9,7 +9,8 @@ const fs = require('fs');
 const fsp = require('fs/promises');
 const path = require('path');
 
-const { fail, logger, safeJoin, interpolate } = require('../../core/util');
+const { fail, logger, interpolate } = require('../../core/util');
+const { containedPath } = require('../files');
 const { patchKeyValue } = require('../../servers/config-files');
 const steam = require('./providers/workshop');
 const manifest = require('./manifest');
@@ -25,7 +26,7 @@ function strategyOf(template) {
 /* ------------------------------------------------- config list helpers -- */
 
 function configPath(server, spec) {
-  return safeJoin(server.dir, interpolate(spec.file, server.vars || {}));
+  return containedPath(server.dir, interpolate(spec.file, server.vars || {}));
 }
 
 function readText(file) {
@@ -176,7 +177,7 @@ function editSpaceEngineers(server, spec, change) {
 
 /** Don't Starve Together: ServerModSetup lines plus an enabled entry in modoverrides.lua. */
 function editDst(server, spec, { add = [], remove = [], disable = [] }) {
-  const setup = safeJoin(server.dir, interpolate(spec.file, server.vars || {}));
+  const setup = containedPath(server.dir, interpolate(spec.file, server.vars || {}));
   fs.mkdirSync(path.dirname(setup), { recursive: true });
   let text = readText(setup);
   for (const id of remove) text = text.replace(new RegExp(`^\\s*ServerModSetup\\(\\s*"${id}"\\s*\\)\\s*\\r?\\n?`, 'gm'), '');
@@ -184,7 +185,7 @@ function editDst(server, spec, { add = [], remove = [], disable = [] }) {
   fs.writeFileSync(setup, text);
 
   for (const pattern of spec.overrides || []) {
-    const file = safeJoin(server.dir, interpolate(pattern, server.vars || {}));
+    const file = containedPath(server.dir, interpolate(pattern, server.vars || {}));
     fs.mkdirSync(path.dirname(file), { recursive: true });
     let lua = readText(file).trim() || 'return {\n}';
     for (const id of [...remove, ...disable]) lua = lua.replace(new RegExp(`^\\s*\\["workshop-${id}"\\]\\s*=\\s*\\{[^\\n]*\\},?\\s*\\r?\\n`, 'gm'), '');
@@ -446,9 +447,9 @@ const STRATEGIES = {
         // Not in the description: download it and read its mod.info files.
         const stage = `${STAGE}/${item.id}`;
         await download(manager, server, ctx, item, stage);
-        const infos = await findFiles(safeJoin(server.dir, stage), (n) => n === 'mod.info');
+        const infos = await findFiles(containedPath(server.dir, stage), (n) => n === 'mod.info');
         modIds = [...new Set(infos.map((f) => readText(f).match(/^\s*id\s*=\s*(.+)$/m)?.[1]?.trim()).filter(Boolean))];
-        await fsp.rm(safeJoin(server.dir, stage), { recursive: true, force: true });
+        await fsp.rm(containedPath(server.dir, stage), { recursive: true, force: true });
       }
       if (!modIds.length) fail(400, `Could not find the Mod ID of "${item.title}". Add it to Mods= in ${spec.file} by hand.`);
       entries.push(entryFor(item, { strategy: 'zomboid', modIds }));
@@ -464,15 +465,15 @@ const STRATEGIES = {
     for (const item of items) {
       const stage = `${STAGE}/${item.id}`;
       await download(manager, server, ctx, item, stage);
-      const stageDir = safeJoin(server.dir, stage);
+      const stageDir = containedPath(server.dir, stage);
       const [gma] = await findFiles(stageDir, (n) => n.toLowerCase().endsWith('.gma'));
       if (!gma) {
         await fsp.rm(stageDir, { recursive: true, force: true });
         fail(400, `"${item.title}" uses the old Workshop format. Put it in a Workshop collection and set that collection on the server's settings page instead.`);
       }
       const file = `${item.id}.gma`;
-      await fsp.mkdir(safeJoin(server.dir, ctx.dir), { recursive: true });
-      await fsp.copyFile(gma, path.join(safeJoin(server.dir, ctx.dir), file));
+      await fsp.mkdir(containedPath(server.dir, ctx.dir), { recursive: true });
+      await fsp.copyFile(gma, path.join(containedPath(server.dir, ctx.dir), file));
       await fsp.rm(stageDir, { recursive: true, force: true });
       entries.push(entryFor(item, { strategy: 'gma', file }));
     }
@@ -489,9 +490,9 @@ const STRATEGIES = {
       const folder = `@${item.id}`;
       const rel = ctx.dir && ctx.dir !== '.' ? `${ctx.dir}/${folder}` : folder;
       await download(manager, server, ctx, item, rel);
-      const modDir = safeJoin(server.dir, rel);
+      const modDir = containedPath(server.dir, rel);
       if (spec.lowercase && process.platform !== 'win32') await lowercaseTree(modDir);
-      const keysDir = safeJoin(server.dir, spec.keys || 'keys');
+      const keysDir = containedPath(server.dir, spec.keys || 'keys');
       const keys = [];
       for (const key of await findFiles(modDir, (n) => n.toLowerCase().endsWith('.bikey'))) {
         await fsp.mkdir(keysDir, { recursive: true });
@@ -510,16 +511,16 @@ const STRATEGIES = {
     for (const item of items) {
       const stage = `${STAGE}/${item.id}`;
       await download(manager, server, ctx, item, stage);
-      const stageDir = safeJoin(server.dir, stage);
+      const stageDir = containedPath(server.dir, stage);
       const paks = await findFiles(stageDir, (n) => n.toLowerCase().endsWith('.pak'));
       if (!paks.length) {
         await fsp.rm(stageDir, { recursive: true, force: true });
         fail(400, `"${item.title}" has no .pak file, so it is not a server mod`);
       }
-      await fsp.mkdir(safeJoin(server.dir, ctx.dir), { recursive: true });
+      await fsp.mkdir(containedPath(server.dir, ctx.dir), { recursive: true });
       const names = [];
       for (const pak of paks) {
-        await fsp.copyFile(pak, path.join(safeJoin(server.dir, ctx.dir), path.basename(pak)));
+        await fsp.copyFile(pak, path.join(containedPath(server.dir, ctx.dir), path.basename(pak)));
         names.push(path.basename(pak));
       }
       await fsp.rm(stageDir, { recursive: true, force: true });
@@ -535,15 +536,15 @@ const STRATEGIES = {
     for (const item of items) {
       const stage = `${STAGE}/${item.id}`;
       await download(manager, server, ctx, item, stage);
-      const stageDir = safeJoin(server.dir, stage);
+      const stageDir = containedPath(server.dir, stage);
       const tmod = newest(await findFiles(stageDir, (n) => n.toLowerCase().endsWith('.tmod')));
       if (!tmod) {
         await fsp.rm(stageDir, { recursive: true, force: true });
         fail(400, `"${item.title}" has no .tmod file`);
       }
       const file = path.basename(tmod);
-      await fsp.mkdir(safeJoin(server.dir, ctx.dir), { recursive: true });
-      await fsp.copyFile(tmod, path.join(safeJoin(server.dir, ctx.dir), file));
+      await fsp.mkdir(containedPath(server.dir, ctx.dir), { recursive: true });
+      await fsp.copyFile(tmod, path.join(containedPath(server.dir, ctx.dir), file));
       await fsp.rm(stageDir, { recursive: true, force: true });
       editEnabled(server, spec, { add: [file.replace(/\.tmod$/i, '')] });
       entries.push(entryFor(item, { strategy: 'tmodloader', file }));
@@ -661,14 +662,14 @@ async function purge(server, template, entry) {
   const spec = strategyOf(template);
   const ctx = compat.modContext(server, template);
   if (entry.strategy === 'bohemia' && entry.folder) {
-    await fsp.rm(safeJoin(server.dir, entry.folder), { recursive: true, force: true });
+    await fsp.rm(containedPath(server.dir, entry.folder), { recursive: true, force: true });
     const stillUsed = new Set(manifest.load(server).filter((m) => m.key !== entry.key).flatMap((m) => m.keys || []));
     for (const key of entry.keys || []) {
-      if (!stillUsed.has(key)) await fsp.rm(safeJoin(server.dir, `${spec.keys || 'keys'}/${key}`), { force: true });
+      if (!stillUsed.has(key)) await fsp.rm(containedPath(server.dir, `${spec.keys || 'keys'}/${key}`), { force: true });
     }
   }
   if (entry.strategy === 'modlist') {
-    for (const pak of entry.paks || []) await fsp.rm(safeJoin(server.dir, `${ctx.dir}/${pak}`), { force: true });
+    for (const pak of entry.paks || []) await fsp.rm(containedPath(server.dir, `${ctx.dir}/${pak}`), { force: true });
   }
   if (entry.strategy === 'dst') editDst(server, spec, { remove: [entry.projectId] });
 }

@@ -79,7 +79,9 @@ async function sha512Of(file) {
   return hash.digest('hex');
 }
 
-const dirOf = (server, ctx) => safeJoin(server.dir, ctx.dir);
+const { containedPath } = require('../files');
+// Followed through links: a mods or plugins folder that is a link to somewhere else is refused.
+const dirOf = (server, ctx) => containedPath(server.dir, ctx.dir);
 
 /** Remove a file and its disabled twin. */
 async function removeFile(server, ctx, file) {
@@ -238,7 +240,7 @@ async function install(server, template, { provider: providerId, projectId, vers
     const staged = await mapLimit(steps, 3, async (step) => {
       const filename = safeFileName(step.version.file.filename, `${step.project.slug || step.project.id}.jar`);
       const url = provider.authorize ? provider.authorize(step.version.file.url, creds) : step.version.file.url;
-      const temp = path.join(server.dir, '.gamepanel', 'downloads', `${crypto.randomBytes(4).toString('hex')}-${filename}`);
+      const temp = containedPath(server.dir, `.gamepanel/downloads/${crypto.randomBytes(4).toString('hex')}-${filename}`);
       const result = await downloadTo(url, temp);
       if (step.version.file.sha1 && result.sha1 !== step.version.file.sha1) {
         await fsp.rm(temp, { force: true });
@@ -246,7 +248,7 @@ async function install(server, template, { provider: providerId, projectId, vers
       }
       return { step, filename, temp, size: result.size };
     }).catch(async (err) => {
-      await fsp.rm(path.join(server.dir, '.gamepanel', 'downloads'), { recursive: true, force: true });
+      await fsp.rm(containedPath(server.dir, '.gamepanel/downloads'), { recursive: true, force: true });
       throw err;
     });
 
@@ -285,7 +287,7 @@ async function install(server, template, { provider: providerId, projectId, vers
     // requiredBy was recorded with bare project ids during planning; normalise to keys.
     for (const m of mods) m.requiredBy = (m.requiredBy || []).map((r) => (r.includes(':') ? r : manifest.keyOf(m.provider, r)));
     manifest.save(server, mods);
-    await fsp.rm(path.join(server.dir, '.gamepanel', 'downloads'), { recursive: true, force: true });
+    await fsp.rm(containedPath(server.dir, '.gamepanel/downloads'), { recursive: true, force: true });
     logger.info(`Installed ${installed.map((i) => i.file).join(', ')} into ${server.name}/${ctx.dir}`);
     return { installed, notes, dir: ctx.dir };
   });

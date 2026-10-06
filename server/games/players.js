@@ -58,7 +58,8 @@ function broadcastCommand(template) {
  * replacer keeps $' and $& in the text from being expanded.
  */
 function fillBroadcast(command, text) {
-  const clean = String(text).replace(/["\r\n;]/g, ' ').replace(/\s+/g, ' ').trim();
+  // A leading "/" would make some consoles (Factorio) run the message as a command.
+  const clean = String(text).replace(/["\r\n;]/g, ' ').replace(/\s+/g, ' ').trim().replace(/^[/!]+\s*/, '');
   return command.replace('{msg}', () => clean);
 }
 

@@ -113,6 +113,7 @@ function contents(serverId, name) {
     const entries = [];
     let rest = '';
     let truncated = false;
+    let unparsed = 0;
     proc.stdout.on('data', (chunk) => {
       const lines = (rest + chunk).split(/\r?\n/);
       rest = lines.pop();
@@ -123,15 +124,20 @@ function contents(serverId, name) {
           return;
         }
         // "-rw-r--r-- user/group  1234 2026-10-05 12:00 ./path/to/file" (GNU) or "... 1234 Oct  5 12:00 ./path" (bsdtar).
-        const m = line.match(/^([dl-])\S*\s+(?:\S+\s+)*?(\d+)\s+(?:[A-Za-z]{3}\s+\d{1,2}|\d{4}-\d{2}-\d{2})\s+(?:\d{1,2}:\d{2}(?::\d{2})?|\d{4})\s+(.+)$/);
-        if (!m) continue;
-        const path_ = m[3].replace(/ -> .*$/, '').replace(/^\.\//, '').replace(/\/$/, '');
+        const m = line.match(/^([dl-])\S*\s+(?:\S+\s+)*?(\d+)\s+([A-Za-z]{3}\s+\d{1,2}|\d{4}-\d{2}-\d{2})\s+(\d{1,2}:\d{2}(?::\d{2})?|\d{4})\s+(.+)$/);
+        if (!m) {
+          if (line.trim()) unparsed++;
+          continue;
+        }
+        const path_ = m[5].replace(/ -> .*$/, '').replace(/^\.\//, '').replace(/\/$/, '');
         if (!path_ || path_ === '.') continue;
-        entries.push({ path: path_, dir: m[1] === 'd', size: Number(m[2]) });
+        // GNU tar prints local time to the minute; bsdtar's "Oct  5 12:00" is too vague to compare.
+        const mtime = /^\d{4}-/.test(m[3]) ? new Date(`${m[3]}T${m[4].length === 4 ? `0${m[4]}` : m[4]}`).getTime() || null : null;
+        entries.push({ path: path_, dir: m[1] === 'd', size: Number(m[2]), mtime });
       }
     });
     proc.on('error', (err) => reject(new Error(`tar could not be run: ${err.message}`)));
-    proc.on('close', () => ok({ entries, truncated }));
+    proc.on('close', () => ok({ entries, truncated, unparsed }));
   });
 }
 
@@ -163,6 +169,38 @@ function remove(serverId, name) {
   if (vault.isSnapshot(name)) return vault.remove(backupDirFor(serverId), name);
   fs.unlinkSync(resolve(serverId, name));
   return { ok: true };
+}
+
+/** One file out of a backup, as a Buffer (null when the backup does not have it). Up to 64 MB. */
+async function readFile(server, name, rel) {
+  const clean = String(rel).replace(/\\/g, '/').replace(/^\.?\/+/, '');
+  if (!clean || clean.split('/').some((p) => p === '..' || p === '')) fail(400, 'Invalid path');
+  if (vault.isSnapshot(name)) {
+    const scratch = path.join(config.cacheDir, `read-${server.id}-${uid(6)}`);
+    fs.mkdirSync(scratch, { recursive: true });
+    try {
+      await vault.restore(backupDirFor(server.id), name, scratch, [clean]);
+      return fs.readFileSync(path.join(scratch, clean));
+    } catch (err) {
+      if (err.status === 404 || err.code === 404 || err.code === 'ENOENT') return null;
+      throw err;
+    } finally {
+      fs.rmSync(scratch, { recursive: true, force: true });
+    }
+  }
+  const file = resolve(server.id, name);
+  return new Promise((ok, reject) => {
+    const proc = spawn(TAR, ['-xzOf', file, `./${clean}`], { stdio: ['ignore', 'pipe', 'ignore'], windowsHide: true });
+    const chunks = [];
+    let size = 0;
+    proc.stdout.on('data', (c) => {
+      size += c.length;
+      if (size > 64 * 1024 * 1024) proc.kill();
+      else chunks.push(c);
+    });
+    proc.on('error', reject);
+    proc.on('close', (code) => ok(code === 0 && chunks.length ? Buffer.concat(chunks) : null));
+  });
 }
 
 /** An incremental backup as a plain .tar.gz download: put back into a scratch folder, then packed. */
@@ -297,4 +335,4 @@ async function verify(server, name) {
   return result;
 }
 
-module.exports = { list, create, restore, restorePaths, contents, remove, resolve, prune, dirFor: backupDirFor, verify, checks, downloadSnapshot, vault };
+module.exports = { EXCLUDES, list, create, restore, restorePaths, contents, remove, resolve, prune, dirFor: backupDirFor, verify, checks, downloadSnapshot, readFile, vault };

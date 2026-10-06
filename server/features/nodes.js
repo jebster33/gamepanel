@@ -104,7 +104,12 @@ class Nodes {
   update(id, body) {
     const node = this.require(id);
     if (body.name !== undefined) node.name = String(body.name).trim().slice(0, 40) || node.name;
-    if (body.url !== undefined) node.url = this.cleanUrl(body.url);
+    if (body.url !== undefined) {
+      const url = this.cleanUrl(body.url);
+      // The stored key is only ever sent to the address it was given for.
+      if (url !== node.url && !body.key) fail(400, 'Changing the address needs the node\'s API key again');
+      node.url = url;
+    }
     if (body.key) node.key = String(body.key).trim();
     this.store.save();
     return this.publicNode(node);

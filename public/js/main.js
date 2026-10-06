@@ -77,7 +77,7 @@ $('#auth-form').addEventListener('submit', async (event) => {
   try {
     if (mode === 'setup') {
       if (password !== $('#auth-confirm').value) throw new Error('Passwords do not match');
-      await api('/api/setup', { method: 'POST', body: { username, password } });
+      await api('/api/setup', { method: 'POST', body: { username, password, setupCode: $('#auth-code').value } });
     }
     const data = await api('/api/auth/login', { method: 'POST', body: { username, password } });
     $('#auth-password').value = '';

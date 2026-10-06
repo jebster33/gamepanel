@@ -337,6 +337,7 @@ export async function openProfile(serverId, name, ctx = current) {
         ${kpi('First seen', new Date(p.first).toLocaleDateString())}
       </div>
       ${p.stats ? statsHtml(p.stats) : ''}
+      ${/^minecraft-(?!bedrock|velocity)/.test(ctx.templateId || '') && can('files') ? '<h4 style="margin:18px 0 6px">Inventory</h4><div id="pl-inv"></div>' : ''}
       <h4 style="margin:18px 0 6px">Recent sessions</h4>
       <div class="pl-sessions">${
         p.recent.length
@@ -377,6 +378,8 @@ export async function openProfile(serverId, name, ctx = current) {
           ]
         : [],
   });
+  const invBox = document.querySelector('.modal-backdrop:last-child #pl-inv');
+  if (invBox) import('./inventory.js').then((m) => m.renderInventory(invBox, serverId, p.name));
   document.querySelector('#pl-note-save')?.addEventListener('click', async (event) => {
     event.target.disabled = true;
     try {
@@ -436,7 +439,7 @@ const FILTERS = [
   ['all', 'All', null],
   ['sessions', 'Joins & leaves', 'join,leave'],
   ['chat', 'Chat', 'chat'],
-  ['admin', 'Moderation', 'kick,ban,unban,automod,whitelist,unwhitelist,op,deop,whitelist-on,whitelist-off'],
+  ['admin', 'Moderation', 'kick,ban,unban,automod,inventory,whitelist,unwhitelist,op,deop,whitelist-on,whitelist-off'],
   ['server', 'Server', 'start,stop,crash,version,idle'],
 ];
 
@@ -446,6 +449,7 @@ const LOG_TEXT = {
   chat: (e) => `<b>${esc(e.name)}</b> <span class="act-chat">${esc(e.text)}</span>`,
   kick: (e) => `<b>${esc(e.name)}</b> was kicked${e.by ? ` by ${esc(e.by)}` : ''}`,
   ban: (e) => `<b>${esc(e.name)}</b> was banned${e.by ? ` by ${esc(e.by)}` : ''}${e.text ? ` <span class="faint">(${esc(e.text)})</span>` : ''}`,
+  inventory: (e) => `<b>${esc(e.name)}</b>'s inventory put back from <span class="mono">${esc(e.text || '')}</span>${e.by ? ` by ${esc(e.by)}` : ''}`,
   automod: (e) => `<b>${esc(e.name)}</b> ${esc(e.text)}${e.said ? ` <span class="faint">for "${esc(e.said)}"</span>` : ''}`,
   unban: (e) => `<b>${esc(e.name)}</b> was unbanned${e.by ? ` by ${esc(e.by)}` : ''}`,
   whitelist: (e) => `<b>${esc(e.name)}</b> added to the whitelist${e.by ? ` by ${esc(e.by)}` : ''}`,
@@ -454,13 +458,15 @@ const LOG_TEXT = {
   deop: (e) => `<b>${esc(e.name)}</b> is no longer an operator${e.by ? ` (${esc(e.by)})` : ''}`,
   'whitelist-on': (e) => `Whitelist turned on${e.by ? ` by ${esc(e.by)}` : ''}`,
   'whitelist-off': (e) => `Whitelist turned off${e.by ? ` by ${esc(e.by)}` : ''}`,
+  datapack: (e) => `${esc(e.text)}${e.by ? ` by ${esc(e.by)}` : ''}`,
   version: (e) => `Switched to <b>${esc(e.text)}</b>${e.by ? ` by ${esc(e.by)}` : ''}`,
   idle: () => 'Stopped because nobody was on',
+  wake: (e) => `<b>${esc(e.name)}</b> woke the server up by joining`,
   start: () => 'Server started',
   stop: () => 'Server stopped',
   crash: () => '<span class="bad-text">Server crashed</span>',
 };
-const LOG_ICON = { automod: '🛡', join: '→', leave: '←', chat: '💬', kick: '⤫', ban: '⛔', unban: '✓', whitelist: '＋', unwhitelist: '−', op: '★', deop: '☆', start: '▶', stop: '■', crash: '⚠', version: '⇅' };
+const LOG_ICON = { wake: '☀', inventory: '🎒', datapack: '📦', automod: '🛡', join: '→', leave: '←', chat: '💬', kick: '⤫', ban: '⛔', unban: '✓', whitelist: '＋', unwhitelist: '−', op: '★', deop: '☆', start: '▶', stop: '■', crash: '⚠', version: '⇅' };
 
 function logRow(e) {
   const text = (LOG_TEXT[e.type] || ((x) => esc(x.type)))(e);
