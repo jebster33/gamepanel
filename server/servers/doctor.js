@@ -38,6 +38,26 @@ module.exports = {
     const report = this.latestCrashReport(server);
     if (report) lines.push(...report.split('\n'));
     const findings = diagnose(lines, { memory: server.memory, ...ctx });
+    // Modded Minecraft: look inside the jars for what the log may not say plainly.
+    if (ctx.code !== undefined && this.template(server)?.mods && findings.length < 3) {
+      try {
+        const { issues = [] } = require('../features/mods/conflicts').check(server, this.template(server));
+        const errors = issues.filter((i) => i.severity === 'error');
+        if (errors.length) {
+          findings.push({
+            id: 'mod-check',
+            title: `The mod check found ${errors.length} problem${errors.length === 1 ? '' : 's'}`,
+            detail: errors
+              .slice(0, 5)
+              .map((i) => i.message)
+              .join('\n'),
+            fix: { action: 'mods', label: 'Open the Mods tab' },
+          });
+        }
+      } catch (err) {
+        logger.warn(`Mod check failed for ${server.name}: ${err.message}`);
+      }
+    }
     rt.diagnosis = findings.length ? { at: Date.now(), findings } : null;
     return rt.diagnosis;
   },

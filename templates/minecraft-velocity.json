@@ -1,0 +1,101 @@
+{
+  "id": "minecraft-velocity",
+  "name": "Minecraft: Velocity proxy",
+  "category": "Minecraft",
+  "icon": "🧭",
+  "logo": "/img/games/minecraft.svg",
+  "description": "The front door of a Minecraft network: players join here and move between your Paper and Purpur servers (lobby, survival, minigames) without disconnecting. Link servers to it on the Networks page.",
+  "defaultMemory": 1024,
+  "variables": [
+    {
+      "name": "VELOCITY_VERSION",
+      "label": "Velocity version",
+      "default": "latest",
+      "description": "Pick a version, or leave it on the newest.",
+      "source": "velocity-version"
+    },
+    {
+      "name": "MOTD",
+      "label": "Server list message",
+      "default": "<#c6f432>A GamePanel network"
+    },
+    {
+      "name": "MAX_PLAYERS",
+      "label": "Max players shown",
+      "type": "number",
+      "default": 100
+    },
+    {
+      "name": "JAVA_ARGS",
+      "label": "Extra JVM flags",
+      "default": "-XX:+UseG1GC -XX:G1HeapRegionSize=4M -XX:+UnlockExperimentalVMOptions -XX:+ParallelRefProcEnabled -XX:+AlwaysPreTouch -XX:MaxInlineLevel=15"
+    }
+  ],
+  "ports": [
+    {
+      "name": "game",
+      "default": 25565,
+      "protocol": "tcp"
+    }
+  ],
+  "install": [
+    {
+      "type": "java",
+      "version": "{{JAVA_VERSION}}",
+      "label": "Install Java"
+    },
+    {
+      "type": "download",
+      "label": "Download Velocity",
+      "url": "{{DOWNLOAD_URL}}",
+      "dest": "velocity.jar"
+    }
+  ],
+  "configFiles": [
+    {
+      "path": "velocity.toml",
+      "mode": "create",
+      "content": "# Written by GamePanel. The [servers] section is managed on the Networks page.\nconfig-version = \"2.7\"\nbind = \"0.0.0.0:{{PORT}}\"\nmotd = \"{{MOTD}}\"\nshow-max-players = {{MAX_PLAYERS}}\nonline-mode = true\nforce-key-authentication = true\nprevent-client-proxy-connections = false\nplayer-info-forwarding-mode = \"modern\"\nforwarding-secret-file = \"forwarding.secret\"\nannounce-forge = false\nkick-existing-players = false\nping-passthrough = \"DISABLED\"\nenable-player-address-logging = true\n\n[servers]\ntry = []\n\n[forced-hosts]\n\n[advanced]\ncompression-threshold = 256\ncompression-level = -1\nlogin-ratelimit = 3000\nconnection-timeout = 5000\nread-timeout = 30000\nhaproxy-protocol = false\ntcp-fast-open = false\nbungee-plugin-message-channel = true\nshow-ping-requests = false\nfailover-on-unexpected-server-disconnect = true\nannounce-proxy-commands = true\nlog-command-executions = false\nlog-player-connections = true\naccepts-transfers = false\n\n[query]\nenabled = false\nport = {{PORT}}\nmap = \"Velocity\"\nshow-plugins = false\n"
+    }
+  ],
+  "patchProperties": [
+    {
+      "path": "velocity.toml",
+      "createIfMissing": false,
+      "set": {
+        "bind": "\"0.0.0.0:{{PORT}}\""
+      }
+    }
+  ],
+  "startCommand": "java -Xms{{MEMORY}}M -Xmx{{MEMORY}}M {{JAVA_ARGS}} -jar velocity.jar",
+  "stopCommand": "shutdown",
+  "stopTimeout": 30,
+  "query": {
+    "type": "minecraft",
+    "port": "game"
+  },
+  "logPatterns": {
+    "ready": "Done \\([0-9.]+s\\)!",
+    "join": "\\[connected player\\] ([A-Za-z0-9_]{3,16}) \\(/[^)]*\\) has connected",
+    "leave": "\\[connected player\\] ([A-Za-z0-9_]{3,16}) \\(/[^)]*\\) has disconnected"
+  },
+  "image": "eclipse-temurin:{{JAVA_VERSION}}-jre",
+  "mods": {
+    "providers": [
+      "modrinth",
+      "hangar"
+    ],
+    "dir": "plugins",
+    "loader": "velocity",
+    "projectType": "plugin"
+  },
+  "resolve": "velocity",
+  "packages": [
+    "curl",
+    "ca-certificates"
+  ],
+  "platforms": [
+    "linux",
+    "windows"
+  ]
+}

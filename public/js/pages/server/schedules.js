@@ -30,8 +30,15 @@ const PRESETS = [
   ['custom', 'Custom (cron)'],
 ];
 
-const actionLabel = (id) => ACTIONS.find(([a]) => a === id)?.[1] || id;
-const whenLabel = (cron) => PRESETS.find(([c]) => c === cron)?.[1] || `cron ${cron}`;
+const actionsFor = (server) => (server.canWipe ? [...ACTIONS, ['wipe', 'Wipe the map']] : ACTIONS);
+const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+const actionLabel = (id) => (id === 'wipe' ? 'Wipe the map' : ACTIONS.find(([a]) => a === id)?.[1] || id);
+const whenLabel = (cron, firstOfMonth) => {
+  const [min, hour, , , dow] = cron.split(/\s+/);
+  if (firstOfMonth && /^\d+$/.test(min) && /^\d+$/.test(hour) && /^[0-6]$/.test(dow)) return `First ${WEEKDAYS[dow]} of the month at ${hour.padStart(2, '0')}:${min.padStart(2, '0')}`;
+  return PRESETS.find(([c]) => c === cron)?.[1] || `cron ${cron}`;
+};
 
 export async function renderSchedulesTab(host, server) {
   host.innerHTML = '<div class="card"><span class="spinner"></span> Loading schedules…</div>';
@@ -62,6 +69,20 @@ export async function renderSchedulesTab(host, server) {
       }
       <div class="hint">Times use the clock of the machine running the panel.</div>
     </div>
+    ${
+      server.canWipe
+        ? `<div class="card mt-16">
+      <div class="card-head">
+        <h4>Wipe</h4>
+        <div class="spacer"></div>
+        <button class="btn btn-sm btn-danger" id="wipe-now">${icon('trash', 12)} Wipe now…</button>
+      </div>
+      <p class="faint" style="margin:0">Starts the map over: deletes the save, keeps configs, plugins and settings.
+        ${server.lastWipe ? `Last wiped ${fmtTime(server.lastWipe.at)}${server.lastWipe.blueprints ? ' (blueprints too)' : ''}.` : ''}
+        To wipe on a cycle, add a task with "Wipe the map" and "First weekday of the month".</p>
+    </div>`
+        : ''
+    }
     ${
       server.playerCommands?.length || (server.templateId || '').startsWith('minecraft')
         ? `<div class="card mt-16">
@@ -112,6 +133,7 @@ export async function renderSchedulesTab(host, server) {
   renderEventsCard($('#events-card'), server);
 
   const refresh = () => renderSchedulesTab(host, server);
+  $('#wipe-now')?.addEventListener('click', () => openWipeModal(server, refresh));
   $('#sch-add').addEventListener('click', () => openScheduleModal(server, null, refresh));
 
   host.querySelectorAll('[data-quick]').forEach((el) =>
@@ -169,7 +191,7 @@ function scheduleRow(s) {
       <label class="switch" title="${s.enabled ? 'On' : 'Off'}"><input type="checkbox" data-enable ${s.enabled ? 'checked' : ''} /><i></i></label>
       <div class="grow">
         <div class="title">${esc(s.name)}</div>
-        <div class="sub">${esc(whenLabel(s.cron))} · ${esc(actionLabel(s.action))}${s.command ? ` <span class="mono">${esc(s.command)}</span>` : ''}${s.warnMinutes ? ` · ${s.warnMinutes} min warning` : ''}${s.onlyWhenEmpty ? ' · only when empty' : ''}</div>
+        <div class="sub">${esc(whenLabel(s.cron, s.firstOfMonth))} · ${esc(actionLabel(s.action))}${s.wipe?.blueprints ? ' (blueprints too)' : ''}${s.command ? ` <span class="mono">${esc(s.command)}</span>` : ''}${s.warnMinutes ? ` · ${s.warnMinutes} min warning` : ''}${s.onlyWhenEmpty ? ' · only when empty' : ''}</div>
       </div>
       <div class="hide-sm" style="text-align:right;font-size:12px">
         <div class="muted">${s.nextRun ? `Next ${fmtTime(s.nextRun)}` : 'Paused'}</div>
@@ -182,13 +204,17 @@ function scheduleRow(s) {
 }
 
 function openScheduleModal(server, schedule, onSaved) {
-  const preset = schedule ? (PRESETS.some(([c]) => c === schedule.cron) ? schedule.cron : 'custom') : PRESETS[0][0];
+  const actions = actionsFor(server);
+  const monthly = schedule?.firstOfMonth && /^\d+ \d+ \* \* [0-6]$/.test(schedule.cron);
+  const preset = schedule ? (monthly ? 'monthly' : PRESETS.some(([c]) => c === schedule.cron) ? schedule.cron : 'custom') : PRESETS[0][0];
+  const [mMin, mHour, , , mDow] = monthly ? schedule.cron.split(' ') : ['0', '19', '', '', '4'];
+  const wipeOpts = schedule?.wipe || { blueprints: false, newSeed: true, updateFirst: true };
   const modal = openModal({
     title: schedule ? 'Edit task' : 'New scheduled task',
     width: 500,
     body: `
       <label class="field"><span>What should happen</span>
-        <select id="sch-action">${ACTIONS.map(
+        <select id="sch-action">${actions.map(
           ([id, label]) => `<option value="${id}" ${schedule?.action === id ? 'selected' : ''}>${label}</option>`
         ).join('')}</select>
       </label>
@@ -196,14 +222,26 @@ function openScheduleModal(server, schedule, onSaved) {
         <input id="sch-command" class="mono" value="${esc(schedule?.command || '')}" placeholder="say Restarting in 5 minutes" />
       </label>
       <label class="field" id="sch-warn-wrap"><span>Warn players first</span>
-        <select id="sch-warn">${[0, 1, 5, 10, 15]
+        <select id="sch-warn">${[0, 1, 5, 10, 15, 30, 60]
           .map((n) => `<option value="${n}" ${Number(schedule?.warnMinutes || 0) === n ? 'selected' : ''}>${n ? `${n} minute countdown in chat` : 'No warning'}</option>`)
           .join('')}</select>
         <div class="hint">Posts "Server restarting in 5 minutes", then 1 minute, 30 and 10 seconds. The restart happens when the countdown ends.</div>
       </label>
+      <div id="sch-wipe-wrap">
+        <div class="checkbox-row"><input type="checkbox" id="sch-wipe-bp" ${wipeOpts.blueprints ? 'checked' : ''} /><label for="sch-wipe-bp">Wipe blueprints too</label></div>
+        <div class="checkbox-row"><input type="checkbox" id="sch-wipe-seed" ${wipeOpts.newSeed ? 'checked' : ''} /><label for="sch-wipe-seed">Pick a new random map seed</label></div>
+        <div class="checkbox-row"><input type="checkbox" id="sch-wipe-update" ${wipeOpts.updateFirst ? 'checked' : ''} /><label for="sch-wipe-update">Update the game first</label></div>
+      </div>
       <label class="field"><span>When</span>
-        <select id="sch-preset">${PRESETS.map(([c, label]) => `<option value="${c}" ${preset === c ? 'selected' : ''}>${label}</option>`).join('')}</select>
+        <select id="sch-preset">${[...PRESETS.slice(0, -1), ['monthly', 'First weekday of the month…'], PRESETS.at(-1)]
+          .map(([c, label]) => `<option value="${c}" ${preset === c ? 'selected' : ''}>${label}</option>`)
+          .join('')}</select>
       </label>
+      <div class="row" id="sch-monthly-wrap" style="gap:8px;margin-bottom:12px">
+        <select id="sch-m-dow" style="width:auto">${WEEKDAYS.map((d, i) => `<option value="${i}" ${String(i) === mDow ? 'selected' : ''}>First ${d}</option>`).join('')}</select>
+        <span class="faint">at</span>
+        <input id="sch-m-time" type="time" value="${mHour.padStart(2, '0')}:${mMin.padStart(2, '0')}" style="width:auto" />
+      </div>
       <label class="field" id="sch-cron-wrap"><span>Cron expression</span>
         <input id="sch-cron" class="mono" value="${esc(schedule?.cron || '0 5 * * *')}" placeholder="minute hour day month weekday" />
         <div class="hint">Five fields: minute, hour, day of month, month, weekday. <span class="mono">30 3 * * 6</span> is every Saturday at 03:30.</div>
@@ -221,13 +259,17 @@ function openScheduleModal(server, schedule, onSaved) {
         label: schedule ? 'Save' : 'Add task',
         primary: true,
         onClick: async (btn) => {
-          const cron = $('#sch-preset').value === 'custom' ? $('#sch-cron').value.trim() : $('#sch-preset').value;
+          const presetValue = $('#sch-preset').value;
+          const [hh, mm] = ($('#sch-m-time').value || '19:00').split(':').map(Number);
+          const cron = presetValue === 'custom' ? $('#sch-cron').value.trim() : presetValue === 'monthly' ? `${mm} ${hh} * * ${$('#sch-m-dow').value}` : presetValue;
           const action = $('#sch-action').value;
           const body = {
             action,
             cron,
             command: $('#sch-command').value,
-            name: $('#sch-name').value.trim() || ACTIONS.find(([a]) => a === action)[1],
+            name: $('#sch-name').value.trim() || actions.find(([a]) => a === action)[1],
+            firstOfMonth: presetValue === 'monthly',
+            wipe: { blueprints: $('#sch-wipe-bp').checked, newSeed: $('#sch-wipe-seed').checked, updateFirst: $('#sch-wipe-update').checked },
             onlyIfRunning: $('#sch-only-running').checked,
             onlyWhenEmpty: $('#sch-only-empty').checked,
             warnMinutes: Number($('#sch-warn').value),
@@ -250,11 +292,65 @@ function openScheduleModal(server, schedule, onSaved) {
 
   const sync = () => {
     $('#sch-command-wrap').classList.toggle('hidden', $('#sch-action').value !== 'command');
-    $('#sch-warn-wrap').classList.toggle('hidden', !['restart', 'stop'].includes($('#sch-action').value));
+    $('#sch-warn-wrap').classList.toggle('hidden', !['restart', 'stop', 'wipe'].includes($('#sch-action').value));
+    $('#sch-wipe-wrap').classList.toggle('hidden', $('#sch-action').value !== 'wipe');
+    $('#sch-monthly-wrap').classList.toggle('hidden', $('#sch-preset').value !== 'monthly');
     $('#sch-empty-wrap').classList.toggle('hidden', $('#sch-action').value === 'start');
     $('#sch-cron-wrap').classList.toggle('hidden', $('#sch-preset').value !== 'custom');
   };
   $('#sch-action').addEventListener('change', sync);
   $('#sch-preset').addEventListener('change', sync);
   sync();
+}
+
+async function openWipeModal(server, onDone) {
+  const preview = async (blueprints) => {
+    try {
+      const { files } = await api(`/api/servers/${server.id}/wipe?blueprints=${blueprints ? 1 : 0}`);
+      return files.length
+        ? `${files.length} file${files.length === 1 ? '' : 's'} will be deleted: <span class="mono">${files.slice(0, 6).map(esc).join(', ')}${files.length > 6 ? ', …' : ''}</span>`
+        : 'No save files yet; there is nothing to delete.';
+    } catch (err) {
+      return esc(err.message);
+    }
+  };
+  const modal = openModal({
+    title: `Wipe ${server.name}`,
+    width: 480,
+    body: `
+      <p class="faint" style="margin-top:0">The server stops, the map is deleted and it starts again on a fresh one. Make a backup first if you might want this map back.</p>
+      <div class="checkbox-row"><input type="checkbox" id="wn-bp" /><label for="wn-bp">Wipe blueprints too</label></div>
+      <div class="checkbox-row"><input type="checkbox" id="wn-seed" checked /><label for="wn-seed">Pick a new random map seed</label></div>
+      <div class="checkbox-row"><input type="checkbox" id="wn-update" /><label for="wn-update">Update the game first</label></div>
+      <div class="hint" id="wn-preview"><span class="spinner"></span></div>`,
+    actions: [
+      { label: 'Cancel', close: true },
+      {
+        label: 'Wipe',
+        danger: true,
+        onClick: async (btn) => {
+          btn.disabled = true;
+          btn.textContent = 'Wiping…';
+          try {
+            const r = await api(`/api/servers/${server.id}/wipe`, {
+              method: 'POST',
+              body: { blueprints: $('#wn-bp').checked, newSeed: $('#wn-seed').checked, updateFirst: $('#wn-update').checked },
+            });
+            modal.close();
+            toast(`Wiped: ${r.deleted} file${r.deleted === 1 ? '' : 's'} deleted${r.seed ? `, new seed ${r.seed}` : ''}${r.startError ? `. It did not start again: ${r.startError}` : ''}`, r.startError ? 'warn' : 'info');
+            onDone();
+          } catch (err) {
+            toast(err.message, 'error');
+            btn.disabled = false;
+            btn.textContent = 'Wipe';
+          }
+        },
+      },
+    ],
+  });
+  const show = async () => {
+    $('#wn-preview').innerHTML = await preview($('#wn-bp').checked);
+  };
+  $('#wn-bp').addEventListener('change', show);
+  show();
 }

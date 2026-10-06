@@ -19,8 +19,8 @@ const COMMANDS = {
   unturned: { kick: 'kick {name}', ban: 'ban {name}' },
   'seven-days-to-die': { kick: 'kick "{name}"' },
   squad: { kick: 'AdminKick "{name}"' },
-  factorio: { kick: '/kick {name}', ban: '/ban {name}' },
-  'project-zomboid': { kick: 'kickuser "{name}"', ban: 'banuser "{name}"' },
+  factorio: { kick: '/kick {name}', ban: '/ban {name}', unban: '/unban {name}' },
+  'project-zomboid': { kick: 'kickuser "{name}"', ban: 'banuser "{name}"', unban: 'unbanuser "{name}"' },
 };
 
 // How to post a message in game chat, for restart countdowns. {msg} is

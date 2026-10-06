@@ -69,7 +69,7 @@ module.exports = (router, { store, auth, manager, hostMetrics, notifier, bridge 
 
   router.get('/api/system/update', async ({ user }) => {
     requireAdmin(user);
-    return updater.checkForUpdate();
+    return updater.checkForUpdate({ channel: store.state.settings.updateChannel });
   });
 
   router.post(
@@ -77,7 +77,7 @@ module.exports = (router, { store, auth, manager, hostMetrics, notifier, bridge 
     async ({ user, res }) => {
       requireAdmin(user);
       const lines = [];
-      const result = await updater.applyUpdate({ onLog: (line) => lines.push(line) });
+      const result = await updater.applyUpdate({ onLog: (line) => lines.push(line), channel: store.state.settings.updateChannel });
       store.addEvent('panel.updated', `Panel updated ${result.from} → ${result.to} by ${user.username}`);
       // Reply first, then restart. Containerised servers keep running.
       json(res, 200, { ok: true, ...result, log: lines, restarting: true });
@@ -102,7 +102,7 @@ module.exports = (router, { store, auth, manager, hostMetrics, notifier, bridge 
   router.get('/api/settings', ({ user }) => {
     requireAdmin(user);
     // Sign-in provider secrets have their own endpoint that never sends them back.
-    return { settings: { ...store.state.settings, nodes: undefined, oauth: undefined }, notificationEvents: EVENT_CHOICES };
+    return { settings: { ...store.state.settings, nodes: undefined, oauth: undefined, backupPassphrase: undefined, backupPassphraseSet: Boolean(store.state.settings.backupPassphrase) }, notificationEvents: EVENT_CHOICES };
   });
 
   router.patch('/api/settings', ({ user, body }) => {
@@ -117,6 +117,8 @@ module.exports = (router, { store, auth, manager, hostMetrics, notifier, bridge 
     if (body.maxCrashRestarts !== undefined) s.maxCrashRestarts = clamp(body.maxCrashRestarts, 0, 100);
     if (body.containerize !== undefined) s.containerize = Boolean(body.containerize);
     if (body.geoLookup !== undefined) s.geoLookup = Boolean(body.geoLookup);
+    if (body.updateChannel !== undefined) s.updateChannel = updater.CHANNELS.includes(body.updateChannel) ? body.updateChannel : undefined;
+    if (body.verifyBackups !== undefined) s.verifyBackups = Boolean(body.verifyBackups);
     if (body.scheduledEvents !== undefined) s.scheduledEvents = Boolean(body.scheduledEvents);
     if (body.limits) {
       const n = (v, max) => Math.max(0, Math.min(max, Number(v) || 0));
@@ -153,7 +155,53 @@ module.exports = (router, { store, auth, manager, hostMetrics, notifier, bridge 
       }
     }
     store.save();
-    return { settings: { ...s, oauth: undefined } };
+    return { settings: { ...s, oauth: undefined, backupPassphrase: undefined, backupPassphraseSet: Boolean(s.backupPassphrase) } };
+  });
+
+  /* -------------------------------------------------------------- HTTPS -- */
+
+  const httpsFeature = require('../../features/https');
+  router.get('/api/settings/https', ({ user }) => {
+    requireAdmin(user);
+    return httpsFeature.status(store);
+  });
+  router.put('/api/settings/https', async ({ user, body }) => {
+    requireAdmin(user);
+    httpsFeature.update(store, body || {});
+    // Turning it off (or on with a certificate already there) applies right away.
+    await httpsFeature.serve(store).catch((err) => fail(400, err.message));
+    store.addEvent('panel.settings', `${user.username} changed the HTTPS settings`);
+    return httpsFeature.status(store);
+  });
+  /** Get or renew the certificate now. Runs in the background; the status shows how it goes. */
+  router.post('/api/settings/https/issue', ({ user }) => {
+    requireAdmin(user);
+    httpsFeature.issue(store).catch(() => {});
+    return httpsFeature.status(store);
+  });
+
+  /* --------------------------------------------------------------- SFTP -- */
+
+  const sftp = require('../../features/sftp');
+  /** For the Files tab: whether SFTP is on, and where. */
+  router.get('/api/sftp', () => {
+    const st = sftp.status(store);
+    return { enabled: Boolean(st.listening), port: st.listening, fingerprint: st.fingerprint };
+  });
+  router.get('/api/settings/sftp', ({ user }) => {
+    requireAdmin(user);
+    return sftp.status(store);
+  });
+  router.put('/api/settings/sftp', async ({ user, body }) => {
+    requireAdmin(user);
+    try {
+      sftp.update(store, body || {});
+      await sftp.start({ store, auth, manager });
+    } catch (err) {
+      fail(400, err.message);
+    }
+    store.addEvent('panel.settings', `${user.username} ${store.state.settings.sftp.enabled ? 'turned on' : 'turned off'} SFTP`);
+    return sftp.status(store);
   });
 
   router.post('/api/settings/notifications/test', async ({ user, body }) => {

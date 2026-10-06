@@ -3,11 +3,12 @@ import { setCrumbs } from '../core/router.js';
 import { state } from '../core/state.js';
 import { $, esc, fmtTime, toast } from '../core/util.js';
 import { copyToClipboard } from '../ui/clipboard.js';
-import { openModal } from '../ui/modal.js';
+import { confirmModal, openModal, promptModal } from '../ui/modal.js';
 import { otpMarkup, wireOtp } from '../ui/otp.js';
 import { qrSvg } from '../ui/qr.js';
 import { startTour } from '../ui/tour.js';
 import { LANGUAGES, lang, setLanguage } from '../core/i18n.js';
+import { addPasskey, passkeysSupported } from '../core/passkey.js';
 
 /* --------------------------------------------------------------- account */
 
@@ -26,6 +27,11 @@ export async function renderAccount(view) {
     <div class="card mb-16" id="twofactor">
       <h4>Two-factor sign-in</h4>
       <div id="tf-body"></div>
+    </div>
+
+    <div class="card mb-16" id="passkeys">
+      <div class="card-head"><h4>Passkeys</h4><div class="spacer"></div><button class="btn btn-sm" id="pk-add">Add a passkey</button></div>
+      <div id="pk-body"></div>
     </div>
 
     <div class="card mb-16 row phone-app" style="align-items:center;gap:22px">
@@ -85,6 +91,7 @@ export async function renderAccount(view) {
     </div>`;
 
   renderTwoFactor(me);
+  renderPasskeys(me);
   renderApiKeys();
 
   $('#a-tour').addEventListener('click', () => startTour());
@@ -333,4 +340,69 @@ async function renderLinkedAccounts(host) {
       }
     })
   );
+}
+
+/* -------------------------------------------------------------- passkeys */
+
+function renderPasskeys(me) {
+  const body = $('#pk-body');
+  if (!body) return;
+  const list = me.passkeys || [];
+  const supported = passkeysSupported();
+  $('#pk-add').classList.toggle('hidden', !supported);
+  body.innerHTML = `
+    <p class="faint" style="margin:0 0 ${list.length ? 12 : 0}px;line-height:1.6">Sign in with your fingerprint, face or a security key instead of a password. A passkey that checks it is you counts as two-factor sign-in on its own.${
+      supported ? '' : ' <b>This browser cannot use passkeys here:</b> open the panel at its HTTPS address (a domain, not an IP address).'
+    }</p>
+    ${
+      list.length
+        ? `<div class="list">${list
+            .map(
+              (p) => `<div class="list-row">
+          <div class="grow"><div class="title">${esc(p.name)}${p.backedUp ? ' <span class="chip chip-sm" title="Synced by your password manager or phone account">synced</span>' : ''}</div>
+            <div class="sub">Added ${esc(fmtTime(p.createdAt))} · ${p.lastUsedAt ? `last used ${esc(fmtTime(p.lastUsedAt))}` : 'not used yet'}</div></div>
+          <button class="btn btn-sm btn-ghost" data-pk-rename="${esc(p.id)}">Rename</button>
+          <button class="btn btn-sm btn-ghost btn-danger" data-pk-remove="${esc(p.id)}">Remove</button>
+        </div>`
+            )
+            .join('')}</div>`
+        : ''
+    }`;
+  const update = (user) => {
+    Object.assign(me, user);
+    state.user = { ...state.user, ...user };
+    renderPasskeys(me);
+  };
+  body.querySelectorAll('[data-pk-rename]').forEach((btn) =>
+    btn.addEventListener('click', async () => {
+      const current = list.find((p) => p.id === btn.dataset.pkRename);
+      const name = await promptModal('Rename passkey', 'Name', current?.name || '');
+      if (name === null) return;
+      try {
+        update((await api(`/api/auth/passkeys/${encodeURIComponent(btn.dataset.pkRename)}`, { method: 'PATCH', body: { name } })).user);
+      } catch (err) {
+        toast(err.message, 'error');
+      }
+    })
+  );
+  body.querySelectorAll('[data-pk-remove]').forEach((btn) =>
+    btn.addEventListener('click', async () => {
+      if (!(await confirmModal('Remove passkey', 'It stops working for this panel. You can add it again later.', 'Remove'))) return;
+      try {
+        update((await api(`/api/auth/passkeys/${encodeURIComponent(btn.dataset.pkRemove)}`, { method: 'DELETE' })).user);
+        toast('Passkey removed');
+      } catch (err) {
+        toast(err.message, 'error');
+      }
+    })
+  );
+  $('#pk-add').onclick = async () => {
+    const guess = /iPhone|iPad/.test(navigator.userAgent) ? 'iPhone' : /Android/.test(navigator.userAgent) ? 'Android phone' : /Mac/.test(navigator.platform) ? 'Mac' : /Win/.test(navigator.platform) ? 'Windows PC' : 'This device';
+    try {
+      update(await addPasskey(guess));
+      toast('Passkey added. Next time, choose "Sign in with a passkey".');
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+  };
 }

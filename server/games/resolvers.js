@@ -55,7 +55,7 @@ async function loaderVars(loader, game, label) {
     START_SCRIPT: pieces.start,
     START_CMD: pieces.startCmd,
     DOWNLOAD_URL: pieces.url,
-    JAVA_VERSION: String((await javaForMinecraft(game)) || 21),
+    JAVA_VERSION: String((await javaForMinecraft(game)) || guessJava(game)),
   };
 }
 
@@ -67,6 +67,21 @@ const javaCache = new Map();
  * 17, later releases want 21, and current ones want 25. Guessing it wrong
  * produces an UnsupportedClassVersionError at boot, so ask rather than pin.
  */
+/**
+ * The Java a Minecraft version needs when Mojang cannot be asked: 26.x and
+ * newer need 25, 1.20.5+ needs 21, 1.17 to 1.20.4 need 17, older ones 8.
+ */
+function guessJava(id) {
+  const [a, b = 0, c = 0] = String(id || '')
+    .split(/[.-]/)
+    .map((x) => Number(x) || 0);
+  if (a >= 26) return 25;
+  if (a !== 1) return 21;
+  if (b > 20 || (b === 20 && c >= 5)) return 21;
+  if (b >= 17) return 17;
+  return 8;
+}
+
 async function javaForMinecraft(id) {
   if (!id) return null;
   if (javaCache.has(id)) return javaCache.get(id);
@@ -107,8 +122,29 @@ const RESOLVERS = {
       RESOLVED_BUILD: String(build.id ?? ''),
       GAME_VERSION: version,
       LOADER: 'paper',
-      JAVA_VERSION: String((await javaForMinecraft(version)) || 21),
+      JAVA_VERSION: String((await javaForMinecraft(version)) || guessJava(version)),
     };
+  },
+
+  /** Velocity, PaperMC's proxy for Minecraft networks: newest release (or a chosen one) and its newest build. */
+  async velocity(vars) {
+    let version = vars.VELOCITY_VERSION;
+    if (wantsLatest(version)) {
+      const project = await getJson('https://fill.papermc.io/v3/projects/velocity');
+      version = Object.values(project.versions || {})
+        .flat()
+        .filter((v) => !isPrerelease(v))
+        .sort(newestFirst)[0];
+    }
+    if (!version) throw new Error('could not work out which Velocity version to install');
+    const data = await getJson(`https://fill.papermc.io/v3/projects/velocity/versions/${encodeURIComponent(version)}/builds`);
+    const builds = Array.isArray(data) ? data : data.builds || [];
+    const stable = builds.filter((b) => b.channel === 'STABLE');
+    const build = (stable.length ? stable : builds)[0];
+    const url = build?.downloads?.['server:default']?.url;
+    if (!url) throw new Error(`no Velocity build published for ${version}`);
+    // Velocity 4 is built for Java 25; 3.x runs on 21.
+    return { DOWNLOAD_URL: url, RESOLVED_VERSION: version, RESOLVED_BUILD: String(build.id ?? ''), LOADER: 'velocity', JAVA_VERSION: Number(String(version).split('.')[0]) >= 4 ? '25' : '21' };
   },
 
   /** Mojang's own server jar for a release. */
@@ -152,7 +188,7 @@ const RESOLVERS = {
       RESOLVED_VERSION: `${game} (loader ${loader})`,
       GAME_VERSION: game,
       LOADER: 'fabric',
-      JAVA_VERSION: String((await javaForMinecraft(game)) || 21),
+      JAVA_VERSION: String((await javaForMinecraft(game)) || guessJava(game)),
     };
   },
 
@@ -171,7 +207,7 @@ const RESOLVERS = {
       RESOLVED_BUILD: String(build.build || ''),
       GAME_VERSION: version,
       LOADER: 'purpur',
-      JAVA_VERSION: String((await javaForMinecraft(version)) || 21),
+      JAVA_VERSION: String((await javaForMinecraft(version)) || guessJava(version)),
     };
   },
 
@@ -335,7 +371,7 @@ const RESOLVERS = {
       START_CMD: loaderInstall.startCmd,
       GAME_VERSION: game,
       LOADER: loader.name,
-      JAVA_VERSION: String((await javaForMinecraft(game)) || 21),
+      JAVA_VERSION: String((await javaForMinecraft(game)) || guessJava(game)),
     };
   },
 

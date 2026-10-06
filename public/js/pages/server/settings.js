@@ -154,7 +154,9 @@ export function renderServerSettingsTab(host, server) {
              <p class="faint" style="margin:0 0 14px">Duplicating makes a copy on new ports. Exporting downloads the whole server, which another GamePanel can import. Reinstalling re-runs the template installer in place. Deleting removes the server and all of its files.</p>
              <div class="row">
                <button class="btn" id="set-clone">Duplicate</button>
+               <button class="btn" id="set-save-setup" title="Make this server a ready-made setup you can deploy again from the Games page">Save as setup</button>
                <a class="btn" href="/api/servers/${server.id}/export" download>Export</a>
+               <button class="btn hidden" id="set-move" title="Move it to another machine this panel manages">Move to another node</button>
                <button class="btn" id="set-reinstall">Reinstall</button>
                <button class="btn btn-danger" id="set-delete">Delete server</button>
              </div>
@@ -250,6 +252,47 @@ export function renderServerSettingsTab(host, server) {
   });
 
   if (!isOwner) return; // the danger zone below is not rendered for non-admins
+
+  $('#set-save-setup')?.addEventListener('click', () => {
+    const modal = openModal({
+      title: 'Save as setup',
+      width: 520,
+      body: `
+        <p class="faint" style="margin-top:0">Keeps the game, its settings, memory, mods and schedules, so you can deploy another one like it from the Games page. Passwords and tokens are left out.</p>
+        <label><span>Name</span><input id="ss-name" value="${esc(server.name)}" maxlength="60" /></label>
+        <label><span>Description</span><input id="ss-desc" placeholder="What makes it this kind of server" maxlength="400" /></label>`,
+      actions: [
+        { label: 'Cancel', close: true },
+        {
+          label: 'Save setup',
+          primary: true,
+          onClick: async (btn) => {
+            btn.disabled = true;
+            try {
+              const { setup } = await api(`/api/servers/${server.id}/save-as-setup`, { method: 'POST', body: { name: $('#ss-name').value, description: $('#ss-desc').value } });
+              modal.close();
+              toast(`Saved. ${setup.name} is on the Games page under Ready-made setups.`);
+            } catch (err) {
+              toast(err.message, 'error');
+              btn.disabled = false;
+            }
+          },
+        },
+      ],
+    });
+  });
+
+  // Moving needs somewhere to go: shown once nodes are known.
+  api('/api/nodes')
+    .then(({ local, nodes }) => {
+      const here = server.node?.id || 'local';
+      const targets = [...(server.node ? [{ id: 'local', name: local?.name || 'This machine' }] : []), ...nodes.filter((n) => n.id !== here)];
+      const btn = $('#set-move');
+      if (!btn || !targets.length) return;
+      btn.classList.remove('hidden');
+      btn.addEventListener('click', () => openMoveModal(server, targets));
+    })
+    .catch(() => {});
 
   $('#dns-save')?.addEventListener('click', async (event) => {
     const btn = event.currentTarget;
@@ -489,4 +532,36 @@ async function renderNetworkCard(server) {
     act(e.currentTarget, { open: false, firewall: true, upnp: data.upnp.available }, 'Ports closed')
   );
   $('#net-manual').addEventListener('click', () => $('#net-manual-box').classList.toggle('hidden'));
+}
+
+function openMoveModal(server, targets) {
+  const modal = openModal({
+    title: `Move ${server.name}`,
+    width: 500,
+    body: `
+      <p class="faint" style="margin-top:0">The server stops, its files go straight to the other machine, and it is set up there with the same game, settings, schedules and secrets. It gets free ports there, so players need the new address.</p>
+      <label><span>Move to</span><select id="mv-to">${targets
+        .map((t) => `<option value="${esc(t.id)}" ${t.online === false ? 'disabled' : ''}>${esc(t.name)}${t.online === false ? ' (offline)' : ''}</option>`)
+        .join('')}</select></label>
+      <div class="checkbox-row mt-16"><input type="checkbox" id="mv-keep" /><label for="mv-keep">Keep the original here, stopped (a copy instead of a move)</label></div>`,
+    actions: [
+      { label: 'Cancel', close: true },
+      {
+        label: 'Move',
+        primary: true,
+        onClick: async (btn) => {
+          btn.disabled = true;
+          try {
+            const r = await api('/api/move', { method: 'POST', body: { serverId: server.id, to: $('#mv-to').value, keepSource: $('#mv-keep').checked } });
+            modal.close();
+            toast(`Moving ${r.name} to ${r.to}. You get a notification when it is done.`, 'info', 7000);
+            location.hash = '#/servers';
+          } catch (err) {
+            toast(err.message, 'error');
+            btn.disabled = false;
+          }
+        },
+      },
+    ],
+  });
 }

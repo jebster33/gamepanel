@@ -50,6 +50,58 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
     return { server: manager.publicServer(server) };
   });
 
+  /** The receiving end of a move from another node: an export streamed in as the body. */
+  router.post(
+    '/api/servers/receive',
+    async ({ user, req, url }) => {
+      requireAdmin(user);
+      const server = await manager.receiveServer(req, user, { name: url.searchParams.get('name') || undefined });
+      return { server: manager.publicServer(server) };
+    },
+    { rawBody: true }
+  );
+
+  /** Move a server to another node, or from a node to this machine. */
+  router.post('/api/move', ({ user, body }) => {
+    requireAdmin(user);
+    return require('../../features/move').start({ manager, store }, { serverId: String(body?.serverId || ''), to: String(body?.to || ''), keepSource: Boolean(body?.keepSource) }, user);
+  });
+
+  /** Minecraft networks: a Velocity proxy in front of Paper/Purpur servers. */
+  const networks = require('../../features/networks');
+  router.get('/api/networks', ({ user }) => {
+    requireAdmin(user);
+    return networks.list(manager, store);
+  });
+  router.post('/api/networks', ({ user, body }) => {
+    requireAdmin(user);
+    return networks.create(manager, store, body || {}, user);
+  });
+  router.put('/api/networks/:id', ({ user, params, body }) => {
+    requireAdmin(user);
+    return networks.update(manager, store, params.id, body || {});
+  });
+  router.delete('/api/networks/:id', ({ user, params }) => {
+    requireAdmin(user);
+    return networks.remove(manager, store, params.id);
+  });
+
+  /** Servers other panels (Pterodactyl, AMP, LinuxGSM) left on this machine, ready to import. */
+  router.get('/api/import/scan', ({ user }) => {
+    requireAdmin(user);
+    return { found: require('../../features/import-scan').scanAll(manager) };
+  });
+
+  router.post('/api/import/pterodactyl', async ({ user, body }) => {
+    requireAdmin(user);
+    return { found: await require('../../features/import-scan').scanPterodactylWithApi(manager.templates, body || {}) };
+  });
+
+  router.post('/api/import/inspect', ({ user, body }) => {
+    requireAdmin(user);
+    return require('../../features/import-scan').inspect(manager, body?.path);
+  });
+
   router.get('/api/servers/:id', ({ user, params }) => {
     const server = serverFor(user, params.id);
     const template = manager.template(server);
@@ -107,6 +159,23 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
     return { ok: true, started: true };
   });
 
+  /** Wipes (games whose template has a "wipe" spec, like Rust). */
+  router.get('/api/servers/:id/wipe', ({ user, params, url }) => {
+    const server = serverFor(user, params.id, 'files.write');
+    const { files } = require('../../features/wipe').plan(manager, server, { blueprints: url.searchParams.get('blueprints') === '1' });
+    return { files, lastWipe: server.lastWipe || null };
+  });
+
+  router.post('/api/servers/:id/wipe', async ({ user, params, body }) => {
+    const server = serverFor(user, params.id, 'files.write');
+    requireCap(user, 'power', server.id);
+    const opts = { blueprints: Boolean(body?.blueprints), newSeed: Boolean(body?.newSeed), updateFirst: Boolean(body?.updateFirst) };
+    const log = (line) => manager.pushConsole(server, line, 'system');
+    const result = await require('../../features/wipe').wipe(manager, server, opts, log);
+    store.addEvent('server.wiped', `${server.name} was wiped by ${user.username}${opts.blueprints ? ' (blueprints too)' : ''}`, { serverId: server.id });
+    return { ok: true, ...result };
+  });
+
   router.get('/api/servers/:id/console', ({ user, params }) => {
     const server = serverFor(user, params.id, 'console');
     return { lines: manager.getConsole(server.id) };
@@ -126,6 +195,44 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
   });
 
   /** Kick or ban someone on the Players tab, through the game's own console command. */
+  /** Chat moderation: word list, links, caps, spam, and what happens to players who break them. */
+  router.get('/api/servers/:id/moderation', ({ user, params }) => require('../../features/chat-moderation').view(manager, serverFor(user, params.id, 'command')));
+
+  router.put('/api/servers/:id/moderation', ({ user, params, body }) => {
+    const server = serverFor(user, params.id, 'command');
+    const result = require('../../features/chat-moderation').update(manager, server, body || {});
+    store.addEvent('server.settings', `${user.username} changed chat moderation on ${server.name} (${result.settings.enabled ? 'on' : 'off'})`, { serverId: server.id });
+    return result;
+  });
+
+  router.delete('/api/servers/:id/moderation/bans/:name', async ({ user, params }) => {
+    const server = serverFor(user, params.id, 'command');
+    const ban = (server.tempBans || []).find((b) => b.name.toLowerCase() === String(params.name).toLowerCase());
+    if (!ban) fail(404, 'No temporary ban for that player');
+    // Lifted early: tick() pardons it on the next minute.
+    ban.until = 0;
+    store.save();
+    await require('../../features/chat-moderation').tick(manager);
+    return require('../../features/chat-moderation').view(manager, server);
+  });
+
+  /** Whitelist from Discord roles. */
+  router.get('/api/discord/guilds', async ({ user }) => {
+    requireCap(user, 'command');
+    return { guilds: await require('../../features/discord-roles').guilds() };
+  });
+
+  router.get('/api/servers/:id/discord-whitelist', ({ user, params }) => require('../../features/discord-roles').view(serverFor(user, params.id, 'command')));
+
+  router.put('/api/servers/:id/discord-whitelist', async ({ user, params, body }) => {
+    const server = serverFor(user, params.id, 'command');
+    const roles = require('../../features/discord-roles');
+    roles.configure(manager, store, server, body || {});
+    let result = { added: [], removed: [] };
+    if (server.discordWhitelist.enabled) result = await roles.syncServer(manager, store, server);
+    return { ...roles.view(server), ...result };
+  });
+
   router.post('/api/servers/:id/players/action', async ({ user, params, body }) => {
     const server = serverFor(user, params.id, 'command');
     const commands = require('../../games/players').playerCommands(manager.template(server));
@@ -203,9 +310,10 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
   });
 
   /** The whole server as one archive another panel can import. */
-  router.get('/api/servers/:id/export', async ({ user, params, res }) => {
+  router.get('/api/servers/:id/export', async ({ user, params, res, url }) => {
     requireAdmin(user);
-    await manager.exportServer(serverFor(user, params.id, 'files'), res);
+    // ?move=1 (a move to another node) carries secret variables in the clear; administrators only, as above.
+    await manager.exportServer(serverFor(user, params.id, 'files'), res, { forMove: url.searchParams.get('move') === '1' });
     return undefined;
   });
 
@@ -559,6 +667,20 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
     return { setups: setups.list(manager.templates) };
   });
 
+  /** Save a server as a setup of your own (administrators). */
+  router.post('/api/servers/:id/save-as-setup', ({ user, params, body }) => {
+    requireAdmin(user);
+    const setup = setups.saveCustom(setups.fromServer(manager, manager.require(params.id), { name: body?.name, description: body?.description }));
+    store.addEvent('server.setup_saved', `${user.username} saved ${setup.name} as a setup`, { serverId: params.id });
+    return { setup };
+  });
+
+  router.delete('/api/setups/:sid', ({ user, params }) => {
+    requireAdmin(user);
+    setups.removeCustom(params.sid);
+    return { ok: true };
+  });
+
   router.post('/api/setups/:sid/deploy', async ({ user, params, body }) => {
     const setup = setups.get(params.sid);
     const server = createFor(user, setups.serverInput(setup, { name: body?.name, memory: body?.memory }));
@@ -622,6 +744,28 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
     store.addEvent('settings.status_page', `Public status page ${settings.enabled ? 'on' : 'off'}${body.newLink ? ' (new link)' : ''} (${user.username})`);
     return { settings };
   });
+
+  router.put('/api/status-page/logo', ({ user, body }) => {
+    requireAdmin(user);
+    return { settings: statusPage.setLogo(store, body?.image) };
+  });
+
+  router.delete('/api/status-page/logo', ({ user }) => {
+    requireAdmin(user);
+    return { settings: statusPage.removeLogo(store) };
+  });
+
+  router.get(
+    '/api/public/status/:slug/logo',
+    ({ params, res }) => {
+      const logo = statusPage.readLogo(store, params.slug);
+      if (!logo) fail(404, 'No logo');
+      res.writeHead(200, { 'Content-Type': logo.type, 'Content-Length': logo.data.length, 'Cache-Control': 'public, max-age=86400', 'X-Content-Type-Options': 'nosniff' });
+      res.end(logo.data);
+      return undefined;
+    },
+    { public: true }
+  );
 
   router.get(
     '/api/public/status/:slug',

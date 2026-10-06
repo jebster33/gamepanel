@@ -26,6 +26,8 @@ const COMMANDS = [
   { name: 'start', description: 'Start a server', options: [server()] },
   { name: 'stop', description: 'Stop a server', options: [server()] },
   { name: 'restart', description: 'Restart a server', options: [server()] },
+  { name: 'link', description: 'Tell the panel your Minecraft name, for the whitelist', options: [{ type: 3, name: 'name', description: 'Your Minecraft name', required: true }] },
+  { name: 'unlink', description: 'Forget your linked Minecraft name' },
 ];
 const POWER = new Set(['start', 'stop', 'restart']);
 
@@ -220,6 +222,25 @@ class DiscordBot {
       return respond(null, [{ title: clean(rows[0].name), description: lines.join('\n'), color: LIME, footer: { text: `${hours(total)} played in total` } }]);
     }
 
+    if (name === 'link' || name === 'unlink') {
+      const roles = require('./discord-roles');
+      if (!userId) return respond('Use this inside a Discord server.', null, true);
+      let text;
+      try {
+        if (name === 'link') text = `Linked to **${clean(roles.link(this.store, String(userId), options.name))}**. If you have the right role, you are on the whitelist within a minute.`;
+        else {
+          const was = roles.unlink(this.store, String(userId));
+          text = was ? `Unlinked from **${clean(was)}**.` : 'You had no linked name.';
+        }
+      } catch (err) {
+        return respond(err.message, null, true);
+      }
+      await respond(text, null, true);
+      // Apply it now rather than at the next regular check.
+      roles.syncAll(this.manager, this.store).catch(() => {});
+      return null;
+    }
+
     const target = this.findServer(options.server);
     if (!target) return respond('I could not find that server.', null, true);
     const rt = this.manager.rt(target.id);
@@ -263,4 +284,4 @@ function init(app) {
   return instance;
 }
 
-module.exports = { init, DiscordBot, COMMANDS };
+module.exports = { init, DiscordBot, COMMANDS, instance: () => instance };

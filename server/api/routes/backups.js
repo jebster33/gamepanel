@@ -8,10 +8,48 @@ const { cloudBackups } = require('../../features/cloud');
 module.exports = (router, { store, manager }, { requireAdmin, requireCap, serverFor }) => {
   // Listens for new backups and copies them off-site when turned on.
   const cloud = cloudBackups(store, manager);
+  const secrets = require('../../core/secrets');
+  const passphrase = () => secrets.open(store.state.settings.backupPassphrase || '') || null;
+  backups.vault.configure({ passphrase });
 
   router.get('/api/servers/:id/backups', ({ user, params }) => {
     const server = serverFor(user, params.id, 'backups');
-    return { backups: backups.list(server.id), retention: server.backupRetention ?? 10 };
+    const checked = backups.checks(server.id);
+    return {
+      backups: backups.list(server.id).map((b) => ({ ...b, check: checked[b.name] || null })),
+      retention: server.backupRetention ?? 10,
+      autoCheck: Boolean(store.state.settings.verifyBackups),
+      mode: server.backupMode === 'incremental' ? 'incremental' : 'archive',
+      encrypt: Boolean(server.backupEncrypt),
+      vault: backups.vault.stats(backups.dirFor(server.id)),
+      passphraseSet: Boolean(store.state.settings.backupPassphrase),
+    };
+  });
+
+  /** Archive (.tar.gz, the default) or incremental backups, optionally encrypted. */
+  router.put('/api/servers/:id/backup-mode', ({ user, params, body }) => {
+    const server = serverFor(user, params.id, 'backups');
+    const mode = body?.mode === 'incremental' ? 'incremental' : 'archive';
+    const encrypt = mode === 'incremental' && Boolean(body?.encrypt);
+    if (encrypt && !store.state.settings.backupPassphrase) fail(400, 'An administrator has to set a backup passphrase first (Settings → Backups)');
+    server.backupMode = mode;
+    server.backupEncrypt = encrypt;
+    store.save();
+    store.addEvent('server.settings', `${user.username} switched ${server.name} to ${mode === 'archive' ? 'archive' : encrypt ? 'encrypted incremental' : 'incremental'} backups`, { serverId: server.id });
+    return { mode, encrypt };
+  });
+
+  /** The passphrase encrypted backups use. Changing it rewraps every vault's key; nothing is re-encrypted. */
+  router.put('/api/settings/backup-passphrase', ({ user, body }) => {
+    requireAdmin(user);
+    const next = String(body?.passphrase || '');
+    if (next.length < 12) fail(400, 'Use at least 12 characters: this passphrase is all that protects the encrypted backups');
+    const current = passphrase();
+    if (current) backups.vault.rewrapAll(require('../../core/config').config.backupsDir, current, next);
+    store.state.settings.backupPassphrase = secrets.seal(next);
+    store.save();
+    store.addEvent('panel.settings', `${user.username} ${current ? 'changed' : 'set'} the backup passphrase`);
+    return { ok: true };
   });
 
   router.post('/api/servers/:id/backups', async ({ user, params, body }) => {
@@ -27,6 +65,28 @@ module.exports = (router, { store, manager }, { requireAdmin, requireCap, server
     const pruned = backups.prune(server.id, server.backupRetention);
     store.addEvent('backup.created', `Backup created for ${server.name}`, { serverId: server.id, backup: backup.name });
     return { backup, pruned };
+  });
+
+  /** Test-restore one backup into a scratch folder. */
+  router.post('/api/servers/:id/backups/:name/verify', async ({ user, params }) => {
+    const server = serverFor(user, params.id, 'backups');
+    const result = await backups.verify(server, params.name);
+    if (!result.ok) store.addEvent('backup.verify_failed', `Backup ${params.name} of ${server.name} failed its check: ${result.error}`, { serverId: server.id });
+    return result;
+  });
+
+  // "Check every backup after it is made" (Settings): in the background, one at a time.
+  let queue = Promise.resolve();
+  store.on('event', (event) => {
+    if (event.type !== 'backup.created' || !event.backup || !store.state.settings.verifyBackups) return;
+    const server = manager.find(event.serverId);
+    if (!server) return;
+    queue = queue
+      .then(() => backups.verify(server, event.backup))
+      .then((result) => {
+        if (!result.ok) store.addEvent('backup.verify_failed', `Backup ${event.backup} of ${server.name} failed its check: ${result.error}`, { serverId: server.id });
+      })
+      .catch(() => {});
   });
 
   router.post('/api/servers/:id/backups/:name/restore', async ({ user, params }) => {
@@ -64,6 +124,7 @@ module.exports = (router, { store, manager }, { requireAdmin, requireCap, server
     '/api/servers/:id/backups/:name/download',
     ({ user, params, res }) => {
       const server = serverFor(user, params.id, 'backups');
+      if (backups.vault.isSnapshot(params.name)) return backups.downloadSnapshot(server, params.name, res).then(() => undefined);
       const file = backups.resolve(server.id, params.name);
       const stat = fs.statSync(file);
       res.writeHead(200, { 'Content-Type': 'application/gzip', 'Content-Length': stat.size, 'Content-Disposition': `attachment; filename="${params.name}"` });
@@ -86,6 +147,7 @@ module.exports = (router, { store, manager }, { requireAdmin, requireCap, server
 
   router.post('/api/servers/:id/backups/:name/upload', ({ user, params }) => {
     const server = serverFor(user, params.id, 'backups');
+    if (backups.vault.isSnapshot(params.name)) fail(400, 'Cloud copies are for archive backups. Download this one as a .tar.gz to keep a copy elsewhere.');
     if (!cloud.enabled) fail(400, 'Turn on cloud backups in Settings first');
     backups.resolve(server.id, params.name);
     cloud.queue(server.id, params.name);

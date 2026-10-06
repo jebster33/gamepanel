@@ -10,7 +10,7 @@ const crypto = require('crypto');
 const fs = require('fs');
 const { fail } = require('../core/util');
 
-const DEFAULTS = { enabled: false, slug: '', title: '', description: '', servers: [], showPlayers: true, showAddress: true, showMotd: true, host: '', links: { discord: '', vote: '', website: '' }, blurbs: {} };
+const DEFAULTS = { enabled: false, slug: '', title: '', description: '', servers: [], showPlayers: true, showAddress: true, showMotd: true, host: '', links: { discord: '', vote: '', website: '' }, blurbs: {}, accent: '', hideBadge: false, logo: null };
 
 // Games the Steam client can join straight from a link (steam://connect/host:port).
 const STEAM_CONNECT = new Set(['cs2', 'tf2', 'left4dead', 'left4dead2', 'garrysmod', 'rust', 'counter-strike-source', 'day-of-defeat-source', 'half-life-2-deathmatch', 'no-more-room-in-hell', 'insurgency-2014', 'day-of-infamy']);
@@ -61,6 +61,12 @@ function update(store, body) {
   if (body.showPlayers !== undefined) s.showPlayers = Boolean(body.showPlayers);
   if (body.showAddress !== undefined) s.showAddress = Boolean(body.showAddress);
   if (body.showMotd !== undefined) s.showMotd = Boolean(body.showMotd);
+  if (body.accent !== undefined) {
+    const accent = String(body.accent || '').trim();
+    if (accent && !/^#[0-9a-f]{6}$/i.test(accent)) fail(400, 'The accent colour looks like #c6f432');
+    s.accent = accent.toLowerCase();
+  }
+  if (body.hideBadge !== undefined) s.hideBadge = Boolean(body.hideBadge);
   if (body.links) s.links = { discord: cleanUrl(body.links.discord, 'Discord'), vote: cleanUrl(body.links.vote, 'vote'), website: cleanUrl(body.links.website, 'website') };
   if (body.blurbs && typeof body.blurbs === 'object') {
     s.blurbs = {};
@@ -119,9 +125,59 @@ function publicView(store, manager, slug) {
     host: s.showAddress ? s.host || null : null,
     showAddress: s.showAddress,
     links: s.links || DEFAULTS.links,
+    accent: s.accent || null,
+    hideBadge: Boolean(s.hideBadge),
+    logo: s.logo ? `/api/public/status/${encodeURIComponent(s.slug)}/logo?v=${s.logo.v}` : null,
     servers,
+    appeals: Boolean(store.state.settings.appeals?.enabled),
     updatedAt: Date.now(),
   };
 }
 
-module.exports = { settings, update, publicView, readMotd, joinUrl };
+/* ------------------------------------------------------------- the logo -- */
+
+const LOGO_TYPES = [
+  { ext: 'png', type: 'image/png', magic: (b) => b.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])) },
+  { ext: 'jpg', type: 'image/jpeg', magic: (b) => b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff },
+  { ext: 'webp', type: 'image/webp', magic: (b) => b.toString('ascii', 0, 4) === 'RIFF' && b.toString('ascii', 8, 12) === 'WEBP' },
+];
+const logoDir = () => require('path').join(require('../core/config').config.dataDir, 'branding');
+
+/** PNG, JPEG or WebP only (never SVG, which can carry script), up to 512 KB. */
+function setLogo(store, dataUrl) {
+  const buf = Buffer.from(String(dataUrl || '').replace(/^data:image\/[a-z+]+;base64,/, ''), 'base64');
+  const kind = buf.length > 12 && LOGO_TYPES.find((t) => t.magic(buf));
+  if (!kind) fail(400, 'The logo must be a PNG, JPEG or WebP image');
+  if (buf.length > 512 * 1024) fail(400, 'The logo must be at most 512 KB');
+  fs.mkdirSync(logoDir(), { recursive: true });
+  for (const t of LOGO_TYPES) fs.rmSync(require('path').join(logoDir(), `logo.${t.ext}`), { force: true });
+  fs.writeFileSync(require('path').join(logoDir(), `logo.${kind.ext}`), buf);
+  const s = settings(store);
+  s.logo = { ext: kind.ext, v: Date.now() };
+  store.state.settings.statusPage = s;
+  store.save();
+  return s;
+}
+
+function removeLogo(store) {
+  for (const t of LOGO_TYPES) fs.rmSync(require('path').join(logoDir(), `logo.${t.ext}`), { force: true });
+  const s = settings(store);
+  s.logo = null;
+  store.state.settings.statusPage = s;
+  store.save();
+  return s;
+}
+
+/** The logo for the public page, only while that page is on. */
+function readLogo(store, slug) {
+  const s = settings(store);
+  if (!s.enabled || slug !== s.slug || !s.logo) return null;
+  const kind = LOGO_TYPES.find((t) => t.ext === s.logo.ext);
+  try {
+    return { type: kind.type, data: fs.readFileSync(require('path').join(logoDir(), `logo.${kind.ext}`)) };
+  } catch {
+    return null;
+  }
+}
+
+module.exports = { settings, update, publicView, readMotd, joinUrl, setLogo, removeLogo, readLogo };

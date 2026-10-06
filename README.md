@@ -66,13 +66,16 @@ too (after asking), along with users, bridge connections and the containers Game
 
 | | |
 |---|---|
-| **Create a server in a minute** | Pick a game; the panel downloads it, gives it free ports and starts it. Or [import one you already run](docs/guide/create-server.md#import-a-server-you-already-have). |
+| **Create a server in a minute** | Pick a game; the panel downloads it, gives it free ports and starts it. Or [import one you already run](docs/guide/create-server.md#import-a-server-you-already-have): servers left by Pterodactyl, AMP or LinuxGSM are found and brought over in a few clicks. |
 | **Live console** | Colour-coded, with command history, Tab completion and RCON. When a server crashes, the **Crash doctor** says why in plain words and offers the fix. |
-| **Mods and modpacks** | Modrinth, CurseForge, Hangar, SpigotMC, uMod, Steam Workshop and the Factorio portal, filtered to your loader and version. Modrinth and CurseForge packs in one click. [Guide](docs/guide/mods-and-modpacks.md) |
+| **Mods and modpacks** | Modrinth, CurseForge, Hangar, SpigotMC, uMod, Steam Workshop and the Factorio portal, filtered to your loader and version. Modrinth and CurseForge packs in one click. A **mod check** looks inside the jars for wrong loaders, missing dependencies and clashes. [Guide](docs/guide/mods-and-modpacks.md) |
+| **Plugin and mod configs as forms** | The Configs tab shows plugin and mod config files (YAML, TOML, JSON, .cfg, .properties) as toggles, numbers and lists; comments stay as they were. |
+| **Minecraft networks** | A Velocity proxy in front of your Paper and Purpur servers, with forwarding set up on both ends. |
 | **Minecraft extras** | Switch version or loader, manage worlds, edit game rules, MOTD and icon, Bedrock crossplay, BlueMap, Chunky pre-generation. |
-| **Schedules** | Restarts with in-game warnings, backups, commands, game and mod updates; skip while people are playing. |
-| **Backups** | One click or scheduled, restore whole or single files, copied to Backblaze B2, Cloudflare R2, S3 or MinIO. [Guide](docs/guide/backups.md) |
-| **Files** | Browse, edit, search, drag-and-drop upload, unzip in place. |
+| **Schedules** | Restarts with in-game warnings, backups, commands, game and mod updates; skip while people are playing. Rust wipes on the first Thursday of the month, blueprints optional. |
+| **Backups** | One click or scheduled, restore whole or single files, copied to Backblaze B2, Cloudflare R2, S3 or MinIO. Optional incremental backups (only changes are stored) with AES-256 encryption, and checks that test-restore each backup. [Guide](docs/guide/backups.md) |
+| **Files** | Browse, edit, search, drag-and-drop upload, unzip in place. Or use FileZilla and WinSCP over the built-in **SFTP**, signed in with panel accounts. |
+| **Many servers at once** | Select servers and start, stop, restart, update or back them up together. |
 | **Graphs with history** | CPU, memory, players and ping for the last hour up to 30 days. |
 | **Automatic updates** | Steam games update themselves when a new build is out and nobody is playing. |
 
@@ -81,6 +84,9 @@ too (after asking), along with users, bridge connections and the containers Game
 | | |
 |---|---|
 | **Players** | Who is on, history and play time, profiles with stats, kick and ban, whitelist, ops, maintenance mode. [Guide](docs/guide/players.md) |
+| **Chat moderation** | Word list (it sees through leetspeak), links, shouting and spam, with a warn → mute → kick → temporary ban ladder. |
+| **Shared bans** | One ban list for every server, with a public page where banned players can appeal. |
+| **Whitelist from Discord roles** | Members with the roles you pick are whitelisted, and taken off when they lose them. |
 | **Discord** | Alerts by webhook, a bot with `/status`, `/players`, `/start`…, and two-way chat per server. Slack and ntfy too. [Guide](docs/guide/alerts-and-discord.md) |
 | **Status page** | A public page with who is on, uptime and leaderboards. |
 | **Phone app** | Home-screen app with console, players and push notifications. |
@@ -90,19 +96,21 @@ too (after asking), along with users, bridge connections and the containers Game
 | | |
 |---|---|
 | **Sharing** | Give friends one server (console only, start/stop, files only or custom) from its Access tab. [Guide](docs/guide/users-and-2fa.md) |
-| **Two-factor sign-in** | Codes from any authenticator app, and an option to require it for admins. |
-| **Multiple machines** | Add other GamePanel installs as [nodes](docs/guide/nodes.md) and run their servers from one panel. |
+| **Two-factor sign-in and passkeys** | Codes from any authenticator app, passkeys (fingerprint, face or security key), and an option to require two-factor for admins. |
+| **Built-in HTTPS** | A free Let's Encrypt certificate for your domain, renewed by itself. No reverse proxy needed. |
+| **Multiple machines** | Add other GamePanel installs as [nodes](docs/guide/nodes.md) and run their servers from one panel; move a server from one machine to another. |
 | **Limits** | Caps on total memory, CPU per server and storage. [Guide](docs/guide/panel-settings.md#limits) |
 | **Audit log** | Every change anyone makes, with who, what, which server and from where. |
 | **Reachability** | Opens ports in the firewall and on your router (UPnP), or tells you exactly what to forward. |
 | **Bridge** | Or skip port forwarding: friends run a personal client and your servers appear on their computer, encrypted end to end. [How it works](docs/bridge.md) |
 | **Isolation on Linux** | Every server in its own Docker container with hard memory and CPU limits. |
 | **API** | Keys for scripts and bots, read-only or full. [Reference](docs/api.md) |
-| **Ready-made setups** | A Survival SMP with LuckPerms and EssentialsX, a fast Fabric server, a Rust community server… in one click. |
+| **Ready-made setups** | A Survival SMP with LuckPerms and EssentialsX, a fast Fabric server, a Rust community server… in one click. Save any server as a setup of your own. |
 | **Quotas** | Let friends create their own servers, up to a number, memory and disk you set. |
 | **Config history** | Every config save is kept: see what changed and put an older version back. |
 | **Scheduled events** | Optional: a double XP weekend that turns itself on and off. |
-| **Server list page** | A public page with who is on, the MOTD, Join buttons and your Discord and vote links. |
+| **Server list page** | A public page with who is on, the MOTD, Join buttons and your Discord and vote links, with your own logo and colour. |
+| **Update channels** | Stable (tagged releases) or beta for the panel itself. |
 | **World maps** | Rust (RustMaps), Valheim (valheim-map.world) and Terraria (TerraMap), next to Minecraft's live BlueMap. |
 | **Sign in with Google, Discord or GitHub** | Link one on your Account page and skip the password. |
 | **Languages** | English, Nederlands, Deutsch, Español, Français, Português. |
@@ -203,6 +211,9 @@ More in the [mods guide](docs/guide/mods-and-modpacks.md).
 | Setup | one command | web server, PHP, database, Redis, daemon | installer | desktop app | per game, CLI |
 | Web UI | ✓ | ✓ | ✓ | | |
 | Mods filtered by loader | ✓ | via add-ons | some games | | |
+| Built-in HTTPS | ✓ | via web server | ✓ | | |
+| SFTP | ✓ | ✓ | ✓ | | |
+| Passkeys | ✓ | | | | |
 
 GamePanel is one Node.js process with no dependencies and no database. It talks to Docker directly on
 Linux and runs games as normal processes on Windows.

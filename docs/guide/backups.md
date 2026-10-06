@@ -19,6 +19,16 @@ A backup is a plain `.tar.gz` of the whole server folder, so you can open it any
   those (a broken config, one world) and leave everything else alone. Administrators only.
 - The download button saves the archive to your computer.
 
+## Incremental and encrypted backups
+
+On a server's Backups tab, **Backup type…** switches between *Archive* (a complete `.tar.gz` each time, the default) and *Incremental*. Incremental backups store files as pieces, each piece once: the first backup is full size, later ones only add what changed, and unchanged files are not even read again. Restoring, restoring single files, browsing, checking and downloading (as a `.tar.gz`) all work the same. Cloud copies stay archive-only.
+
+Incremental backups can be encrypted with AES-256. An administrator sets the passphrase under **Settings → Backup encryption**; write it down, because without it encrypted backups cannot be restored on another machine. Changing the passphrase later keeps every encrypted backup readable.
+
+## Checking backups
+
+**Check** on a backup unpacks it into a scratch folder and makes sure every file came back (for incremental backups, every piece is read and verified). Turn on **Settings → Backup checks** to check each backup right after it is made; a failed check sends an alert.
+
 ## Cloud copies
 
 **Settings → Cloud backups** copies every backup, by hand or scheduled, to an S3-compatible bucket so a

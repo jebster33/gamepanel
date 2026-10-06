@@ -1,4 +1,5 @@
 import { api } from '../../core/api.js';
+import { state } from '../../core/state.js';
 import { $, esc, fmtBytes, fmtTime, icon, toast } from '../../core/util.js';
 import { confirmModal, openModal, promptModal } from '../../ui/modal.js';
 import { openConfigHistory, openConfigHistoryList } from './config-history.js';
@@ -33,6 +34,7 @@ export async function renderFilesTab(host, server, dirPath) {
       <button class="btn btn-sm btn-danger hidden" id="file-delete-selected">${icon('trash',12)} Delete</button>
       <button class="btn btn-sm" id="file-search" title="Find a file, or a setting inside config files">Search</button>
       <button class="btn btn-sm" id="file-history" title="Earlier versions of files saved in the panel">History</button>
+      <button class="btn btn-sm hidden" id="file-sftp" title="Connect with FileZilla, WinSCP or another SFTP app">SFTP</button>
       <button class="btn btn-sm" id="file-new-folder">New folder</button>
       <button class="btn btn-sm" id="file-new-file">New file</button>
       <button class="btn btn-sm btn-primary" id="file-upload">${icon('upload',12)} Upload</button>
@@ -96,6 +98,32 @@ export async function renderFilesTab(host, server, dirPath) {
     el.addEventListener('click', () => openFileEditor(server, el.dataset.file, refresh))
   );
   $('#file-search').addEventListener('click', () => openFileSearch(server, host));
+  // Shown when SFTP is on: how to reach these files from an SFTP app.
+  api('/api/sftp')
+    .then((sftp) => {
+      const btn = $('#file-sftp');
+      if (!sftp.enabled || !btn) return;
+      btn.classList.remove('hidden');
+      btn.addEventListener('click', () => {
+        const host = location.hostname;
+        const user = `${state.user.username}.${server.id}`;
+        openModal({
+          title: 'Connect with SFTP',
+          width: 520,
+          body: `<p class="faint" style="margin-top:0">Use FileZilla, WinSCP, Cyberduck or <span class="mono">sftp</span> with your panel password${state.user.twoFactor ? ' (you will be asked for your authenticator code too)' : ''}.</p>
+            <div class="form-grid">
+              <label><span>Host</span><input class="mono" readonly value="${esc(host)}" /></label>
+              <label><span>Port</span><input class="mono" readonly value="${esc(sftp.port)}" /></label>
+            </div>
+            <label class="field mt-16"><span>Username (this server only)</span><input class="mono" readonly value="${esc(user)}" /></label>
+            <div class="hint">Or sign in as <span class="mono">${esc(state.user.username)}</span> to see every server you can browse, one folder each.${sftp.fingerprint ? ` The server's key is <span class="mono">${esc(sftp.fingerprint)}</span>.` : ''}</div>
+            <label class="field mt-16"><span>Command line</span><input class="mono" readonly value="${esc(`sftp -P ${sftp.port} ${user}@${host}`)}" /></label>`,
+          actions: [{ label: 'Close', close: true }],
+        });
+      });
+    })
+    .catch(() => {});
+
   $('#file-history').addEventListener('click', () => openConfigHistoryList(server));
 
   /* selection ------------------------------------------------------------ */

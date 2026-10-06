@@ -13,6 +13,7 @@
  *   backups     backups and restores
  *   users       accounts and permissions
  *   bridge      Manage connections: bridge clients, their servers and ports
+ *   bans        the shared ban list and ban appeals
  */
 
 const { json, readJson, HttpError } = require('../core/util');
@@ -22,7 +23,7 @@ const { RateLimiter } = require('../core/ratelimit');
 const audit = require('../features/audit');
 
 const VERSION = require('../../package.json').version;
-const ROUTES = ['auth', 'system', 'templates', 'servers', 'files', 'mods', 'network', 'backups', 'users', 'bridge'];
+const ROUTES = ['auth', 'system', 'templates', 'servers', 'files', 'mods', 'network', 'backups', 'users', 'bridge', 'bans'];
 
 /** @param {{store, auth, manager, templates, hostMetrics, scheduler, notifier, bridge}} app */
 function createApi(app) {

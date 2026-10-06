@@ -48,12 +48,36 @@ function uptimeBars(u) {
 
 let first = true;
 
+/** The owner's logo and colour, instead of GamePanel's. */
+function brand(data) {
+  const root = document.documentElement.style;
+  if (data.accent && /^#[0-9a-f]{6}$/i.test(data.accent)) {
+    const [r, g, b] = [1, 3, 5].map((i) => parseInt(data.accent.slice(i, i + 2), 16));
+    const light = matchMedia('(prefers-color-scheme: light)').matches;
+    root.setProperty('--lime', data.accent);
+    // On a light background a pale accent needs darkening to stay readable as text.
+    root.setProperty('--lime-text', light ? `rgb(${Math.round(r * 0.55)}, ${Math.round(g * 0.55)}, ${Math.round(b * 0.55)})` : data.accent);
+    root.setProperty('--lime-soft', `rgba(${r}, ${g}, ${b}, 0.14)`);
+  }
+  const badge = $('brand');
+  if (data.logo) {
+    badge.hidden = false;
+    badge.className = 'brand brand-logo';
+    badge.innerHTML = `<img src="${esc(data.logo)}" alt="${esc(data.title)}" />`;
+    const icon = document.querySelector('link[rel="icon"]');
+    if (icon) icon.href = data.logo;
+  } else {
+    badge.hidden = Boolean(data.hideBadge);
+  }
+}
+
 function render(data) {
   document.title = `${data.title} · status`;
   $('title').textContent = data.title;
   $('description').hidden = !data.description;
   $('description').textContent = data.description || '';
   const host = data.host || location.hostname;
+  brand(data);
   const links = [
     data.links?.discord && `<a href="${esc(data.links.discord)}" target="_blank" rel="noopener">💬 Discord</a>`,
     data.links?.vote && `<a href="${esc(data.links.vote)}" target="_blank" rel="noopener">⭐ Vote for us</a>`,
@@ -112,6 +136,12 @@ function render(data) {
     .join('');
   first = false;
   $('footer').textContent = `Updated ${new Date(data.updatedAt).toLocaleTimeString()} · refreshes every 15 seconds`;
+  if (data.appeals) {
+    const link = document.createElement('a');
+    link.href = '/appeal';
+    link.textContent = 'Appeal a ban';
+    $('footer').append(' · ', link);
+  }
 }
 
 async function load() {

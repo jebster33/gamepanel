@@ -20,6 +20,7 @@ import { copyToClipboard } from './ui/clipboard.js';
 import { wireOtp } from './ui/otp.js';
 import { closeSidebar } from './ui/sidebar.js';
 import { applyTheme } from './ui/theme.js';
+import { signInWithPasskey } from './core/passkey.js';
 
 /* ------------------------------------------------------- global handlers */
 
@@ -45,6 +46,25 @@ document.addEventListener('click', async (event) => {
   if (copy) copyToClipboard(copy.dataset.copy, copy);
 });
 
+
+document.addEventListener('click', async (event) => {
+  const btn = event.target.closest('[data-passkey-signin]');
+  if (!btn) return;
+  const error = $('#auth-error');
+  error.classList.add('hidden');
+  btn.disabled = true;
+  try {
+    const data = await signInWithPasskey();
+    if (data.twoFactor) return showOtpStep(data.ticket);
+    state.user = data.user;
+    await enterApp();
+  } catch (err) {
+    error.textContent = err.message;
+    error.classList.remove('hidden');
+  } finally {
+    btn.disabled = false;
+  }
+});
 
 $('#auth-form').addEventListener('submit', async (event) => {
   event.preventDefault();

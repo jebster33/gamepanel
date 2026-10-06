@@ -163,7 +163,8 @@ class CloudBackups {
     this.status = new Map(); // "<server>/<name>" -> uploading | queued | failed message
     this.chain = Promise.resolve();
     store.on('event', (event) => {
-      if (event.type === 'backup.created' && event.backup && this.enabled) this.queue(event.serverId, event.backup);
+      // Incremental backups live in their vault; cloud copies are for the archives.
+      if (event.type === 'backup.created' && event.backup && this.enabled && !require('./vault').isSnapshot(event.backup)) this.queue(event.serverId, event.backup);
     });
   }
 

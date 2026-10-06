@@ -22,6 +22,7 @@ const EVENT_LABELS = {
   'user.new_ip': 'Someone signs in from a new address',
   'backup.created': 'A backup is made',
   'backup.failed': 'A backup fails',
+  'backup.verify_failed': 'A backup fails its check',
   'backup.uploaded': 'A backup is copied to the cloud',
   'backup.upload_failed': 'Copying a backup to the cloud fails',
   'schedule.failed': 'A scheduled task fails',
@@ -84,6 +85,14 @@ export async function renderSettings(view) {
         Updates pull the latest code and restart the panel. Servers running in containers keep running —
         the panel re-attaches to them when it comes back.
       </p>
+      <div class="row mb-16" style="gap:10px;align-items:center">
+        <label style="margin:0;display:flex;align-items:center;gap:10px"><span style="margin:0">Channel</span>
+          <select id="update-channel" style="width:auto">
+            <option value="stable" ${s.updateChannel === 'stable' ? 'selected' : ''}>Stable: tagged releases only</option>
+            <option value="beta" ${s.updateChannel === 'beta' ? 'selected' : ''}>Beta: new features first</option>
+          </select></label>
+        <span class="faint" id="update-channel-hint" style="font-size:12.5px"></span>
+      </div>
       <div class="row"><button class="btn" id="update-check">Check for updates</button>
         <span id="update-status" class="faint"></span></div>
       <div id="update-detail" class="mt-16"></div>
@@ -96,6 +105,35 @@ export async function renderSettings(view) {
         s.containerize !== false ? 'checked' : ''
       } /><label for="s-containerize">Run each game server in its own container (isolation, hard memory/CPU limits, per-server network stats)</label></div>
       <div class="hint">Applies the next time a server starts. Without Docker the panel falls back to plain processes.</div>
+    </div>
+
+    <div class="card mb-16" id="https">
+      <div class="card-head"><h4>HTTPS</h4><div class="spacer"></div><label class="switch"><input type="checkbox" id="tls-on" /><i></i></label></div>
+      <div id="tls-body"><span class="spinner"></span></div>
+    </div>
+
+    <div class="card mb-16" id="sftp">
+      <div class="card-head"><h4>SFTP</h4><div class="spacer"></div><label class="switch"><input type="checkbox" id="sftp-on" /><i></i></label></div>
+      <div id="sftp-body"><span class="spinner"></span></div>
+    </div>
+
+    <div class="card mb-16" id="backup-checks">
+      <h4>Backup checks</h4>
+      <div class="faint" style="margin-bottom:12px">A backup you have never restored is a guess. A check unpacks it into a scratch folder and makes sure every file came back.</div>
+      <div class="checkbox-row"><input type="checkbox" id="s-verify" ${s.verifyBackups ? 'checked' : ''} /><label for="s-verify">Check every backup right after it is made</label></div>
+      <div class="hint">Runs in the background, one at a time; needs free disk space about the size of the server. You can also check any backup by hand on a server's Backups tab.</div>
+    </div>
+
+    <div class="card mb-16" id="backups">
+      <h4>Backup encryption</h4>
+      <div class="faint" style="margin-bottom:12px">Servers using incremental backups (their Backups tab → Backup type) can encrypt them with this passphrase. ${
+        s.backupPassphraseSet ? '<b>A passphrase is set.</b> Changing it keeps every encrypted backup readable.' : 'No passphrase yet.'
+      }</div>
+      <div class="input-row">
+        <input type="password" id="s-bpass" placeholder="${s.backupPassphraseSet ? 'New passphrase' : 'At least 12 characters'}" autocomplete="new-password" />
+        <button class="btn" id="s-bpass-save">${s.backupPassphraseSet ? 'Change' : 'Set'}</button>
+      </div>
+      <div class="hint">Write it down somewhere safe. Without it, encrypted backups cannot be restored on another machine, or if this panel's data is lost.</div>
     </div>
 
     <div class="card mb-16" id="events">
@@ -271,6 +309,36 @@ export async function renderSettings(view) {
     })
     .catch(() => {});
 
+  $('#s-verify').addEventListener('change', async (event) => {
+    try {
+      await api('/api/settings', { method: 'PATCH', body: { verifyBackups: event.target.checked } });
+      toast(event.target.checked ? 'New backups are checked after they are made' : 'Automatic backup checks off');
+    } catch (err) {
+      toast(err.message, 'error');
+      event.target.checked = !event.target.checked;
+    }
+  });
+
+  renderHttps();
+  renderSftp();
+
+  $('#s-bpass-save').addEventListener('click', async (event) => {
+    const btn = event.currentTarget;
+    const value = $('#s-bpass').value;
+    if (s.backupPassphraseSet && !(await confirmModal('Change the backup passphrase', 'Encrypted backups will open with the new passphrase only. Make sure you have written it down.', 'Change'))) return;
+    btn.disabled = true;
+    try {
+      await api('/api/settings/backup-passphrase', { method: 'PUT', body: { passphrase: value } });
+      s.backupPassphraseSet = true;
+      $('#s-bpass').value = '';
+      btn.textContent = 'Change';
+      toast('Backup passphrase saved');
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+    btn.disabled = false;
+  });
+
   $('#s-events').addEventListener('change', async (event) => {
     try {
       await api('/api/settings', { method: 'PATCH', body: { scheduledEvents: event.target.checked } });
@@ -362,6 +430,15 @@ export async function renderSettings(view) {
   });
 
   $('#update-check').addEventListener('click', () => checkForUpdates(true));
+  $('#update-channel').addEventListener('change', async (event) => {
+    try {
+      await api('/api/settings', { method: 'PATCH', body: { updateChannel: event.target.value } });
+      toast(event.target.value === 'beta' ? 'Beta channel: you get new features first, and the odd rough edge' : 'Stable channel: tagged releases only');
+      checkForUpdates(true);
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+  });
   checkForUpdates(false);
 
   $('#s-save').addEventListener('click', async () => {
@@ -508,6 +585,18 @@ async function renderStatusPageForm() {
     <div class="checkbox-row mt-16"><input type="checkbox" id="sp-players" ${sp.showPlayers ? 'checked' : ''} /><label for="sp-players">Show the names of players who are on</label></div>
     <div class="checkbox-row"><input type="checkbox" id="sp-address" ${sp.showAddress ? 'checked' : ''} /><label for="sp-address">Show the address to join</label></div>
     <div class="checkbox-row"><input type="checkbox" id="sp-motd" ${sp.showMotd !== false ? 'checked' : ''} /><label for="sp-motd">Show Minecraft's message of the day</label></div>
+    <div class="field-label mt-16">Your look</div>
+    <div class="sp-brand">
+      <div class="sp-logo">${sp.logo ? `<img src="/api/public/status/${esc(sp.slug)}/logo?v=${sp.logo.v}" alt="Logo" />` : '<span class="faint">No logo</span>'}</div>
+      <div class="row" style="gap:8px">
+        <label class="btn btn-sm" style="margin:0">Upload logo<input type="file" id="sp-logo-file" accept="image/png,image/jpeg,image/webp" class="hidden" /></label>
+        ${sp.logo ? '<button class="btn btn-sm btn-ghost" id="sp-logo-remove">Remove</button>' : ''}
+        <label style="margin:0;display:flex;align-items:center;gap:8px"><span style="margin:0">Accent</span><input type="color" id="sp-accent" value="${esc(sp.accent || '#c6f432')}" style="width:44px;height:32px;padding:2px" /></label>
+        <button class="btn btn-sm btn-ghost" id="sp-accent-reset" title="Back to GamePanel's lime">Default colour</button>
+      </div>
+    </div>
+    <div class="hint">PNG, JPEG or WebP up to 512 KB. It replaces the GamePanel badge and the tab icon.</div>
+    <div class="checkbox-row"><input type="checkbox" id="sp-badge" ${sp.hideBadge ? 'checked' : ''} /><label for="sp-badge">Hide the GamePanel badge when there is no logo</label></div>
     <button class="btn btn-primary mt-16" id="sp-save">Save server list</button>`;
 
   const save = async (extra = {}) => {
@@ -523,6 +612,8 @@ async function renderStatusPageForm() {
           showPlayers: $('#sp-players').checked,
           showAddress: $('#sp-address').checked,
           showMotd: $('#sp-motd').checked,
+          accent: accentTouched ? $('#sp-accent').value : sp.accent || '',
+          hideBadge: $('#sp-badge').checked,
           links: { discord: $('#sp-discord').value, vote: $('#sp-vote').value, website: $('#sp-website').value },
           blurbs: Object.fromEntries([...document.querySelectorAll('[data-sp-blurb]')].map((el) => [el.dataset.spBlurb, el.value])),
           ...extra,
@@ -534,6 +625,34 @@ async function renderStatusPageForm() {
       toast(err.message, 'error');
     }
   };
+  let accentTouched = false;
+  $('#sp-accent').addEventListener('input', () => (accentTouched = true));
+  $('#sp-accent-reset').addEventListener('click', () => {
+    accentTouched = false;
+    sp.accent = '';
+    $('#sp-accent').value = '#c6f432';
+    save();
+  });
+  $('#sp-logo-file').addEventListener('change', (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+    if (file.size > 512 * 1024) return toast('The logo must be at most 512 KB', 'error');
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        await api('/api/status-page/logo', { method: 'PUT', body: { image: reader.result } });
+        toast('Logo uploaded');
+        renderStatusPageForm();
+      } catch (err) {
+        toast(err.message, 'error');
+      }
+    };
+    reader.readAsDataURL(file);
+  });
+  $('#sp-logo-remove')?.addEventListener('click', async () => {
+    await api('/api/status-page/logo', { method: 'DELETE' }).catch((err) => toast(err.message, 'error'));
+    renderStatusPageForm();
+  });
   $('#sp-save').addEventListener('click', () => save());
   $('#sp-copy')?.addEventListener('click', (e) => copyToClipboard(link, e.currentTarget));
   $('#sp-new')?.addEventListener('click', async () => {
@@ -645,6 +764,11 @@ async function checkForUpdates(interactive) {
     return;
   }
   if (!status.isConnected) return; // the user left Settings while it was checking
+  if (data.channel && $('#update-channel')) {
+    $('#update-channel').value = data.channel;
+    $('#update-channel-hint').textContent =
+      data.mode === 'git' ? (data.channel === 'beta' ? 'Follows every change on main.' : 'Follows the newest release tag.') : data.channel === 'beta' ? 'Includes pre-releases.' : '';
+  }
 
   if (!data.supported) {
     status.textContent = data.reason;
@@ -757,4 +881,128 @@ async function renderDiscordBot() {
     save({ controllers: $('#db-controllers').value, ...(token ? { token } : {}) });
   });
   $('#db-off')?.addEventListener('click', () => save({ token: '', controllers: $('#db-controllers').value }));
+}
+
+/* ----------------------------------------------------------------- HTTPS */
+
+async function renderHttps() {
+  const body = $('#tls-body');
+  if (!body) return;
+  let st;
+  try {
+    st = await api('/api/settings/https');
+  } catch (err) {
+    body.innerHTML = `<span class="faint">${esc(err.message)}</span>`;
+    return;
+  }
+  if (!body.isConnected) return;
+  const s = st.settings;
+  const cert = st.certificate;
+  const days = cert ? Math.round((cert.notAfter - Date.now()) / 86_400_000) : null;
+  $('#tls-on').checked = s.enabled;
+  const url = s.domain ? `https://${s.domain}${s.port === 443 ? '' : `:${s.port}`}` : '';
+  body.innerHTML = `
+    <div class="faint" style="margin-bottom:12px">A free certificate from Let's Encrypt, renewed by itself, so the panel opens at <span class="mono">https://your.domain</span>: needed for passkeys and the phone app away from home. Point the domain at this machine first.</div>
+    ${
+      cert
+        ? `<div class="filter-note mb-16">${st.listening ? `${icon('check', 12)} Serving <a href="${esc(url)}" target="_blank" rel="noopener">${esc(url)}</a>` : 'Certificate ready, HTTPS off'} · ${esc(cert.issuer)} · ${days} days left, renews ${esc(fmtTime(cert.renewAt))}</div>`
+        : ''
+    }
+    <div class="form-grid">
+      <label><span>Domain</span><input id="tls-domain" value="${esc(s.domain)}" placeholder="panel.example.com" spellcheck="false" /></label>
+      <label><span>Email for expiry notices</span><input id="tls-email" value="${esc(s.email)}" placeholder="you@example.com" /></label>
+      <label><span>Prove the domain with</span><select id="tls-method">
+        <option value="http" ${s.method !== 'cloudflare' ? 'selected' : ''}>Port 80 (this machine answers)</option>
+        <option value="cloudflare" ${s.method === 'cloudflare' ? 'selected' : ''}>Cloudflare DNS (no port 80 needed)</option>
+      </select></label>
+      <label><span>HTTPS port</span><input id="tls-port" type="number" min="1" max="65535" value="${s.port}" /></label>
+    </div>
+    <div class="checkbox-row mt-16"><input type="checkbox" id="tls-redirect" ${s.redirect ? 'checked' : ''} /><label for="tls-redirect">Send plain-HTTP visits to this domain to HTTPS (the IP address and port ${st.httpPort} keep working)</label></div>
+    <div class="checkbox-row"><input type="checkbox" id="tls-staging" ${s.staging ? 'checked' : ''} /><label for="tls-staging">Use Let's Encrypt's test service (for trying it out; browsers will not trust it)</label></div>
+    <div class="hint">Port 80 has to reach this machine for Let's Encrypt to check it (forward it on your router; the panel only listens there while it gets a certificate). Ports below 1024 may need extra rights for the panel's service. The Cloudflare method uses the token under Integrations.</div>
+    <div class="row mt-16" style="gap:8px">
+      <button class="btn" id="tls-save">Save</button>
+      <button class="btn btn-primary" id="tls-issue" ${st.issuing ? 'disabled' : ''}>${st.issuing ? '<span class="spinner"></span> Getting a certificate…' : cert ? 'Renew now' : 'Get a certificate'}</button>
+    </div>
+    ${st.lastError ? `<div class="hint" style="color:var(--danger)">${esc(st.lastError)}</div>` : ''}
+    ${st.log?.length ? `<pre class="tls-log">${esc(st.log.map((l) => l.line).join('\n'))}</pre>` : ''}`;
+
+  const values = () => ({
+    enabled: $('#tls-on').checked,
+    domain: $('#tls-domain').value,
+    email: $('#tls-email').value,
+    method: $('#tls-method').value,
+    port: Number($('#tls-port').value),
+    redirect: $('#tls-redirect').checked,
+    staging: $('#tls-staging').checked,
+  });
+  const save = async (quiet) => {
+    try {
+      await api('/api/settings/https', { method: 'PUT', body: values() });
+      if (!quiet) toast('HTTPS settings saved');
+      return true;
+    } catch (err) {
+      toast(err.message, 'error');
+      return false;
+    }
+  };
+  $('#tls-save').onclick = async () => {
+    if (await save()) renderHttps();
+  };
+  $('#tls-on').onchange = async () => {
+    if (await save(true)) {
+      toast($('#tls-on').checked ? (cert ? 'HTTPS is on' : 'HTTPS is on: get a certificate to start it') : 'HTTPS is off');
+      renderHttps();
+    } else $('#tls-on').checked = !$('#tls-on').checked;
+  };
+  $('#tls-issue').onclick = async () => {
+    if (!(await save(true))) return;
+    await api('/api/settings/https/issue', { method: 'POST', body: {} }).catch((err) => toast(err.message, 'error'));
+    // Watch it: an order takes from a few seconds to a minute.
+    const poll = async () => {
+      const next = await api('/api/settings/https').catch(() => null);
+      if (!$('#tls-body')) return;
+      if (next?.issuing) setTimeout(poll, 2000);
+      else {
+        if (next?.lastError) toast(next.lastError, 'error', 9000);
+        else if (next?.certificate) toast('Certificate ready');
+        renderHttps();
+      }
+    };
+    renderHttps();
+    setTimeout(poll, 1500);
+  };
+}
+
+/* ------------------------------------------------------------------ SFTP */
+
+async function renderSftp() {
+  const body = $('#sftp-body');
+  if (!body) return;
+  const st = await api('/api/settings/sftp').catch((err) => ({ error: err.message }));
+  if (!body.isConnected) return;
+  if (st.error) {
+    body.innerHTML = `<span class="faint">${esc(st.error)}</span>`;
+    return;
+  }
+  $('#sftp-on').checked = st.settings.enabled;
+  body.innerHTML = `
+    <div class="faint" style="margin-bottom:12px">FileZilla, WinSCP and other SFTP apps sign in with panel accounts (and the authenticator code, for accounts that have one) and see the server folders each account may browse. Changing files needs "Upload, edit and delete files". There is no shell: SFTP only.</div>
+    ${st.listening ? `<div class="filter-note mb-16">${icon('check', 12)} Listening on port ${st.listening}. Host key <span class="mono">${esc(st.fingerprint || '')}</span></div>` : ''}
+    <div class="row" style="gap:8px;align-items:flex-end">
+      <label class="field" style="margin:0;width:140px"><span>Port</span><input type="number" id="sftp-port" min="1" max="65535" value="${st.settings.port}" /></label>
+      <button class="btn" id="sftp-save">Save</button>
+    </div>
+    <div class="hint">Open this port on the firewall (or router) to use it from elsewhere. Usernames: <span class="mono">alice</span> for every server, or <span class="mono">alice.&lt;server id&gt;</span> for one.</div>`;
+  const save = async () => {
+    try {
+      await api('/api/settings/sftp', { method: 'PUT', body: { enabled: $('#sftp-on').checked, port: Number($('#sftp-port').value) } });
+      toast($('#sftp-on').checked ? 'SFTP is on' : 'SFTP is off');
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+    renderSftp();
+  };
+  $('#sftp-on').onchange = save;
+  $('#sftp-save').onclick = save;
 }

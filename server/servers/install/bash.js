@@ -106,6 +106,17 @@ gp_java_local() {
   gp_log "Java ready: $(java -version 2>&1 | grep -m1 ' version ')"
 }
 
+# Remember which Java the install settled on, so the start command uses the
+# same one even when a login shell's profile puts an older Java first.
+gp_pin_java() {
+  local bin
+  bin="$(command -v java)" || return 0
+  bin="$(readlink -f "$bin" 2>/dev/null || echo "$bin")"
+  mkdir -p "$GP_SERVER_DIR/.gamepanel"
+  dirname "$(dirname "$bin")" > "$GP_SERVER_DIR/.gamepanel/java-home"
+  return 0
+}
+
 gp_ensure_java() {
   local want="\${1:-21}"
   # Anything already on PATH, including a runtime a previous install fetched.
@@ -115,6 +126,7 @@ gp_ensure_java() {
     have="$(java -version 2>&1 | grep -m1 ' version ' | sed -E 's/.*"([0-9]+).*/\\1/')"
     if [ -n "$have" ] && [ "$have" -ge "$want" ] 2>/dev/null; then
       gp_log "Java $have already present"
+      gp_pin_java
       return 0
     fi
     gp_log "Java $have is older than $want — installing a newer runtime"
@@ -122,10 +134,14 @@ gp_ensure_java() {
   # Try the system package first (fast, shared), then fall back to a private
   # runtime so a panel without sudo rights can still run Java games.
   if gp_apt "openjdk-\${want}-jre-headless"; then
-    gp_have java && return 0
+    # The package does not always become the default "java": find it by version.
+    for home in /usr/lib/jvm/java-\${want}-openjdk-*; do
+      [ -x "$home/bin/java" ] && export PATH="$home/bin:$PATH" && break
+    done
+    gp_have java && gp_pin_java && return 0
   fi
-  gp_java_local "$want" && return 0
-  gp_apt default-jre-headless && gp_have java && return 0
+  gp_java_local "$want" && gp_pin_java && return 0
+  gp_apt default-jre-headless && gp_have java && gp_pin_java && return 0
   gp_die "Java could not be installed. Install a JRE >= $want on the host, or give the panel user sudo rights for apt-get, then reinstall."
 }
 

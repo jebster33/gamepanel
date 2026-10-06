@@ -9,7 +9,7 @@
 const { TITLES } = require('./notify');
 
 // Shown as a pop-up as well as in the list.
-const LOUD = /\.(crashed|install_failed|failed|upload_failed|disk_low|lockout|hung|resource_alert|watched|ready|installed)$/;
+const LOUD = /\.(crashed|install_failed|failed|upload_failed|verify_failed|disk_low|lockout|hung|resource_alert|watched|ready|installed)$/;
 
 /** Same rule as the activity log: account events are for administrators only. */
 function visibleTo(auth, user, event) {

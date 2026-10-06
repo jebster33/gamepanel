@@ -251,6 +251,8 @@ module.exports = {
         MemorySwap: memoryBytes, // no swap: a leaking server cannot drag the host down
         NanoCpus: nanoCpus,
         NetworkMode: network,
+        // A Velocity proxy reaches the servers behind it through their published ports on the host.
+        ExtraHosts: ['host.docker.internal:host-gateway'],
         RestartPolicy: { Name: 'no' }, // the panel handles restarts and crash counting
         LogConfig: { Type: 'json-file', Config: { 'max-size': '20m', 'max-file': '2' } },
         Ulimits: FILE_LIMITS,

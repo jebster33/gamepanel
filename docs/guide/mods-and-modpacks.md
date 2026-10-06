@@ -41,6 +41,18 @@ their own mod lists, Project Zomboid gets `WorkshopItems` and `Mods` written for
 the galaxy's modconfig.lua. Paste the
 Workshop link or item ID and press **Add item**.
 
+## The mod check
+
+On Minecraft servers, the Mods tab looks inside the jars (also ones you uploaded by hand) and says when a mod is made for another loader or Minecraft version, needs a mod that is missing, breaks another mod, is installed twice, or is client-only. It runs whenever you open the tab, on demand with **Check**, and after a modded server crashes.
+
+## Config files as forms
+
+The **Configs** tab lists the config files of your plugins and mods (`plugins/…`, `config/…`, BepInEx, Oxide) and shows them as forms: toggles, numbers, lists, and choices where the file lists the allowed values. Only what you change is rewritten, so comments and layout stay. Every save is kept in config history.
+
+## Minecraft networks
+
+Create a **Minecraft: Velocity proxy** server, then **Servers → Networks → New network**: pick the proxy and the Paper or Purpur servers behind it (the first is where players land). The panel sets up forwarding on both ends, so players join the proxy's address and move between servers with `/server`, and the servers behind it cannot be joined directly.
+
 ## Modpacks
 
 <img src="../screenshots/modpacks.png" alt="The Modpack tab" width="800" />

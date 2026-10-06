@@ -33,6 +33,22 @@ module.exports = (router, app, { serverFor }) => {
     return result;
   });
 
+  /* ------------------------------------------------- plugin config forms -- */
+
+  const forms = require('../../features/config-forms');
+
+  router.get('/api/servers/:id/configs', ({ user, params }) => ({ files: forms.list(serverFor(user, params.id, 'files')) }));
+
+  router.get('/api/servers/:id/configs/form', ({ user, params, url }) => forms.form(serverFor(user, params.id, 'files'), url.searchParams.get('path') || ''));
+
+  router.put('/api/servers/:id/configs/form', ({ user, params, url, body }) => {
+    const server = serverFor(user, params.id, 'files.write');
+    const rel = url.searchParams.get('path') || '';
+    const result = forms.save(server, rel, { version: body?.version, changes: body?.changes || {} });
+    if (result.changed) history.record(server.id, rel, { before: result.before, after: result.after, by: user.username, source: 'form' });
+    return { ...forms.form(server, rel), changed: result.changed };
+  });
+
   /* ------------------------------------------------------ config history -- */
 
   router.get('/api/servers/:id/config-history', ({ user, params }) => {

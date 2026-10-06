@@ -155,5 +155,19 @@
     "consoleInput": false,
     "stopCommand": null,
     "stopRconCommand": "quit"
+  },
+  "wipe": {
+    "dir": "server/gamepanel",
+    "map": [
+      "*.map",
+      "*.sav",
+      "*.sav.*",
+      "player.states.*.db",
+      "sv.files.*.db"
+    ],
+    "blueprints": [
+      "player.blueprints.*.db"
+    ],
+    "seedVar": "WORLD_SEED"
   }
 }
