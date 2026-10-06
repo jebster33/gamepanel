@@ -59,7 +59,7 @@ module.exports = {
   async resolveDownloads(server, template, vars) {
     if (!template.resolve) return {};
     this.pushConsole(server, `Looking up the ${template.name} download…`, 'system');
-    const extra = await require('../games/resolvers').resolveDownload(template.resolve, vars, { platform: server.platform });
+    const extra = await require('../games/resolvers').resolveDownload(template.resolve, vars, { platform: server.platform, curseforgeKey: this.store.state.settings.integrations?.curseforgeKey });
 
     if (extra.RESOLVED_VERSION) server.resolvedVersion = String(extra.RESOLVED_VERSION);
     // The plain game version (e.g. "1.21.4") — what mod searches filter on.
