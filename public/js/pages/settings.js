@@ -84,6 +84,14 @@ export async function renderSettings(view) {
         Updates pull the latest code and restart the panel. Servers running in containers keep running —
         the panel re-attaches to them when it comes back.
       </p>
+      <div class="row mb-16" style="gap:10px;align-items:center">
+        <label style="margin:0;display:flex;align-items:center;gap:10px"><span style="margin:0">Channel</span>
+          <select id="update-channel" style="width:auto">
+            <option value="stable" ${s.updateChannel === 'stable' ? 'selected' : ''}>Stable: tagged releases only</option>
+            <option value="beta" ${s.updateChannel === 'beta' ? 'selected' : ''}>Beta: new features first</option>
+          </select></label>
+        <span class="faint" id="update-channel-hint" style="font-size:12.5px"></span>
+      </div>
       <div class="row"><button class="btn" id="update-check">Check for updates</button>
         <span id="update-status" class="faint"></span></div>
       <div id="update-detail" class="mt-16"></div>
@@ -362,6 +370,15 @@ export async function renderSettings(view) {
   });
 
   $('#update-check').addEventListener('click', () => checkForUpdates(true));
+  $('#update-channel').addEventListener('change', async (event) => {
+    try {
+      await api('/api/settings', { method: 'PATCH', body: { updateChannel: event.target.value } });
+      toast(event.target.value === 'beta' ? 'Beta channel: you get new features first, and the odd rough edge' : 'Stable channel: tagged releases only');
+      checkForUpdates(true);
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+  });
   checkForUpdates(false);
 
   $('#s-save').addEventListener('click', async () => {
@@ -645,6 +662,11 @@ async function checkForUpdates(interactive) {
     return;
   }
   if (!status.isConnected) return; // the user left Settings while it was checking
+  if (data.channel && $('#update-channel')) {
+    $('#update-channel').value = data.channel;
+    $('#update-channel-hint').textContent =
+      data.mode === 'git' ? (data.channel === 'beta' ? 'Follows every change on main.' : 'Follows the newest release tag.') : data.channel === 'beta' ? 'Includes pre-releases.' : '';
+  }
 
   if (!data.supported) {
     status.textContent = data.reason;

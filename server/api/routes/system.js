@@ -69,7 +69,7 @@ module.exports = (router, { store, auth, manager, hostMetrics, notifier, bridge 
 
   router.get('/api/system/update', async ({ user }) => {
     requireAdmin(user);
-    return updater.checkForUpdate();
+    return updater.checkForUpdate({ channel: store.state.settings.updateChannel });
   });
 
   router.post(
@@ -77,7 +77,7 @@ module.exports = (router, { store, auth, manager, hostMetrics, notifier, bridge 
     async ({ user, res }) => {
       requireAdmin(user);
       const lines = [];
-      const result = await updater.applyUpdate({ onLog: (line) => lines.push(line) });
+      const result = await updater.applyUpdate({ onLog: (line) => lines.push(line), channel: store.state.settings.updateChannel });
       store.addEvent('panel.updated', `Panel updated ${result.from} → ${result.to} by ${user.username}`);
       // Reply first, then restart. Containerised servers keep running.
       json(res, 200, { ok: true, ...result, log: lines, restarting: true });
@@ -117,6 +117,7 @@ module.exports = (router, { store, auth, manager, hostMetrics, notifier, bridge 
     if (body.maxCrashRestarts !== undefined) s.maxCrashRestarts = clamp(body.maxCrashRestarts, 0, 100);
     if (body.containerize !== undefined) s.containerize = Boolean(body.containerize);
     if (body.geoLookup !== undefined) s.geoLookup = Boolean(body.geoLookup);
+    if (body.updateChannel !== undefined) s.updateChannel = updater.CHANNELS.includes(body.updateChannel) ? body.updateChannel : undefined;
     if (body.scheduledEvents !== undefined) s.scheduledEvents = Boolean(body.scheduledEvents);
     if (body.limits) {
       const n = (v, max) => Math.max(0, Math.min(max, Number(v) || 0));

@@ -3,9 +3,17 @@
 /**
  * In-place updates, two ways:
  *
- *   git checkout   (install.sh on Linux) `git reset --hard origin/main`
+ *   git checkout   (install.sh on Linux) `git reset --hard` to the target
  *   release        (Setup.exe / zip on Windows, or any non-git copy) download
- *                  the newest GitHub release and copy its files over this one
+ *                  a GitHub release and copy its files over this one
+ *
+ * and two channels (Settings → Panel updates):
+ *
+ *   stable   tagged releases only (v2.2.0, v2.3.0…)
+ *   beta     pre-releases too; a git checkout follows every change on main
+ *
+ * A git checkout installed by install.sh has always followed main, so that
+ * stays its default; a release install defaults to stable.
  *
  * There is no build step and no dependencies, so either way it is just new
  * files plus a restart. Containerised game servers keep running; the panel
@@ -31,24 +39,38 @@ function newer(a, b) {
   return false;
 }
 
-async function latestRelease() {
-  const res = await fetch(`https://api.github.com/repos/${REPO}/releases/latest`, {
+const CHANNELS = ['stable', 'beta'];
+
+function channelOf(setting) {
+  return CHANNELS.includes(setting) ? setting : isGitCheckout() ? 'beta' : 'stable';
+}
+
+/**
+ * The newest panel release for a channel. Only "v1.2.3" tags count: the
+ * repository also publishes other things (the bridge client) as releases.
+ */
+async function latestRelease(channel = 'stable') {
+  const res = await fetch(`https://api.github.com/repos/${REPO}/releases?per_page=40`, {
     headers: { 'User-Agent': 'GamePanel', Accept: 'application/vnd.github+json' },
     signal: AbortSignal.timeout(15000),
   });
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`GitHub answered ${res.status}`);
-  return res.json();
+  const releases = (await res.json()).filter((r) => !r.draft && /^v\d/.test(r.tag_name) && (channel === 'beta' || !r.prerelease));
+  // Newest first; a final release beats its own pre-releases (2.3.0 over 2.3.0-beta.1).
+  return releases.sort((a, b) => (newer(a.tag_name, b.tag_name) ? -1 : newer(b.tag_name, a.tag_name) ? 1 : Number(a.prerelease) - Number(b.prerelease)))[0] || null;
 }
 
-async function checkRelease(version) {
+async function checkRelease(version, channel) {
   try {
-    const release = await latestRelease();
-    if (!release) return { supported: true, mode: 'release', version, updateAvailable: false, note: 'No releases have been published yet.' };
+    const release = await latestRelease(channel);
+    if (!release) return { supported: true, mode: 'release', channel, version, updateAvailable: false, note: 'No releases have been published yet.' };
     const latest = release.tag_name.replace(/^v/, '');
     return {
       supported: true,
       mode: 'release',
+      channel,
+      prerelease: Boolean(release.prerelease),
       version,
       latest,
       updateAvailable: newer(latest, version),
@@ -57,13 +79,13 @@ async function checkRelease(version) {
       published: release.published_at,
     };
   } catch (err) {
-    return { supported: true, mode: 'release', version, error: `Could not reach GitHub: ${err.message}` };
+    return { supported: true, mode: 'release', channel, version, error: `Could not reach GitHub: ${err.message}` };
   }
 }
 
-async function applyRelease(onLog) {
+async function applyRelease(onLog, channel) {
   const { download, extractArchive } = require('../servers/install/native');
-  const release = await latestRelease();
+  const release = await latestRelease(channel);
   if (!release) fail(400, 'No releases have been published yet');
   const tag = release.tag_name;
   const work = path.join(config.cacheDir, `update-${tag.replace(/[^\w.-]/g, '')}`);
@@ -115,12 +137,46 @@ async function currentRevision() {
   }
 }
 
+/** The newest "v…" tag on the remote: what a stable git checkout follows. */
+async function latestTag() {
+  await git('fetch --quiet --tags --force origin');
+  const tags = (await git("tag -l v* --sort=-v:refname")).split('\n').filter((t) => /^v\d+\.\d+\.\d+$/.test(t.trim()));
+  return tags[0] || null;
+}
+
+/** A stable git checkout: how far HEAD is from the newest release tag. */
+async function checkTag(version, current) {
+  let tag;
+  try {
+    tag = await latestTag();
+  } catch (err) {
+    return { supported: true, mode: 'git', channel: 'stable', version, current, error: `Could not reach the update server: ${err.message}` };
+  }
+  if (!tag) return { supported: true, mode: 'git', channel: 'stable', version, current, updateAvailable: false, note: 'No releases have been tagged yet.' };
+  const behind = Number(await git(`rev-list --count HEAD..${tag}`).catch(() => '0'));
+  const ahead = Number(await git(`rev-list --count ${tag}..HEAD`).catch(() => '0'));
+  return {
+    supported: true,
+    mode: 'git',
+    channel: 'stable',
+    version,
+    current,
+    latest: tag.replace(/^v/, ''),
+    behind,
+    updateAvailable: behind > 0,
+    note: !behind && ahead ? `This copy is ${ahead} change${ahead === 1 ? '' : 's'} ahead of ${tag} (it followed beta); it moves to the next stable release when there is one.` : undefined,
+    commits: [],
+  };
+}
+
 /** Fetch from the remote and report how far behind we are. */
-async function checkForUpdate() {
+async function checkForUpdate({ channel: setting } = {}) {
   const version = require('../../package.json').version;
-  if (!isGitCheckout()) return checkRelease(version);
+  const channel = channelOf(setting);
+  if (!isGitCheckout()) return checkRelease(version, channel);
 
   const current = await currentRevision();
+  if (channel === 'stable') return checkTag(version, current);
   try {
     await git(`fetch --quiet origin ${BRANCH}`);
   } catch (err) {
@@ -149,6 +205,7 @@ async function checkForUpdate() {
   return {
     supported: true,
     mode: 'git',
+    channel,
     version,
     current,
     behind,
@@ -162,10 +219,11 @@ async function checkForUpdate() {
  * Pull the new code, then hand over to systemd (or simply exit — the unit has
  * Restart=always, so the supervisor brings the panel back on the new code).
  */
-async function applyUpdate({ onLog = () => {} } = {}) {
+async function applyUpdate({ onLog = () => {}, channel: setting } = {}) {
+  const channel = channelOf(setting);
   if (!isGitCheckout()) {
     const from = require('../../package.json').version;
-    const result = await applyRelease(onLog);
+    const result = await applyRelease(onLog, channel);
     return { from, to: result.to, subject: `Release ${result.to}` };
   }
 
@@ -177,8 +235,16 @@ async function applyUpdate({ onLog = () => {} } = {}) {
     await git('stash push --include-untracked --message "gamepanel-auto-update"').catch(() => {});
   }
 
-  await git(`fetch origin ${BRANCH}`);
-  await git(`reset --hard origin/${BRANCH}`);
+  if (channel === 'stable') {
+    const tag = await latestTag();
+    if (!tag) fail(400, 'No releases have been tagged yet');
+    if (!Number(await git(`rev-list --count HEAD..${tag}`).catch(() => '0'))) fail(400, `Already at or past ${tag}`);
+    onLog(`Moving to ${tag} (stable)`);
+    await git(`reset --hard ${tag}`);
+  } else {
+    await git(`fetch origin ${BRANCH}`);
+    await git(`reset --hard origin/${BRANCH}`);
+  }
 
   // Keep the helper scripts runnable even if a checkout landed without modes.
   await sh(`chmod +x ${JSON.stringify(config.rootDir)}/*.sh`).catch(() => {});
@@ -212,4 +278,4 @@ function scheduleRestart(delayMs = 1200) {
   }, delayMs).unref?.();
 }
 
-module.exports = { checkForUpdate, applyUpdate, scheduleRestart, currentRevision, isGitCheckout };
+module.exports = { checkForUpdate, applyUpdate, scheduleRestart, currentRevision, isGitCheckout, channelOf, latestRelease, newer, CHANNELS };
