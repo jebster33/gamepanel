@@ -559,6 +559,20 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
     return { setups: setups.list(manager.templates) };
   });
 
+  /** Save a server as a setup of your own (administrators). */
+  router.post('/api/servers/:id/save-as-setup', ({ user, params, body }) => {
+    requireAdmin(user);
+    const setup = setups.saveCustom(setups.fromServer(manager, manager.require(params.id), { name: body?.name, description: body?.description }));
+    store.addEvent('server.setup_saved', `${user.username} saved ${setup.name} as a setup`, { serverId: params.id });
+    return { setup };
+  });
+
+  router.delete('/api/setups/:sid', ({ user, params }) => {
+    requireAdmin(user);
+    setups.removeCustom(params.sid);
+    return { ok: true };
+  });
+
   router.post('/api/setups/:sid/deploy', async ({ user, params, body }) => {
     const setup = setups.get(params.sid);
     const server = createFor(user, setups.serverInput(setup, { name: body?.name, memory: body?.memory }));

@@ -9,12 +9,10 @@ import { openModal } from '../ui/modal.js';
 // A game plus its plugins, settings and schedules, deployed in one click.
 // Shown above the games on the Games page.
 
-let cache = null;
-
 export async function renderSetups(host) {
   if (!host || !(state.user.role === 'admin' || can('deploy'))) return;
-  cache = cache || (await api('/api/setups').catch(() => ({ setups: [] })));
-  const setups = cache.setups.filter((s) => state.user.role === 'admin' || !s.adminOnly);
+  const data = await api('/api/setups').catch(() => ({ setups: [] }));
+  const setups = data.setups.filter((s) => state.user.role === 'admin' || !s.adminOnly);
   if (!setups.length || !host.isConnected) return;
   host.innerHTML = `
     <div class="section-head"><h2>Ready-made setups</h2><span class="faint">A game with its plugins, settings and schedules, in one click.</span></div>
@@ -27,12 +25,22 @@ export async function renderSetups(host) {
         <p>${esc(s.description)}</p>
         <div class="t-foot">
           ${s.includes.map((i) => `<span class="badge">${esc(i)}</span>`).join('')}
+          ${s.custom && state.user.role === 'admin' ? `<button class="btn btn-sm btn-ghost btn-danger" data-setup-delete="${esc(s.id)}" title="Delete this setup">Delete</button>` : ''}
           <button class="btn btn-sm btn-primary" data-setup="${esc(s.id)}">Deploy</button>
         </div>
       </div>`
       )
       .join('')}</div>`;
   $$('[data-setup]', host).forEach((btn) => btn.addEventListener('click', () => openSetupModal(setups.find((s) => s.id === btn.dataset.setup))));
+  $$('[data-setup-delete]', host).forEach((btn) =>
+    btn.addEventListener('click', async () => {
+      const setup = setups.find((s) => s.id === btn.dataset.setupDelete);
+      const { confirmModal } = await import('../ui/modal.js');
+      if (!(await confirmModal('Delete setup', `Delete the setup "${setup.name}"? Servers made from it are not touched.`, 'Delete'))) return;
+      await api(`/api/setups/${encodeURIComponent(setup.id)}`, { method: 'DELETE' }).catch((err) => toast(err.message, 'error'));
+      renderSetups(host);
+    })
+  );
 }
 
 function openSetupModal(setup) {

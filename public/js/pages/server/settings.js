@@ -154,6 +154,7 @@ export function renderServerSettingsTab(host, server) {
              <p class="faint" style="margin:0 0 14px">Duplicating makes a copy on new ports. Exporting downloads the whole server, which another GamePanel can import. Reinstalling re-runs the template installer in place. Deleting removes the server and all of its files.</p>
              <div class="row">
                <button class="btn" id="set-clone">Duplicate</button>
+               <button class="btn" id="set-save-setup" title="Make this server a ready-made setup you can deploy again from the Games page">Save as setup</button>
                <a class="btn" href="/api/servers/${server.id}/export" download>Export</a>
                <button class="btn" id="set-reinstall">Reinstall</button>
                <button class="btn btn-danger" id="set-delete">Delete server</button>
@@ -250,6 +251,35 @@ export function renderServerSettingsTab(host, server) {
   });
 
   if (!isOwner) return; // the danger zone below is not rendered for non-admins
+
+  $('#set-save-setup')?.addEventListener('click', () => {
+    const modal = openModal({
+      title: 'Save as setup',
+      width: 520,
+      body: `
+        <p class="faint" style="margin-top:0">Keeps the game, its settings, memory, mods and schedules, so you can deploy another one like it from the Games page. Passwords and tokens are left out.</p>
+        <label><span>Name</span><input id="ss-name" value="${esc(server.name)}" maxlength="60" /></label>
+        <label><span>Description</span><input id="ss-desc" placeholder="What makes it this kind of server" maxlength="400" /></label>`,
+      actions: [
+        { label: 'Cancel', close: true },
+        {
+          label: 'Save setup',
+          primary: true,
+          onClick: async (btn) => {
+            btn.disabled = true;
+            try {
+              const { setup } = await api(`/api/servers/${server.id}/save-as-setup`, { method: 'POST', body: { name: $('#ss-name').value, description: $('#ss-desc').value } });
+              modal.close();
+              toast(`Saved. ${setup.name} is on the Games page under Ready-made setups.`);
+            } catch (err) {
+              toast(err.message, 'error');
+              btn.disabled = false;
+            }
+          },
+        },
+      ],
+    });
+  });
 
   $('#dns-save')?.addEventListener('click', async (event) => {
     const btn = event.currentTarget;

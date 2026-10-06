@@ -33,7 +33,7 @@ function load() {
     for (const file of files) {
       try {
         const setup = JSON.parse(fs.readFileSync(path.join(dir, file), 'utf8'));
-        if (setup.id && setup.templateId && setup.name) out.set(setup.id, setup);
+        if (setup.id && setup.templateId && setup.name) out.set(setup.id, { ...setup, custom: dir === DIRS[1] });
       } catch (err) {
         logger.warn(`Setup ${file} could not be read: ${err.message}`);
       }
@@ -60,6 +60,7 @@ function list(templates) {
         storeAppId: t.storeAppId || null,
         memory: s.memory || t.defaultMemory || 2048,
         adminOnly: Boolean(t.adminOnly),
+        custom: Boolean(s.custom),
         includes: [
           ...(s.mods?.length ? [`${s.mods.length} ${s.templateId.startsWith('minecraft') ? 'plugins or mods' : 'plugins'}`] : []),
           ...(s.gameSettings ? [`${Object.keys(s.gameSettings).length} game setting${Object.keys(s.gameSettings).length === 1 ? '' : 's'}`] : []),
@@ -103,7 +104,18 @@ async function apply({ manager, store, scheduler }, server) {
   const template = manager.template(server);
   const integrations = store.state.settings.integrations || {};
   const mods = require('./mods');
-  for (const mod of pending.mods) {
+  // Workshop items go through SteamCMD in one batch; everything else one by one.
+  const workshop = pending.mods.filter((m) => m.provider === 'workshop').map((m) => m.projectId);
+  if (workshop.length) {
+    try {
+      const result = await require('./mods/workshop').installWorkshop(server, template, manager, { input: workshop.join(',') }, integrations);
+      say(`Workshop: ${result.message || result.items.join(', ')}`);
+    } catch (err) {
+      problems.push(`Workshop: ${err.message}`);
+      say(`could not add the Workshop items: ${err.message}`);
+    }
+  }
+  for (const mod of pending.mods.filter((m) => m.provider !== 'workshop')) {
     try {
       const result = await mods.install(server, template, { provider: mod.provider, projectId: mod.projectId, liveVersion: manager.rt(server.id).version }, integrations);
       say(`installed ${result.installed.map((i) => i.name).join(', ')}`);
@@ -131,7 +143,7 @@ async function apply({ manager, store, scheduler }, server) {
   }
   store.addEvent(
     problems.length ? 'server.setup_incomplete' : 'server.setup_applied',
-    problems.length ? `${server.name}: the ${server.setup.name} setup is installed, but ${problems.length} part(s) failed. See the console.` : `${server.name} is ready as a ${server.setup.name}`,
+    problems.length ? `${server.name}: the ${server.setup.name} setup is installed, but ${problems.length} part(s) failed. See the console.` : `${server.name} is ready: the ${server.setup.name} setup is applied`,
     { serverId: server.id }
   );
 }
@@ -145,4 +157,66 @@ function start(app) {
   });
 }
 
-module.exports = { list, get, serverInput, attach, apply, start, load };
+/* --------------------------------------------------- save as a setup -- */
+
+// Never copied into a setup: whoever deploys it gets their own.
+const SECRET = /PASS|TOKEN|SECRET|KEY|GSLT|RCON/i;
+
+/** What a server is, as a setup someone can deploy again. */
+function fromServer(manager, server, { name, description } = {}) {
+  const template = manager.template(server);
+  const declared = new Set((template?.variables || []).map((v) => v.name));
+  const defaults = Object.fromEntries((template?.variables || []).map((v) => [v.name, v.default]));
+  const vars = {};
+  for (const [k, v] of Object.entries(server.vars || {})) {
+    if (!declared.has(k) || SECRET.test(k) || k === 'JAVA_VERSION') continue;
+    // "latest" today is another version tomorrow, and the mods were picked for this one.
+    if (/VERSION/.test(k) && String(v) === 'latest' && server.gameVersion) vars[k] = server.gameVersion;
+    else if (String(v ?? '') !== String(defaults[k] ?? '')) vars[k] = v;
+  }
+  const mods = require('./mods/manifest')
+    .load(server)
+    .filter((m) => !m.auto && m.projectId && ['modrinth', 'curseforge', 'hangar', 'spigot', 'umod', 'workshop', 'factorio'].includes(m.provider))
+    .map((m) => ({ provider: m.provider, projectId: String(m.projectId) }));
+  let gameSettings = null;
+  try {
+    const current = require('../games/settings').readGameSettings(manager, server);
+    if (current.supported && current.curated && !current.missing && !current.error) {
+      // The curated fields only (difficulty, PvP, rates…): not ports, passwords or what the panel manages.
+      const fields = current.groups.filter((g) => !g.managedGroup && g.title !== 'Everything else').flatMap((g) => g.fields).filter((f) => !f.managed && !SECRET.test(f.key));
+      if (fields.length) gameSettings = Object.fromEntries(fields.map((f) => [f.key, f.value]));
+    }
+  } catch {
+    gameSettings = null;
+  }
+  const schedules = (server.schedules || []).map(({ name: n, action, cron, command, onlyWhenEmpty, onlyIfRunning, warnMinutes }) => ({ name: n, action, cron, command, onlyWhenEmpty, onlyIfRunning, warnMinutes }));
+  const label = String(name || server.name).trim().slice(0, 60);
+  if (!label) fail(400, 'Give the setup a name');
+  return {
+    id: `custom-${require('../core/util').slugify(label)}`,
+    name: label,
+    templateId: server.templateId,
+    description: String(description || `Based on ${server.name}.`).trim().slice(0, 400),
+    tags: [template?.name || server.templateId, 'Yours'],
+    memory: server.memory,
+    vars,
+    mods,
+    ...(gameSettings ? { gameSettings } : {}),
+    schedules,
+  };
+}
+
+function saveCustom(setup) {
+  fs.mkdirSync(DIRS[1], { recursive: true });
+  fs.writeFileSync(path.join(DIRS[1], `${setup.id}.json`), JSON.stringify(setup, null, 2));
+  return setup;
+}
+
+function removeCustom(id) {
+  if (!/^[\w.-]+$/.test(id)) fail(400, 'Unknown setup');
+  const file = path.join(DIRS[1], `${id}.json`);
+  if (!fs.existsSync(file)) fail(404, 'Only setups saved on this panel can be deleted');
+  fs.rmSync(file);
+}
+
+module.exports = { list, get, serverInput, attach, apply, start, load, fromServer, saveCustom, removeCustom };
