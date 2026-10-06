@@ -1,0 +1,47 @@
+{
+  "id": "minecraft-fabric-performance",
+  "name": "Fast Fabric server",
+  "templateId": "minecraft-fabric",
+  "description": "Vanilla gameplay that runs lighter: Lithium (game logic), FerriteCore (memory), Krypton (networking) and Chunky to pre-generate the world. Players join with plain Minecraft.",
+  "tags": [
+    "Minecraft",
+    "Performance",
+    "Vanilla"
+  ],
+  "memory": 4096,
+  "mods": [
+    {
+      "provider": "modrinth",
+      "projectId": "fabric-api"
+    },
+    {
+      "provider": "modrinth",
+      "projectId": "lithium"
+    },
+    {
+      "provider": "modrinth",
+      "projectId": "ferrite-core"
+    },
+    {
+      "provider": "modrinth",
+      "projectId": "krypton"
+    },
+    {
+      "provider": "modrinth",
+      "projectId": "chunky"
+    }
+  ],
+  "schedules": [
+    {
+      "name": "Nightly restart",
+      "action": "restart",
+      "cron": "0 5 * * *",
+      "warnMinutes": 5
+    },
+    {
+      "name": "Backup",
+      "action": "backup",
+      "cron": "0 */6 * * *"
+    }
+  ]
+}

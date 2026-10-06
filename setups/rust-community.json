@@ -1,0 +1,45 @@
+{
+  "id": "rust-community",
+  "name": "Rust community server",
+  "templateId": "rust",
+  "description": "Rust with Oxide and the plugins community servers run: Better Chat, Remover Tool, Kits, NTeleportation (home and teleport requests) and Gather Manager (set gather rates in oxide/config/GatherManager.json). Restarts daily at 05:00 with a warning.",
+  "tags": [
+    "Rust",
+    "uMod",
+    "Community"
+  ],
+  "memory": 12288,
+  "vars": {
+    "INSTALL_OXIDE": "true"
+  },
+  "mods": [
+    {
+      "provider": "umod",
+      "projectId": "BetterChat"
+    },
+    {
+      "provider": "umod",
+      "projectId": "RemoverTool"
+    },
+    {
+      "provider": "umod",
+      "projectId": "Kits"
+    },
+    {
+      "provider": "umod",
+      "projectId": "NTeleportation"
+    },
+    {
+      "provider": "umod",
+      "projectId": "GatherManager"
+    }
+  ],
+  "schedules": [
+    {
+      "name": "Daily restart",
+      "action": "restart",
+      "cron": "0 5 * * *",
+      "warnMinutes": 10
+    }
+  ]
+}

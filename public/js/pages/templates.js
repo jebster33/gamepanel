@@ -3,6 +3,7 @@ import { state } from '../core/state.js';
 import { api } from '../core/api.js';
 import { $, can, esc, gameArt, icon, toast } from '../core/util.js';
 import { openCreateServerModal } from './deploy.js';
+import { renderSetups } from './setups.js';
 import { revealChildren } from '../ui/fx.js';
 
 /* ------------------------------------------------------------- templates */
@@ -58,6 +59,7 @@ export function renderTemplates(view) {
       <input class="search-input" id="tpl-search" placeholder="Search games…" value="${esc(templateFilter.search)}" />
     </div>
     <div id="quota-note"></div>
+    ${templateFilter.category === 'all' && !templateFilter.search ? '<div id="setups"></div>' : ''}
     <div class="filter-bar">
       <span class="chip ${templateFilter.category === 'all' ? 'active' : ''}" data-cat="all">All (${state.templates.length})</span>
       ${state.categories
@@ -97,6 +99,7 @@ export function renderTemplates(view) {
     </div>`;
 
   revealChildren(view.querySelector('.grid-cards'));
+  renderSetups($('#setups'));
   if (state.user.role !== 'admin' && can('deploy')) showQuota();
 
   $('#tpl-search').addEventListener('input', (event) => {

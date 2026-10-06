@@ -8,7 +8,11 @@ const quotas = require('../../features/quotas');
 module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin, requireCap, serverFor, visibleServers }) => {
   router.get('/api/servers', ({ user }) => ({ servers: visibleServers(user) }));
 
-  router.post('/api/servers', async ({ user, body }) => {
+  /**
+   * Create a server for this account: anything for administrators, and within
+   * the quota (with nothing that reaches the shell) for self-service accounts.
+   */
+  const createFor = (user, body) => {
     let server;
     if (user.role === 'admin') {
       server = manager.create(body, user);
@@ -27,6 +31,11 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
       record.serverPerms = { ...(record.serverPerms || {}), [server.id]: quotas.OWNER_PERMISSIONS };
       store.save();
     }
+    return server;
+  };
+
+  router.post('/api/servers', async ({ user, body }) => {
+    const server = createFor(user, body);
     // Installs can take many minutes: start it and let the console stream.
     manager.install(server.id).catch((err) => logger.error('Install error:', err.message));
     return { server: manager.publicServer(server) };
@@ -529,6 +538,24 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
     const server = serverFor(user, params.id, 'schedules');
     scheduler.remove(server, params.sid);
     return { ok: true };
+  });
+
+  /* -------------------------------------------------- ready-made setups -- */
+
+  const setups = require('../../features/setups');
+
+  router.get('/api/setups', ({ user }) => {
+    if (user.role !== 'admin') requireCap(user, 'deploy');
+    return { setups: setups.list(manager.templates) };
+  });
+
+  router.post('/api/setups/:sid/deploy', async ({ user, params, body }) => {
+    const setup = setups.get(params.sid);
+    const server = createFor(user, setups.serverInput(setup, { name: body?.name, memory: body?.memory }));
+    setups.attach(store, server, setup);
+    store.addEvent('server.setup_deployed', `${user.username} deployed ${server.name} from the ${setup.name} setup`, { serverId: server.id });
+    manager.install(server.id).catch((err) => logger.error('Install error:', err.message));
+    return { server: manager.publicServer(server) };
   });
 
   /* ---------------------------------------------------- scheduled events -- */

@@ -1,0 +1,50 @@
+{
+  "id": "minecraft-smp",
+  "name": "Survival SMP",
+  "templateId": "minecraft-paper",
+  "description": "Paper (Minecraft 26.1.2, the newest version all four support) with the plugins most SMPs start from: permissions (LuckPerms), homes, warps and kits (EssentialsX), grief rollback (CoreProtect) and world pre-generation (Chunky). Restarts at 05:00 with a warning and backs up every 6 hours.",
+  "tags": [
+    "Minecraft",
+    "Plugins",
+    "Friends"
+  ],
+  "memory": 4096,
+  "mods": [
+    {
+      "provider": "modrinth",
+      "projectId": "luckperms"
+    },
+    {
+      "provider": "modrinth",
+      "projectId": "essentialsx"
+    },
+    {
+      "provider": "modrinth",
+      "projectId": "coreprotect"
+    },
+    {
+      "provider": "modrinth",
+      "projectId": "chunky"
+    }
+  ],
+  "gameSettings": {
+    "difficulty": "normal",
+    "spawn-protection": "0"
+  },
+  "schedules": [
+    {
+      "name": "Nightly restart",
+      "action": "restart",
+      "cron": "0 5 * * *",
+      "warnMinutes": 5
+    },
+    {
+      "name": "Backup",
+      "action": "backup",
+      "cron": "0 */6 * * *"
+    }
+  ],
+  "vars": {
+    "MC_VERSION": "26.1.2"
+  }
+}
