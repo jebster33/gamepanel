@@ -144,7 +144,10 @@ async function main() {
 
   /* -------------------------------------------------------- http server -- */
 
-  const server = http.createServer(async (req, res) => {
+  const httpsFeature = require('./features/https');
+
+  // Shared by the HTTP and (Settings → HTTPS) HTTPS listeners.
+  const handleRequest = async (req, res) => {
     const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
     res.setHeader('X-Frame-Options', 'SAMEORIGIN');
     res.setHeader('Referrer-Policy', 'same-origin');
@@ -163,6 +166,12 @@ async function main() {
         json(res, 500, { error: err.message || 'Internal server error' });
       }
     }
+  };
+
+  const server = http.createServer((req, res) => {
+    // Let's Encrypt checks, and plain-HTTP visits to the panel's own domain once it has HTTPS.
+    if (httpsFeature.answerChallenge(req, res) || httpsFeature.redirect(store, req, res)) return;
+    handleRequest(req, res);
   });
 
   server.on('clientError', (err, socket) => {
@@ -171,7 +180,7 @@ async function main() {
 
   /* ---------------------------------------------------------- websocket -- */
 
-  server.on('upgrade', (req, socket, head) => {
+  const handleUpgrade = (req, socket, head) => {
     const url = new URL(req.url, 'http://localhost');
     // Bridge clients authenticate inside their own pinned TLS, not with a cookie.
     if (url.pathname === '/bridge/tunnel') {
@@ -235,7 +244,8 @@ async function main() {
         conn.send({ topic: 'error', message: err.message });
       }
     });
-  });
+  };
+  server.on('upgrade', handleUpgrade);
 
   /* ------------------------------------------------------------- timers -- */
 
@@ -250,6 +260,7 @@ async function main() {
   await new Promise((resolve) => server.listen(config.port, config.host, resolve));
 
   logger.info(`GamePanel ${VERSION} listening on http://${config.host}:${config.port}`);
+  await httpsFeature.start(store, handleRequest, handleUpgrade);
   logger.info(`Host: ${describeHost()} — data in ${config.dataDir}`);
   if (auth.needsSetup()) logger.info('No users yet — open the panel in a browser to create the first administrator.');
 

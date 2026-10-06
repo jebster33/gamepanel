@@ -158,6 +158,28 @@ module.exports = (router, { store, auth, manager, hostMetrics, notifier, bridge 
     return { settings: { ...s, oauth: undefined, backupPassphrase: undefined, backupPassphraseSet: Boolean(s.backupPassphrase) } };
   });
 
+  /* -------------------------------------------------------------- HTTPS -- */
+
+  const httpsFeature = require('../../features/https');
+  router.get('/api/settings/https', ({ user }) => {
+    requireAdmin(user);
+    return httpsFeature.status(store);
+  });
+  router.put('/api/settings/https', async ({ user, body }) => {
+    requireAdmin(user);
+    httpsFeature.update(store, body || {});
+    // Turning it off (or on with a certificate already there) applies right away.
+    await httpsFeature.serve(store).catch((err) => fail(400, err.message));
+    store.addEvent('panel.settings', `${user.username} changed the HTTPS settings`);
+    return httpsFeature.status(store);
+  });
+  /** Get or renew the certificate now. Runs in the background; the status shows how it goes. */
+  router.post('/api/settings/https/issue', ({ user }) => {
+    requireAdmin(user);
+    httpsFeature.issue(store).catch(() => {});
+    return httpsFeature.status(store);
+  });
+
   router.post('/api/settings/notifications/test', async ({ user, body }) => {
     requireAdmin(user);
     try {

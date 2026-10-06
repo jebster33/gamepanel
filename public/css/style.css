@@ -2586,6 +2586,17 @@ tbody tr:hover {
 .lime {
   color: var(--lime-text);
 }
+.tls-log {
+  max-height: 160px;
+  overflow: auto;
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  font-size: 12px;
+  color: var(--muted);
+  background: var(--inset);
+  border-radius: 8px;
+  white-space: pre-wrap;
+}
 .choice-list {
   display: grid;
   gap: 8px;

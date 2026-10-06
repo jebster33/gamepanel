@@ -107,6 +107,11 @@ export async function renderSettings(view) {
       <div class="hint">Applies the next time a server starts. Without Docker the panel falls back to plain processes.</div>
     </div>
 
+    <div class="card mb-16" id="https">
+      <div class="card-head"><h4>HTTPS</h4><div class="spacer"></div><label class="switch"><input type="checkbox" id="tls-on" /><i></i></label></div>
+      <div id="tls-body"><span class="spinner"></span></div>
+    </div>
+
     <div class="card mb-16" id="backup-checks">
       <h4>Backup checks</h4>
       <div class="faint" style="margin-bottom:12px">A backup you have never restored is a guess. A check unpacks it into a scratch folder and makes sure every file came back.</div>
@@ -308,6 +313,8 @@ export async function renderSettings(view) {
       event.target.checked = !event.target.checked;
     }
   });
+
+  renderHttps();
 
   $('#s-bpass-save').addEventListener('click', async (event) => {
     const btn = event.currentTarget;
@@ -868,4 +875,95 @@ async function renderDiscordBot() {
     save({ controllers: $('#db-controllers').value, ...(token ? { token } : {}) });
   });
   $('#db-off')?.addEventListener('click', () => save({ token: '', controllers: $('#db-controllers').value }));
+}
+
+/* ----------------------------------------------------------------- HTTPS */
+
+async function renderHttps() {
+  const body = $('#tls-body');
+  if (!body) return;
+  let st;
+  try {
+    st = await api('/api/settings/https');
+  } catch (err) {
+    body.innerHTML = `<span class="faint">${esc(err.message)}</span>`;
+    return;
+  }
+  if (!body.isConnected) return;
+  const s = st.settings;
+  const cert = st.certificate;
+  const days = cert ? Math.round((cert.notAfter - Date.now()) / 86_400_000) : null;
+  $('#tls-on').checked = s.enabled;
+  const url = s.domain ? `https://${s.domain}${s.port === 443 ? '' : `:${s.port}`}` : '';
+  body.innerHTML = `
+    <div class="faint" style="margin-bottom:12px">A free certificate from Let's Encrypt, renewed by itself, so the panel opens at <span class="mono">https://your.domain</span>: needed for passkeys and the phone app away from home. Point the domain at this machine first.</div>
+    ${
+      cert
+        ? `<div class="filter-note mb-16">${st.listening ? `${icon('check', 12)} Serving <a href="${esc(url)}" target="_blank" rel="noopener">${esc(url)}</a>` : 'Certificate ready, HTTPS off'} · ${esc(cert.issuer)} · ${days} days left, renews ${esc(fmtTime(cert.renewAt))}</div>`
+        : ''
+    }
+    <div class="form-grid">
+      <label><span>Domain</span><input id="tls-domain" value="${esc(s.domain)}" placeholder="panel.example.com" spellcheck="false" /></label>
+      <label><span>Email for expiry notices</span><input id="tls-email" value="${esc(s.email)}" placeholder="you@example.com" /></label>
+      <label><span>Prove the domain with</span><select id="tls-method">
+        <option value="http" ${s.method !== 'cloudflare' ? 'selected' : ''}>Port 80 (this machine answers)</option>
+        <option value="cloudflare" ${s.method === 'cloudflare' ? 'selected' : ''}>Cloudflare DNS (no port 80 needed)</option>
+      </select></label>
+      <label><span>HTTPS port</span><input id="tls-port" type="number" min="1" max="65535" value="${s.port}" /></label>
+    </div>
+    <div class="checkbox-row mt-16"><input type="checkbox" id="tls-redirect" ${s.redirect ? 'checked' : ''} /><label for="tls-redirect">Send plain-HTTP visits to this domain to HTTPS (the IP address and port ${st.httpPort} keep working)</label></div>
+    <div class="checkbox-row"><input type="checkbox" id="tls-staging" ${s.staging ? 'checked' : ''} /><label for="tls-staging">Use Let's Encrypt's test service (for trying it out; browsers will not trust it)</label></div>
+    <div class="hint">Port 80 has to reach this machine for Let's Encrypt to check it (forward it on your router; the panel only listens there while it gets a certificate). Ports below 1024 may need extra rights for the panel's service. The Cloudflare method uses the token under Integrations.</div>
+    <div class="row mt-16" style="gap:8px">
+      <button class="btn" id="tls-save">Save</button>
+      <button class="btn btn-primary" id="tls-issue" ${st.issuing ? 'disabled' : ''}>${st.issuing ? '<span class="spinner"></span> Getting a certificate…' : cert ? 'Renew now' : 'Get a certificate'}</button>
+    </div>
+    ${st.lastError ? `<div class="hint" style="color:var(--danger)">${esc(st.lastError)}</div>` : ''}
+    ${st.log?.length ? `<pre class="tls-log">${esc(st.log.map((l) => l.line).join('\n'))}</pre>` : ''}`;
+
+  const values = () => ({
+    enabled: $('#tls-on').checked,
+    domain: $('#tls-domain').value,
+    email: $('#tls-email').value,
+    method: $('#tls-method').value,
+    port: Number($('#tls-port').value),
+    redirect: $('#tls-redirect').checked,
+    staging: $('#tls-staging').checked,
+  });
+  const save = async (quiet) => {
+    try {
+      await api('/api/settings/https', { method: 'PUT', body: values() });
+      if (!quiet) toast('HTTPS settings saved');
+      return true;
+    } catch (err) {
+      toast(err.message, 'error');
+      return false;
+    }
+  };
+  $('#tls-save').onclick = async () => {
+    if (await save()) renderHttps();
+  };
+  $('#tls-on').onchange = async () => {
+    if (await save(true)) {
+      toast($('#tls-on').checked ? (cert ? 'HTTPS is on' : 'HTTPS is on: get a certificate to start it') : 'HTTPS is off');
+      renderHttps();
+    } else $('#tls-on').checked = !$('#tls-on').checked;
+  };
+  $('#tls-issue').onclick = async () => {
+    if (!(await save(true))) return;
+    await api('/api/settings/https/issue', { method: 'POST', body: {} }).catch((err) => toast(err.message, 'error'));
+    // Watch it: an order takes from a few seconds to a minute.
+    const poll = async () => {
+      const next = await api('/api/settings/https').catch(() => null);
+      if (!$('#tls-body')) return;
+      if (next?.issuing) setTimeout(poll, 2000);
+      else {
+        if (next?.lastError) toast(next.lastError, 'error', 9000);
+        else if (next?.certificate) toast('Certificate ready');
+        renderHttps();
+      }
+    };
+    renderHttps();
+    setTimeout(poll, 1500);
+  };
 }

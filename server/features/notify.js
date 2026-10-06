@@ -38,6 +38,7 @@ const TITLES = {
   'backup.upload_failed': 'Cloud backup failed',
   'schedule.failed': 'Scheduled task failed',
   'panel.updated': 'Panel updated',
+  'panel.https_failed': 'HTTPS certificate failed',
   'panel.backup': 'Panel backup downloaded',
   'user.login': 'Sign-in',
   'user.lockout': 'Repeated failed sign-ins',
