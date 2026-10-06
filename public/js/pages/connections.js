@@ -319,7 +319,9 @@ function openManageModal(view, data, conn) {
 
       <div class="field-label">Servers they can reach</div>
       ${serverChecks(conn.servers)}
-      <div class="hint" style="margin-bottom:16px">Every port of a ticked server is carried, on the same port number on their computer.</div>
+      <div class="hint" style="margin-bottom:8px">Every port of a ticked server is carried, on the same port number on their computer.</div>
+      <div class="checkbox-row" style="margin-top:0"><input type="checkbox" id="cm-rcon" ${conn.shareRcon ? 'checked' : ''} /><label for="cm-rcon">Also share RCON (remote admin) ports</label></div>
+      <div class="hint" style="margin-bottom:16px">Off by default. Only turn it on for people you trust to run server commands.</div>
 
       <div class="field-label">Extra ports</div>
       <div class="hint" style="margin:0 0 8px">For anything else on this machine or its network, like SSH (22) or a web map. Local port is what they connect to on their computer (blank = same). Host is where the panel sends it (blank = this machine).</div>
@@ -351,7 +353,7 @@ function openManageModal(view, data, conn) {
             .filter((p) => p.name || p.port !== '');
           btn.disabled = true;
           try {
-            await api(`/api/bridge/connections/${conn.id}`, { method: 'PATCH', body: { enabled: $('#cm-enabled').checked, servers: pickedServers(), ports } });
+            await api(`/api/bridge/connections/${conn.id}`, { method: 'PATCH', body: { enabled: $('#cm-enabled').checked, shareRcon: $('#cm-rcon').checked, servers: pickedServers(), ports } });
             modal.close();
             toast('Saved');
             renderConnections(view);
