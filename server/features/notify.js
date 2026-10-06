@@ -17,6 +17,7 @@ const TITLES = {
   'server.ready': 'Server is online',
   'server.stopped': 'Server stopped',
   'server.idle_stopped': 'Stopped while empty',
+  'server.hung': 'Frozen server restarted',
   'server.world_reset': 'World reset',
   'server.resource_alert': 'Resource alert',
   'player.watched': 'Watched player joined',

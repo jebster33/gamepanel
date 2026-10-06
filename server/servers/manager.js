@@ -46,7 +46,7 @@ const { docker } = require('./runtimes/docker-api');
 const { STATUS, CONTAINER_DIR } = require('./constants');
 
 /** Fields a PATCH may change. Anything else on a server is managed by the panel. */
-const EDITABLE = ['name', 'memory', 'cpuLimit', 'maxPlayers', 'autoStart', 'autoRestart', 'updateOnStart', 'startCommand', 'notes', 'ip', 'backupRetention', 'idleStopMinutes', 'alerts'];
+const EDITABLE = ['name', 'memory', 'cpuLimit', 'maxPlayers', 'autoStart', 'autoRestart', 'updateOnStart', 'startCommand', 'notes', 'ip', 'backupRetention', 'idleStopMinutes', 'hangRestartMinutes', 'alerts'];
 
 class ServerManager extends EventEmitter {
   /**
@@ -424,6 +424,7 @@ class ServerManager extends EventEmitter {
     for (const key of EDITABLE) if (patch[key] !== undefined) server[key] = patch[key];
     if (patch.startCommand === '') server.startCommand = null;
     if (patch.memory !== undefined) server.memory = Math.max(256, Number(patch.memory) || server.memory);
+    if (patch.hangRestartMinutes !== undefined) server.hangRestartMinutes = Math.max(0, Math.min(60, Math.round(Number(patch.hangRestartMinutes) || 0)));
     if (patch.idleStopMinutes !== undefined) server.idleStopMinutes = Math.max(0, Math.min(1440, Math.round(Number(patch.idleStopMinutes) || 0)));
     if (patch.alerts !== undefined) server.alerts = this.cleanAlerts(patch.alerts);
     if (patch.vars) server.vars = { ...server.vars, ...patch.vars };

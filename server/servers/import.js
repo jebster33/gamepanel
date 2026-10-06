@@ -80,7 +80,7 @@ module.exports = {
     );
     server.imported = { from: source, inPlace, at: Date.now() };
     if (manifest) {
-      for (const key of ['schedules', 'javaOverride', 'gameVersion', 'idleStopMinutes', 'alerts', 'backupRetention', 'notes']) if (manifest[key] !== undefined) server[key] = manifest[key];
+      for (const key of ['schedules', 'javaOverride', 'gameVersion', 'idleStopMinutes', 'hangRestartMinutes', 'alerts', 'backupRetention', 'notes']) if (manifest[key] !== undefined) server[key] = manifest[key];
       server.imported.fromExport = true;
     }
     this.store.save();
