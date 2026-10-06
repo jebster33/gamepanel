@@ -58,7 +58,44 @@ export async function renderSchedulesTab(host, server) {
              </div>`
       }
       <div class="hint">Times use the clock of the machine running the panel.</div>
-    </div>`;
+    </div>
+    ${
+      server.playerCommands?.length || (server.templateId || '').startsWith('minecraft')
+        ? `<div class="card mt-16">
+      <div class="card-head">
+        <h4>Chat announcements</h4>
+        <div class="spacer"></div>
+        <label class="switch"><input type="checkbox" id="an-on" ${server.announcements?.enabled ? 'checked' : ''} /><i></i></label>
+      </div>
+      <p class="faint" style="margin:0 0 10px">Posts these in game chat, one at a time in turn, while anyone is online. One message per line.</p>
+      <textarea id="an-messages" rows="4" maxlength="4200" placeholder="Join our Discord: discord.gg/…&#10;Vote for us daily for rewards!&#10;Be nice. Griefing gets you banned.">${esc((server.announcements?.messages || []).join('\n'))}</textarea>
+      <div class="row mt-16" style="gap:8px;align-items:center">
+        <span class="faint">Every</span>
+        <select id="an-every" style="width:auto">${[5, 10, 15, 30, 60]
+          .map((n) => `<option value="${n}" ${(server.announcements?.every || 15) === n ? 'selected' : ''}>${n} minutes</option>`)
+          .join('')}</select>
+        <div class="spacer"></div>
+        <button class="btn btn-sm" id="an-save">Save</button>
+      </div>
+    </div>`
+        : ''
+    }`;
+
+  const saveAnnouncements = async () => {
+    try {
+      const { announcements } = await api(`/api/servers/${server.id}/announcements`, {
+        method: 'PUT',
+        body: { enabled: $('#an-on').checked, every: Number($('#an-every').value), messages: $('#an-messages').value.split('\n') },
+      });
+      server.announcements = announcements;
+      $('#an-on').checked = announcements.enabled;
+      toast(announcements.enabled ? `Announcing every ${announcements.every} minutes` : 'Announcements off');
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+  };
+  $('#an-save')?.addEventListener('click', saveAnnouncements);
+  $('#an-on')?.addEventListener('change', saveAnnouncements);
 
   const refresh = () => renderSchedulesTab(host, server);
   $('#sch-add').addEventListener('click', () => openScheduleModal(server, null, refresh));

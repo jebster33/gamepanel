@@ -384,6 +384,21 @@ module.exports = (router, { store, manager, scheduler }, { requireAdmin, require
     return { response };
   });
 
+  /** Rotating chat announcements. */
+  router.put('/api/servers/:id/announcements', ({ user, params, body }) => {
+    const server = serverFor(user, params.id, 'schedules');
+    requireCap(user, 'command');
+    if (!require('../../games/players').broadcastCommand(manager.template(server))) fail(400, 'This game has no chat broadcast command');
+    const messages = (Array.isArray(body?.messages) ? body.messages : [])
+      .map((m) => String(m).replace(/[\r\n]+/g, ' ').trim().slice(0, 200))
+      .filter(Boolean)
+      .slice(0, 20);
+    const every = Math.max(1, Math.min(240, Math.round(Number(body?.every) || 15)));
+    server.announcements = { enabled: Boolean(body?.enabled) && messages.length > 0, every, messages, next: 0 };
+    store.save();
+    return { announcements: server.announcements };
+  });
+
   /* ---------------------------------------------------------- schedules -- */
 
   router.get('/api/servers/:id/schedules', ({ user, params }) => {

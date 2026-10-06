@@ -135,6 +135,7 @@ class Scheduler {
     if (minute === this.lastMinute) return;
     this.lastMinute = minute;
     for (const server of this.manager.servers) {
+      this.announce(server, minute).catch(() => {});
       for (const schedule of server.schedules || []) {
         if (!schedule.enabled) continue;
         let cron;
@@ -146,6 +147,24 @@ class Scheduler {
         if (matches(cron, now)) this.run(server, schedule).catch(() => {});
       }
     }
+  }
+
+  /**
+   * Rotating chat announcements ("Join our Discord…"), one every N minutes,
+   * only while someone is online to read them.
+   * server.announcements = { enabled, every: minutes, messages: [], next: index }
+   */
+  async announce(server, minute) {
+    const a = server.announcements;
+    if (!a?.enabled || !a.messages?.length || !a.every || minute % a.every !== 0) return;
+    const m = this.manager;
+    const rt = m.rt?.(server.id);
+    if (!m.isActive(server.id) || rt?.status !== 'running' || !(rt.players ?? rt.playerList?.length ?? 0)) return;
+    const command = require('../games/players').broadcastCommand(m.template(server));
+    if (!command) return;
+    const i = (a.next || 0) % a.messages.length;
+    a.next = i + 1;
+    await m.sendCommand(server.id, command.replace('{msg}', String(a.messages[i]).replace(/["\r\n]/g, '')));
   }
 
   async run(server, schedule) {

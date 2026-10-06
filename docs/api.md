@@ -57,6 +57,7 @@ POST   /api/players/ban-everywhere       {"name","reason","unban?"} every Minecr
 GET    /api/players/search?q=            players on any visible server (admins: also by address)
 GET    /api/servers/:id/backups/:name/contents        files in a backup
 POST   /api/servers/:id/backups/:name/restore-files   {"paths"} put back single files or folders
+PUT    /api/servers/:id/announcements    {"enabled","every","messages"} rotating chat messages
 PUT    /api/servers/:id/maintenance      {"enabled","message?"} whitelist on, kick non-ops, MOTD
 PUT    /api/players/:name/note           {"note","watch"} staff note; watch = alert on join
 PUT    /api/servers/:id/discord-feed      {"webhook","chat","joins","status","test?"} chat relay to a channel
