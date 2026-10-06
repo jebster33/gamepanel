@@ -386,6 +386,7 @@ async function renderStatusPageForm() {
     host.textContent = err.message;
     return;
   }
+  if (!host.isConnected) return;
   const link = sp.slug ? `${location.origin}/status/${sp.slug}` : '';
   const picked = new Set(sp.servers);
   host.classList.remove('faint');
@@ -464,6 +465,7 @@ async function renderCloudForm() {
     host.textContent = err.message;
     return;
   }
+  if (!host.isConnected) return;
   const preset = Object.entries(CLOUD_PRESETS).find(([, p]) => c.endpoint && c.endpoint.includes(p.endpoint.split('.').slice(-2).join('.')))?.[0] || (c.endpoint ? 'other' : 'b2');
   host.classList.remove('faint');
   host.innerHTML = `
@@ -546,6 +548,7 @@ async function checkForUpdates(interactive) {
     status.textContent = err.message;
     return;
   }
+  if (!status.isConnected) return; // the user left Settings while it was checking
 
   if (!data.supported) {
     status.textContent = data.reason;
