@@ -239,6 +239,9 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
     return body?.enabled === false ? manager.disableMap(server.id, user) : manager.enableMap(server.id, user);
   });
 
+  /** A web map for Rust, Valheim and Terraria worlds. */
+  router.get('/api/servers/:id/world-map', ({ user, params }) => ({ map: require('../../games/world-maps').worldMap(serverFor(user, params.id, 'console')) }));
+
   /** World pre-generation with Chunky. */
   router.get('/api/servers/:id/pregen', ({ user, params }) => manager.pregenInfo(serverFor(user, params.id, 'console')));
 

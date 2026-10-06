@@ -96,7 +96,7 @@ function render(data) {
         }
         ${s.blurb ? `<div class="blurb">${esc(s.blurb)}</div>` : ''}
         ${s.motd ? `<div class="motd">${esc(s.motd)}</div>` : ''}
-        ${address ? `<div class="row"><span class="address">${esc(address)} <button data-copy="${esc(address)}">Copy</button></span>${s.join && s.status === 'online' ? `<a class="join" href="${esc(s.join.replace('{host}', host))}">Join</a>` : ''}${s.mapPort ? `<a class="meta" href="http://${esc(host)}:${s.mapPort}" target="_blank" rel="noopener">🗺️ Live map</a>` : ''}</div>` : ''}
+        ${address ? `<div class="row"><span class="address">${esc(address)} <button data-copy="${esc(address)}">Copy</button></span>${s.join && s.status === 'online' ? `<a class="join" href="${esc(s.join.replace('{host}', host))}">Join</a>` : ''}${s.mapPort ? `<a class="meta" href="http://${esc(host)}:${s.mapPort}" target="_blank" rel="noopener">🗺️ Live map</a>` : s.mapUrl ? `<a class="meta" href="${esc(s.mapUrl)}" target="_blank" rel="noopener">🗺️ Map</a>` : ''}</div>` : ''}
         ${s.maintenance ? `<div class="meta" style="margin-top:8px">🛠 ${esc(s.maintenance)}</div>` : ''}
         ${s.joinNote ? `<div class="meta" style="margin-top:8px">${esc(s.joinNote)}</div>` : ''}
         ${uptimeBars(s.uptime30)}
