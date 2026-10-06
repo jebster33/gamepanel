@@ -3530,3 +3530,30 @@ tr.clickable:hover td {
 .setup-card .t-foot .btn {
   margin-left: auto;
 }
+
+/* Servers page: select several and act on them together. */
+.srv-first {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.srv-first .srv-identity {
+  min-width: 0;
+  flex: 1;
+}
+.batch-bar {
+  position: sticky;
+  top: calc(var(--topbar-height) + 8px);
+  z-index: 20;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 10px 14px;
+  background: var(--raised);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
