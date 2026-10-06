@@ -36,6 +36,10 @@
             <span>Password</span>
             <input id="auth-password" name="password" type="password" required autocomplete="current-password" />
           </label>
+          <label id="auth-code-wrap" class="hidden">
+            <span>Setup code <span class="faint">(not needed on the panel's own machine)</span></span>
+            <input id="auth-code" type="text" autocomplete="off" spellcheck="false" placeholder="Printed in the panel's log when it started" />
+          </label>
           <label id="auth-confirm-wrap" class="hidden">
             <span>Confirm password</span>
             <input id="auth-confirm" type="password" autocomplete="new-password" />

@@ -9,14 +9,15 @@ module.exports = (router, app) => {
   const { store, auth } = app;
   router.get(
     '/api/status',
-    () => ({ ok: true, version: VERSION, panelName: store.state.settings.panelName, setupRequired: auth.needsSetup() }),
+    () => ({ ok: true, version: VERSION, panelName: store.state.settings.panelName, setupRequired: auth.needsSetup(), setupCodeRequired: auth.needsSetup() }),
     { public: true }
   );
 
   router.post(
     '/api/setup',
-    async ({ body }) => {
+    async ({ body, req }) => {
       if (!auth.needsSetup()) fail(409, 'The panel is already set up');
+      auth.checkSetupCode(req, body?.setupCode);
       const user = auth.createUser({ username: body.username, password: body.password, role: 'admin' });
       store.addEvent('user.created', `First administrator ${user.username} created`);
       return { ok: true, user };
@@ -177,6 +178,8 @@ module.exports = (router, app) => {
       if (url.searchParams.get('link') === '1') {
         const user = auth.userFromRequest(req);
         if (!user) fail(401, 'Sign in first, then link the account from the Account page');
+        // Only a person signed in to the panel links a sign-in to their account, never a script with an API key.
+        if (req.gpApiKey) fail(403, 'Link accounts from the Account page while signed in, not with an API key');
         linkUserId = user.id;
       }
       const { url: to, cookie } = oauth.start(store, auth, req, params.provider, { linkUserId });

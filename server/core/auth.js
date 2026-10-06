@@ -134,6 +134,9 @@ function parseCookies(header) {
 }
 
 const hashKey = (key) => crypto.createHash('sha256').update(String(key)).digest('hex');
+/** A request's path the way the router matches it: empty segments dropped. */
+const routePath = (url) => `/${new URL(url, 'http://localhost').pathname.split('/').filter(Boolean).join('/')}`;
+
 const publicKey = (k) => ({ id: k.id, name: k.name, readOnly: k.readOnly, prefix: k.prefix, createdAt: k.createdAt, lastUsed: k.lastUsed });
 
 class Auth {
@@ -145,6 +148,28 @@ class Auth {
 
   get users() {
     return this.store.state.users;
+  }
+
+  /**
+   * First-run setup: whoever reaches the panel first would become its
+   * administrator. A code printed in the panel's own log (readable only by
+   * whoever runs it) is asked for, except from this machine itself.
+   */
+  setupCode() {
+    if (!this.needsSetup()) return null;
+    this.setupSecret ||= crypto.randomBytes(5).toString('hex');
+    return this.setupSecret;
+  }
+
+  checkSetupCode(req, code) {
+    const addr = String(req.socket?.remoteAddress || '').replace(/^::ffff:/, '');
+    const local = ['127.0.0.1', '::1'].includes(addr) && !req.headers['x-forwarded-for'] && !req.headers['x-real-ip'];
+    if (local) return;
+    const want = Buffer.from(this.setupCode() || '');
+    const got = Buffer.from(String(code || '').trim().toLowerCase());
+    if (!want.length || got.length !== want.length || !crypto.timingSafeEqual(want, got)) {
+      fail(403, 'Enter the setup code the panel printed when it started (in its log, or run "journalctl -u gamepanel" on Linux).');
+    }
   }
 
   needsSetup() {
@@ -206,15 +231,17 @@ class Auth {
 
   noteAccountFailure(key) {
     // Made-up usernames must not grow this map forever.
-    if (this.failures.size > 5000) for (const [k, v] of this.failures) if (v.until < Date.now()) this.failures.delete(k);
+    // Only entries that have sat idle for an hour go; a flood of made-up names must not reset real counters.
+    const now = Date.now();
+    if (this.failures.size > 5000) for (const [k, v] of this.failures) if (v.until < now - 3_600_000 && (v.seen || 0) < now - 3_600_000) this.failures.delete(k);
     const entry = this.failures.get(key);
     const count = (entry?.count || 0) + 1;
-    this.failures.set(key, { count, until: count >= 10 ? Date.now() + Math.min(5 * 60_000, 2 ** (count - 10) * 15_000) : 0 });
+    this.failures.set(key, { count, seen: Date.now(), until: count >= 10 ? Date.now() + Math.min(5 * 60_000, 2 ** (count - 10) * 15_000) : 0 });
   }
 
   recordFailure(ip, message) {
     const entry = this.failures.get(ip);
-    const next = { count: (entry?.count || 0) + 1, until: 0 };
+    const next = { count: (entry?.count || 0) + 1, seen: Date.now(), until: 0 };
     if (next.count >= 5) {
       next.until = Date.now() + Math.min(15 * 60_000, 2 ** (next.count - 5) * 30_000);
       if (next.count === 5) this.store.addEvent('user.lockout', `Sign-ins from ${ip} paused after 5 failed attempts`, { ip });
@@ -244,7 +271,19 @@ class Auth {
     if (user.totp?.secret) {
       return { twoFactor: true, ticket: signToken(this.secret, { sub: user.id, purpose: '2fa', exp: Date.now() + TICKET_TTL_MS }) };
     }
+    this.passkeyOnlyAdmin(user);
     return this.startSession(user, ip);
+  }
+
+  /**
+   * With "require two-factor for administrators" on, an admin whose second
+   * factor is a passkey signs in with the passkey: a password (or Google…)
+   * alone is one factor.
+   */
+  passkeyOnlyAdmin(user) {
+    if (user.role === 'admin' && this.store.state.settings?.requireAdmin2fa && user.passkeys?.length && !user.totp?.secret) {
+      fail(403, 'Administrators sign in with their passkey here. Use "Sign in with a passkey", or set up an authenticator app.');
+    }
   }
 
   /** Second step: the code from the authenticator app, or a recovery code. */
@@ -276,6 +315,7 @@ class Auth {
     if (user.totp?.secret) {
       return { twoFactor: true, ticket: signToken(this.secret, { sub: user.id, purpose: '2fa', exp: Date.now() + TICKET_TTL_MS }) };
     }
+    this.passkeyOnlyAdmin(user);
     return this.startSession(user, ip);
   }
 
@@ -321,6 +361,8 @@ class Auth {
   beginTwoFactor(userId) {
     const user = this.users.find((u) => u.id === userId);
     if (!user) fail(404, 'User not found');
+    // Replacing a working authenticator would let anyone with a stolen session lock the owner out: turn it off first (password and code).
+    if (user.totp?.secret) fail(409, 'Two-factor sign-in is already on. Turn it off first (it asks for your password and a code), then set it up again.');
     const secret = totp.generateSecret();
     user.totpPending = { secret, at: Date.now() };
     this.store.save();
@@ -367,9 +409,13 @@ class Auth {
     if (!token && authHeader && authHeader.startsWith('Bearer ')) token = authHeader.slice(7);
     if (token && token.startsWith('gp_')) {
       // Account changes (passwords, 2FA, keys, users, sub-users) need a person signed in, not a script.
-      const path = new URL(req.url, 'http://localhost').pathname;
+      // Checked on the path as the router sees it: it skips empty segments, so /api//auth is /api/auth.
+      const path = routePath(req.url);
       if (req.method !== 'GET' && /^\/api\/(auth|users)(\/|$)|^\/api\/servers\/[^/]+\/access(\/|$)/.test(path)) return null;
-      return this.requireTwoFactor(this.userFromApiKey(token, req.method), req);
+      const user = this.requireTwoFactor(this.userFromApiKey(token, req.method), req);
+      // Remembered on the request, so the WebSocket and account linking can tell a script from a person.
+      if (user) req.gpApiKey = { readOnly: this.apiKeyIsReadOnly(token) };
+      return user;
     }
     return this.requireTwoFactor(this.userFromToken(token), req);
   }
@@ -381,7 +427,7 @@ class Auth {
   requireTwoFactor(user, req) {
     // A passkey counts: it is a second factor on its own.
     if (!user || user.role !== 'admin' || user.totp?.secret || user.passkeys?.length || !this.store.state.settings?.requireAdmin2fa) return user;
-    const path = new URL(req.url, 'http://localhost').pathname;
+    const path = routePath(req.url);
     // Only sign-in and account setup are open; everything else, the live WebSocket included, waits for 2FA.
     if (path === '/ws') return null; // refused like a signed-out socket (the upgrade handler cannot take a throw)
     if (!path.startsWith('/api/') || path.startsWith('/api/auth/')) return user;
@@ -426,6 +472,12 @@ class Auth {
     user.apiKeys = (user.apiKeys || []).filter((k) => k.id !== keyId);
     if (user.apiKeys.length === before) fail(404, 'No such key');
     this.store.save();
+  }
+
+  apiKeyIsReadOnly(key) {
+    const hash = hashKey(key);
+    for (const user of this.users) for (const k of user.apiKeys || []) if (k.hash === hash) return Boolean(k.readOnly);
+    return false;
   }
 
   userFromApiKey(key, method = 'GET') {

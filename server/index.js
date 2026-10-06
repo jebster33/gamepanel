@@ -210,6 +210,8 @@ async function main() {
     if (!conn) return;
     conn.user = user;
     conn.epoch = user.sessionEpoch || 0;
+    // A read-only API key may watch, never type into a console.
+    conn.readOnly = Boolean(req.gpApiKey?.readOnly);
     conn.subscriptions.add('servers');
     conn.subscriptions.add('stats');
     conn.subscriptions.add('system');
@@ -235,6 +237,7 @@ async function main() {
         } else if (msg.type === 'unsubscribe' && Array.isArray(msg.topics)) {
           for (const topic of msg.topics) conn.subscriptions.delete(topic);
         } else if (msg.type === 'command' && msg.serverId) {
+          if (conn.readOnly) return conn.send({ topic: 'error', message: 'A read-only API key cannot send commands' });
           if (!auth.canAccessServer(conn.user, msg.serverId) || !auth.can(conn.user, 'command', msg.serverId)) return;
           const server = manager.servers.find((s) => s.id === msg.serverId);
           require('./features/audit').record({ user: conn.user.username, action: 'console command', serverId: msg.serverId, server: server?.name, details: { command: String(msg.command || '').slice(0, 200) }, status: 200 });
@@ -267,7 +270,7 @@ async function main() {
     .start({ store, auth, manager })
     .catch((err) => logger.warn(`SFTP did not start: ${err.message}`));
   logger.info(`Host: ${describeHost()} — data in ${config.dataDir}`);
-  if (auth.needsSetup()) logger.info('No users yet — open the panel in a browser to create the first administrator.');
+  if (auth.needsSetup()) logger.info(`No users yet — open the panel in a browser to create the first administrator. Setup code (not needed on this machine): ${auth.setupCode()}`);
 
   await manager.init();
   scheduler.start();
