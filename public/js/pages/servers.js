@@ -117,11 +117,25 @@ export function renderServers(view) {
     <div class="page-head">
       <h1>Servers</h1>
       <div class="spacer"></div>
+      ${can('power') && state.servers.length > 1 ? '<button class="btn btn-ghost" id="start-all" title="Start every installed server that is stopped">Start all</button><button class="btn btn-ghost" id="stop-all" title="Stop every running server">Stop all</button>' : ''}
       ${can('command') && state.servers.length ? '<button class="btn" id="broadcast-all" title="Say something in the chat of every running server">Message all</button>' : ''}
       ${state.user.role === 'admin' ? '<button class="btn" data-import>Import existing</button><a class="btn btn-primary" href="#/templates">New server</a>' : ''}
     </div>
     ${renderServerCards()}`;
   $('#broadcast-all')?.addEventListener('click', broadcastAll);
+  $('#start-all')?.addEventListener('click', () => powerAll('start'));
+  $('#stop-all')?.addEventListener('click', () => powerAll('stop'));
+}
+
+async function powerAll(action) {
+  const targets = state.servers.filter((s) => (action === 'start' ? s.status === 'stopped' && s.installedAt : ['running', 'starting'].includes(s.status)));
+  if (!targets.length) return toast(action === 'start' ? 'Everything is already running' : 'Nothing is running');
+  const { confirmModal } = await import('../ui/modal.js');
+  const names = targets.map((s) => esc(s.name)).join(', ');
+  if (!(await confirmModal(`${action === 'start' ? 'Start' : 'Stop'} ${targets.length} server${targets.length === 1 ? '' : 's'}`, names, action === 'start' ? 'Start all' : 'Stop all'))) return;
+  const results = await Promise.allSettled(targets.map((s) => api(`/api/servers/${s.id}/power`, { method: 'POST', body: { action } })));
+  const failed = results.filter((r) => r.status === 'rejected').length;
+  toast(`${action === 'start' ? 'Starting' : 'Stopping'} ${targets.length - failed} server${targets.length - failed === 1 ? '' : 's'}${failed ? `, ${failed} failed` : ''}`, failed ? 'warn' : 'info');
 }
 
 async function broadcastAll() {
