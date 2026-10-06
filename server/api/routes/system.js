@@ -158,6 +158,18 @@ module.exports = (router, { store, auth, manager, hostMetrics, notifier, bridge 
     return { settings: { ...s, oauth: undefined, backupPassphrase: undefined, backupPassphraseSet: Boolean(s.backupPassphrase) } };
   });
 
+  /* --------------------------------------------------------- status bots -- */
+
+  const statusBots = require('../../features/status-bots');
+  router.get('/api/settings/status-bots', ({ user }) => {
+    requireAdmin(user);
+    return statusBots.view(store);
+  });
+  router.put('/api/settings/status-bots', ({ user, body }) => {
+    requireAdmin(user);
+    return statusBots.update(store, manager, body || {});
+  });
+
   /* -------------------------------------------------------------- HTTPS -- */
 
   const httpsFeature = require('../../features/https');

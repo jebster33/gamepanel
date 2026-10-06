@@ -261,6 +261,7 @@ async function main() {
 
   logger.info(`GamePanel ${VERSION} listening on http://${config.host}:${config.port}`);
   await httpsFeature.start(store, handleRequest, handleUpgrade);
+  require('./features/status-bots').start({ store, manager });
   require('./features/sftp')
     .start({ store, auth, manager })
     .catch((err) => logger.warn(`SFTP did not start: ${err.message}`));

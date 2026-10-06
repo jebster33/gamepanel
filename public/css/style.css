@@ -2586,6 +2586,10 @@ tbody tr:hover {
 .lime {
   color: var(--lime-text);
 }
+.sb-row {
+  flex-wrap: wrap;
+  gap: 8px;
+}
 .filter-note .mono {
   overflow-wrap: anywhere;
 }
