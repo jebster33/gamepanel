@@ -317,7 +317,7 @@ async function openProfile(serverId, name) {
     return;
   }
   const server = { id: serverId, templateId: current.templateId };
-  openModal({
+  const modal = openModal({
     title: 'Player',
     width: 520,
     body: `
@@ -344,6 +344,13 @@ async function openProfile(serverId, name) {
               .join('')
           : '<div class="faint">No finished sessions yet.</div>'
       }</div>
+      ${
+        p.addresses
+          ? `<h4 style="margin:18px 0 6px">Addresses <span class="faint" style="font-weight:400;font-size:12px">(only admins see this)</span></h4>
+             ${p.addresses.length ? `<div class="pl-sessions">${p.addresses.map((a) => `<div class="pl-session"><span class="mono">${esc(a.ip)}</span><span class="faint">${esc(ago(a.last))}</span></div>`).join('')}</div>` : '<div class="faint">None recorded yet. Minecraft logs it when they join.</div>'}
+             ${p.alts?.length ? `<div class="card warn-card" style="margin-top:10px;font-size:13px">Same address as ${p.alts.map((a) => `<a href="#" data-profile="${esc(a.name)}">${esc(a.name)}</a>`).join(', ')}. Could be an alt account, or someone in the same house.</div>` : ''}`
+          : ''
+      }
       ${p.log.length ? `<h4 style="margin:18px 0 6px">Activity</h4><div class="act-list act-compact">${p.log.slice(0, 60).map(logRow).join('')}</div>` : ''}`,
     actions:
       can('command') && current.lists
@@ -353,6 +360,13 @@ async function openProfile(serverId, name) {
           ]
         : [],
   });
+  document.querySelector('.modal-backdrop:last-child')?.querySelectorAll('[data-profile]').forEach((a) =>
+    a.addEventListener('click', (event) => {
+      event.preventDefault();
+      modal.close();
+      openProfile(serverId, a.dataset.profile);
+    })
+  );
 }
 
 /** BattleMetrics-style network ban: every Minecraft server this account moderates. */

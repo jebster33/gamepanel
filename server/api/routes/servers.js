@@ -269,7 +269,8 @@ module.exports = (router, { store, manager, scheduler }, { requireAdmin, require
 
   router.get('/api/servers/:id/player-history/:name', ({ user, params }) => {
     const server = serverFor(user, params.id, 'console');
-    const profile = manager.playerProfile(server.id, params.name);
+    // Addresses are personal data: administrators only.
+    const profile = manager.playerProfile(server.id, params.name, { withAddresses: user.role === 'admin' });
     if (!profile) fail(404, 'This player has never been seen on this server');
     return profile;
   });

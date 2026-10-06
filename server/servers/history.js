@@ -23,6 +23,8 @@ const MAX_SAMPLES = 30 * 24 * 12; // 30 days of 5-minute points
 const SAVE_EVERY_MS = 60_000;
 
 // Minecraft Java chat: "[12:00:00] [Server thread/INFO]: <Steve> hello" (also "[Not Secure] <Steve> hi").
+// "Steve[/203.0.113.7:53422] logged in with entity id 123 at ..."
+const MC_LOGIN = /\]:\s+([A-Za-z0-9_]{3,16})\[\/([0-9a-fA-F.:]+):\d+\] logged in with entity id/;
 const MC_CHAT = /\]:\s+(?:\[Not Secure\]\s+)?<([A-Za-z0-9_]{3,16})>\s(.*)$/;
 
 const fileFor = (id) => path.join(DIR, `${String(id).replace(/[^A-Za-z0-9_-]/g, '')}.json`);
@@ -152,10 +154,26 @@ module.exports = {
     const custom = template.logPatterns?.chat;
     const pattern = custom ? new RegExp(custom) : template.query?.type === 'minecraft' ? MC_CHAT : null;
     if (!pattern) return;
+    const java = template.query?.type === 'minecraft';
     for (const line of text.split('\n')) {
       const m = line.match(pattern);
       if (m) this.logActivity(server.id, { type: 'chat', name: m[1], text: String(m[2] || '').trim().slice(0, 500) });
+      const login = java && line.match(MC_LOGIN);
+      if (login) this.noteAddress(server.id, login[1], login[2]);
     }
+  },
+
+  /** Where a player connects from (admins only see this), for spotting alt accounts. */
+  noteAddress(id, name, ip) {
+    const h = this.history(id);
+    h.ips = h.ips || {};
+    const list = (h.ips[name] = h.ips[name] || []);
+    const hit = list.find((e) => e.ip === ip);
+    if (hit) hit.last = Date.now();
+    else list.push({ ip, first: Date.now(), last: Date.now() });
+    list.sort((a, b) => b.last - a.last);
+    list.splice(10);
+    h.dirty = true;
   },
 
   saveHistories() {
@@ -166,9 +184,9 @@ module.exports = {
       if (!this.servers.some((s) => s.id === id)) continue;
       try {
         fs.mkdirSync(DIR, { recursive: true });
-        const { players, log, samples, open } = h;
+        const { players, log, samples, open, ips } = h;
         const tmp = `${fileFor(id)}.tmp`;
-        fs.writeFileSync(tmp, JSON.stringify({ players, log, samples, open }));
+        fs.writeFileSync(tmp, JSON.stringify({ players, log, samples, open, ips }));
         fs.renameSync(tmp, fileFor(id));
         h.dirty = false;
       } catch (err) {
@@ -240,18 +258,28 @@ module.exports = {
   },
 
   /** One player's profile: totals, recent sessions and what they did. */
-  playerProfile(id, name) {
+  playerProfile(id, name, { withAddresses = false } = {}) {
     const h = this.history(id);
     const p = h.players[name];
     if (!p) return null;
     const summary = this.playerHistory(id).players.find((x) => x.name === name);
     const sessions = [...(p.recent || [])];
     if (h.open[name]) sessions.push({ start: h.open[name], end: null });
-    return {
+    const out = {
       ...summary,
       recent: sessions.reverse(),
       log: h.log.filter((e) => e.name === name).slice(-200).reverse(),
     };
+    if (withAddresses) {
+      const mine = h.ips?.[name] || [];
+      const shared = new Set(mine.map((e) => e.ip).filter((ip) => !/^(127\.|::1$)/.test(ip)));
+      out.addresses = mine;
+      // Other accounts seen from the same address: often an alt (or a sibling).
+      out.alts = Object.entries(h.ips || {})
+        .filter(([other, list]) => other !== name && list.some((e) => shared.has(e.ip)))
+        .map(([other, list]) => ({ name: other, ip: list.find((e) => shared.has(e.ip)).ip }));
+    }
+    return out;
   },
 
   /** The activity log, newest first, filtered by type and text. */
