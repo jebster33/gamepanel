@@ -29,6 +29,17 @@ export function renderServerSettingsTab(host, server) {
       <div class="checkbox-row"><input type="checkbox" id="set-autorestart" ${server.autoRestart ? 'checked' : ''} ${
     isAdmin ? '' : 'disabled'
   } /><label for="set-autorestart">Restart automatically after a crash</label></div>
+      ${
+        server.canAutoUpdate
+          ? `<label style="margin-top:12px"><span>Automatic game updates</span><select id="set-autoupdate" ${isAdmin ? '' : 'disabled'}>
+               <option value="" ${server.autoUpdate == null ? 'selected' : ''}>Follow the panel setting</option>
+               <option value="on" ${server.autoUpdate === true ? 'selected' : ''}>Always on</option>
+               <option value="off" ${server.autoUpdate === false ? 'selected' : ''}>Off</option>
+             </select><div class="hint">Checks Steam every 30 minutes and updates once nobody is playing, then starts the server again.${
+               server.autoUpdateInfo?.updatedAt ? ` Last updated ${esc(new Date(server.autoUpdateInfo.updatedAt).toLocaleString())}.` : ''
+             }${server.autoUpdateInfo?.error ? ` Last check failed: ${esc(server.autoUpdateInfo.error)}.` : ''}</div></label>`
+          : ''
+      }
       <label style="margin-top:12px"><span>Stop when empty for (minutes)</span><input id="set-idle" type="number" min="0" max="1440" value="${server.idleStopMinutes || 0}" ${
     isAdmin ? '' : 'disabled'
   } /><div class="hint">Saves RAM and CPU on a server nobody is using. 0 keeps it running.</div></label>
@@ -179,6 +190,7 @@ export function renderServerSettingsTab(host, server) {
           maxPlayers: Number($('#set-maxplayers').value),
           autoStart: $('#set-autostart').checked,
           autoRestart: $('#set-autorestart').checked,
+          ...($('#set-autoupdate') ? { autoUpdate: { '': null, on: true, off: false }[$('#set-autoupdate').value] } : {}),
           idleStopMinutes: Number($('#set-idle').value) || 0,
           hangRestartMinutes: Number($('#set-hang').value) || 0,
           startCommand: $('#set-startcmd').value,

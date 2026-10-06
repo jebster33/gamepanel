@@ -229,6 +229,8 @@ async function main() {
   await manager.init();
   scheduler.start();
   nodes.start();
+  const updateTimer = setInterval(() => manager.checkAutoUpdates().catch(() => {}), 60_000);
+  updateTimer.unref?.();
 
   let shuttingDown = false;
   const shutdown = async (signal) => {

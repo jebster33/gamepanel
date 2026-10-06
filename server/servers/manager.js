@@ -46,7 +46,7 @@ const { docker } = require('./runtimes/docker-api');
 const { STATUS, CONTAINER_DIR } = require('./constants');
 
 /** Fields a PATCH may change. Anything else on a server is managed by the panel. */
-const EDITABLE = ['name', 'memory', 'cpuLimit', 'maxPlayers', 'autoStart', 'autoRestart', 'updateOnStart', 'startCommand', 'notes', 'ip', 'backupRetention', 'idleStopMinutes', 'hangRestartMinutes', 'alerts'];
+const EDITABLE = ['name', 'memory', 'cpuLimit', 'maxPlayers', 'autoStart', 'autoRestart', 'updateOnStart', 'autoUpdate', 'startCommand', 'notes', 'ip', 'backupRetention', 'idleStopMinutes', 'hangRestartMinutes', 'alerts'];
 
 class ServerManager extends EventEmitter {
   /**
@@ -303,6 +303,8 @@ class ServerManager extends EventEmitter {
       hasMods: Boolean(tpl?.mods?.providers?.length || tpl?.mods?.dir),
       hasModpacks: Boolean(tpl?.modpacks),
       canUpdate: Boolean((tpl?.install || []).some((s) => s.type === 'steamcmd') || tpl?.update),
+      canAutoUpdate: Boolean(this.steamApp(server)),
+      autoUpdateInfo: rt.autoUpdate || null,
       modProviders: tpl?.mods?.providers || [],
       gameVersion: this.gameVersion(server),
       joinNote: tpl?.joinNote || null,
@@ -567,6 +569,7 @@ Object.assign(
   require('./stats'),
   require('./history'),
   require('./metrics-history'),
+  require('./auto-update'),
   require('./versions'),
   require('./doctor'),
   require('./worlds'),

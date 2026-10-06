@@ -108,6 +108,7 @@ module.exports = (router, { store, auth, manager, hostMetrics, notifier }, { req
     if (body.portRangeEnd) s.portRangeEnd = clamp(body.portRangeEnd, 1024, 65535);
     if (s.portRangeEnd < s.portRangeStart) fail(400, 'The port range ends before it starts');
     if (body.autoRestart !== undefined) s.autoRestart = Boolean(body.autoRestart);
+    if (body.autoUpdateGames !== undefined) s.autoUpdateGames = Boolean(body.autoUpdateGames);
     if (body.maxCrashRestarts !== undefined) s.maxCrashRestarts = clamp(body.maxCrashRestarts, 0, 100);
     if (body.containerize !== undefined) s.containerize = Boolean(body.containerize);
     if (body.geoLookup !== undefined) s.geoLookup = Boolean(body.geoLookup);

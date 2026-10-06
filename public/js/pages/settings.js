@@ -132,6 +132,7 @@ export async function renderSettings(view) {
         <label><span>Max crash restarts (per 10 min)</span><input id="s-max-crash" type="number" value="${s.maxCrashRestarts}" /></label>
       </div>
       <div class="checkbox-row"><input type="checkbox" id="s-autorestart" ${s.autoRestart ? 'checked' : ''} /><label for="s-autorestart">Enable crash auto-restart globally</label></div>
+      <div class="checkbox-row"><input type="checkbox" id="s-autoupdate" ${s.autoUpdateGames ? 'checked' : ''} /><label for="s-autoupdate">Update Steam games automatically when a new build is out (waits until the server is empty)</label></div>
       <div class="checkbox-row"><input type="checkbox" id="s-geo" ${
         s.geoLookup !== false ? 'checked' : ''
       } /><label for="s-geo">Show sign-in locations in the activity log</label></div>
@@ -262,6 +263,7 @@ export async function renderSettings(view) {
           portRangeEnd: Number($('#s-port-end').value),
           maxCrashRestarts: Number($('#s-max-crash').value),
           autoRestart: $('#s-autorestart').checked,
+          autoUpdateGames: $('#s-autoupdate').checked,
           geoLookup: $('#s-geo').checked,
         },
       });
