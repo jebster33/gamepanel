@@ -24,6 +24,7 @@ POST   /api/servers/:id/command          {"command":"say hello"}
 GET    /api/servers/:id/console          scrollback
 GET    /api/servers/:id/history          metrics history
 GET    /api/servers/:id/files?path=      file explorer
+GET    /api/servers/:id/files/search?q=  file names and text in config files
 POST   /api/servers/:id/files/extract    unpack an archive
 POST   /api/servers/:id/files/compress   pack a selection
 GET    /api/servers/:id/mods             providers, loader/version filter, installed mods

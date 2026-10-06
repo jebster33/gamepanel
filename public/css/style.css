@@ -2773,6 +2773,27 @@ tr.clickable:hover td {
   text-underline-offset: 2px;
 }
 
+.fs-results {
+  max-height: min(60vh, 520px);
+  overflow: auto;
+}
+
+.fs-hit {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 4px;
+  border-bottom: 1px solid var(--border);
+  color: inherit;
+  text-decoration: none;
+  font-size: 12.5px;
+  word-break: break-all;
+}
+
+.fs-hit:hover {
+  background: var(--hover);
+}
+
 .recovery-codes {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
