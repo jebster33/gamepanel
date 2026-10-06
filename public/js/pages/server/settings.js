@@ -107,9 +107,10 @@ export function renderServerSettingsTab(host, server) {
       isOwner
         ? `<div class="card">
              <h4 style="margin:0 0 6px">Danger zone</h4>
-             <p class="faint" style="margin:0 0 14px">Duplicating makes a copy on new ports. Reinstalling re-runs the template installer in place. Deleting removes the server and all of its files.</p>
+             <p class="faint" style="margin:0 0 14px">Duplicating makes a copy on new ports. Exporting downloads the whole server, which another GamePanel can import. Reinstalling re-runs the template installer in place. Deleting removes the server and all of its files.</p>
              <div class="row">
                <button class="btn" id="set-clone">Duplicate</button>
+               <a class="btn" href="/api/servers/${server.id}/export" download>Export</a>
                <button class="btn" id="set-reinstall">Reinstall</button>
                <button class="btn btn-danger" id="set-delete">Delete server</button>
              </div>

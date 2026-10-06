@@ -139,6 +139,13 @@ module.exports = (router, { store, manager, scheduler }, { requireAdmin, require
     return manager.cloneServer(params.id, { name: body?.name, copyFiles: body?.copyFiles !== false }, user);
   });
 
+  /** The whole server as one archive another panel can import. */
+  router.get('/api/servers/:id/export', async ({ user, params, res }) => {
+    requireAdmin(user);
+    await manager.exportServer(serverFor(user, params.id, 'files'), res);
+    return undefined;
+  });
+
   /** A friendly address (play.example.com) through Cloudflare DNS. */
   router.put('/api/servers/:id/subdomain', async ({ user, params, body }) => {
     requireAdmin(user);

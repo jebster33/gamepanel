@@ -62,13 +62,27 @@ module.exports = {
     const inPlace = input.mode !== 'copy';
     if (inPlace && this.servers.some((s) => path.resolve(s.dir) === source)) fail(409, 'Another server already uses that folder');
 
+    // An export from another GamePanel says which game it is and how it was set up.
+    const manifest = this.readManifest(source);
+    if (manifest && !this.templates.get(manifest.templateId)) fail(400, `This export needs the ${manifest.templateId} template, which this panel does not have`);
     const ports = { ...detectPorts(source), ...(input.ports || {}) };
     const server = this.create(
-      { ...input, ports, startCommand: input.startCommand?.trim() || null },
+      {
+        ...input,
+        ...(manifest || {}),
+        name: input.name || manifest?.name,
+        ports,
+        startCommand: input.startCommand?.trim() || manifest?.startCommand || null,
+        autoStart: false,
+      },
       actor,
       inPlace ? { dir: source } : {}
     );
     server.imported = { from: source, inPlace, at: Date.now() };
+    if (manifest) {
+      for (const key of ['schedules', 'javaOverride', 'gameVersion', 'idleStopMinutes', 'alerts', 'backupRetention', 'notes']) if (manifest[key] !== undefined) server[key] = manifest[key];
+      server.imported.fromExport = true;
+    }
     this.store.save();
 
     if (inPlace) this.finishImport(server, source);
@@ -98,6 +112,7 @@ module.exports = {
     const inPlace = server.imported.inPlace;
     const template = this.template(server);
     server.installedAt = Date.now();
+    if (server.imported.fromExport) fs.rmSync(path.join(server.dir, 'gamepanel-server.json'), { force: true });
     // Only fills in config files the server does not have yet.
     if (template) this.writeConfigFiles(server, template, { overwrite: false });
     this.store.save();
