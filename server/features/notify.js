@@ -9,7 +9,7 @@
 
 const { logger } = require('../core/util');
 
-const COLORS = { lockout: 0xff5f57, '2fa_disabled': 0xffb340, crashed: 0xff5f57, failed: 0xff5f57, install_failed: 0xff5f57, ready: 0xc6f432, installed: 0xc6f432, created: 0xc6f432, uploaded: 0xc6f432, upload_failed: 0xff5f57, updated: 0xffb340, resource_alert: 0xffb340, disk_low: 0xff5f57, watched: 0xffb340 };
+const COLORS = { lockout: 0xff5f57, '2fa_disabled': 0xffb340, crashed: 0xff5f57, failed: 0xff5f57, install_failed: 0xff5f57, ready: 0xc6f432, installed: 0xc6f432, created: 0xc6f432, uploaded: 0xc6f432, upload_failed: 0xff5f57, verify_failed: 0xff5f57, updated: 0xffb340, resource_alert: 0xffb340, disk_low: 0xff5f57, watched: 0xffb340 };
 
 const TITLES = {
   'server.crashed': 'Server crashed',
@@ -28,6 +28,7 @@ const TITLES = {
   'user.policy': 'Sign-in rules changed',
   'backup.created': 'Backup created',
   'backup.failed': 'Backup failed',
+  'backup.verify_failed': 'Backup failed its check',
   'backup.uploaded': 'Backup copied to the cloud',
   'backup.upload_failed': 'Cloud backup failed',
   'schedule.failed': 'Scheduled task failed',

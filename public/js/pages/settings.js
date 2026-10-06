@@ -22,6 +22,7 @@ const EVENT_LABELS = {
   'user.new_ip': 'Someone signs in from a new address',
   'backup.created': 'A backup is made',
   'backup.failed': 'A backup fails',
+  'backup.verify_failed': 'A backup fails its check',
   'backup.uploaded': 'A backup is copied to the cloud',
   'backup.upload_failed': 'Copying a backup to the cloud fails',
   'schedule.failed': 'A scheduled task fails',
@@ -104,6 +105,13 @@ export async function renderSettings(view) {
         s.containerize !== false ? 'checked' : ''
       } /><label for="s-containerize">Run each game server in its own container (isolation, hard memory/CPU limits, per-server network stats)</label></div>
       <div class="hint">Applies the next time a server starts. Without Docker the panel falls back to plain processes.</div>
+    </div>
+
+    <div class="card mb-16" id="backup-checks">
+      <h4>Backup checks</h4>
+      <div class="faint" style="margin-bottom:12px">A backup you have never restored is a guess. A check unpacks it into a scratch folder and makes sure every file came back.</div>
+      <div class="checkbox-row"><input type="checkbox" id="s-verify" ${s.verifyBackups ? 'checked' : ''} /><label for="s-verify">Check every backup right after it is made</label></div>
+      <div class="hint">Runs in the background, one at a time; needs free disk space about the size of the server. You can also check any backup by hand on a server's Backups tab.</div>
     </div>
 
     <div class="card mb-16" id="events">
@@ -278,6 +286,16 @@ export async function renderSettings(view) {
           )}</span>. Servers run as plain processes and share the host. Install Docker and restart the panel for isolation.`;
     })
     .catch(() => {});
+
+  $('#s-verify').addEventListener('change', async (event) => {
+    try {
+      await api('/api/settings', { method: 'PATCH', body: { verifyBackups: event.target.checked } });
+      toast(event.target.checked ? 'New backups are checked after they are made' : 'Automatic backup checks off');
+    } catch (err) {
+      toast(err.message, 'error');
+      event.target.checked = !event.target.checked;
+    }
+  });
 
   $('#s-events').addEventListener('change', async (event) => {
     try {

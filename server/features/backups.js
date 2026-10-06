@@ -150,4 +150,107 @@ function remove(serverId, name) {
   return { ok: true };
 }
 
-module.exports = { list, create, restore, restorePaths, contents, remove, resolve, prune, dirFor: backupDirFor };
+/* -------------------------------------------------------------- checks -- */
+
+// Results per backup, next to the archives: { name: { at, ok, mode, files, bytes, error } }.
+const checksFile = (serverId) => path.join(backupDirFor(serverId), '.checks.json');
+
+function checks(serverId) {
+  try {
+    return JSON.parse(fs.readFileSync(checksFile(serverId), 'utf8'));
+  } catch {
+    return {};
+  }
+}
+
+function saveCheck(serverId, name, result) {
+  const all = checks(serverId);
+  const names = new Set(list(serverId).map((b) => b.name));
+  for (const key of Object.keys(all)) if (!names.has(key)) delete all[key];
+  all[name] = result;
+  fs.writeFileSync(checksFile(serverId), JSON.stringify(all));
+}
+
+function freeBytes(dir) {
+  try {
+    const st = fs.statfsSync(dir);
+    return st.bavail * st.bsize;
+  } catch {
+    return Infinity;
+  }
+}
+
+function walk(dir) {
+  let files = 0;
+  let bytes = 0;
+  const stack = [dir];
+  while (stack.length) {
+    const d = stack.pop();
+    for (const entry of fs.readdirSync(d, { withFileTypes: true })) {
+      const full = path.join(d, entry.name);
+      if (entry.isDirectory()) stack.push(full);
+      else if (entry.isFile()) {
+        files++;
+        bytes += fs.statSync(full).size;
+      }
+    }
+  }
+  return { files, bytes };
+}
+
+/**
+ * Test-restore a backup: unpack it into a scratch folder and compare with
+ * its own listing (every file there, every size right). Minecraft worlds
+ * must have their level.dat. Without room for that, the archive is read end
+ * to end instead, which still catches a corrupt or cut-off file.
+ */
+async function verify(server, name) {
+  const file = resolve(server.id, name);
+  const started = Date.now();
+  let result;
+  try {
+    const { entries, truncated } = await contents(server.id, name);
+    const listed = entries.filter((e) => !e.dir);
+    const expectedBytes = listed.reduce((n, e) => n + e.size, 0);
+    if (!listed.length) throw new Error('The backup is empty');
+    const scratch = path.join(config.cacheDir, `verify-${server.id}-${uid(6)}`);
+    if (!truncated && freeBytes(config.cacheDir) > expectedBytes * 1.5 + 512 * 1024 * 1024) {
+      fs.mkdirSync(scratch, { recursive: true });
+      try {
+        await runTar(['-xzf', file, '-C', scratch], scratch);
+        const got = walk(scratch);
+        if (got.files < listed.length) throw new Error(`Only ${got.files} of ${listed.length} files came back`);
+        const wrong = listed.find((e) => {
+          try {
+            return fs.statSync(path.join(scratch, e.path)).size !== e.size;
+          } catch {
+            return true;
+          }
+        });
+        if (wrong) throw new Error(`${wrong.path} did not come back intact`);
+        const worlds = listed.filter((e) => /(^|\/)level\.dat$/.test(e.path));
+        if (/^minecraft-(?!bedrock)/.test(server.templateId) && listed.some((e) => /(^|\/)region\//.test(e.path)) && !worlds.length) throw new Error('A Minecraft world is in the backup without its level.dat');
+        result = { ok: true, mode: 'restored', files: got.files, bytes: got.bytes };
+      } finally {
+        fs.rmSync(scratch, { recursive: true, force: true });
+      }
+    } else {
+      // Reading every byte checks gzip's own checksums all the way through.
+      await new Promise((ok, reject) => {
+        const proc = spawn(TAR, ['-tzf', file], { stdio: ['ignore', 'ignore', 'pipe'], windowsHide: true });
+        let err = '';
+        proc.stderr.on('data', (c) => (err += c));
+        proc.on('error', reject);
+        proc.on('exit', (code) => (code === 0 ? ok() : reject(new Error(err.trim() || `tar exited with code ${code}`))));
+      });
+      result = { ok: true, mode: 'read', files: listed.length, bytes: expectedBytes };
+    }
+  } catch (err) {
+    result = { ok: false, error: String(err.message).slice(0, 300) };
+  }
+  result = { ...result, at: Date.now(), ms: Date.now() - started };
+  saveCheck(server.id, name, result);
+  return result;
+}
+
+module.exports = { list, create, restore, restorePaths, contents, remove, resolve, prune, dirFor: backupDirFor, verify, checks };

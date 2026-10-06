@@ -11,7 +11,8 @@ module.exports = (router, { store, manager }, { requireAdmin, requireCap, server
 
   router.get('/api/servers/:id/backups', ({ user, params }) => {
     const server = serverFor(user, params.id, 'backups');
-    return { backups: backups.list(server.id), retention: server.backupRetention ?? 10 };
+    const checked = backups.checks(server.id);
+    return { backups: backups.list(server.id).map((b) => ({ ...b, check: checked[b.name] || null })), retention: server.backupRetention ?? 10, autoCheck: Boolean(store.state.settings.verifyBackups) };
   });
 
   router.post('/api/servers/:id/backups', async ({ user, params, body }) => {
@@ -27,6 +28,28 @@ module.exports = (router, { store, manager }, { requireAdmin, requireCap, server
     const pruned = backups.prune(server.id, server.backupRetention);
     store.addEvent('backup.created', `Backup created for ${server.name}`, { serverId: server.id, backup: backup.name });
     return { backup, pruned };
+  });
+
+  /** Test-restore one backup into a scratch folder. */
+  router.post('/api/servers/:id/backups/:name/verify', async ({ user, params }) => {
+    const server = serverFor(user, params.id, 'backups');
+    const result = await backups.verify(server, params.name);
+    if (!result.ok) store.addEvent('backup.verify_failed', `Backup ${params.name} of ${server.name} failed its check: ${result.error}`, { serverId: server.id });
+    return result;
+  });
+
+  // "Check every backup after it is made" (Settings): in the background, one at a time.
+  let queue = Promise.resolve();
+  store.on('event', (event) => {
+    if (event.type !== 'backup.created' || !event.backup || !store.state.settings.verifyBackups) return;
+    const server = manager.find(event.serverId);
+    if (!server) return;
+    queue = queue
+      .then(() => backups.verify(server, event.backup))
+      .then((result) => {
+        if (!result.ok) store.addEvent('backup.verify_failed', `Backup ${event.backup} of ${server.name} failed its check: ${result.error}`, { serverId: server.id });
+      })
+      .catch(() => {});
   });
 
   router.post('/api/servers/:id/backups/:name/restore', async ({ user, params }) => {

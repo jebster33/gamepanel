@@ -118,6 +118,7 @@ module.exports = (router, { store, auth, manager, hostMetrics, notifier, bridge 
     if (body.containerize !== undefined) s.containerize = Boolean(body.containerize);
     if (body.geoLookup !== undefined) s.geoLookup = Boolean(body.geoLookup);
     if (body.updateChannel !== undefined) s.updateChannel = updater.CHANNELS.includes(body.updateChannel) ? body.updateChannel : undefined;
+    if (body.verifyBackups !== undefined) s.verifyBackups = Boolean(body.verifyBackups);
     if (body.scheduledEvents !== undefined) s.scheduledEvents = Boolean(body.scheduledEvents);
     if (body.limits) {
       const n = (v, max) => Math.max(0, Math.min(max, Number(v) || 0));

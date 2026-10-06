@@ -4,6 +4,14 @@ import { confirmModal, openModal } from '../../ui/modal.js';
 
 /* --------------------------------------------------------------- backups */
 
+/** "✓ 2 h ago" or "✗ broken", for the Checked column. */
+function checkLabel(check) {
+  if (!check) return '<span class="faint">—</span>';
+  if (!check.ok) return `<span style="color:var(--danger)" title="${esc(check.error || '')}">✗ Failed</span>`;
+  const how = check.mode === 'read' ? 'Read end to end (not enough room to unpack it)' : `Unpacked ${check.files} files into a scratch folder`;
+  return `<span style="color:var(--success)" title="${esc(how)} ${esc(fmtTime(check.at))}">✓ ${esc(fmtTime(check.at))}</span>`;
+}
+
 export async function renderBackupsTab(host, server) {
   host.innerHTML = '<div class="card"><span class="spinner"></span> Loading backups…</div>';
   const data = await api(`/api/servers/${server.id}/backups`).catch((err) => ({ backups: [], error: err.message }));
@@ -16,7 +24,7 @@ export async function renderBackupsTab(host, server) {
     </div>
     <div class="card card-flush">
       <div class="table-wrap"><table>
-        <thead><tr><th>Backup</th><th>Size</th><th>Created</th><th class="cloud-col hidden">Cloud</th><th></th></tr></thead>
+        <thead><tr><th>Backup</th><th>Size</th><th>Created</th><th class="nowrap" title="Test-restored into a scratch folder">Checked</th><th class="cloud-col hidden">Cloud</th><th></th></tr></thead>
         <tbody>
           ${
             data.backups.length
@@ -26,16 +34,18 @@ export async function renderBackupsTab(host, server) {
                       <td class="mono">${esc(b.name)}</td>
                       <td class="faint nowrap">${fmtBytes(b.size)}</td>
                       <td class="faint nowrap">${fmtTime(b.createdAt)}</td>
+                      <td class="nowrap" data-check-cell="${esc(b.name)}">${checkLabel(b.check)}</td>
                       <td class="cloud-col hidden nowrap" data-cloud="${esc(b.name)}"></td>
                       <td class="nowrap" style="text-align:right">
                         <a class="btn btn-sm" href="/api/servers/${esc(server.id)}/backups/${encodeURIComponent(b.name)}/download">${icon('download',12)}</a>
+                        <button class="btn btn-sm" data-check="${esc(b.name)}" title="Test-restore it into a scratch folder to make sure it works">Check</button>
                         <button class="btn btn-sm" data-browse="${esc(b.name)}" title="Look inside and restore single files">Browse</button>
                         <button class="btn btn-sm" data-restore="${esc(b.name)}">Restore</button>
                         <button class="btn btn-sm btn-danger" data-del-backup="${esc(b.name)}">${icon('trash',12)}</button>
                       </td></tr>`
                   )
                   .join('')
-              : '<tr><td colspan="5" class="faint">No backups yet</td></tr>'
+              : '<tr><td colspan="6" class="faint">No backups yet</td></tr>'
           }
         </tbody>
       </table></div>
@@ -68,6 +78,24 @@ export async function renderBackupsTab(host, server) {
         toast('Backup restored');
       } catch (err) {
         toast(err.message, 'error');
+      }
+    })
+  );
+
+  host.querySelectorAll('[data-check]').forEach((el) =>
+    el.addEventListener('click', async () => {
+      const cell = host.querySelector(`[data-check-cell="${CSS.escape(el.dataset.check)}"]`);
+      el.disabled = true;
+      cell.innerHTML = '<span class="spinner"></span> Checking…';
+      try {
+        const result = await api(`/api/servers/${server.id}/backups/${encodeURIComponent(el.dataset.check)}/verify`, { method: 'POST', body: {} });
+        cell.innerHTML = checkLabel(result);
+        toast(result.ok ? `Backup is good: ${result.files} files came back intact` : `Backup failed its check: ${result.error}`, result.ok ? 'info' : 'error', result.ok ? 4200 : 9000);
+      } catch (err) {
+        cell.innerHTML = '';
+        toast(err.message, 'error');
+      } finally {
+        el.disabled = false;
       }
     })
   );
