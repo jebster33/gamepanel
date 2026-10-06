@@ -25,6 +25,7 @@ export async function renderConnections(view) {
     view.innerHTML = `<div class="empty"><h3>Could not load connections</h3><p>${esc(err.message)}</p></div>`;
     return;
   }
+  if (state.route.name !== 'connections') return; // the user moved to another page meanwhile
   state.bridgeEnabled = data.enabled;
   setBridgeNav(data.enabled);
   if (!data.enabled) {

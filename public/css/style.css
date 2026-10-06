@@ -2975,6 +2975,22 @@ tr.clickable:hover td {
   #new-server-btn {
     display: none;
   }
+  /* Tables scroll sideways instead of squeezing every cell into a word-per-line column. */
+  .table-wrap table {
+    min-width: 600px;
+  }
+  /* Long server names get the full width; the power buttons drop under them. */
+  .srv-header {
+    padding: 14px 16px;
+    gap: 12px;
+  }
+  .srv-header h1 {
+    font-size: 18px;
+    overflow-wrap: anywhere;
+  }
+  .srv-header #detail-power {
+    flex-basis: 100%;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

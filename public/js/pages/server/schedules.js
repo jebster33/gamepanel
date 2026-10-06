@@ -41,6 +41,7 @@ export async function renderSchedulesTab(host, server) {
     host.innerHTML = `<div class="card">${esc(err.message)}</div>`;
     return;
   }
+  if (!host.isConnected) return; // the user moved to another tab meanwhile
 
   host.innerHTML = `
     <div class="card">

@@ -7,6 +7,7 @@ import { confirmModal, openModal } from '../../ui/modal.js';
 export async function renderBackupsTab(host, server) {
   host.innerHTML = '<div class="card"><span class="spinner"></span> Loading backups…</div>';
   const data = await api(`/api/servers/${server.id}/backups`).catch((err) => ({ backups: [], error: err.message }));
+  if (!host.isConnected) return; // the user moved to another tab meanwhile
 
   host.innerHTML = `
     <div class="row mb-16">

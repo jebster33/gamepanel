@@ -360,6 +360,9 @@ async function listInstalled(server, template) {
     const disabled = entry.name.endsWith('.disabled');
     const base = disabled ? entry.name.slice(0, -9) : entry.name;
     const meta = byFile.get(base) || byFile.get(entry.name) || null;
+    // Minecraft mods and plugins are single .jar files; a folder next to them
+    // (plugins/bStats, plugins/spark) is a plugin's config, not another mod.
+    if (ctx.game === 'minecraft' && entry.isDirectory() && !meta) continue;
     if (meta) seen.add(meta.key);
     items.push({
       name: entry.name,
