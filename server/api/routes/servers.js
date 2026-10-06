@@ -164,6 +164,23 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
     return require('../../features/chat-moderation').view(manager, server);
   });
 
+  /** Whitelist from Discord roles. */
+  router.get('/api/discord/guilds', async ({ user }) => {
+    requireCap(user, 'command');
+    return { guilds: await require('../../features/discord-roles').guilds() };
+  });
+
+  router.get('/api/servers/:id/discord-whitelist', ({ user, params }) => require('../../features/discord-roles').view(serverFor(user, params.id, 'command')));
+
+  router.put('/api/servers/:id/discord-whitelist', async ({ user, params, body }) => {
+    const server = serverFor(user, params.id, 'command');
+    const roles = require('../../features/discord-roles');
+    roles.configure(manager, store, server, body || {});
+    let result = { added: [], removed: [] };
+    if (server.discordWhitelist.enabled) result = await roles.syncServer(manager, store, server);
+    return { ...roles.view(server), ...result };
+  });
+
   router.post('/api/servers/:id/players/action', async ({ user, params, body }) => {
     const server = serverFor(user, params.id, 'command');
     const commands = require('../../games/players').playerCommands(manager.template(server));

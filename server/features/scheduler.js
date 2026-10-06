@@ -140,6 +140,7 @@ class Scheduler {
     require('./events').tick(this.manager, this.store, now).catch(() => {});
     require('./chat-moderation').tick(this.manager, now.getTime()).catch(() => {});
     require('./bans').tick(this.manager, this.store, now.getTime()).catch(() => {});
+    require('./discord-roles').tick(this.manager, this.store, now.getTime()).catch(() => {});
     for (const server of this.manager.servers) {
       this.announce(server, minute).catch(() => {});
       for (const schedule of server.schedules || []) {

@@ -1,4 +1,5 @@
 import { api } from '../../core/api.js';
+import { state } from '../../core/state.js';
 import { esc, toast } from '../../core/util.js';
 import { confirmModal } from '../../ui/modal.js';
 import { avatar } from './players.js';
@@ -58,8 +59,11 @@ function draw(box, server, data) {
           </div>`
         : ''
     }
+    ${wl ? '<div id="dw-card"></div>' : ''}
     ${data.running ? '' : '<div class="card mb-16 faint" style="font-size:12.5px">The server is stopped, so changes are written straight to its files and apply when it starts.</div>'}
     <div class="lists-grid">${data.lists.map((l) => listCard(server, l)).join('')}</div>`;
+
+  if (wl) renderDiscordWhitelist(box.querySelector('#dw-card'), server, () => renderLists(box, server));
 
   box.querySelector('#wl-enabled')?.addEventListener('change', async (event) => {
     const input = event.currentTarget;
@@ -158,4 +162,100 @@ function listCard(server, list) {
           : '<div class="faint list-empty">Empty</div>'
       }</div>
     </div>`;
+}
+
+/* ------------------------------------------------ whitelist from Discord */
+
+async function renderDiscordWhitelist(card, server, onChange) {
+  let data;
+  try {
+    data = await api(`/api/servers/${server.id}/discord-whitelist`);
+  } catch {
+    return;
+  }
+  if (!card.isConnected) return;
+  const s = data.settings;
+  const sync = data.sync;
+  card.innerHTML = `
+    <div class="card mb-16">
+      <div class="row wl-toggle" style="margin:0">
+        <div style="flex:1;min-width:200px">
+          <b>Whitelist from Discord roles ${s.enabled ? '<span class="lime">on</span>' : ''}</b>
+          <div class="faint" style="font-size:12.5px">${
+            s.enabled
+              ? `${data.managed.length} player${data.managed.length === 1 ? '' : 's'} added from Discord${sync?.error ? ` · <span class="bad-text">${esc(sync.error)}</span>` : sync?.at ? ` · checked ${esc(new Date(sync.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))}` : ''}. Players type <span class="mono">/link name</span> to the bot.`
+              : 'Members with the roles you pick are whitelisted, and taken off again when they lose the role. People you added by hand stay.'
+          }</div>
+        </div>
+        <button class="btn btn-sm" id="dw-edit">${s.enabled ? 'Change' : 'Set up'}</button>
+      </div>
+      <div id="dw-form" class="hidden mt-16"></div>
+    </div>`;
+
+  card.querySelector('#dw-edit').addEventListener('click', async () => {
+    const form = card.querySelector('#dw-form');
+    if (!form.classList.contains('hidden')) {
+      form.classList.add('hidden');
+      return;
+    }
+    form.classList.remove('hidden');
+    form.innerHTML = '<span class="spinner"></span> Asking Discord for your roles…';
+    let guilds;
+    try {
+      ({ guilds } = await api('/api/discord/guilds'));
+    } catch (err) {
+      form.innerHTML = `<p class="faint" style="margin:0">${esc(err.message)} ${state.user.role === 'admin' ? '<a href="#/settings/discord-bot">Discord bot settings</a>' : ''}</p>`;
+      return;
+    }
+    if (!guilds.length) {
+      form.innerHTML = '<p class="faint" style="margin:0">The bot is not in any Discord server yet. Invite it from Settings → Discord bot.</p>';
+      return;
+    }
+    let guildId = s.guildId && guilds.some((g) => g.id === s.guildId) ? s.guildId : guilds[0].id;
+    const roleBoxes = () => {
+      const g = guilds.find((x) => x.id === guildId);
+      return g.roles.length
+        ? g.roles
+            .map(
+              (r) => `<label class="dw-role"><input type="checkbox" value="${esc(r.id)}" ${s.roles.includes(r.id) ? 'checked' : ''} />
+                <span class="dot" style="background:${esc(r.color || 'var(--faint)')}"></span>${esc(r.name)}</label>`
+            )
+            .join('')
+        : '<span class="faint">This Discord server has no roles yet.</span>';
+    };
+    form.innerHTML = `
+      <label class="field"><span>Discord server</span>
+        <select id="dw-guild">${guilds.map((g) => `<option value="${esc(g.id)}" ${g.id === guildId ? 'selected' : ''}>${esc(g.name)}</option>`).join('')}</select>
+      </label>
+      <div class="field"><span>Roles that get on the whitelist</span><div class="dw-roles" id="dw-roles">${roleBoxes()}</div></div>
+      <label class="field"><span>Their Minecraft name comes from</span>
+        <select id="dw-source">
+          <option value="link" ${s.source !== 'nickname' ? 'selected' : ''}>/link name, typed to the bot</option>
+          <option value="nickname" ${s.source === 'nickname' ? 'selected' : ''}>/link, or else their Discord nickname</option>
+        </select>
+      </label>
+      <div class="hint">The bot needs "Server Members Intent" switched on in the Discord developer portal (Bot page) to see who has which role.</div>
+      <div class="row mt-16" style="justify-content:flex-end;gap:8px">
+        ${s.enabled ? '<button class="btn btn-ghost" id="dw-off">Turn off</button>' : ''}
+        <button class="btn btn-primary" id="dw-save">Save and sync</button>
+      </div>`;
+    form.querySelector('#dw-guild').addEventListener('change', (event) => {
+      guildId = event.target.value;
+      form.querySelector('#dw-roles').innerHTML = roleBoxes();
+    });
+    const save = async (enabled, btn) => {
+      btn.disabled = true;
+      try {
+        const roles = [...form.querySelectorAll('#dw-roles input:checked')].map((i) => i.value);
+        const r = await api(`/api/servers/${server.id}/discord-whitelist`, { method: 'PUT', body: { enabled, guildId, roles, source: form.querySelector('#dw-source').value } });
+        toast(enabled ? `Synced: ${r.added.length} added, ${r.removed.length} removed` : 'Whitelist from Discord roles is off');
+        onChange();
+      } catch (err) {
+        toast(err.message, 'error');
+        btn.disabled = false;
+      }
+    };
+    form.querySelector('#dw-save').addEventListener('click', (e) => save(true, e.currentTarget));
+    form.querySelector('#dw-off')?.addEventListener('click', (e) => save(false, e.currentTarget));
+  });
 }
