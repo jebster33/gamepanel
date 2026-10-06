@@ -18,6 +18,7 @@ const { json, readJson, HttpError } = require('../core/util');
 const { Router } = require('./router');
 const { createHelpers, clientIp } = require('./helpers');
 const { RateLimiter } = require('../core/ratelimit');
+const audit = require('../features/audit');
 
 const VERSION = require('../../package.json').version;
 const ROUTES = ['auth', 'system', 'templates', 'servers', 'files', 'mods', 'network', 'backups', 'users'];
@@ -74,7 +75,31 @@ function createApi(app) {
     }
 
     const body = !route.rawBody && writes ? await readJson(req) : {};
-    const result = await route.handler({ req, res, url, params, body, user });
+    // Every change goes in the audit log, including refused ones.
+    const note = (status, error) => {
+      if (!writes) return;
+      const pattern = '/' + route.parts.join('/');
+      const server = params.id && app.manager.servers.find((s) => s.id === params.id);
+      audit.record({
+        user: user?.username || (typeof body?.username === 'string' ? body.username.slice(0, 40) : null),
+        ip: clientIp(req),
+        action: audit.describe(req.method, pattern, body),
+        path: url.pathname,
+        serverId: server?.id,
+        server: server?.name,
+        details: route.rawBody ? undefined : audit.details(body),
+        status,
+        error,
+      });
+    };
+    let result;
+    try {
+      result = await route.handler({ req, res, url, params, body, user });
+    } catch (err) {
+      note(typeof err.code === 'number' ? err.code : 500, err.message);
+      throw err;
+    }
+    note(res.statusCode || 200);
     if (res.writableEnded || result === undefined) return;
     json(res, 200, result);
   }

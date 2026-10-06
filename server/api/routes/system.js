@@ -28,6 +28,21 @@ module.exports = (router, { store, auth, manager, hostMetrics, notifier }, { req
     return { events: visible.slice(0, limit) };
   });
 
+  /** Who changed what, from the audit log. Administrators only. */
+  router.get('/api/audit', ({ user, url }) => {
+    requireAdmin(user);
+    const q = url.searchParams;
+    return {
+      entries: require('../../features/audit').list({
+        q: q.get('q') || '',
+        user: q.get('user') || '',
+        serverId: q.get('server') || '',
+        before: Number(q.get('before')) || Infinity,
+        limit: clamp(q.get('limit') || 200, 1, 1000),
+      }),
+    };
+  });
+
   /** What a fresh panel still needs, shown as a checklist on the dashboard. */
   router.get('/api/system/checklist', ({ user }) => {
     requireAdmin(user);

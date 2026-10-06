@@ -3,7 +3,9 @@ import { state } from './state.js';
 import { $, $$ } from './util.js';
 import { renderAccount } from '../pages/account.js';
 import { renderActivity } from '../pages/activity.js';
+import { renderAudit } from '../pages/audit.js';
 import { renderDashboard } from '../pages/dashboard.js';
+import { renderNodes } from '../pages/nodes.js';
 import { renderServerDetail } from '../pages/server/detail.js';
 import { renderServers } from '../pages/servers.js';
 import { renderSettings } from '../pages/settings.js';
@@ -25,6 +27,8 @@ const ROUTES = [
   { pattern: /^\/activity$/, name: 'activity', page: renderActivity },
   { pattern: /^\/account$/, name: 'account', page: renderAccount },
   { pattern: /^\/users$/, name: 'users', page: renderUsers },
+  { pattern: /^\/audit$/, name: 'audit', page: renderAudit },
+  { pattern: /^\/nodes$/, name: 'nodes', page: renderNodes },
   { pattern: /^\/settings(?:\/([^/]+))?$/, name: 'settings', keys: ['section'], page: renderSettings },
 ];
 

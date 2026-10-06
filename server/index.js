@@ -197,6 +197,8 @@ async function main() {
           for (const topic of msg.topics) conn.subscriptions.delete(topic);
         } else if (msg.type === 'command' && msg.serverId) {
           if (!auth.canAccessServer(conn.user, msg.serverId) || !auth.can(conn.user, 'command', msg.serverId)) return;
+          const server = manager.servers.find((s) => s.id === msg.serverId);
+          require('./features/audit').record({ user: conn.user.username, action: 'console command', serverId: msg.serverId, server: server?.name, details: { command: String(msg.command || '').slice(0, 200) }, status: 200 });
           await manager.sendCommand(msg.serverId, String(msg.command || ''));
         }
       } catch (err) {
