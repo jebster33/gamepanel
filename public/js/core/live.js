@@ -6,6 +6,7 @@ import { patchDashboard } from '../pages/dashboard.js';
 import { appendConsoleLines, handleConsoleMessage } from '../pages/server/console.js';
 import { patchServerDetail, patchServerHeader } from '../pages/server/detail.js';
 import { patchServerCards } from '../pages/servers.js';
+import { addNotification } from '../ui/notifications.js';
 import { renderHostMini, renderSidebarServers } from '../ui/sidebar.js';
 
 /* ------------------------------------------------------------- websocket */
@@ -77,6 +78,10 @@ function handleWsMessage(msg) {
       pushHostHistory(msg.host);
       renderHostMini();
       if (state.route.name === 'dashboard') patchDashboard();
+      break;
+
+    case 'notification':
+      addNotification(msg.notification);
       break;
 
     case 'console':

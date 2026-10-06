@@ -31,3 +31,14 @@ test('Cloudflare: A + SRV records for Minecraft, removed again on release', asyn
     global.fetch = realFetch;
   }
 });
+
+test('server list: links must be http(s), join links only for games that have them', () => {
+  const page = require('../../server/features/status-page');
+  const store = { state: { settings: {} }, save: () => {} };
+  assert.throws(() => page.update(store, { links: { vote: 'javascript:alert(1)' } }), /must start with https/);
+  const s = page.update(store, { links: { discord: 'https://discord.gg/x' }, blurbs: { a: ' Semi-vanilla\nno resets ', b: '' } });
+  assert.strictEqual(s.links.discord, 'https://discord.gg/x');
+  assert.deepStrictEqual(s.blurbs, { a: 'Semi-vanilla no resets' });
+  assert.strictEqual(page.joinUrl({ templateId: 'rust' }, 'play.example.com:28015'), 'steam://connect/play.example.com:28015');
+  assert.strictEqual(page.joinUrl({ templateId: 'valheim' }, 'play.example.com:2456'), null);
+});

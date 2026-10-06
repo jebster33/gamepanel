@@ -2,7 +2,9 @@ import { api } from './api.js';
 import { connectWebSocket } from './live.js';
 import { handleRoute } from './router.js';
 import { state } from './state.js';
-import { $, $$, can } from './util.js';
+import { $, $$, can, esc } from './util.js';
+import { initNotifications } from '../ui/notifications.js';
+import { maybeStartTour } from '../ui/tour.js';
 import { renderSidebarServers, setBridgeNav } from '../ui/sidebar.js';
 
 /* ------------------------------------------------------------------ auth */
@@ -21,6 +23,21 @@ export function showAuth(setupRequired = false) {
   $('#auth-password').autocomplete = setupRequired ? 'new-password' : 'current-password';
   $('#auth-form').dataset.mode = setupRequired ? 'setup' : 'login';
   $('#auth-username').focus();
+  showOauthButtons(!setupRequired);
+}
+
+/** "Sign in with Discord" and friends, for the providers an administrator set up. */
+async function showOauthButtons(show) {
+  const box = $('#oauth-buttons');
+  if (!box) return;
+  const data = show ? await api('/api/auth/oauth/providers').catch(() => null) : null;
+  const providers = data?.providers || [];
+  box.classList.toggle('hidden', !providers.length);
+  box.innerHTML = providers.length
+    ? `<div class="oauth-or"><span>or</span></div>${providers
+        .map((p) => `<a class="btn btn-block oauth-btn oauth-${esc(p.id)}" href="/api/auth/oauth/${encodeURIComponent(p.id)}/start">Sign in with ${esc(p.label)}</a>`)
+        .join('')}`
+    : '';
 }
 
 export async function bootstrap() {
@@ -52,15 +69,19 @@ export async function enterApp() {
 
   // Hide navigation the account cannot use at all, so nothing dead-ends in a
   // permission error.
-  $$('[data-needs]').forEach((el) => el.classList.toggle('hidden', !can(el.dataset.needs)));
+  $$('[data-needs]').forEach((el) => el.classList.toggle('hidden', !el.dataset.needs.split('|').some((cap) => can(cap))));
+  // Self-service accounts deploy their own servers.
+  $('#new-server-btn').classList.toggle('hidden', !can('deploy'));
 
   // Restricted accounts may not be allowed every one of these; a refused
   // request must not stop the panel from loading.
   await Promise.allSettled([loadServers(), loadTemplates(), loadSystem()]);
   setBridgeNav(state.bridgeEnabled);
   connectWebSocket();
+  initNotifications();
   renderSidebarServers();
   handleRoute();
+  maybeStartTour();
 }
 
 /** Other machines this panel controls (administrators only). */
@@ -75,7 +96,7 @@ export async function loadServers() {
 }
 
 export async function loadTemplates() {
-  if (!can('templates')) {
+  if (!can('templates') && !can('deploy')) {
     state.templates = [];
     state.categories = [];
     return;

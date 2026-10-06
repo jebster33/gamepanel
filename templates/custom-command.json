@@ -2,6 +2,7 @@
   "id": "custom-command",
   "name": "Custom server (any game)",
   "category": "Universal",
+  "adminOnly": true,
   "icon": "🧩",
   "description": "The escape hatch: run any install script and any start command. Use it for games without a template, custom modpacks, bots, or anything else that needs supervising.",
   "defaultMemory": 2048,

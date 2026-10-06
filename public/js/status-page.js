@@ -54,6 +54,13 @@ function render(data) {
   $('description').hidden = !data.description;
   $('description').textContent = data.description || '';
   const host = data.host || location.hostname;
+  const links = [
+    data.links?.discord && `<a href="${esc(data.links.discord)}" target="_blank" rel="noopener">💬 Discord</a>`,
+    data.links?.vote && `<a href="${esc(data.links.vote)}" target="_blank" rel="noopener">⭐ Vote for us</a>`,
+    data.links?.website && `<a href="${esc(data.links.website)}" target="_blank" rel="noopener">🌐 Website</a>`,
+  ].filter(Boolean);
+  $('links').hidden = !links.length;
+  $('links').innerHTML = links.join('');
   const online = data.servers.filter((s) => s.status === 'online');
   const players = online.reduce((n, s) => n + (s.players || 0), 0);
   $('summary').innerHTML = `
@@ -87,7 +94,9 @@ function render(data) {
                </div>`
             : ''
         }
-        ${address ? `<div class="row"><span class="address">${esc(address)} <button data-copy="${esc(address)}">Copy</button></span>${s.mapPort ? `<a class="meta" href="http://${esc(host)}:${s.mapPort}" target="_blank" rel="noopener">🗺️ Live map</a>` : ''}</div>` : ''}
+        ${s.blurb ? `<div class="blurb">${esc(s.blurb)}</div>` : ''}
+        ${s.motd ? `<div class="motd">${esc(s.motd)}</div>` : ''}
+        ${address ? `<div class="row"><span class="address">${esc(address)} <button data-copy="${esc(address)}">Copy</button></span>${s.join && s.status === 'online' ? `<a class="join" href="${esc(s.join.replace('{host}', host))}">Join</a>` : ''}${s.mapPort ? `<a class="meta" href="http://${esc(host)}:${s.mapPort}" target="_blank" rel="noopener">🗺️ Live map</a>` : s.mapUrl ? `<a class="meta" href="${esc(s.mapUrl)}" target="_blank" rel="noopener">🗺️ Map</a>` : ''}</div>` : ''}
         ${s.maintenance ? `<div class="meta" style="margin-top:8px">🛠 ${esc(s.maintenance)}</div>` : ''}
         ${s.joinNote ? `<div class="meta" style="margin-top:8px">${esc(s.joinNote)}</div>` : ''}
         ${uptimeBars(s.uptime30)}

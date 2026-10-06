@@ -158,9 +158,19 @@ kbd {
 /* ----------------------------------------------------------------- forms */
 
 form label,
-label.field {
+label.field,
+label:not([class]):not([for]) {
   display: block;
   margin-bottom: 14px;
+}
+/* A field right after a row of checkboxes needs its own breathing room. */
+.checkbox-row + label:not([class]) {
+  margin-top: 14px;
+}
+/* The last field of a form-grid sits on the grid's own bottom edge. */
+.form-grid + .btn,
+.form-grid + button {
+  margin-top: 2px;
 }
 
 form label > span,
@@ -616,6 +626,116 @@ textarea {
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+/* The bell: recent events, unread count, pop-up switch. */
+.bell-wrap {
+  position: relative;
+}
+#bell-btn {
+  position: relative;
+}
+.bell-badge {
+  position: absolute;
+  top: -3px;
+  right: -4px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  font: 600 10px/16px var(--mono);
+  text-align: center;
+  color: var(--lime-ink);
+  background: var(--lime);
+  border-radius: 99px;
+}
+.bell-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 150;
+  width: min(380px, calc(100vw - 24px));
+  max-height: min(520px, calc(100vh - 90px));
+  display: flex;
+  flex-direction: column;
+  background: var(--raised);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.bell-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.bell-head b {
+  margin-right: auto;
+}
+.bell-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+  cursor: pointer;
+}
+.bell-toggle input {
+  width: auto;
+  margin: 0;
+}
+.bell-list {
+  overflow-y: auto;
+}
+.bell-item {
+  display: flex;
+  gap: 10px;
+  padding: 10px 14px;
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+}
+.bell-item:last-child {
+  border-bottom: 0;
+}
+a.bell-item[href]:hover {
+  background: var(--hover);
+  text-decoration: none;
+}
+.bell-text {
+  display: grid;
+  gap: 2px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.bell-text .faint {
+  font-size: 11px;
+}
+.bell-dot {
+  flex-shrink: 0;
+  width: 7px;
+  height: 7px;
+  margin-top: 6px;
+  border-radius: 50%;
+  background: var(--faint);
+}
+.bell-item.unread .bell-dot {
+  background: var(--lime);
+}
+.bell-item.unread.warn .bell-dot {
+  background: var(--amber);
+}
+.bell-item.unread.error .bell-dot {
+  background: var(--red);
+}
+@media (max-width: 640px) {
+  .bell-panel {
+    position: fixed;
+    top: calc(var(--topbar-height) + 6px);
+    right: 12px;
+  }
 }
 
 .conn-dot {
@@ -1260,6 +1380,89 @@ tbody tr:hover {
 .file-check {
   width: 28px;
 }
+/* Config history: versions on the left, the diff on the right. */
+.history-grid {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: 16px;
+}
+.history-list {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+.history-item {
+  display: grid;
+  gap: 2px;
+  padding: 8px 10px;
+  text-align: left;
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--text);
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.history-item:hover {
+  background: var(--hover);
+}
+.history-item.active {
+  background: var(--lime-soft);
+  border-color: var(--border-strong);
+}
+.history-item .faint {
+  font-size: 11.5px;
+  overflow-wrap: anywhere;
+}
+.diff {
+  max-height: 60vh;
+  overflow: auto;
+  padding: 8px 0;
+  font: 12px/1.55 var(--mono);
+  background: var(--inset);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.diff-line {
+  padding: 0 12px 0 0;
+  white-space: pre;
+}
+.diff-op {
+  display: inline-block;
+  width: 26px;
+  text-align: center;
+  color: var(--faint);
+  user-select: none;
+}
+.diff-line.add {
+  background: var(--lime-soft);
+}
+.diff-line.add .diff-op {
+  color: var(--lime-text);
+}
+.diff-line.del {
+  background: var(--red-soft);
+}
+.diff-line.del .diff-op {
+  color: var(--red);
+}
+.diff-fold {
+  padding: 2px 12px 2px 26px;
+  color: var(--faint);
+  font-style: italic;
+}
+@media (max-width: 760px) {
+  .history-grid {
+    grid-template-columns: 1fr;
+  }
+  .history-list {
+    max-height: 30vh;
+  }
+}
+
 .editor {
   width: 100%;
   height: 60vh;
@@ -3113,4 +3316,217 @@ tr.clickable:hover td {
 }
 .hint.warn-text:empty {
   display: none;
+}
+
+/* Games page: what a self-service account has left. */
+.quota-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 22px;
+  padding: 12px 18px;
+  font-size: 13px;
+}
+.quota-card span {
+  color: var(--muted);
+}
+
+/* Settings: servers on the public list, each with an optional line about it. */
+.sp-servers {
+  display: grid;
+  gap: 8px;
+}
+.sp-server {
+  display: grid;
+  grid-template-columns: minmax(180px, 260px) minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+}
+.sp-server .perm-row {
+  margin: 0;
+}
+@media (max-width: 640px) {
+  .sp-server {
+    grid-template-columns: 1fr;
+    gap: 4px;
+    margin-bottom: 6px;
+  }
+}
+
+/* Scheduled events: one row per setting the event changes. */
+.ev-change {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.ev-value > * {
+  width: 100%;
+}
+
+/* First-run tour: a ring around one part of the panel, and a bubble about it. */
+.tour {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+}
+.tour-ring {
+  position: fixed;
+  border-radius: var(--radius);
+  box-shadow: 0 0 0 2px var(--lime), 0 0 0 9999px rgba(0, 0, 0, 0.55);
+  transition: all 0.25s var(--ease);
+  pointer-events: none;
+}
+.tour-bubble {
+  position: fixed;
+  width: min(320px, calc(100vw - 24px));
+  padding: 16px 18px 14px;
+  background: var(--raised);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  transition: left 0.25s var(--ease), top 0.25s var(--ease);
+}
+.tour-bubble h3 {
+  margin: 2px 0 6px;
+  font-size: 16px;
+}
+.tour-bubble p {
+  margin: 0 0 14px;
+  color: var(--muted);
+  font-size: 13.5px;
+  line-height: 1.55;
+}
+.tour-count {
+  font: 11px var(--mono);
+  letter-spacing: 0.06em;
+  color: var(--lime-text);
+}
+.tour-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Mods tab: saved Workshop packs. */
+.ws-packs {
+  padding: 12px 14px;
+  background: var(--inset);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.ws-pack-list {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+}
+.ws-pack {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+.ws-pack .grow {
+  flex: 1;
+}
+.ws-preview {
+  display: grid;
+  gap: 6px;
+  max-height: 40vh;
+  overflow-y: auto;
+}
+.ws-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--text);
+}
+.ws-item img {
+  width: 36px;
+  height: 36px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+}
+
+/* Modpack install: what changes between the installed version and the chosen one. */
+.pack-diff {
+  margin-top: 12px;
+}
+.pack-diff details {
+  margin: 6px 0;
+}
+.pack-diff summary {
+  cursor: pointer;
+  font-size: 13px;
+}
+.pack-diff summary .add {
+  color: var(--lime-text);
+}
+.pack-diff summary .del {
+  color: var(--red);
+}
+.pack-diff ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  max-height: 180px;
+  overflow-y: auto;
+  font-size: 12.5px;
+  line-height: 1.7;
+}
+.pack-diff-head {
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+
+/* Sign in with Google / Discord / GitHub. */
+.oauth-buttons {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+.oauth-or {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--faint);
+}
+.oauth-or::before,
+.oauth-or::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+.oauth-btn {
+  height: 38px;
+}
+.oauth-provider {
+  padding: 12px 0;
+  border-top: 1px solid var(--border);
+}
+
+/* Games page: ready-made setups above the games. */
+#setups {
+  margin-bottom: 26px;
+}
+.section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  margin: 4px 0 12px;
+}
+.section-head h2 {
+  margin: 0;
+  font-size: 16px;
+}
+.setup-card .t-foot {
+  flex-wrap: wrap;
+  row-gap: 6px;
+}
+.setup-card .t-foot .btn {
+  margin-left: auto;
 }

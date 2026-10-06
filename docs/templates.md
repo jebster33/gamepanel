@@ -147,3 +147,33 @@ runners by `.github/workflows/games.yml`. A `ci` block tunes that:
   "windows": { "vars": { } }
 }
 ```
+
+## Administrator-only templates
+
+`"adminOnly": true` keeps a template away from people who create their own servers within a quota. Use it
+when a variable is a command or a script (like the custom-command and generic SteamCMD templates), since
+whatever it holds runs on the host.
+
+## Ready-made setups
+
+A setup is a template plus what makes it a particular kind of server, deployed in one click from the Games
+page. The built-in ones are in [`setups/`](../setups); put your own in the panel's data folder under `setups/`.
+
+```json
+{
+  "id": "my-smp",
+  "name": "Our SMP",
+  "templateId": "minecraft-paper",
+  "description": "Shown on the card.",
+  "tags": ["Minecraft"],
+  "memory": 4096,
+  "vars": { "MC_VERSION": "26.1.2" },
+  "mods": [{ "provider": "modrinth", "projectId": "luckperms" }],
+  "gameSettings": { "difficulty": "hard" },
+  "schedules": [{ "name": "Backup", "action": "backup", "cron": "0 */6 * * *" }]
+}
+```
+
+The game installs first; the mods, game settings and schedules are added when it finishes, and the console
+says how each one went. Pin `vars` to a game version every mod supports, since mods are only installed in
+builds made for the server's version.

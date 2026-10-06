@@ -155,7 +155,13 @@ export function renderServerSettingsTab(host, server) {
                <button class="btn btn-danger" id="set-delete">Delete server</button>
              </div>
            </div>`
-        : ''
+        : server.ownerId && server.ownerId === state.user.id
+          ? `<div class="card">
+               <h4 style="margin:0 0 6px">Delete server</h4>
+               <p class="faint" style="margin:0 0 14px">You created this server, so you can delete it. That removes it and all of its files, and frees its share of your quota.</p>
+               <button class="btn btn-danger" id="set-delete-own">Delete server</button>
+             </div>`
+          : ''
     }`;
 
   renderNetworkCard(server);
@@ -219,6 +225,18 @@ export function renderServerSettingsTab(host, server) {
       });
       await loadServers();
       toast('Alerts saved. Pick where they go under Settings, Notifications, or on the phone app.');
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+  });
+
+  $('#set-delete-own')?.addEventListener('click', async () => {
+    if (!(await confirmModal('Delete server', `Permanently delete “${server.name}” and all of its files?`, 'Delete'))) return;
+    try {
+      await api(`/api/servers/${server.id}`, { method: 'DELETE' });
+      await loadServers();
+      toast('Server deleted');
+      location.hash = '#/servers';
     } catch (err) {
       toast(err.message, 'error');
     }
@@ -356,7 +374,7 @@ async function renderNetworkCard(server) {
 
     <div class="table-wrap mb-16">
       <table>
-        <thead><tr><th>Port</th><th>Protocol</th><th>Firewall</th></tr></thead>
+        <thead><tr><th>Port</th><th>Protocol</th><th>Firewall</th><th>From the internet</th></tr></thead>
         <tbody>
           ${data.ports
             .map(
@@ -370,6 +388,7 @@ async function renderNetworkCard(server) {
                       ? '<span style="color:var(--success)">open</span>'
                       : '<span style="color:var(--danger)">closed</span>'
                 }</td>
+                <td data-net-out="${p.port}/${esc(p.protocol)}"><span class="faint">not tested</span></td>
               </tr>`
             )
             .join('')}
@@ -382,8 +401,10 @@ async function renderNetworkCard(server) {
       ${data.upnp.available ? '<button class="btn" id="net-forward">Forward on router (UPnP)</button>' : ''}
       <button class="btn btn-danger" id="net-close">Close</button>
       <button class="btn btn-ghost" id="net-manual">Do it manually</button>
+      <button class="btn" id="net-test" title="Asks mcsrvstat.us (Minecraft) or portchecker.io (TCP ports) to connect from outside your network">Test from the internet</button>
     </div>
     <div id="net-result" class="hint"></div>
+    <div id="net-test-result" class="hint"></div>
 
     <div id="net-manual-box" class="hidden mt-16">
       <div class="field-label">On this machine</div>
@@ -395,6 +416,41 @@ async function renderNetworkCard(server) {
         ${data.upnp.externalIp ? `Players connect to <span class="mono">${esc(data.upnp.externalIp)}</span>.` : ''}
       </div>
     </div>`;
+
+  $('#net-test').addEventListener('click', async (event) => {
+    const btn = event.currentTarget;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Testing…';
+    const out = $('#net-test-result');
+    try {
+      const r = await api(`/api/servers/${server.id}/network/check`, { method: 'POST', body: {} });
+      if (r.error) {
+        out.innerHTML = `<span class="warning">${esc(r.error)}</span>`;
+        return;
+      }
+      for (const p of r.ports) {
+        const cell = card.querySelector(`[data-net-out="${p.port}/${p.protocol}"]`);
+        if (!cell) continue;
+        cell.innerHTML =
+          p.status === 'open'
+            ? `<span style="color:var(--success)" title="${esc(p.how || '')}">reachable</span>`
+            : p.status === 'closed'
+              ? `<span style="color:var(--danger)" title="${esc(p.how || '')}">not reachable</span>`
+              : `<span class="faint" title="${p.protocol === 'udp' ? 'UDP cannot be tested from outside without the game itself' : ''}">${p.note ? esc(p.note) : 'can’t test'}</span>`;
+      }
+      out.innerHTML =
+        r.reachable === true
+          ? `<span style="color:var(--success)">Players can reach it at <span class="mono">${esc(r.target)}</span>.</span>`
+          : r.reachable === false
+            ? `<span class="warning">Not reachable at <span class="mono">${esc(r.target)}</span> from the internet. Open the ports above, forward them on your router (or use UPnP), then test again. Some internet providers block incoming connections entirely (CGNAT); GamePanel Bridge works around that.</span>`
+            : `These are UDP ports, which cannot be tested from outside without the game itself. Make sure they are forwarded to <span class="mono">${esc(data.lanIp || 'this machine')}</span>, then try joining with the public address <span class="mono">${esc(r.publicIp)}</span>.`;
+    } catch (err) {
+      out.innerHTML = `<span class="warning">${esc(err.message)}</span>`;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Test from the internet';
+    }
+  });
 
   const act = async (btn, body, label) => {
     btn.disabled = true;

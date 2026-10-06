@@ -71,6 +71,8 @@ module.exports = {
         slug: extra.PACK_SLUG,
         name: extra.PACK_NAME,
         version: extra.PACK_VERSION_NUMBER,
+        versionId: extra.PACK_VERSION_ID || null,
+        source: vars.MODPACK_SOURCE === 'curseforge' ? 'curseforge' : 'modrinth',
         url: extra.PACK_URL,
         versionUrl: extra.PACK_VERSION_URL,
         icon: extra.PACK_ICON || null,

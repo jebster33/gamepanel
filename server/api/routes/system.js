@@ -30,6 +30,9 @@ module.exports = (router, { store, auth, manager, hostMetrics, notifier, bridge 
     return { events: visible.slice(0, limit) };
   });
 
+  /** The bell in the top bar: recent events this account may see. */
+  router.get('/api/notifications', ({ user }) => ({ notifications: require('../../features/live-notifications').list(store, auth, user) }));
+
   /** Who changed what, from the audit log. Administrators only. */
   router.get('/api/audit', ({ user, url }) => {
     requireAdmin(user);
@@ -98,7 +101,8 @@ module.exports = (router, { store, auth, manager, hostMetrics, notifier, bridge 
 
   router.get('/api/settings', ({ user }) => {
     requireAdmin(user);
-    return { settings: { ...store.state.settings, nodes: undefined }, notificationEvents: EVENT_CHOICES };
+    // Sign-in provider secrets have their own endpoint that never sends them back.
+    return { settings: { ...store.state.settings, nodes: undefined, oauth: undefined }, notificationEvents: EVENT_CHOICES };
   });
 
   router.patch('/api/settings', ({ user, body }) => {
@@ -113,6 +117,7 @@ module.exports = (router, { store, auth, manager, hostMetrics, notifier, bridge 
     if (body.maxCrashRestarts !== undefined) s.maxCrashRestarts = clamp(body.maxCrashRestarts, 0, 100);
     if (body.containerize !== undefined) s.containerize = Boolean(body.containerize);
     if (body.geoLookup !== undefined) s.geoLookup = Boolean(body.geoLookup);
+    if (body.scheduledEvents !== undefined) s.scheduledEvents = Boolean(body.scheduledEvents);
     if (body.limits) {
       const n = (v, max) => Math.max(0, Math.min(max, Number(v) || 0));
       const l = { ...(s.limits || {}) };
@@ -148,7 +153,7 @@ module.exports = (router, { store, auth, manager, hostMetrics, notifier, bridge 
       }
     }
     store.save();
-    return { settings: s };
+    return { settings: { ...s, oauth: undefined } };
   });
 
   router.post('/api/settings/notifications/test', async ({ user, body }) => {

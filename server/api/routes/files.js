@@ -4,6 +4,16 @@ const fs = require('fs');
 const path = require('path');
 const { fail, readBody } = require('../../core/util');
 const files = require('../../features/files');
+const history = require('../../features/config-history');
+
+/** A file's text before it is overwritten, for its history (null when missing or too big). */
+function readIfSmall(file) {
+  try {
+    return fs.statSync(file).size <= 1024 * 1024 ? fs.readFileSync(file, 'utf8') : null;
+  } catch {
+    return null;
+  }
+}
 
 module.exports = (router, app, { serverFor }) => {
   const rootOf = (user, id, capability = 'files') => serverFor(user, id, capability).dir;
@@ -14,9 +24,41 @@ module.exports = (router, app, { serverFor }) => {
 
   router.get('/api/servers/:id/files/content', async ({ user, params, url }) => files.read(rootOf(user, params.id), url.searchParams.get('path') || ''));
 
-  router.put('/api/servers/:id/files/content', async ({ user, params, url, body }) =>
-    files.write(rootOf(user, params.id, 'files.write'), url.searchParams.get('path') || '', body.content)
-  );
+  router.put('/api/servers/:id/files/content', async ({ user, params, url, body }) => {
+    const root = rootOf(user, params.id, 'files.write');
+    const rel = url.searchParams.get('path') || '';
+    const before = readIfSmall(files.containedPath(root, rel));
+    const result = await files.write(root, rel, body.content);
+    history.record(params.id, rel, { before, after: String(body.content ?? ''), by: user.username, source: 'editor' });
+    return result;
+  });
+
+  /* ------------------------------------------------------ config history -- */
+
+  router.get('/api/servers/:id/config-history', ({ user, params }) => {
+    serverFor(user, params.id, 'files');
+    return { files: history.files(params.id) };
+  });
+
+  router.get('/api/servers/:id/config-history/versions', ({ user, params, url }) => {
+    serverFor(user, params.id, 'files');
+    return history.versions(params.id, url.searchParams.get('path'));
+  });
+
+  router.get('/api/servers/:id/config-history/version', ({ user, params, url }) => {
+    serverFor(user, params.id, 'files');
+    return history.content(params.id, url.searchParams.get('path'), url.searchParams.get('version'));
+  });
+
+  router.post('/api/servers/:id/config-history/revert', async ({ user, params, body }) => {
+    const root = rootOf(user, params.id, 'files.write');
+    const version = history.content(params.id, body?.path, body?.version);
+    const before = readIfSmall(files.containedPath(root, version.path));
+    await files.write(root, version.path, version.content);
+    history.record(params.id, version.path, { before, after: version.content, by: user.username, source: 'revert', note: `Back to the version from ${new Date(version.at).toISOString().slice(0, 16).replace('T', ' ')}` });
+    app.store.addEvent('server.config_reverted', `${user.username} reverted ${version.path} on ${serverFor(user, params.id).name}`, { serverId: params.id });
+    return { ok: true, path: version.path };
+  });
 
   router.post('/api/servers/:id/files/mkdir', async ({ user, params, body }) => files.mkdir(rootOf(user, params.id, 'files.write'), body.path));
 

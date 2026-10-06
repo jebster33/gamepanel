@@ -74,6 +74,7 @@ async function resolveCurseforgePack(vars, key, { readZipJson, loaderInstallScri
     PACK_NAME: manifest.name || project.name,
     PACK_SLUG: String(project.id),
     PACK_VERSION_NUMBER: manifest.version || file.displayName,
+    PACK_VERSION_ID: String(file.id),
     PACK_URL: page,
     PACK_VERSION_URL: `${page}/files/${file.id}`,
     // CurseForge does not say which side a pack needs; players need it for any pack with client content.

@@ -121,6 +121,51 @@ module.exports = (router, { store, manager }, { serverFor, integrations }) => {
     return mods.toggle(server, template, params.name);
   });
 
+  /* ------------------------------------------------------ workshop packs -- */
+
+  const packs = require('../../features/mods/workshop-packs');
+  /** The server and its game's Workshop app id. */
+  const packTarget = (user, id) => {
+    const { server, template } = modTarget(user, id);
+    const appId = require('../../features/mods/compat').modContext(server, template).appId;
+    if (!appId || !mods.providersFor(template).some((p) => p.id === 'workshop')) fail(400, 'This game has no Steam Workshop');
+    return { server, template, appId };
+  };
+
+  router.get('/api/servers/:id/workshop-packs', ({ user, params }) => {
+    const { appId } = packTarget(user, params.id);
+    return { appId, packs: packs.list(store, appId) };
+  });
+
+  router.post('/api/servers/:id/workshop-packs/preview', async ({ user, params, body }) => {
+    const { appId } = packTarget(user, params.id);
+    return packs.preview(body?.input, appId);
+  });
+
+  router.post('/api/servers/:id/workshop-packs', async ({ user, params, body }) => {
+    const { server, appId } = packTarget(user, params.id);
+    const pack = await packs.create(store, { name: body?.name, appId, input: body?.input, fromServer: body?.fromServer ? server : null }, user);
+    store.addEvent('mod.pack_saved', `${user.username} saved the Workshop pack ${pack.name} (${pack.items.length} items)`, { serverId: server.id });
+    return { pack };
+  });
+
+  router.post('/api/servers/:id/workshop-packs/:packId/apply', async ({ user, params }) => {
+    const { server, template, appId } = packTarget(user, params.id);
+    const pack = packs.get(store, params.packId);
+    if (pack.appId !== appId) fail(400, `${pack.name} is a pack for a different game`);
+    const result = await installWorkshop(server, template, manager, { input: pack.items.join(',') }, integrations());
+    store.addEvent('mod.installed', `Workshop pack ${pack.name} added to ${server.name}`, { serverId: server.id });
+    return result;
+  });
+
+  router.delete('/api/servers/:id/workshop-packs/:packId', ({ user, params }) => {
+    packTarget(user, params.id);
+    const pack = packs.get(store, params.packId);
+    if (user.role !== 'admin' && pack.createdBy !== user.username) fail(403, 'Only the person who saved a pack, or an administrator, can delete it');
+    packs.remove(store, pack.id);
+    return { ok: true };
+  });
+
   /* ----------------------------------------------------------- modpacks -- */
 
   router.get('/api/servers/:id/modpacks', ({ user, params }) => {
@@ -180,6 +225,37 @@ module.exports = (router, { store, manager }, { serverFor, integrations }) => {
         .filter((v) => String(v.file?.filename || '').endsWith('.mrpack'))
         .map((v) => ({ id: v.id, name: v.name, version: v.version, channel: v.channel, gameVersions: v.gameVersions, loaders: v.loaders, published: v.published, filename: v.file.filename })),
     };
+  });
+
+  /**
+   * What would change going from the installed version of the pack to another
+   * one: mods added, removed and updated. Only for the pack already installed.
+   */
+  router.get('/api/servers/:id/modpacks/diff', async ({ user, url, params }) => {
+    const server = serverFor(user, params.id, 'mods');
+    const source = url.searchParams.get('source') === 'curseforge' ? 'curseforge' : 'modrinth';
+    const project = String(url.searchParams.get('project') || '');
+    const target = String(url.searchParams.get('version') || '');
+    const pack = server.pack || {};
+    const installedSource = pack.source || (server.vars?.MODPACK_SOURCE === 'curseforge' ? 'curseforge' : 'modrinth');
+    const sameProject = installedSource === source && [pack.slug, server.vars?.MODPACK].filter(Boolean).map(String).includes(project);
+    if (!sameProject) return { available: false, reason: 'A different pack: everything is replaced.' };
+    let current = pack.versionId || (source === 'curseforge' ? server.vars?.MODPACK_VERSION : null);
+    if (!current && source === 'modrinth' && pack.version) {
+      // Installed before the panel kept the version id: find it by its number.
+      const versions = await mods.PROVIDERS.modrinth.versions({ projectId: project, ctx: {}, projectType: 'modpack' }).catch(() => []);
+      current = versions.find((v) => v.version === pack.version)?.id || null;
+    }
+    if (!current) return { available: false, reason: 'The panel does not know which version is installed now.' };
+    if (current === target) return { available: true, same: true };
+    const packDiff = require('../../games/pack-diff');
+    try {
+      const key = integrations().curseforgeKey;
+      const [from, to] = await Promise.all([packDiff.contents({ source, project, version: current, key }), packDiff.contents({ source, project, version: target, key })]);
+      return { available: true, ...packDiff.diff(from, to) };
+    } catch (err) {
+      return { available: false, reason: `Could not compare the versions: ${err.message}` };
+    }
   });
 
   /** Switch the server to a modpack (or another version of it) and reinstall. */

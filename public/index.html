@@ -9,7 +9,7 @@
     <link rel="icon" type="image/png" href="/img/favicon-64.png" />
     <link rel="apple-touch-icon" href="/img/apple-touch-icon.png" />
     <!-- ?v is bumped with each release so nothing serves a stale dashboard. -->
-    <link rel="stylesheet" href="/css/style.css?v=2.1.0" />
+    <link rel="stylesheet" href="/css/style.css?v=2.2.0" />
     <script>
       // Apply the saved theme before first paint to avoid a flash.
       (function () {
@@ -43,6 +43,7 @@
           <p id="auth-error" class="auth-error hidden"></p>
           <button id="auth-submit" class="btn btn-primary btn-block" type="submit">Sign in</button>
         </form>
+        <div id="oauth-buttons" class="oauth-buttons hidden"></div>
 
         <!-- Second step for accounts with two-factor sign-in -->
         <form id="otp-form" class="otp hidden" autocomplete="off">
@@ -101,7 +102,7 @@
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="7" rx="2"/><rect x="3" y="13" width="18" height="7" rx="2"/><path d="M7 7.5h.01M7 16.5h.01"/></svg>
             Servers
           </a>
-          <a class="nav-item" data-needs="templates" href="#/templates" data-page="templates">
+          <a class="nav-item" data-needs="templates|deploy" href="#/templates" data-page="templates">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 3 7.5l9 4.5 9-4.5z"/><path d="m3 12 9 4.5 9-4.5M3 16.5 12 21l9-4.5"/></svg>
             Games
           </a>
@@ -163,10 +164,24 @@
           <div class="crumbs" id="crumbs"></div>
           <div class="topbar-actions">
             <span class="conn-dot" id="ws-status" title="Live connection"></span>
+            <div class="bell-wrap">
+              <button class="icon-btn" id="bell-btn" title="Notifications" aria-haspopup="true" aria-expanded="false">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15zM10 20a2 2 0 0 0 4 0"/></svg>
+                <span class="bell-badge hidden" id="bell-badge"></span>
+              </button>
+              <div class="bell-panel hidden" id="bell-panel" role="dialog" aria-label="Notifications">
+                <div class="bell-head">
+                  <b>Notifications</b>
+                  <label class="bell-toggle" title="Show important ones as a pop-up"><input type="checkbox" id="bell-popups" /> Pop-ups</label>
+                  <button class="btn btn-sm hidden" id="bell-desktop">Desktop alerts</button>
+                </div>
+                <div class="bell-list" id="bell-list"></div>
+              </div>
+            </div>
             <button class="icon-btn" id="theme-toggle" title="Toggle theme">
               <svg id="theme-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
             </button>
-            <button class="btn btn-primary btn-sm admin-only" id="new-server-btn">New server</button>
+            <button class="btn btn-primary btn-sm hidden" id="new-server-btn">New server</button>
           </div>
         </header>
         <div class="view" id="view"></div>
@@ -176,6 +191,6 @@
     <div id="modal-root"></div>
     <div id="toasts" class="toasts"></div>
 
-    <script src="/js/main.js?v=2.1.0" type="module"></script>
+    <script src="/js/main.js?v=2.2.0" type="module"></script>
   </body>
 </html>

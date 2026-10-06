@@ -134,6 +134,7 @@ function openUserModal(user, capabilities = [], defaults = []) {
     )
     .join('');
 
+  const quota = user?.quota || { servers: 1, memoryMb: 4096, diskGb: 20 };
   const modal = openModal({
     title: editing ? `Edit ${esc(user.username)}` : 'New user',
     width: 640,
@@ -174,6 +175,16 @@ function openUserModal(user, capabilities = [], defaults = []) {
           <button type="button" class="btn btn-sm" id="u-none">Clear</button>
         </div>
         <div class="perm-grid">${permissionUi}</div>
+
+        <div id="u-quota" class="${(user?.permissions || []).includes('deploy') ? '' : 'hidden'}">
+          <h4 class="section-title mt-16">Quota for servers they create</h4>
+          <div class="form-grid">
+            <label><span>Servers</span><input id="u-q-servers" type="number" min="0" value="${quota.servers}" /></label>
+            <label><span>Memory in total (MB)</span><input id="u-q-memory" type="number" min="0" step="512" value="${quota.memoryMb}" /></label>
+            <label><span>Disk in total (GB)</span><input id="u-q-disk" type="number" min="0" value="${quota.diskGb}" /></label>
+          </div>
+          <div class="hint" style="margin-top:-6px">0 means no limit. Only servers this person creates count; servers you assign above do not.</div>
+        </div>
       </div>
 
       <div id="u-admin-note" class="hint ${user?.role === 'admin' ? '' : 'hidden'}">
@@ -194,6 +205,9 @@ function openUserModal(user, capabilities = [], defaults = []) {
           };
           const password = $('#u-pass').value;
           if (password) body.password = password;
+          if (body.permissions.includes('deploy')) {
+            body.quota = { servers: Number($('#u-q-servers').value), memoryMb: Number($('#u-q-memory').value), diskGb: Number($('#u-q-disk').value) };
+          }
           btn.disabled = true;
           try {
             if (editing) await api(`/api/users/${user.id}`, { method: 'PATCH', body });
@@ -222,8 +236,18 @@ function openUserModal(user, capabilities = [], defaults = []) {
     document.querySelectorAll('[data-cap]').forEach((box) => {
       box.checked = checked;
     });
-  $('#u-all').addEventListener('click', () => setAll(true));
-  $('#u-none').addEventListener('click', () => setAll(false));
+  // The quota only matters to people who may create servers.
+  const deployBox = document.querySelector('[data-cap="deploy"]');
+  const syncQuota = () => $('#u-quota').classList.toggle('hidden', !deployBox?.checked);
+  deployBox?.addEventListener('change', syncQuota);
+  $('#u-all').addEventListener('click', () => {
+    setAll(true);
+    syncQuota();
+  });
+  $('#u-none').addEventListener('click', () => {
+    setAll(false);
+    syncQuota();
+  });
 
   return modal;
 }

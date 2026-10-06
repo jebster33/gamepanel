@@ -1,6 +1,7 @@
 import { api } from '../../core/api.js';
 import { $, esc, fmtBytes, fmtTime, icon, toast } from '../../core/util.js';
 import { confirmModal, openModal, promptModal } from '../../ui/modal.js';
+import { openConfigHistory, openConfigHistoryList } from './config-history.js';
 
 /* ----------------------------------------------------------------- files */
 
@@ -31,6 +32,7 @@ export async function renderFilesTab(host, server, dirPath) {
       <button class="btn btn-sm hidden" id="file-compress">${icon('archive',12)} Compress</button>
       <button class="btn btn-sm btn-danger hidden" id="file-delete-selected">${icon('trash',12)} Delete</button>
       <button class="btn btn-sm" id="file-search" title="Find a file, or a setting inside config files">Search</button>
+      <button class="btn btn-sm" id="file-history" title="Earlier versions of files saved in the panel">History</button>
       <button class="btn btn-sm" id="file-new-folder">New folder</button>
       <button class="btn btn-sm" id="file-new-file">New file</button>
       <button class="btn btn-sm btn-primary" id="file-upload">${icon('upload',12)} Upload</button>
@@ -94,6 +96,7 @@ export async function renderFilesTab(host, server, dirPath) {
     el.addEventListener('click', () => openFileEditor(server, el.dataset.file, refresh))
   );
   $('#file-search').addEventListener('click', () => openFileSearch(server, host));
+  $('#file-history').addEventListener('click', () => openConfigHistoryList(server));
 
   /* selection ------------------------------------------------------------ */
 
@@ -260,6 +263,13 @@ async function openFileEditor(server, filePath, onClose) {
     width: 900,
     body: `<textarea class="editor" id="file-editor" spellcheck="false">${esc(data.content)}</textarea>`,
     actions: [
+      {
+        label: 'History',
+        onClick: () => {
+          modal.close();
+          openConfigHistory(server, filePath, onClose);
+        },
+      },
       { label: 'Cancel', close: true },
       {
         label: 'Save',

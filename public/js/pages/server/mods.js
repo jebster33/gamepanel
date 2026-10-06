@@ -2,6 +2,7 @@ import { api } from '../../core/api.js';
 import { $, esc, fmtBytes, icon, toast } from '../../core/util.js';
 import { confirmModal, openModal } from '../../ui/modal.js';
 import { sideBadge } from './modpacks.js';
+import { renderWorkshopPacks } from './workshop-packs.js';
 
 /* ------------------------------------------------------------------ mods */
 
@@ -74,9 +75,10 @@ export async function renderModsTab(host, server) {
           ${
             provider.viaSteamcmd
               ? `<div class="input-row mb-16">
-                   <input id="mod-workshop-input" placeholder="Workshop link or item ID" />
-                   <button class="btn btn-primary" id="mod-workshop-install">Add item</button>
-                 </div>`
+                   <input id="mod-workshop-input" placeholder="Workshop link, collection link or item ID" />
+                   <button class="btn btn-primary" id="mod-workshop-install">Add</button>
+                 </div>
+                 <div id="ws-packs" class="mb-16"></div>`
               : ''
           }
 
@@ -149,6 +151,7 @@ export async function renderModsTab(host, server) {
   });
 
   wireInstalled(server, info, refresh);
+  if ($('#ws-packs')) renderWorkshopPacks($('#ws-packs'), server, refresh);
 
   // Show popular mods straight away, unless searching needs a key we lack.
   if (!missingKey && !(provider.viaSteamcmd && !info.keys.workshop)) search();

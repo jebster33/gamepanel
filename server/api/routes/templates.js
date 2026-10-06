@@ -1,8 +1,9 @@
 'use strict';
 
-module.exports = (router, { templates, manager }, { requireAdmin, requireCap }) => {
+module.exports = (router, { templates, manager, auth }, { requireAdmin, requireCap }) => {
   router.get('/api/templates', ({ user }) => {
-    requireCap(user, 'templates');
+    // People who may create their own servers need the catalogue to pick from.
+    if (!auth.can(user, 'deploy')) requireCap(user, 'templates');
     // Tell the UI which games this host can run, and how.
     const list = templates.list().map((t) => {
       let runnable = true;

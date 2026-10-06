@@ -61,3 +61,14 @@ test('an empty server stops after its idle limit', () => {
   m.checkIdle(server, rt, 0, Date.now() + 11 * 60_000);
   assert.strictEqual(stopped, true);
 });
+
+test('world maps: Rust from size and seed, Valheim seed read from the .fwl file', () => {
+  const maps = require('../../server/games/world-maps');
+  assert.strictEqual(maps.worldMap({ templateId: 'rust', vars: { WORLD_SIZE: 4000, WORLD_SEED: 1337 } }).url, 'https://rustmaps.com/map/4000_1337');
+  // How Valheim writes it: int32 length, int32 version, then 7-bit length-prefixed strings.
+  const str = (s) => Buffer.concat([Buffer.from([Buffer.byteLength(s)]), Buffer.from(s)]);
+  const body = Buffer.concat([Buffer.from([34, 0, 0, 0]), str('Dedicated'), str('HHcLC5acQt'), Buffer.from([0x39, 0x30, 0, 0])]);
+  const fwl = Buffer.concat([Buffer.from([body.length, 0, 0, 0]), body]);
+  assert.deepStrictEqual(maps.parseFwl(fwl), { name: 'Dedicated', seedName: 'HHcLC5acQt', seed: 12345 });
+  assert.strictEqual(maps.worldMap({ templateId: 'satisfactory' }), null);
+});

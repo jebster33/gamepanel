@@ -49,11 +49,11 @@ module.exports = (router, app) => {
     { public: true }
   );
 
-  function finishLogin(req, res, { token, user }, ip) {
+  function finishLogin(req, res, { token, user }, ip, how = '') {
     res.setHeader('Set-Cookie', auth.cookieHeader(token, isSecure(req)));
     const record = auth.users.find((u) => u.id === user.id);
     const newAddress = record ? auth.noteSignInAddress(record, ip) : false;
-    const event = store.addEvent('user.login', `${user.username} signed in`, { ip });
+    const event = store.addEvent('user.login', `${user.username} signed in${how}`, { ip });
     // A location lookup must never slow a sign-in down; fill it in afterwards.
     require('../../features/geoip')
       .locate(ip, { enabled: store.state.settings.geoLookup !== false })
@@ -119,6 +119,98 @@ module.exports = (router, app) => {
     const { token } = auth.startSession(record, clientIp(req));
     res.setHeader('Set-Cookie', auth.cookieHeader(token, isSecure(req)));
   }
+  /* ------------------------------- sign in with Google, Discord, GitHub -- */
+
+  const oauth = require('../../features/oauth');
+  const redirect = (res, location, cookies = []) => {
+    const existing = res.getHeader('Set-Cookie');
+    const all = [...(existing ? [existing].flat() : []), ...cookies];
+    if (all.length) res.setHeader('Set-Cookie', all);
+    res.writeHead(302, { Location: location, 'Cache-Control': 'no-store' });
+    res.end();
+  };
+  const clearState = `${oauth.STATE_COOKIE}=; Path=/api/auth/oauth; HttpOnly; SameSite=Lax; Max-Age=0`;
+
+  router.get('/api/auth/oauth/providers', () => ({ providers: oauth.enabled(store) }), { public: true });
+
+  /** Off to Google/Discord/GitHub. ?link=1 links the signed-in account instead of signing in. */
+  router.get(
+    '/api/auth/oauth/:provider/start',
+    ({ req, res, params, url }) => {
+      let linkUserId = null;
+      if (url.searchParams.get('link') === '1') {
+        const user = auth.userFromRequest(req);
+        if (!user) fail(401, 'Sign in first, then link the account from the Account page');
+        linkUserId = user.id;
+      }
+      const { url: to, cookie } = oauth.start(store, auth, req, params.provider, { linkUserId });
+      redirect(res, to, [cookie]);
+      return undefined;
+    },
+    { public: true }
+  );
+
+  /** Back from the provider. Ends in a redirect to the dashboard (or the Account page when linking). */
+  router.get(
+    '/api/auth/oauth/:provider/callback',
+    async ({ req, res, params, url }) => {
+      const ip = clientIp(req);
+      const label = oauth.PROVIDERS[params.provider]?.label || params.provider;
+      let result;
+      try {
+        result = await oauth.finish(store, auth, req, params.provider, url.searchParams);
+      } catch (err) {
+        redirect(res, `/?oauth_error=${encodeURIComponent(err.message)}#/`, [clearState]);
+        return undefined;
+      }
+      const { identity, linkUserId } = result;
+      if (linkUserId) {
+        try {
+          const user = oauth.link(store, auth, linkUserId, params.provider, identity);
+          store.addEvent('user.linked', `${user.username} linked their ${label} account (${identity.name})`, { ip });
+          redirect(res, `/?oauth_linked=${encodeURIComponent(label)}#/account`, [clearState]);
+        } catch (err) {
+          redirect(res, `/?oauth_error=${encodeURIComponent(err.message)}#/account`, [clearState]);
+        }
+        return undefined;
+      }
+      const user = oauth.findUser(auth, params.provider, identity);
+      if (!user) {
+        auth.noteAccountFailure(`ip:${ip}`);
+        redirect(res, `/?oauth_error=${encodeURIComponent(`No panel account is linked to the ${label} account ${identity.name}. Sign in with your password once, then link it on the Account page.`)}#/`, [clearState]);
+        return undefined;
+      }
+      const login = auth.loginLinked(user, ip);
+      if (login.twoFactor) {
+        redirect(res, `/?oauth2fa=${encodeURIComponent(login.ticket)}#/`, [clearState]);
+        return undefined;
+      }
+      finishLogin(req, res, login, ip, ` with ${label}`);
+      redirect(res, '/#/dashboard', [clearState]);
+      return undefined;
+    },
+    { public: true }
+  );
+
+  router.delete('/api/auth/oauth/:provider', ({ user, params, req }) => {
+    const record = auth.users.find((u) => u.id === user.id);
+    oauth.unlink(store, record, params.provider);
+    store.addEvent('user.unlinked', `${user.username} unlinked their ${oauth.PROVIDERS[params.provider].label} account`, { ip: clientIp(req) });
+    return { ok: true, user: auth.publicUser(record) };
+  });
+
+  router.get('/api/settings/oauth', ({ user, req }) => {
+    if (user.role !== 'admin') fail(403, 'Only administrators can do that');
+    return oauth.adminView(store, req);
+  });
+
+  router.put('/api/settings/oauth', ({ user, req, body }) => {
+    if (user.role !== 'admin') fail(403, 'Only administrators can do that');
+    oauth.update(store, body || {});
+    store.addEvent('settings.oauth', `${user.username} changed the sign-in providers`);
+    return oauth.adminView(store, req);
+  });
+
   /* ------------------------------------------------- two-factor sign-in -- */
 
   const requirePassword = (user, password) => {

@@ -2,6 +2,7 @@
   "id": "generic-steamcmd",
   "name": "Any Steam game (SteamCMD)",
   "category": "Universal",
+  "adminOnly": true,
   "icon": "🕹️",
   "description": "Install any dedicated server that lives on Steam by entering its App ID, then point the start command at the server binary. Covers every game that has a SteamCMD server build.",
   "defaultMemory": 4096,
