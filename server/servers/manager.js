@@ -44,6 +44,7 @@ const { Ring } = require('../features/metrics');
 const { docker } = require('./runtimes/docker-api');
 
 const { STATUS, CONTAINER_DIR } = require('./constants');
+const secrets = require('../core/secrets');
 
 /** Fields a PATCH may change. Anything else on a server is managed by the panel. */
 const EDITABLE = ['name', 'memory', 'cpuLimit', 'maxPlayers', 'autoStart', 'autoRestart', 'updateOnStart', 'autoUpdate', 'startCommand', 'notes', 'ip', 'backupRetention', 'idleStopMinutes', 'hangRestartMinutes', 'alerts'];
@@ -244,7 +245,7 @@ class ServerManager extends EventEmitter {
       IP: server.ip || '0.0.0.0',
       PORT: ports.game ?? Object.values(ports)[0] ?? 0,
       MAX_PLAYERS: server.maxPlayers || 20,
-      ...(server.vars || {}),
+      ...Object.fromEntries(Object.entries(server.vars || {}).map(([k, v]) => [k, secrets.open(v)])),
     };
     if (!out.JAVA_VERSION) out.JAVA_VERSION = '21';
     for (const [name, value] of Object.entries(ports)) out[`PORT_${name.toUpperCase()}`] = value;
@@ -272,8 +273,12 @@ class ServerManager extends EventEmitter {
   publicServer(server) {
     const rt = this.rt(server.id);
     const tpl = this.template(server);
+    const hidden = secrets.secretNames(tpl);
     return {
       ...server,
+      // Secret variables never leave the panel: only whether one is set.
+      vars: Object.fromEntries(Object.entries(server.vars || {}).map(([k, v]) => [k, hidden.has(k) || secrets.isSealed(v) ? '' : v])),
+      secretVars: Object.fromEntries([...hidden].map((k) => [k, Boolean(server.vars?.[k])])),
       status: rt.status,
       startedAt: rt.startedAt,
       uptime: rt.startedAt ? Date.now() - rt.startedAt : 0,
@@ -376,7 +381,7 @@ class ServerManager extends EventEmitter {
       }
       if (def.required && String(value).trim() === '') fail(400, `${def.label || def.name} is required`);
       if (def.generate === 'password' && !value) value = require('crypto').randomBytes(12).toString('base64url');
-      out[def.name] = value;
+      out[def.name] = def.secret ? secrets.seal(value) : value;
     }
     // Anything extra the user supplied is passed through untouched.
     for (const [k, v] of Object.entries(provided)) if (!(k in out)) out[k] = v;
@@ -441,7 +446,17 @@ class ServerManager extends EventEmitter {
     if (patch.hangRestartMinutes !== undefined) server.hangRestartMinutes = Math.max(0, Math.min(60, Math.round(Number(patch.hangRestartMinutes) || 0)));
     if (patch.idleStopMinutes !== undefined) server.idleStopMinutes = Math.max(0, Math.min(1440, Math.round(Number(patch.idleStopMinutes) || 0)));
     if (patch.alerts !== undefined) server.alerts = this.cleanAlerts(patch.alerts);
-    if (patch.vars) server.vars = { ...server.vars, ...patch.vars };
+    if (patch.vars) {
+      // A secret left blank keeps its saved value (the UI never sees it); a new one is sealed.
+      const hidden = secrets.secretNames(this.template(server));
+      const next = { ...patch.vars };
+      for (const name of hidden) {
+        if (!(name in next)) continue;
+        if (next[name] === '' || next[name] === undefined || next[name] === null) delete next[name];
+        else next[name] = secrets.seal(String(next[name]));
+      }
+      server.vars = { ...server.vars, ...next };
+    }
     if (patch.ports) {
       const used = this.usedPorts(server.id);
       for (const [name, value] of Object.entries(patch.ports)) {

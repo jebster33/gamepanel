@@ -22,7 +22,7 @@
       "label": "Steam password",
       "default": "",
       "secret": true,
-      "description": "Stored on this panel and passed to SteamCMD."
+      "description": "Encrypted on this panel and only handed to SteamCMD."
     },
     {
       "name": "MISSION",
