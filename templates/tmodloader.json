@@ -1,0 +1,192 @@
+{
+  "id": "tmodloader",
+  "name": "Terraria (tModLoader)",
+  "category": "Sandbox",
+  "icon": "🌳",
+  "storeAppId": 1281930,
+  "description": "Modded Terraria. Pick mods from the Steam Workshop in the Mods tab; they are switched on in enabled.json for you. .NET is downloaded on first start.",
+  "platforms": [
+    "linux",
+    "windows"
+  ],
+  "defaultMemory": 3072,
+  "variables": [
+    {
+      "name": "WORLD_NAME",
+      "label": "World name",
+      "default": "World"
+    },
+    {
+      "name": "WORLD_SIZE",
+      "label": "World size",
+      "default": "2",
+      "options": [
+        {
+          "value": "1",
+          "label": "Small"
+        },
+        {
+          "value": "2",
+          "label": "Medium"
+        },
+        {
+          "value": "3",
+          "label": "Large"
+        }
+      ]
+    },
+    {
+      "name": "DIFFICULTY",
+      "label": "Difficulty",
+      "default": "0",
+      "options": [
+        {
+          "value": "0",
+          "label": "Classic"
+        },
+        {
+          "value": "1",
+          "label": "Expert"
+        },
+        {
+          "value": "2",
+          "label": "Master"
+        },
+        {
+          "value": "3",
+          "label": "Journey"
+        }
+      ]
+    },
+    {
+      "name": "MAX_PLAYERS",
+      "label": "Max players",
+      "default": 8,
+      "type": "number"
+    },
+    {
+      "name": "SERVER_PASSWORD",
+      "label": "Join password",
+      "default": ""
+    }
+  ],
+  "ports": [
+    {
+      "name": "game",
+      "default": 7777,
+      "protocol": "tcp"
+    }
+  ],
+  "image": "cm2network/steamcmd:root",
+  "packages": [
+    "curl",
+    "unzip",
+    "libicu-dev"
+  ],
+  "install": [
+    {
+      "type": "apt",
+      "packages": [
+        "unzip",
+        "curl"
+      ],
+      "label": "Install unzip"
+    },
+    {
+      "type": "download",
+      "label": "Download the latest tModLoader release",
+      "url": "https://github.com/tModLoader/tModLoader/releases/latest/download/tModLoader.zip",
+      "dest": "tModLoader.zip"
+    },
+    {
+      "type": "extract",
+      "file": "tModLoader.zip",
+      "dest": ".",
+      "deleteArchive": true
+    },
+    {
+      "type": "chmod",
+      "path": "start-tModLoaderServer.sh",
+      "mode": "+x"
+    },
+    {
+      "type": "chmod",
+      "path": "LaunchUtils/ScriptCaller.sh",
+      "mode": "+x"
+    },
+    {
+      "type": "mkdir",
+      "path": "saves/Worlds"
+    },
+    {
+      "type": "mkdir",
+      "path": "saves/Mods"
+    }
+  ],
+  "configFiles": [
+    {
+      "path": "serverconfig.txt",
+      "mode": "create",
+      "content": "world={{SERVER_DIR}}/saves/Worlds/{{WORLD_NAME}}.wld\nautocreate={{WORLD_SIZE}}\ndifficulty={{DIFFICULTY}}\nworldname={{WORLD_NAME}}\nmaxplayers={{MAX_PLAYERS}}\nport={{PORT}}\npassword={{SERVER_PASSWORD}}\nmotd=Welcome to {{SERVER_NAME}}\nsecure=1\nlanguage=en-US\nupnp=0\n"
+    }
+  ],
+  "patchProperties": [
+    {
+      "path": "serverconfig.txt",
+      "format": "properties",
+      "createIfMissing": true,
+      "set": {
+        "port": "{{PORT}}",
+        "maxplayers": "{{MAX_PLAYERS}}"
+      }
+    }
+  ],
+  "startCommand": "./start-tModLoaderServer.sh -nosteam -config serverconfig.txt -tmlsavedirectory \"{{SERVER_DIR}}/saves\"",
+  "stopCommand": "exit",
+  "stopTimeout": 45,
+  "query": {
+    "type": "tcp",
+    "port": "game"
+  },
+  "logPatterns": {
+    "ready": "Server started",
+    "join": "([^ ]+) has joined",
+    "leave": "([^ ]+) has left"
+  },
+  "mods": {
+    "providers": [
+      "workshop"
+    ],
+    "dir": "saves/Mods",
+    "appId": 1281930,
+    "workshop": {
+      "strategy": "tmodloader",
+      "file": "saves/Mods/enabled.json"
+    }
+  },
+  "windows": {
+    "install": [
+      {
+        "type": "download",
+        "label": "Download the latest tModLoader release",
+        "url": "https://github.com/tModLoader/tModLoader/releases/latest/download/tModLoader.zip",
+        "dest": "tModLoader.zip"
+      },
+      {
+        "type": "extract",
+        "file": "tModLoader.zip",
+        "dest": ".",
+        "deleteArchive": true
+      },
+      {
+        "type": "mkdir",
+        "path": "saves/Worlds"
+      },
+      {
+        "type": "mkdir",
+        "path": "saves/Mods"
+      }
+    ],
+    "startCommand": "start-tModLoaderServer.bat -nosteam -config serverconfig.txt -tmlsavedirectory \"{{SERVER_DIR}}\\saves\""
+  }
+}

@@ -51,7 +51,8 @@
     {
       "type": "steamcmd",
       "appid": "2278520",
-      "label": "Install Enshrouded dedicated server"
+      "label": "Install Enshrouded dedicated server",
+      "platform": "windows"
     }
   ],
   "configFiles": [

@@ -207,9 +207,12 @@ gp_steam_probe() {
 }
 
 gp_steam_app() {
-  local appid="$1" login="\${2:-anonymous}" branch="\${3:-}" prefetch="\${4:-}" n
+  local appid="$1" login="\${2:-anonymous}" branch="\${3:-}" prefetch="\${4:-}" platform="\${5:-}" n
   gp_ensure_steamcmd
-  local args=( +@ShutdownOnFailedCommand 1 +@NoPromptForPassword 1 +force_install_dir "$GP_SERVER_DIR" +login $login )
+  local args=( +@ShutdownOnFailedCommand 1 +@NoPromptForPassword 1 )
+  # Windows-only servers that run under Wine need SteamCMD to fetch the Windows build.
+  [ -n "$platform" ] && args+=( +@sSteamCmdForcePlatformType "$platform" )
+  args+=( +force_install_dir "$GP_SERVER_DIR" +login $login )
   # Some apps (Left 4 Dead 2) answer "Invalid platform" for Linux until the
   # files of another platform have been fetched once; do that first.
   if [ -n "$prefetch" ]; then
@@ -235,12 +238,12 @@ gp_steam_app() {
 # One Steam Workshop item into a folder. Large items often time out on the
 # first try, so give SteamCMD a few goes.
 gp_workshop_item() {
-  local appid="$1" item="$2" dest="$3" stage="$GP_SERVER_DIR/.gamepanel/steam-workshop" n
+  local appid="$1" item="$2" dest="$3" login="\${4:-anonymous}" stage="$GP_SERVER_DIR/.gamepanel/steam-workshop" n
   gp_ensure_steamcmd
   mkdir -p "$stage"
   for n in 1 2 3; do
     gp_log "SteamCMD: downloading Workshop item $item (attempt $n)"
-    gp_steamcmd +force_install_dir "$stage" +login anonymous +workshop_download_item "$appid" "$item" validate +quit
+    gp_steamcmd +@NoPromptForPassword 1 +force_install_dir "$stage" +login $login +workshop_download_item "$appid" "$item" validate +quit
     [ -d "$stage/steamapps/workshop/content/$appid/$item" ] && break
   done
   local src="$stage/steamapps/workshop/content/$appid/$item"
@@ -284,10 +287,10 @@ function stepToShell(step, vars) {
     case 'steamcmd':
       return `gp_steam_app ${shellQuote(val(step.appid))} ${shellQuote(val(step.login || 'anonymous'))} ${shellQuote(
         val(step.branch || '')
-      )} ${shellQuote(val(step.prefetchPlatform || ''))}`;
+      )} ${shellQuote(val(step.prefetchPlatform || ''))} ${shellQuote(val(step.platform || ''))}`;
 
     case 'workshop':
-      return `gp_workshop_item ${shellQuote(val(step.appid))} ${shellQuote(val(step.item))} ${shellQuote(val(step.dest))}`;
+      return `gp_workshop_item ${shellQuote(val(step.appid))} ${shellQuote(val(step.item))} ${shellQuote(val(step.dest))} ${shellQuote(val(step.login || 'anonymous'))}`;
 
     case 'download':
       return `gp_fetch ${shellQuote(val(step.url))} ${shellQuote(val(step.dest || 'download.bin'))}${

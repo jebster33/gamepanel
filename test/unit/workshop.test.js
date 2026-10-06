@@ -62,3 +62,55 @@ test('Factorio dependency strings', () => {
   assert.deepStrictEqual(parseDependency('! bar'), { projectId: 'bar', versionId: null, type: 'incompatible' });
   assert.deepStrictEqual(parseDependency('~ baz'), { projectId: 'baz', versionId: null, type: 'required' });
 });
+
+test('Space Engineers: mods in the server cfg and every saved world', () => {
+  const { editXmlMods, SE } = require('../../server/features/mods/workshop');
+  const s = server();
+  const cfg = path.join(s.dir, 'SpaceEngineers-Dedicated.cfg');
+  const world = path.join(s.dir, 'Sandbox_config.sbc');
+  fs.writeFileSync(cfg, '<MyConfigDedicated>\n  <Mods />\n  <Port>27016</Port>\n</MyConfigDedicated>\n');
+  fs.writeFileSync(world, '<Cfg>\n  <Mods>\n    <ModItem FriendlyName="Old"><Name>1.sbm</Name><PublishedFileId>1</PublishedFileId></ModItem>\n  </Mods>\n</Cfg>\n');
+  editXmlMods(cfg, { add: [{ id: '42', title: 'A & B' }] }, SE.cfg.render, SE.cfg.idOf);
+  editXmlMods(world, { add: [{ id: '42', title: 'A & B' }], remove: ['1'] }, SE.world.render, SE.world.idOf);
+  const c = fs.readFileSync(cfg, 'utf8');
+  const w = fs.readFileSync(world, 'utf8');
+  assert.match(c, /<Mods>\s*<unsignedLong>42<\/unsignedLong>\s*<\/Mods>/);
+  assert.match(c, /<Port>27016<\/Port>/);
+  assert.match(w, /FriendlyName="A &amp; B"><Name>42\.sbm<\/Name><PublishedFileId>42<\/PublishedFileId>/);
+  assert.doesNotMatch(w, /PublishedFileId>1</);
+  editXmlMods(cfg, { remove: ['42'] }, SE.cfg.render, SE.cfg.idOf);
+  assert.match(fs.readFileSync(cfg, 'utf8'), /^  <Mods \/>$/m);
+});
+
+test("Don't Starve Together: ServerModSetup and modoverrides.lua", () => {
+  const { editDst } = require('../../server/features/mods/workshop');
+  const s = server();
+  const spec = { file: 'mods/dedicated_server_mods_setup.lua', overrides: ['dst/Cluster_1/Master/modoverrides.lua'] };
+  fs.mkdirSync(path.join(s.dir, 'mods'));
+  fs.writeFileSync(path.join(s.dir, spec.file), '-- comments stay\n');
+  editDst(s, spec, { add: ['111', '222'] });
+  editDst(s, spec, { add: ['111'] });
+  const setup = fs.readFileSync(path.join(s.dir, spec.file), 'utf8');
+  assert.strictEqual(setup.match(/ServerModSetup\("111"\)/g).length, 1);
+  assert.match(setup, /-- comments stay/);
+  const overrides = () => fs.readFileSync(path.join(s.dir, spec.overrides[0]), 'utf8');
+  assert.match(overrides(), /\["workshop-111"\] = \{ enabled = true \},\n\s*\["workshop-222"\]/);
+  editDst(s, spec, { disable: ['111'] });
+  assert.doesNotMatch(overrides(), /workshop-111/);
+  assert.match(fs.readFileSync(path.join(s.dir, spec.file), 'utf8'), /ServerModSetup\("111"\)/);
+  editDst(s, spec, { remove: ['222'] });
+  assert.doesNotMatch(fs.readFileSync(path.join(s.dir, spec.file), 'utf8'), /222/);
+  assert.match(overrides(), /^return \{\n\}\n$/);
+});
+
+test('Arma 3 / DayZ: -mod lists enabled Workshop folders in order', () => {
+  const { modArgument } = require('../../server/features/mods/workshop');
+  const manifest = require('../../server/features/mods/manifest');
+  const s = server();
+  manifest.save(s, [
+    { key: 'workshop:1', provider: 'workshop', strategy: 'bohemia', folder: '@1' },
+    { key: 'workshop:2', provider: 'workshop', strategy: 'bohemia', folder: '@2', disabled: true },
+    { key: 'workshop:3', provider: 'workshop', strategy: 'bohemia', folder: '@3' },
+  ]);
+  assert.strictEqual(modArgument(s), '@1;@3');
+});

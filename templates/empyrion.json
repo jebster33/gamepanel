@@ -1,0 +1,167 @@
+{
+  "id": "empyrion",
+  "name": "Empyrion - Galactic Survival",
+  "category": "Sandbox",
+  "icon": "🚀",
+  "storeAppId": 383120,
+  "description": "Space and planet survival with ship building. On Linux the Windows server runs under Wine, which the installer sets up.",
+  "platforms": [
+    "linux",
+    "windows"
+  ],
+  "defaultMemory": 8192,
+  "variables": [
+    {
+      "name": "MAX_PLAYERS",
+      "label": "Max players",
+      "default": 16,
+      "type": "number"
+    },
+    {
+      "name": "SERVER_PASSWORD",
+      "label": "Join password",
+      "default": "",
+      "description": "Leave empty for an open server."
+    },
+    {
+      "name": "ADMIN_PASSWORD",
+      "label": "Telnet admin password",
+      "default": "",
+      "generate": "password"
+    },
+    {
+      "name": "GAME_NAME",
+      "label": "Save name",
+      "default": "GamePanel"
+    },
+    {
+      "name": "GAME_MODE",
+      "label": "Mode",
+      "default": "Survival",
+      "options": [
+        "Survival",
+        "Creative"
+      ]
+    },
+    {
+      "name": "SCENARIO",
+      "label": "Scenario",
+      "default": "Default Multiplayer",
+      "options": [
+        "Default Multiplayer",
+        "Default Random",
+        "Default Akua-Omicron",
+        "Default Survival"
+      ],
+      "allowCustom": true
+    },
+    {
+      "name": "SEED",
+      "label": "World seed",
+      "default": "1011345",
+      "type": "number"
+    }
+  ],
+  "ports": [
+    {
+      "name": "game",
+      "default": 30000,
+      "protocol": "both"
+    },
+    {
+      "name": "pf1",
+      "default": 30001,
+      "protocol": "both",
+      "offset": 1
+    },
+    {
+      "name": "pf2",
+      "default": 30002,
+      "protocol": "both",
+      "offset": 2
+    },
+    {
+      "name": "pf3",
+      "default": 30003,
+      "protocol": "both",
+      "offset": 3
+    },
+    {
+      "name": "telnet",
+      "default": 30004,
+      "protocol": "tcp",
+      "offset": 4
+    }
+  ],
+  "image": "cm2network/steamcmd:root",
+  "packages": [
+    "wine",
+    "wine64",
+    "xvfb",
+    "xauth"
+  ],
+  "install": [
+    {
+      "type": "apt",
+      "packages": [
+        "wine64",
+        "xvfb",
+        "xauth"
+      ],
+      "label": "Install Wine (this server ships a Windows build)"
+    },
+    {
+      "type": "steamcmd",
+      "appid": "530870",
+      "platform": "windows",
+      "label": "Install the Empyrion dedicated server"
+    },
+    {
+      "type": "mkdir",
+      "path": "Logs"
+    }
+  ],
+  "configFiles": [
+    {
+      "path": "gamepanel.yaml",
+      "mode": "create",
+      "content": "ServerConfig:\n    Srv_Port: {{PORT}}\n    Srv_Name: \"{{SERVER_NAME}}\"\n    Srv_Password: \"{{SERVER_PASSWORD}}\"\n    Srv_MaxPlayers: {{MAX_PLAYERS}}\n    Srv_ReservePlayfields: 1\n    Srv_Description: \"Hosted with GamePanel\"\n    Srv_Public: true\n    Tel_Enabled: true\n    Tel_Port: {{PORT_TELNET}}\n    Tel_Pwd: \"{{ADMIN_PASSWORD}}\"\n    EACActive: true\n    SaveDirectory: Saves\n    MaxAllowedSizeClass: 10\n    AllowedBlueprints: All\n    HeartbeatServer: 15\n    HeartbeatClient: 30\n    LogFlags: Error\n    TimeoutBootingPfServer: 120\n    PlayerLoginParallelCount: 10\n    EnableDLC: false\n\nGameConfig:\n    GameName: {{GAME_NAME}}\n    Mode: {{GAME_MODE}}\n    Seed: {{SEED}}\n    CustomScenario: \"{{SCENARIO}}\"\n"
+    }
+  ],
+  "startCommand": "WINEDEBUG=-all WINEPREFIX={{SERVER_DIR}}/.wine xvfb-run -a wine64 DedicatedServer/EmpyrionDedicated.exe -batchmode -nographics -logFile Logs/current.log -dedicated gamepanel.yaml",
+  "tailFiles": [
+    "Logs/current.log"
+  ],
+  "stopTimeout": 90,
+  "readyOnPort": "game",
+  "query": {
+    "type": "udp",
+    "port": "game"
+  },
+  "logPatterns": {
+    "ready": "Dedicated server ready|Server started"
+  },
+  "windows": {
+    "install": [
+      {
+        "type": "steamcmd",
+        "appid": "530870",
+        "label": "Install the Empyrion dedicated server"
+      },
+      {
+        "type": "vcredist",
+        "label": "Install the Visual C++ runtime"
+      },
+      {
+        "type": "directx",
+        "label": "Install the DirectX runtime"
+      },
+      {
+        "type": "mkdir",
+        "path": "Logs"
+      }
+    ],
+    "startCommand": "DedicatedServer\\EmpyrionDedicated.exe -batchmode -nographics -logFile Logs\\current.log -dedicated gamepanel.yaml",
+    "consoleInput": false
+  }
+}

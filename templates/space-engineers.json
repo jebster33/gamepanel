@@ -4,7 +4,7 @@
   "category": "Sandbox",
   "icon": "🛰️",
   "storeAppId": 244850,
-  "description": "Build ships and stations in space. Windows only. A new world is created on first start.",
+  "description": "Build ships and stations in space. Windows only. A new world is created on first start; after that, Workshop mods are added to the server and its worlds and download when it starts.",
   "platforms": [
     "windows"
   ],
@@ -69,5 +69,20 @@
   "logPatterns": {
     "ready": "Game ready|Server started"
   },
-  "stopTimeout": 60
+  "stopTimeout": 60,
+  "mods": {
+    "providers": [
+      "workshop"
+    ],
+    "dir": "Instance/content",
+    "appId": 244850,
+    "workshop": {
+      "strategy": "spaceengineers",
+      "file": "Instance/SpaceEngineers-Dedicated.cfg",
+      "worlds": [
+        "Instance/Saves/*/Sandbox_config.sbc",
+        "Instance/Saves/*/Sandbox.sbc"
+      ]
+    }
+  }
 }

@@ -1,0 +1,121 @@
+{
+  "id": "mordhau",
+  "name": "MORDHAU",
+  "category": "Shooter",
+  "icon": "🗡️",
+  "storeAppId": 629760,
+  "description": "Medieval melee combat for up to 64 players.",
+  "platforms": [
+    "linux",
+    "windows"
+  ],
+  "defaultMemory": 4096,
+  "variables": [
+    {
+      "name": "MAX_PLAYERS",
+      "label": "Max players",
+      "default": 48,
+      "type": "number"
+    },
+    {
+      "name": "SERVER_PASSWORD",
+      "label": "Join password",
+      "default": "",
+      "description": "Leave empty for an open server."
+    },
+    {
+      "name": "ADMIN_PASSWORD",
+      "label": "Admin password",
+      "default": "",
+      "generate": "password"
+    }
+  ],
+  "ports": [
+    {
+      "name": "game",
+      "default": 7777,
+      "protocol": "udp"
+    },
+    {
+      "name": "query",
+      "default": 27015,
+      "protocol": "udp",
+      "offset": 19238
+    },
+    {
+      "name": "beacon",
+      "default": 15000,
+      "protocol": "udp",
+      "offset": 7223
+    }
+  ],
+  "image": "cm2network/steamcmd:root",
+  "install": [
+    {
+      "type": "steamcmd",
+      "appid": "629800",
+      "label": "Install the MORDHAU dedicated server"
+    },
+    {
+      "type": "chmod",
+      "path": "MordhauServer.sh",
+      "mode": "+x"
+    }
+  ],
+  "patchProperties": [
+    {
+      "path": "Mordhau/Saved/Config/LinuxServer/Game.ini",
+      "format": "ini",
+      "section": "/Script/Mordhau.MordhauGameSession",
+      "createIfMissing": true,
+      "set": {
+        "ServerName": "{{SERVER_NAME}}",
+        "ServerPassword": "{{SERVER_PASSWORD}}",
+        "AdminPassword": "{{ADMIN_PASSWORD}}",
+        "MaxSlots": "{{MAX_PLAYERS}}"
+      }
+    }
+  ],
+  "startCommand": "./MordhauServer.sh -log -Port={{PORT}} -QueryPort={{PORT_QUERY}} -BeaconPort={{PORT_BEACON}}",
+  "stopTimeout": 45,
+  "query": {
+    "type": "a2s",
+    "port": "query"
+  },
+  "readyOnPort": "game",
+  "logPatterns": {
+    "ready": "Session 'GameSession' is being set as 'listening'|LogMordhauGameSession"
+  },
+  "windows": {
+    "install": [
+      {
+        "type": "steamcmd",
+        "appid": "629800",
+        "label": "Install the MORDHAU dedicated server"
+      },
+      {
+        "type": "vcredist",
+        "label": "Install the Visual C++ runtime"
+      }
+    ],
+    "patchProperties": [
+      {
+        "path": "Mordhau/Saved/Config/WindowsServer/Game.ini",
+        "format": "ini",
+        "section": "/Script/Mordhau.MordhauGameSession",
+        "createIfMissing": true,
+        "set": {
+          "ServerName": "{{SERVER_NAME}}",
+          "ServerPassword": "{{SERVER_PASSWORD}}",
+          "AdminPassword": "{{ADMIN_PASSWORD}}",
+          "MaxSlots": "{{MAX_PLAYERS}}"
+        }
+      }
+    ],
+    "startCommand": "MordhauServer.exe -log -Port={{PORT}} -QueryPort={{PORT_QUERY}} -BeaconPort={{PORT_BEACON}}",
+    "tailFiles": [
+      "Mordhau/Saved/Logs/Mordhau.log"
+    ],
+    "consoleInput": false
+  }
+}

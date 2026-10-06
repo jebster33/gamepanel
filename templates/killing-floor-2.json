@@ -1,0 +1,226 @@
+{
+  "id": "killing-floor-2",
+  "name": "Killing Floor 2",
+  "category": "Shooter",
+  "icon": "🩸",
+  "storeAppId": 232090,
+  "description": "Co-op zombie ('Zed') shooter for up to six players. The first start writes the config; the server name and passwords apply from the second start on. Web admin runs on its own port.",
+  "platforms": [
+    "linux",
+    "windows"
+  ],
+  "defaultMemory": 4096,
+  "variables": [
+    {
+      "name": "MAP",
+      "label": "Map",
+      "default": "KF-BioticsLab",
+      "options": [
+        "KF-BioticsLab",
+        "KF-BurningParis",
+        "KF-Catacombs",
+        "KF-EvacuationPoint",
+        "KF-Farmhouse",
+        "KF-Outpost",
+        "KF-Prison",
+        "KF-VolterManor",
+        "KF-ZedLanding",
+        "KF-Nuked",
+        "KF-Airship",
+        "KF-Netherhold"
+      ],
+      "allowCustom": true
+    },
+    {
+      "name": "GAME_MODE",
+      "label": "Game mode",
+      "default": "Survival",
+      "options": [
+        {
+          "value": "Survival",
+          "label": "Survival"
+        },
+        {
+          "value": "Endless",
+          "label": "Endless"
+        },
+        {
+          "value": "WeeklySurvival",
+          "label": "Weekly outbreak"
+        },
+        {
+          "value": "VersusSurvival",
+          "label": "Versus"
+        }
+      ]
+    },
+    {
+      "name": "DIFFICULTY",
+      "label": "Difficulty",
+      "default": "0",
+      "options": [
+        {
+          "value": "0",
+          "label": "Normal"
+        },
+        {
+          "value": "1",
+          "label": "Hard"
+        },
+        {
+          "value": "2",
+          "label": "Suicidal"
+        },
+        {
+          "value": "3",
+          "label": "Hell on Earth"
+        }
+      ]
+    },
+    {
+      "name": "GAME_LENGTH",
+      "label": "Length",
+      "default": "1",
+      "options": [
+        {
+          "value": "0",
+          "label": "Short (4 waves)"
+        },
+        {
+          "value": "1",
+          "label": "Medium (7 waves)"
+        },
+        {
+          "value": "2",
+          "label": "Long (10 waves)"
+        }
+      ]
+    },
+    {
+      "name": "MAX_PLAYERS",
+      "label": "Max players",
+      "default": 6,
+      "type": "number"
+    },
+    {
+      "name": "SERVER_PASSWORD",
+      "label": "Join password",
+      "default": "",
+      "description": "Leave empty for an open server."
+    },
+    {
+      "name": "ADMIN_PASSWORD",
+      "label": "Admin / web admin password",
+      "default": "",
+      "generate": "password"
+    }
+  ],
+  "ports": [
+    {
+      "name": "game",
+      "default": 7777,
+      "protocol": "udp"
+    },
+    {
+      "name": "query",
+      "default": 27015,
+      "protocol": "udp",
+      "offset": 19238
+    },
+    {
+      "name": "webadmin",
+      "default": 8080,
+      "protocol": "tcp",
+      "offset": 303
+    },
+    {
+      "name": "steam",
+      "default": 20560,
+      "protocol": "udp",
+      "offset": 12783
+    }
+  ],
+  "image": "cm2network/steamcmd:root",
+  "install": [
+    {
+      "type": "steamcmd",
+      "appid": "232130",
+      "label": "Install the Killing Floor 2 dedicated server (~20 GB)"
+    },
+    {
+      "type": "chmod",
+      "path": "Binaries/Win64/KFGameSteamServer.bin.x86_64",
+      "mode": "+x"
+    }
+  ],
+  "patchProperties": [
+    {
+      "path": "KFGame/Config/LinuxServer-KFGame.ini",
+      "format": "ini",
+      "section": "Engine.GameReplicationInfo",
+      "set": {
+        "ServerName": "{{SERVER_NAME}}"
+      }
+    },
+    {
+      "path": "KFGame/Config/LinuxServer-KFGame.ini",
+      "format": "ini",
+      "section": "Engine.AccessControl",
+      "set": {
+        "AdminPassword": "{{ADMIN_PASSWORD}}",
+        "GamePassword": "{{SERVER_PASSWORD}}"
+      }
+    }
+  ],
+  "startCommand": "./Binaries/Win64/KFGameSteamServer.bin.x86_64 \"{{MAP}}?Game=KFGameContent.KFGameInfo_{{GAME_MODE}}?Difficulty={{DIFFICULTY}}?GameLength={{GAME_LENGTH}}?MaxPlayers={{MAX_PLAYERS}}\" -Port={{PORT}} -QueryPort={{PORT_QUERY}} -WebAdminPort={{PORT_WEBADMIN}} -SteamPort={{PORT_STEAM}}",
+  "stopTimeout": 45,
+  "query": {
+    "type": "a2s",
+    "port": "query"
+  },
+  "readyOnPort": "game",
+  "logPatterns": {
+    "ready": "Steam game server UID|Initializing Steam game server"
+  },
+  "windows": {
+    "install": [
+      {
+        "type": "steamcmd",
+        "appid": "232130",
+        "label": "Install the Killing Floor 2 dedicated server (~20 GB)"
+      },
+      {
+        "type": "vcredist",
+        "label": "Install the Visual C++ runtime"
+      },
+      {
+        "type": "directx",
+        "label": "Install the DirectX runtime"
+      }
+    ],
+    "patchProperties": [
+      {
+        "path": "KFGame/Config/PCServer-KFGame.ini",
+        "format": "ini",
+        "section": "Engine.GameReplicationInfo",
+        "set": {
+          "ServerName": "{{SERVER_NAME}}"
+        }
+      },
+      {
+        "path": "KFGame/Config/PCServer-KFGame.ini",
+        "format": "ini",
+        "section": "Engine.AccessControl",
+        "set": {
+          "AdminPassword": "{{ADMIN_PASSWORD}}",
+          "GamePassword": "{{SERVER_PASSWORD}}"
+        }
+      }
+    ],
+    "startCommand": "Binaries\\Win64\\KFServer.exe \"{{MAP}}?Game=KFGameContent.KFGameInfo_{{GAME_MODE}}?Difficulty={{DIFFICULTY}}?GameLength={{GAME_LENGTH}}?MaxPlayers={{MAX_PLAYERS}}\" -Port={{PORT}} -QueryPort={{PORT_QUERY}} -WebAdminPort={{PORT_WEBADMIN}} -SteamPort={{PORT_STEAM}}",
+    "tailFiles": [
+      "KFGame/Logs/Launch.log"
+    ],
+    "consoleInput": false
+  }
+}

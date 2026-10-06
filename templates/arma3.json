@@ -1,0 +1,172 @@
+{
+  "id": "arma3",
+  "name": "Arma 3",
+  "category": "Shooter",
+  "icon": "🪖",
+  "storeAppId": 107410,
+  "description": "Bohemia's military sandbox. Steam only hands the server (and Workshop mods) to a real account, so enter a Steam login. Workshop mods are added to -mod and their keys copied for you.",
+  "platforms": [
+    "linux",
+    "windows"
+  ],
+  "defaultMemory": 4096,
+  "variables": [
+    {
+      "name": "STEAM_USER",
+      "label": "Steam username",
+      "default": "",
+      "description": "This server only downloads with a real Steam account. Use one without Steam Guard (a spare account is fine)."
+    },
+    {
+      "name": "STEAM_PASSWORD",
+      "label": "Steam password",
+      "default": "",
+      "secret": true,
+      "description": "Stored on this panel and passed to SteamCMD."
+    },
+    {
+      "name": "MAX_PLAYERS",
+      "label": "Max players",
+      "default": 32,
+      "type": "number"
+    },
+    {
+      "name": "SERVER_PASSWORD",
+      "label": "Join password",
+      "default": "",
+      "description": "Leave empty for an open server."
+    },
+    {
+      "name": "ADMIN_PASSWORD",
+      "label": "Admin password",
+      "default": "",
+      "generate": "password",
+      "description": "Players log in with #login <password>."
+    },
+    {
+      "name": "EXTRA_MODS",
+      "label": "Extra -mod folders",
+      "default": "",
+      "description": "Optional, e.g. @CBA_A3;@ace for mods you copied in yourself. Workshop mods are added automatically."
+    }
+  ],
+  "ports": [
+    {
+      "name": "game",
+      "default": 2302,
+      "protocol": "udp"
+    },
+    {
+      "name": "query",
+      "default": 2303,
+      "protocol": "udp",
+      "offset": 1
+    },
+    {
+      "name": "steam",
+      "default": 2304,
+      "protocol": "udp",
+      "offset": 2
+    },
+    {
+      "name": "von",
+      "default": 2305,
+      "protocol": "udp",
+      "offset": 3
+    },
+    {
+      "name": "battleye",
+      "default": 2306,
+      "protocol": "udp",
+      "offset": 4
+    }
+  ],
+  "image": "cm2network/steamcmd:root",
+  "install": [
+    {
+      "type": "steamcmd",
+      "appid": "233780",
+      "login": "{{STEAM_USER}} {{STEAM_PASSWORD}}",
+      "label": "Install the Arma 3 dedicated server"
+    },
+    {
+      "type": "chmod",
+      "path": "arma3server_x64",
+      "mode": "+x"
+    },
+    {
+      "type": "mkdir",
+      "path": "keys"
+    },
+    {
+      "type": "mkdir",
+      "path": "profiles"
+    }
+  ],
+  "configFiles": [
+    {
+      "path": "server.cfg",
+      "mode": "create",
+      "content": "hostname = \"{{SERVER_NAME}}\";\npassword = \"{{SERVER_PASSWORD}}\";\npasswordAdmin = \"{{ADMIN_PASSWORD}}\";\nmaxPlayers = {{MAX_PLAYERS}};\npersistent = 1;\nBattlEye = 1;\nverifySignatures = 2;\nkickDuplicate = 1;\ndisableVoN = 0;\nmotd[] = {\"Welcome to {{SERVER_NAME}}\"};\nmotdInterval = 5;\n"
+    }
+  ],
+  "startCommand": "./arma3server_x64 -port={{PORT}} -name=server -config=server.cfg -profiles=profiles \"-mod={{WORKSHOP_MODS}}\"",
+  "stopTimeout": 30,
+  "readyOnPort": "game",
+  "query": {
+    "type": "a2s",
+    "port": "query"
+  },
+  "logPatterns": {
+    "ready": "Host identity created|Connected to Steam servers",
+    "join": "Player (.+?) connected",
+    "leave": "Player (.+?) disconnected"
+  },
+  "mods": {
+    "providers": [
+      "workshop"
+    ],
+    "dir": ".",
+    "appId": 107410,
+    "workshop": {
+      "strategy": "bohemia",
+      "login": "{{STEAM_USER}} {{STEAM_PASSWORD}}",
+      "keys": "keys",
+      "lowercase": true
+    }
+  },
+  "windows": {
+    "install": [
+      {
+        "type": "steamcmd",
+        "appid": "233780",
+        "login": "{{STEAM_USER}} {{STEAM_PASSWORD}}",
+        "label": "Install the Arma 3 dedicated server"
+      },
+      {
+        "type": "vcredist",
+        "label": "Install the Visual C++ runtime"
+      },
+      {
+        "type": "directx",
+        "label": "Install the DirectX runtime"
+      },
+      {
+        "type": "mkdir",
+        "path": "keys"
+      },
+      {
+        "type": "mkdir",
+        "path": "profiles"
+      }
+    ],
+    "startCommand": "arma3server_x64.exe -port={{PORT}} -name=server -config=server.cfg -profiles=profiles \"-mod={{WORKSHOP_MODS}}\"",
+    "tailFiles": [
+      "profiles/arma3server_x64_*.rpt"
+    ],
+    "consoleInput": false
+  },
+  "ci": {
+    "skip": "needs a Steam account to download"
+  }
+}

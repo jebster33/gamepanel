@@ -1,0 +1,106 @@
+{
+  "id": "sven-coop",
+  "name": "Sven Co-op",
+  "category": "Shooter",
+  "icon": "👾",
+  "storeAppId": 225840,
+  "description": "Free co-op Half-Life mod on GoldSrc. Small and quick to install.",
+  "platforms": [
+    "linux",
+    "windows"
+  ],
+  "defaultMemory": 1024,
+  "variables": [
+    {
+      "name": "MAP",
+      "label": "Starting map",
+      "default": "svencoop1",
+      "options": [
+        "svencoop1",
+        "svencoop2",
+        "hl_c00",
+        "they_hunger1",
+        "sc_tetris",
+        "stadium4",
+        "botparty"
+      ],
+      "allowCustom": true
+    },
+    {
+      "name": "MAX_PLAYERS",
+      "label": "Max players",
+      "default": 12,
+      "type": "number"
+    },
+    {
+      "name": "RCON_PASSWORD",
+      "label": "RCON password",
+      "default": "",
+      "generate": "password"
+    }
+  ],
+  "ports": [
+    {
+      "name": "game",
+      "default": 27015,
+      "protocol": "both"
+    }
+  ],
+  "image": "cm2network/steamcmd:root",
+  "packages": [
+    "lib32stdc++6",
+    "lib32gcc-s1"
+  ],
+  "install": [
+    {
+      "type": "apt",
+      "packages": [
+        "lib32stdc++6",
+        "lib32gcc-s1"
+      ],
+      "label": "Install the 32-bit runtime libraries"
+    },
+    {
+      "type": "steamcmd",
+      "appid": "276060",
+      "label": "Install the Sven Co-op dedicated server"
+    },
+    {
+      "type": "chmod",
+      "path": "svends_run",
+      "mode": "+x"
+    }
+  ],
+  "startCommand": "./svends_run -console -port {{PORT}} +maxplayers {{MAX_PLAYERS}} +hostname \"{{SERVER_NAME}}\" +rcon_password \"{{RCON_PASSWORD}}\" +map {{MAP}}",
+  "stopCommand": "quit",
+  "stopTimeout": 30,
+  "query": {
+    "type": "a2s",
+    "port": "game"
+  },
+  "logPatterns": {
+    "ready": "Connection to Steam servers successful|VAC secure mode",
+    "join": "\"([^<]+)<[0-9]+><[^>]*><>\" entered the game",
+    "leave": "\"([^<]+)<[0-9]+><[^>]*><[^>]*>\" disconnected"
+  },
+  "windows": {
+    "install": [
+      {
+        "type": "steamcmd",
+        "appid": "276060",
+        "label": "Install the Sven Co-op dedicated server"
+      },
+      {
+        "type": "vcredist",
+        "label": "Install the Visual C++ runtime"
+      }
+    ],
+    "startCommand": "svends.exe -console -condebug -port {{PORT}} +maxplayers {{MAX_PLAYERS}} +hostname \"{{SERVER_NAME}}\" +rcon_password \"{{RCON_PASSWORD}}\" +map {{MAP}}",
+    "tailFiles": [
+      "svencoop/qconsole.log"
+    ],
+    "consoleInput": false,
+    "stopCommand": null
+  },
+  "pty": true
+}
