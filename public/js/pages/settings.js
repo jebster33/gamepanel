@@ -151,9 +151,9 @@ export async function renderSettings(view) {
     </div>
 
     <div class="card mb-16" id="status-page">
-      <h4>Public status page</h4>
+      <h4>Public server list</h4>
       <p class="faint" style="margin:0 0 14px;line-height:1.6">
-        A page anyone with the link can open, no sign-in: which servers are up, who is on and the address to join. Good for a Discord channel.
+        A page anyone with the link can open, no sign-in: which servers are up, who is on, the message of the day and the address to join, with a Join button for games that have one. Good for a Discord channel or a website.
       </p>
       <div id="sp-form" class="faint"><span class="spinner"></span> Loading…</div>
     </div>
@@ -400,7 +400,7 @@ async function renderStatusPageForm() {
   const picked = new Set(sp.servers);
   host.classList.remove('faint');
   host.innerHTML = `
-    <div class="checkbox-row"><input type="checkbox" id="sp-enabled" ${sp.enabled ? 'checked' : ''} /><label for="sp-enabled">Turn on the status page</label></div>
+    <div class="checkbox-row"><input type="checkbox" id="sp-enabled" ${sp.enabled ? 'checked' : ''} /><label for="sp-enabled">Turn on the server list</label></div>
     ${
       link
         ? `<div class="row mt-16"><span class="mono" style="overflow-wrap:anywhere">${esc(link)}</span>
@@ -413,18 +413,30 @@ async function renderStatusPageForm() {
       <label><span>Title</span><input id="sp-title" value="${esc(sp.title)}" placeholder="${esc(document.title)}" /></label>
       <label><span>Address players use</span><input id="sp-host" value="${esc(sp.host)}" placeholder="play.example.com or your public IP" /><div class="hint">Shown with each server's port. Empty uses the address the page was opened on.</div></label>
     </div>
-    <label class="field"><span>Description</span><input id="sp-desc" value="${esc(sp.description)}" placeholder="Optional, e.g. rules or a Discord invite" /></label>
-    <div class="field-label mt-16">Servers on the page</div>
-    <div class="perm-grid" style="gap:2px 14px">${
-      state.servers.length
+    <label class="field"><span>Description</span><input id="sp-desc" value="${esc(sp.description)}" placeholder="Optional, e.g. rules" /></label>
+    <div class="form-grid">
+      <label><span>Discord invite</span><input id="sp-discord" value="${esc(sp.links?.discord || '')}" placeholder="https://discord.gg/…" /></label>
+      <label><span>Vote link</span><input id="sp-vote" value="${esc(sp.links?.vote || '')}" placeholder="https://… (a server list site)" /></label>
+      <label><span>Website</span><input id="sp-website" value="${esc(sp.links?.website || '')}" placeholder="https://…" /></label>
+    </div>
+    <div class="field-label">Servers on the page</div>
+    <div class="sp-servers">${
+      state.servers.filter((x) => !x.node).length
         ? state.servers
-            .map((x) => `<label class="perm-row"><input type="checkbox" data-sp-server="${esc(x.id)}" ${picked.has(x.id) ? 'checked' : ''} /><span>${esc(x.templateIcon || '🎮')} ${esc(x.name)}</span></label>`)
+            .filter((x) => !x.node)
+            .map(
+              (x) => `<div class="sp-server">
+                <label class="perm-row"><input type="checkbox" data-sp-server="${esc(x.id)}" ${picked.has(x.id) ? 'checked' : ''} /><span>${esc(x.templateIcon || '🎮')} ${esc(x.name)}</span></label>
+                <input data-sp-blurb="${esc(x.id)}" value="${esc(sp.blurbs?.[x.id] || '')}" placeholder="A line about it (optional), e.g. Semi-vanilla, no resets" maxlength="200" />
+              </div>`
+            )
             .join('')
         : '<span class="faint">No servers yet</span>'
     }</div>
     <div class="checkbox-row mt-16"><input type="checkbox" id="sp-players" ${sp.showPlayers ? 'checked' : ''} /><label for="sp-players">Show the names of players who are on</label></div>
     <div class="checkbox-row"><input type="checkbox" id="sp-address" ${sp.showAddress ? 'checked' : ''} /><label for="sp-address">Show the address to join</label></div>
-    <button class="btn btn-primary mt-16" id="sp-save">Save status page</button>`;
+    <div class="checkbox-row"><input type="checkbox" id="sp-motd" ${sp.showMotd !== false ? 'checked' : ''} /><label for="sp-motd">Show Minecraft's message of the day</label></div>
+    <button class="btn btn-primary mt-16" id="sp-save">Save server list</button>`;
 
   const save = async (extra = {}) => {
     try {
@@ -438,10 +450,13 @@ async function renderStatusPageForm() {
           servers: [...document.querySelectorAll('[data-sp-server]')].filter((el) => el.checked).map((el) => el.dataset.spServer),
           showPlayers: $('#sp-players').checked,
           showAddress: $('#sp-address').checked,
+          showMotd: $('#sp-motd').checked,
+          links: { discord: $('#sp-discord').value, vote: $('#sp-vote').value, website: $('#sp-website').value },
+          blurbs: Object.fromEntries([...document.querySelectorAll('[data-sp-blurb]')].map((el) => [el.dataset.spBlurb, el.value])),
           ...extra,
         },
       });
-      toast(extra.newLink ? 'New link made. The old one no longer works.' : 'Status page saved');
+      toast(extra.newLink ? 'New link made. The old one no longer works.' : 'Server list saved');
       renderStatusPageForm();
     } catch (err) {
       toast(err.message, 'error');

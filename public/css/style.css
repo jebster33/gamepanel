@@ -3330,3 +3330,25 @@ tr.clickable:hover td {
 .quota-card span {
   color: var(--muted);
 }
+
+/* Settings: servers on the public list, each with an optional line about it. */
+.sp-servers {
+  display: grid;
+  gap: 8px;
+}
+.sp-server {
+  display: grid;
+  grid-template-columns: minmax(180px, 260px) minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+}
+.sp-server .perm-row {
+  margin: 0;
+}
+@media (max-width: 640px) {
+  .sp-server {
+    grid-template-columns: 1fr;
+    gap: 4px;
+    margin-bottom: 6px;
+  }
+}
