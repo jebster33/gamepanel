@@ -40,15 +40,19 @@ export function renderServerSettingsTab(host, server) {
              }${server.autoUpdateInfo?.error ? ` Last check failed: ${esc(server.autoUpdateInfo.error)}.` : ''}</div></label>`
           : ''
       }
-      <label style="margin-top:12px"><span>Stop when empty for (minutes)</span><input id="set-idle" type="number" min="0" max="1440" value="${server.idleStopMinutes || 0}" ${
+      <div class="form-grid" style="margin-top:12px">
+      <label><span>Stop when empty for (minutes)</span><input id="set-idle" type="number" min="0" max="1440" value="${server.idleStopMinutes || 0}" ${
     isAdmin ? '' : 'disabled'
   } /><div class="hint">Saves RAM and CPU on a server nobody is using. 0 keeps it running.</div></label>
       <label><span>Restart when frozen for (minutes)</span><input id="set-hang" type="number" min="0" max="60" value="${server.hangRestartMinutes || 0}" ${
     isAdmin ? '' : 'disabled'
   } /><div class="hint">Restarts the server if it stops answering players while still running. 0 turns this off.</div></label>
-      <label><span>Start command</span><textarea id="set-startcmd" rows="3" ${isAdmin ? '' : 'disabled'}>${esc(
-    server.startCommand
-  )}</textarea><div class="hint">Runs inside the server directory. Placeholders like {{PORT}} and {{MEMORY}} are substituted at launch.</div></label>
+      </div>
+      <label style="margin-top:12px"><span>Start command</span><textarea id="set-startcmd" rows="3" placeholder="Empty uses the game's own start command" ${isOwner ? '' : 'disabled'}>${esc(
+    server.startCommand || ''
+  )}</textarea><div class="hint">${
+    isOwner ? 'Runs inside the server directory. Placeholders like {{PORT}} and {{MEMORY}} are substituted at launch.' : 'Only administrators can change the start command.'
+  }</div></label>
       ${isAdmin ? '<button class="btn btn-primary mt-16" id="set-save">Save changes</button>' : ''}
     </div>
 
@@ -193,7 +197,8 @@ export function renderServerSettingsTab(host, server) {
           ...($('#set-autoupdate') ? { autoUpdate: { '': null, on: true, off: false }[$('#set-autoupdate').value] } : {}),
           idleStopMinutes: Number($('#set-idle').value) || 0,
           hangRestartMinutes: Number($('#set-hang').value) || 0,
-          startCommand: $('#set-startcmd').value,
+          // Sub-users with the settings permission may not touch it; sending it at all gets a 403.
+          ...(isOwner ? { startCommand: $('#set-startcmd').value } : {}),
           ports,
           vars,
         },

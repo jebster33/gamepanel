@@ -12,6 +12,7 @@ import { renderSidebarServers } from '../ui/sidebar.js';
 export async function renderNodes(view) {
   setCrumbs('Nodes');
   const data = await api('/api/nodes').catch((err) => ({ error: err.message, local: { name: '' }, nodes: [] }));
+  if (state.route.name !== 'nodes') return; // the user moved to another page meanwhile
   state.nodes = data;
   const refresh = async () => {
     await loadServers().catch(() => {});
@@ -90,7 +91,7 @@ export async function renderNodes(view) {
 
 function nodeModal(node, onDone) {
   const modal = openModal({
-    title: node ? `Edit ${node.name}` : 'Add a node',
+    title: node ? `Edit ${esc(node.name)}` : 'Add a node',
     width: 560,
     body: `
       ${

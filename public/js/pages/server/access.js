@@ -17,6 +17,7 @@ export async function renderAccessTab(host, server) {
     host.innerHTML = `<div class="card">${esc(err.message)}</div>`;
     return;
   }
+  if (!host.isConnected) return; // the user moved to another tab meanwhile
   const refresh = () => renderAccessTab(host, server);
   const members = data.users.filter((u) => u.access && u.role !== 'admin');
   const others = data.users.filter((u) => !u.access && u.role !== 'admin');
@@ -82,7 +83,7 @@ export async function renderAccessTab(host, server) {
 function accessModal({ server, data, user, pick, onDone }) {
   const held = new Set(user ? user.permissions : data.presets[0].permissions);
   const modal = openModal({
-    title: user ? `What ${user.username} can do` : pick ? 'Add a user to this server' : 'New sub-user',
+    title: user ? `What ${esc(user.username)} can do` : pick ? 'Add a user to this server' : 'New sub-user',
     width: 560,
     body: `
       ${

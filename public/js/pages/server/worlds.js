@@ -101,7 +101,7 @@ export async function renderWorldsCard(host, server) {
 
 function openReset(server, world, done) {
   openModal({
-    title: `Reset ${world.name}`,
+    title: `Reset ${esc(world.name)}`,
     width: 480,
     body: `
       <p style="margin-top:0">The world is deleted and a fresh one is generated the next time the server starts. Player inventories in this world go with it.</p>

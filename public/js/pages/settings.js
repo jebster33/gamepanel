@@ -32,6 +32,7 @@ const EVENT_LABELS = {
 export async function renderSettings(view) {
   setCrumbs('Settings');
   const data = await api('/api/settings').catch((err) => ({ settings: {}, error: err.message }));
+  if (state.route.name !== 'settings') return; // the user moved to another page meanwhile
   const s = data.settings;
   const integrations = s.integrations || {};
   const limits = s.limits || {};

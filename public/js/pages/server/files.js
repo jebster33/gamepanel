@@ -13,6 +13,7 @@ export async function renderFilesTab(host, server, dirPath) {
     host.innerHTML = `<div class="card">Could not list files: ${esc(err.message)}</div>`;
     return;
   }
+  if (!host.isConnected) return; // the user moved to another tab meanwhile
 
   const parts = String(data.path || '').split('/').filter(Boolean);
   const crumbs = [`<a data-dir="">${esc(server.name)}</a>`];
