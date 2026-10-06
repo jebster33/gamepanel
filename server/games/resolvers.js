@@ -542,6 +542,12 @@ function detectLoader(dependencies = {}) {
  * ends in "pause" and would keep a stopped server hanging.
  */
 async function loaderInstallScript(loader, game) {
+  // Both come from inside a modpack someone else made, and land in an install script and file paths:
+  // only version-looking text is accepted.
+  const VERSION = /^[A-Za-z0-9][A-Za-z0-9._+-]{0,60}$/;
+  if (!VERSION.test(String(game || '')) || !VERSION.test(String(loader?.version || ''))) {
+    throw new Error('the pack names a Minecraft or loader version with characters GamePanel does not accept');
+  }
   const memory = '${MEMORY:-2048}';
   const jvmArgsSh = `printf -- '-Xms%sM\\n-Xmx%sM\\n' "${memory}" "${memory}" > user_jvm_args.txt`;
   const jvmArgsCmd = '(echo -Xms%MEMORY%M& echo -Xmx%MEMORY%M)> user_jvm_args.txt';

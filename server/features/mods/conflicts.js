@@ -394,7 +394,7 @@ function check(server, template) {
   const base = { loader: ctx.loaderLabel || loader || null, gameVersion: ctx.gameVersion || null, at: Date.now() };
   if (!accepted) return { ...base, supported: false, checked: 0, issues: [] };
 
-  const dir = path.join(server.dir, ctx.dir);
+  const dir = require('../files').containedPath(server.dir, ctx.dir);
   let names = [];
   try {
     names = fs.readdirSync(dir, { withFileTypes: true }).filter((e) => e.isFile() && /\.jar$/i.test(e.name)).map((e) => e.name);
