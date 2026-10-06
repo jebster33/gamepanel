@@ -88,11 +88,14 @@ const STATUS_LABEL = {
 };
 
 /** Does the signed-in account hold a capability? Admins always do. */
-export function can(capability) {
+export function can(capability, serverId) {
   const user = state.user;
   if (!user) return false;
   if (user.role === 'admin') return true;
-  return (user.permissions || []).includes(capability);
+  // On a server's pages, that server's own sub-user permissions win.
+  const id = serverId ?? (state.route.name === 'server' ? state.route.params.id : null);
+  const own = id && user.serverPerms?.[id];
+  return (own || user.permissions || []).includes(capability);
 }
 
 export function statusPill(status) {

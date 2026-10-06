@@ -257,7 +257,16 @@ const RESOLVERS = {
    * the panel unpacks the index here and hands the install script a finished
    * list of downloads, a loader install snippet and a start script.
    */
-  async 'modrinth-modpack'(vars) {
+  async 'modrinth-modpack'(vars, platform, extra = {}) {
+    // The same template installs CurseForge packs; the server remembers which store its pack came from.
+    if (vars.MODPACK_SOURCE === 'curseforge') {
+      return require('./curseforge-pack').resolveCurseforgePack(vars, extra.curseforgeKey, {
+        readZipJson: readZipJson,
+        loaderInstallScript,
+        javaForMinecraft,
+        shq,
+      });
+    }
     const slug = String(vars.MODPACK || '').trim();
     if (!slug) throw new Error('no modpack selected');
 
@@ -344,11 +353,11 @@ const RESOLVERS = {
  * @param {object} vars  the server's resolved template variables
  * @returns {Promise<Record<string,string>>} extra variables for the install script
  */
-async function resolveDownload(name, vars, { platform = 'linux' } = {}) {
+async function resolveDownload(name, vars, { platform = 'linux', curseforgeKey } = {}) {
   const resolver = RESOLVERS[name];
   if (!resolver) fail(400, `Template refers to an unknown resolver: ${name}`);
   try {
-    const extra = await resolver(vars, platform);
+    const extra = await resolver(vars, platform, { curseforgeKey });
     logger.info(`Resolved ${name} download: ${extra.RESOLVED_VERSION || ''} ${extra.DOWNLOAD_URL}`);
     return extra;
   } catch (err) {
@@ -365,7 +374,9 @@ const shq = (value) => `'${String(value).replace(/'/g, `'\\''`)}'`;
  * Pull modrinth.index.json out of a .mrpack without a zip library: read the
  * end-of-central-directory, find the entry, then inflate it.
  */
-async function readMrpackIndex(url) {
+const readMrpackIndex = (url) => readZipJson(url, 'modrinth.index.json');
+
+async function readZipJson(url, entryName) {
   const res = await fetch(url, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(120000) });
   if (!res.ok) throw new Error(`could not download the modpack (${res.status})`);
   const zip = Buffer.from(await res.arrayBuffer());
@@ -393,7 +404,7 @@ async function readMrpackIndex(url) {
     const localOffset = zip.readUInt32LE(offset + 42);
     const name = zip.toString('utf8', offset + 46, offset + 46 + nameLength);
 
-    if (name === 'modrinth.index.json') {
+    if (name === entryName) {
       const localNameLength = zip.readUInt16LE(localOffset + 26);
       const localExtraLength = zip.readUInt16LE(localOffset + 28);
       const start = localOffset + 30 + localNameLength + localExtraLength;
@@ -404,7 +415,7 @@ async function readMrpackIndex(url) {
     }
     offset += 46 + nameLength + extraLength + commentLength;
   }
-  throw new Error('the modpack has no modrinth.index.json');
+  throw new Error(`the modpack has no ${entryName}`);
 }
 
 /**

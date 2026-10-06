@@ -10,7 +10,7 @@ export function serverAddress(server) {
   const sub = server.subdomain;
   if (sub) return sub.srv || !sub.port ? sub.host : `${sub.host}:${sub.port}`;
   const port = server.ports?.game ?? Object.values(server.ports || {})[0];
-  return `${location.hostname}:${port}`;
+  return `${server.node?.host || location.hostname}:${port}`;
 }
 
 export function renderServerCards() {
@@ -48,7 +48,7 @@ function serverRow(server) {
         <span class="title">${esc(server.name)}</span>
         <span class="sub">${esc(server.templateName)}${
           server.gameVersion ? ` · <span class="ver">${esc(server.gameVersion)}</span>` : ''
-        } · ${esc(serverAddress(server))}</span>
+        } · ${esc(serverAddress(server))}${server.node ? ` · <span class="badge" title="Runs on another machine">${esc(server.node.name)}</span>` : ''}</span>
       </span>
     </a>
 

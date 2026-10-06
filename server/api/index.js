@@ -19,6 +19,7 @@ const { json, readJson, HttpError } = require('../core/util');
 const { Router } = require('./router');
 const { createHelpers, clientIp } = require('./helpers');
 const { RateLimiter } = require('../core/ratelimit');
+const audit = require('../features/audit');
 
 const VERSION = require('../../package.json').version;
 const ROUTES = ['auth', 'system', 'templates', 'servers', 'files', 'mods', 'network', 'backups', 'users', 'bridge'];
@@ -36,7 +37,64 @@ function createApi(app) {
     json(res, 429, { error: 'Too many requests. Slow down and try again in a moment.' });
   };
 
+  /**
+   * Requests for a server on another node ("<node>~<id>"), or sent straight
+   * to a node, are passed through to that panel. Administrators only.
+   */
+  async function proxyToNode(req, res, url) {
+    const nodes = app.manager.nodes;
+    if (!nodes?.list.length) return false;
+    // The server list: administrators also get the servers on other nodes.
+    if (req.method === 'GET' && url.pathname === '/api/servers' && url.searchParams.get('local') !== '1') {
+      const user = app.auth.userFromRequest(req);
+      if (user?.role !== 'admin') return false;
+      json(res, 200, { servers: [...app.manager.servers.map((s) => app.manager.publicServer(s)), ...nodes.remoteServers()] });
+      return true;
+    }
+    let node;
+    let path;
+    const direct = url.pathname.match(/^\/api\/nodes\/([^/]+)\/proxy(\/api\/.*)$/);
+    const viaId = url.pathname.match(/^\/api\/servers\/([^/]+)(\/.*)?$/);
+    if (direct) {
+      node = nodes.list.find((n) => n.id === direct[1]);
+      path = direct[2];
+    } else if (viaId) {
+      const target = nodes.parseId(decodeURIComponent(viaId[1]));
+      if (!target) return false;
+      node = target.node;
+      path = `/api/servers/${encodeURIComponent(target.remoteId)}${viaId[2] || ''}`;
+    }
+    if (!node) return false;
+    if (req.method !== 'GET' && req.headers.origin) {
+      let same = false;
+      try {
+        same = new URL(req.headers.origin).host === req.headers.host;
+      } catch {
+        same = false;
+      }
+      if (!same) {
+        json(res, 403, { error: 'Cross-origin request refused' });
+        return true;
+      }
+    }
+    const user = app.auth.userFromRequest(req);
+    if (!user) {
+      json(res, 401, { error: 'Not signed in' });
+      return true;
+    }
+    if (user.role !== 'admin') {
+      json(res, 403, { error: 'Only administrators can manage servers on other nodes' });
+      return true;
+    }
+    if (req.method !== 'GET') {
+      audit.record({ user: user.username, ip: clientIp(req), action: `${req.method.toLowerCase()} ${path.replace(/^\/api\//, '')} on node ${node.name}`, path, status: 200 });
+    }
+    await nodes.proxy(req, res, node, path + url.search);
+    return true;
+  }
+
   async function handle(req, res, url) {
+    if (await proxyToNode(req, res, url)) return;
     const match = router.match(req.method, url.pathname);
     if (!match) {
       json(res, 404, { error: 'Endpoint not found' });
@@ -75,7 +133,31 @@ function createApi(app) {
     }
 
     const body = !route.rawBody && writes ? await readJson(req) : {};
-    const result = await route.handler({ req, res, url, params, body, user });
+    // Every change goes in the audit log, including refused ones.
+    const note = (status, error) => {
+      if (!writes) return;
+      const pattern = '/' + route.parts.join('/');
+      const server = params.id && app.manager.servers.find((s) => s.id === params.id);
+      audit.record({
+        user: user?.username || (typeof body?.username === 'string' ? body.username.slice(0, 40) : null),
+        ip: clientIp(req),
+        action: audit.describe(req.method, pattern, body),
+        path: url.pathname,
+        serverId: server?.id,
+        server: server?.name,
+        details: route.rawBody ? undefined : audit.details(body),
+        status,
+        error,
+      });
+    };
+    let result;
+    try {
+      result = await route.handler({ req, res, url, params, body, user });
+    } catch (err) {
+      note(typeof err.code === 'number' ? err.code : 500, err.message);
+      throw err;
+    }
+    note(res.statusCode || 200);
     if (res.writableEnded || result === undefined) return;
     json(res, 200, result);
   }

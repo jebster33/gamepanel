@@ -37,6 +37,7 @@ const MIME = {
   '.woff2': 'font/woff2',
   '.webmanifest': 'application/manifest+json',
 };
+const { Nodes } = require('./features/nodes');
 
 async function main() {
   ensureDirs();
@@ -47,6 +48,7 @@ async function main() {
   const wss = new WebSocketServer();
   const hostMetrics = new HostMetrics();
   const manager = new ServerManager(store, templates, wss);
+  const nodes = (manager.nodes = new Nodes({ store, manager, wss }));
   const scheduler = new Scheduler(manager, store);
   const notifier = new Notifier(store);
   const bridge = new Bridge({ store, manager, secret });
@@ -188,7 +190,7 @@ async function main() {
     conn.subscriptions.add('server:status');
 
     conn.send({ topic: 'hello', version: VERSION, user: auth.publicUser(user) });
-    conn.send({ topic: 'servers', servers: manager.servers.filter((s) => auth.canAccessServer(user, s.id)).map((s) => manager.publicServer(s)) });
+    conn.send({ topic: 'servers', servers: [...manager.servers.filter((s) => auth.canAccessServer(user, s.id)).map((s) => manager.publicServer(s)), ...(user.role === 'admin' ? nodes.remoteServers() : [])] });
 
     conn.on('message', async (msg) => {
       try {
@@ -197,7 +199,7 @@ async function main() {
             // Console streams are per-server and access controlled.
             if (topic.startsWith('console:')) {
               const id = topic.slice(8);
-              if (!auth.canAccessServer(conn.user, id) || !auth.can(conn.user, 'console')) continue;
+              if (!auth.canAccessServer(conn.user, id) || !auth.can(conn.user, 'console', id)) continue;
               conn.send({ topic, type: 'lines', serverId: id, lines: manager.getConsole(id) });
             }
             conn.subscriptions.add(topic);
@@ -205,7 +207,9 @@ async function main() {
         } else if (msg.type === 'unsubscribe' && Array.isArray(msg.topics)) {
           for (const topic of msg.topics) conn.subscriptions.delete(topic);
         } else if (msg.type === 'command' && msg.serverId) {
-          if (!auth.canAccessServer(conn.user, msg.serverId) || !auth.can(conn.user, 'command')) return;
+          if (!auth.canAccessServer(conn.user, msg.serverId) || !auth.can(conn.user, 'command', msg.serverId)) return;
+          const server = manager.servers.find((s) => s.id === msg.serverId);
+          require('./features/audit').record({ user: conn.user.username, action: 'console command', serverId: msg.serverId, server: server?.name, details: { command: String(msg.command || '').slice(0, 200) }, status: 200 });
           await manager.sendCommand(msg.serverId, String(msg.command || ''));
         }
       } catch (err) {
@@ -232,6 +236,9 @@ async function main() {
 
   await manager.init();
   scheduler.start();
+  nodes.start();
+  const updateTimer = setInterval(() => manager.checkAutoUpdates().catch(() => {}), 60_000);
+  updateTimer.unref?.();
 
   let shuttingDown = false;
   const shutdown = async (signal) => {
@@ -239,6 +246,7 @@ async function main() {
     shuttingDown = true;
     logger.info(`Received ${signal}, shutting down…`);
     clearInterval(systemTimer);
+    nodes.stop();
     scheduler.stop();
     bridge.stop();
     stopSampler();

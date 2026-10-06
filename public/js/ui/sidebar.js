@@ -15,7 +15,7 @@ export function renderSidebarServers() {
       (s) => `
       <a class="sidebar-server ${state.route.params.id === s.id ? 'active' : ''}" href="#/servers/${esc(s.id)}">
         <span class="status ${esc(s.status)}" style="padding:0;background:none"><i class="dot"></i></span>
-        <span class="name">${esc(s.name)}</span>
+        <span class="name">${esc(s.name)}</span>${s.node ? `<span class="faint" style="font-size:11px;margin-left:auto">${esc(s.node.name)}</span>` : ''}
       </a>`
     )
     .join('');

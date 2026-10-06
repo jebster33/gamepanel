@@ -68,12 +68,17 @@ too (after asking), along with users, bridge connections and the containers Game
 | **Live player list** | Who is on, for how long, and their score where the game reports it, with kick and ban. |
 | **Import existing** | Already have a server on this machine? Point the panel at its folder; nothing is reinstalled. |
 | **Two-factor sign-in** | Codes from any authenticator app: Apple Passwords, Google or Microsoft Authenticator, 2FAS, Aegis… |
+| **One-click modpacks** | Install Modrinth and CurseForge packs, loader and all. |
 | **One-click mods** | Modrinth, CurseForge, uMod, Steam Workshop and the Factorio portal, filtered to your loader and version. |
 | **Schedules** | Nightly restarts, backups every few hours, a console message on the hour. |
 | **Backups** | One click, scheduled, downloadable, restorable, and optionally copied to Backblaze B2, Cloudflare R2, S3 or MinIO. |
 | **Files** | Browse, edit, drag-and-drop upload, unzip in place. |
 | **Alerts** | Crashes and failed backups posted to Discord. |
-| **Sharing** | Give friends access to one server and only the buttons you choose. |
+| **Sharing** | Give friends access to one server (console only, start/stop, files only or custom) from the server's Access tab. |
+| **Multiple machines** | Add other GamePanel installs as named nodes and run their servers from one panel. |
+| **Graphs with history** | CPU, memory and players per server for the last hour up to 30 days. |
+| **Audit log** | Every change anyone makes, with who, what, which server and from where. |
+| **Automatic updates** | Steam games update themselves when a new build is out and nobody is playing. |
 | **Reachability** | Opens the server's ports in the firewall and on your router (UPnP), or tells you exactly what to forward. |
 | **Bridge** | Or skip port forwarding: friends run a personal client and your servers appear on their computer, encrypted end to end. [How it works](docs/bridge.md) |
 | **Isolation on Linux** | Every server in its own Docker container with hard memory and CPU limits. |

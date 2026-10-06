@@ -26,6 +26,9 @@ export function sideBadge(item) {
   return '';
 }
 
+// Which store the search below looks in.
+let source = 'modrinth';
+
 export async function renderModpacksTab(host, server) {
   host.innerHTML = '<div class="card"><span class="spinner"></span> Loading modpacks…</div>';
   let info;
@@ -98,7 +101,8 @@ export async function renderModpacksTab(host, server) {
     </div>
 
     <div class="row mb-16">
-      <input id="pack-search" placeholder="Search Modrinth modpacks…" style="flex:1" />
+      <select id="pack-source" style="width:auto"><option value="modrinth" ${source === 'modrinth' ? 'selected' : ''}>Modrinth</option><option value="curseforge" ${source === 'curseforge' ? 'selected' : ''}>CurseForge</option></select>
+      <input id="pack-search" placeholder="Search ${source === 'curseforge' ? 'CurseForge' : 'Modrinth'} modpacks…" style="flex:1" />
       <button class="btn" id="pack-search-btn">Search</button>
     </div>
     <div id="pack-results" class="grid-cards"></div>`;
@@ -108,7 +112,7 @@ export async function renderModpacksTab(host, server) {
     results.innerHTML = '<div class="card"><span class="spinner"></span> Searching…</div>';
     try {
       const data = await api(
-        `/api/servers/${server.id}/modpacks/search?query=${encodeURIComponent($('#pack-search').value.trim())}`
+        `/api/servers/${server.id}/modpacks/search?source=${source}&query=${encodeURIComponent($('#pack-search').value.trim())}`
       );
       renderPackResults(server, data.items, info);
     } catch (err) {
@@ -116,6 +120,10 @@ export async function renderModpacksTab(host, server) {
     }
   };
 
+  $('#pack-source').addEventListener('change', (e) => {
+    source = e.target.value;
+    renderModpacksTab(host, server);
+  });
   $('#pack-search-btn').addEventListener('click', runSearch);
   $('#pack-search').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') runSearch();
@@ -148,7 +156,7 @@ function renderPackResults(server, items, info) {
         </div>
         <p>${esc(item.description || '')}</p>
         <div class="row" style="gap:6px">${sideBadge(item)}${
-        item.slug === info.current?.slug ? '<span class="badge accent">Installed</span>' : ''
+        String(item.slug) === String(info.current?.slug) || String(item.id) === String(info.current?.slug) ? '<span class="badge accent">Installed</span>' : ''
       }</div>
         <div class="t-foot">
           <a class="btn btn-sm" href="${esc(item.url)}" target="_blank" rel="noopener">Open page</a>
@@ -192,7 +200,7 @@ async function openPackInstallModal(server, pack) {
           try {
             const res = await api(`/api/servers/${server.id}/modpacks/install`, {
               method: 'POST',
-              body: { project: pack.slug || pack.id, versionId: $('#pack-version').value },
+              body: { project: source === 'curseforge' ? pack.id : pack.slug || pack.id, versionId: $('#pack-version').value, source },
             });
             modal.close();
             toast(res.message || 'Installing the pack');
@@ -209,7 +217,7 @@ async function openPackInstallModal(server, pack) {
 
   try {
     const data = await api(
-      `/api/servers/${server.id}/modpacks/versions?project=${encodeURIComponent(pack.slug || pack.id)}`
+      `/api/servers/${server.id}/modpacks/versions?source=${source}&project=${encodeURIComponent(source === 'curseforge' ? pack.id : pack.slug || pack.id)}`
     );
     const select = $('#pack-version');
     if (!data.versions.length) {

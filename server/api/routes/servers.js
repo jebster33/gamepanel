@@ -222,7 +222,7 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
 
   router.post('/api/servers/:id/pregen', async ({ user, params, body }) => {
     const server = serverFor(user, params.id, 'command');
-    if (body?.action === 'install') requireCap(user, 'mods');
+    if (body?.action === 'install') requireCap(user, 'mods', server.id);
     return manager.pregen(server.id, { action: String(body?.action || ''), radius: body?.radius }, user);
   });
 
@@ -298,7 +298,7 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
     const unban = Boolean(body?.unban);
     const results = [];
     for (const server of manager.servers) {
-      if (user.role !== 'admin' && !(user.servers || []).includes(server.id)) continue;
+      if (user.role !== 'admin' && !canCommand(user, server.id)) continue;
       if (!lists.listsFor(manager.template(server))?.bans) continue;
       try {
         await lists.changeList(manager, server, { list: 'bans', action: unban ? 'remove' : 'add', name: body?.name, reason: body?.reason }, user.username);
@@ -312,6 +312,15 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
     return { results };
   });
 
+  const canCommand = (user, id) => {
+    try {
+      serverFor(user, id, 'command');
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   /** Say something in the chat of every running server this account can command. */
   router.post('/api/servers/broadcast', async ({ user, body }) => {
     requireCap(user, 'command');
@@ -321,7 +330,7 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
     const results = [];
     for (const server of visibleServers(user)) {
       const line = command(manager.template(server));
-      if (!line || !manager.isActive(server.id)) continue;
+      if (!line || !manager.isActive(server.id) || !canCommand(user, server.id)) continue;
       try {
         await manager.sendCommand(server.id, require('../../games/players').fillBroadcast(line, message));
         results.push({ server: server.name, ok: true });
@@ -419,9 +428,9 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
     return manager.sendCommand(server.id, String(body.command).trim());
   });
 
-  router.get('/api/servers/:id/history', ({ user, params }) => {
+  router.get('/api/servers/:id/history', ({ user, params, url }) => {
     const server = serverFor(user, params.id);
-    return { history: manager.getHistory(server.id) };
+    return { history: manager.getHistory(server.id, url.searchParams.get('range')) };
   });
 
   router.get('/api/servers/:id/query', async ({ user, params }) => {
@@ -449,7 +458,7 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
   /** Rotating chat announcements. */
   router.put('/api/servers/:id/announcements', ({ user, params, body }) => {
     const server = serverFor(user, params.id, 'schedules');
-    requireCap(user, 'command');
+    requireCap(user, 'command', server.id);
     if (!require('../../games/players').broadcastCommand(manager.template(server))) fail(400, 'This game has no chat broadcast command');
     const messages = (Array.isArray(body?.messages) ? body.messages : [])
       .map((m) => String(m).replace(/[\r\n]+/g, ' ').trim().slice(0, 200))
@@ -473,7 +482,7 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
 
   router.post('/api/servers/:id/schedules', ({ user, params, body }) => {
     const server = serverFor(user, params.id, 'schedules');
-    if (body.action === 'command' && user.role !== 'admin') requireCap(user, 'command');
+    if (body.action === 'command' && user.role !== 'admin') requireCap(user, 'command', server.id);
     const schedule = scheduler.add(server, body);
     store.addEvent('schedule.created', `${schedule.name} scheduled on ${server.name} (${schedule.cron})`, { serverId: server.id });
     return { schedule };

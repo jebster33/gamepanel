@@ -433,6 +433,7 @@ class Auth {
       role: user.role,
       servers: user.servers || [],
       permissions: user.role === 'admin' ? CAPABILITY_IDS : sanitizePermissions(user.permissions),
+      serverPerms: user.role === 'admin' ? {} : user.serverPerms || {},
       createdAt: user.createdAt,
       lastLogin: user.lastLogin || null,
       twoFactor: Boolean(user.totp?.secret),
@@ -452,11 +453,22 @@ class Auth {
    * exactly what was ticked for them. Accounts created before permissions
    * existed fall back to the default set rather than being locked out.
    */
-  can(user, capability) {
+  can(user, capability, serverId) {
     if (!user) return false;
     if (user.role === 'admin') return true;
-    const held = user.permissions === undefined ? DEFAULT_PERMISSIONS : sanitizePermissions(user.permissions);
-    return held.includes(capability);
+    return this.permissionsFor(user, serverId).includes(capability);
+  }
+
+  /**
+   * What an account holds on one server. A server can carry its own set
+   * (sub-users added from that server's Access tab); otherwise the account's
+   * general permissions apply.
+   */
+  permissionsFor(user, serverId) {
+    if (user.role === 'admin') return CAPABILITY_IDS;
+    const own = serverId && user.serverPerms?.[serverId];
+    if (own) return sanitizePermissions(own);
+    return user.permissions === undefined ? DEFAULT_PERMISSIONS : sanitizePermissions(user.permissions);
   }
 
   cookieHeader(token, secure) {

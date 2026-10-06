@@ -12,6 +12,7 @@ module.exports = (router, { store, auth, manager, hostMetrics, notifier, bridge 
     host: hostMetrics.last,
     overview: manager.overview(),
     version: VERSION,
+    nodeName: store.state.settings.nodeName || require('os').hostname(),
     platform: HOST_PLATFORM,
     os: describeHost(),
     docker: { available: manager.dockerAvailable },
@@ -27,6 +28,21 @@ module.exports = (router, { store, auth, manager, hostMetrics, notifier, bridge 
     // Account events carry addresses and locations: administrators only.
     const visible = user.role === 'admin' ? all : all.filter((e) => (e.serverId ? auth.canAccessServer(user, e.serverId) : !e.type.startsWith('user.')));
     return { events: visible.slice(0, limit) };
+  });
+
+  /** Who changed what, from the audit log. Administrators only. */
+  router.get('/api/audit', ({ user, url }) => {
+    requireAdmin(user);
+    const q = url.searchParams;
+    return {
+      entries: require('../../features/audit').list({
+        q: q.get('q') || '',
+        user: q.get('user') || '',
+        serverId: q.get('server') || '',
+        before: Number(q.get('before')) || Infinity,
+        limit: clamp(q.get('limit') || 200, 1, 1000),
+      }),
+    };
   });
 
   /** What a fresh panel still needs, shown as a checklist on the dashboard. */
@@ -82,7 +98,7 @@ module.exports = (router, { store, auth, manager, hostMetrics, notifier, bridge 
 
   router.get('/api/settings', ({ user }) => {
     requireAdmin(user);
-    return { settings: store.state.settings, notificationEvents: EVENT_CHOICES };
+    return { settings: { ...store.state.settings, nodes: undefined }, notificationEvents: EVENT_CHOICES };
   });
 
   router.patch('/api/settings', ({ user, body }) => {
@@ -93,6 +109,7 @@ module.exports = (router, { store, auth, manager, hostMetrics, notifier, bridge 
     if (body.portRangeEnd) s.portRangeEnd = clamp(body.portRangeEnd, 1024, 65535);
     if (s.portRangeEnd < s.portRangeStart) fail(400, 'The port range ends before it starts');
     if (body.autoRestart !== undefined) s.autoRestart = Boolean(body.autoRestart);
+    if (body.autoUpdateGames !== undefined) s.autoUpdateGames = Boolean(body.autoUpdateGames);
     if (body.maxCrashRestarts !== undefined) s.maxCrashRestarts = clamp(body.maxCrashRestarts, 0, 100);
     if (body.containerize !== undefined) s.containerize = Boolean(body.containerize);
     if (body.geoLookup !== undefined) s.geoLookup = Boolean(body.geoLookup);

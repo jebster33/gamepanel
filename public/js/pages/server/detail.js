@@ -1,6 +1,7 @@
 import { setCrumbs } from '../../core/router.js';
 import { state } from '../../core/state.js';
 import { $, can, esc, fmtBytes, fmtDuration, fmtRate, gameArt, icon, statusPill } from '../../core/util.js';
+import { renderAccessTab } from './access.js';
 import { renderBackupsTab } from './backups.js';
 import { patchDoctor, renderConsoleTab } from './console.js';
 import { renderFilesTab } from './files.js';
@@ -27,6 +28,7 @@ function serverTabs(server) {
     can('schedules') && ['schedules', 'Schedules'],
     can('settings') && ['game', 'Game settings'],
     can('settings') && ['settings', 'Settings'],
+    state.user.role === 'admin' && !server.node && ['access', 'Access'],
   ].filter(Boolean);
 }
 
@@ -61,6 +63,7 @@ export function renderServerDetail(view) {
           <span id="detail-status">${statusPill(server.status)}</span>
           <span class="address" data-copy="${esc(address)}" title="Click to copy">${esc(address)}</span>
           <span class="badge">${esc(server.templateName || '')}${server.gameVersion ? ` · ${esc(server.gameVersion)}` : ''}</span>
+          ${server.node ? `<span class="badge accent" title="This server runs on another machine">${esc(server.node.name)}</span>` : ''}
           <span class="badge" title="${
             server.runtime === 'docker' ? 'Isolated in its own container' : 'Runs as a normal process on this machine'
           }">${server.runtime === 'docker' ? 'Container' : 'Process'}</span>
@@ -178,6 +181,9 @@ function renderServerTab(server, tab) {
       break;
     case 'settings':
       renderServerSettingsTab(host, server);
+      break;
+    case 'access':
+      renderAccessTab(host, server);
       break;
     case 'console':
     default:

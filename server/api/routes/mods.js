@@ -135,7 +135,7 @@ module.exports = (router, { store, manager }, { serverFor, integrations }) => {
             slug,
             versionId: server.vars.MODPACK_VERSION || null,
             label: server.resolvedVersion || server.vars.MODPACK,
-            url: `https://modrinth.com/modpack/${slug}`,
+            url: server.vars.MODPACK_SOURCE === 'curseforge' ? undefined : `https://modrinth.com/modpack/${slug}`,
             ...(server.pack || {}),
           }
         : null,
@@ -145,9 +145,14 @@ module.exports = (router, { store, manager }, { serverFor, integrations }) => {
 
   router.get('/api/servers/:id/modpacks/search', async ({ user, params, url }) => {
     serverFor(user, params.id, 'mods');
+    const page = clamp(url.searchParams.get('page') || 0, 0, 200);
+    if (url.searchParams.get('source') === 'curseforge') {
+      // classId 4471 is Minecraft modpacks.
+      return mods.PROVIDERS.curseforge.search({ query: url.searchParams.get('query') || '', page, limit: 24, ctx: { cfClass: 4471 }, apiKey: integrations().curseforgeKey });
+    }
     return mods.PROVIDERS.modrinth.search({
       query: url.searchParams.get('query') || '',
-      page: clamp(url.searchParams.get('page') || 0, 0, 200),
+      page,
       limit: 24,
       ctx: {},
       projectType: 'modpack',
@@ -156,6 +161,19 @@ module.exports = (router, { store, manager }, { serverFor, integrations }) => {
 
   router.get('/api/servers/:id/modpacks/versions', async ({ user, params, url }) => {
     serverFor(user, params.id, 'mods');
+    if (url.searchParams.get('source') === 'curseforge') {
+      const key = integrations().curseforgeKey;
+      if (!key) fail(400, 'Add a CurseForge API key in Settings, Integrations to use CurseForge.');
+      const res = await fetch(`https://api.curseforge.com/v1/mods/${encodeURIComponent(url.searchParams.get('project'))}/files?pageSize=40`, { headers: { 'x-api-key': key }, signal: AbortSignal.timeout(20000) });
+      if (!res.ok) fail(502, `CurseForge answered ${res.status}`);
+      const files = (await res.json()).data || [];
+      return {
+        versions: files
+          .filter((f) => !f.isServerPack && /\.zip$/i.test(f.fileName))
+          .sort((a, b) => String(b.fileDate).localeCompare(String(a.fileDate)))
+          .map((f) => ({ id: String(f.id), name: f.displayName, version: f.displayName, channel: ({ 1: 'release', 2: 'beta', 3: 'alpha' })[f.releaseType], gameVersions: (f.gameVersions || []).filter((t) => /^\d/.test(t)), loaders: (f.gameVersions || []).filter((t) => /^(forge|fabric|quilt|neoforge)$/i.test(t)).map((t) => t.toLowerCase()), published: f.fileDate, filename: f.fileName })),
+      };
+    }
     const versions = await mods.PROVIDERS.modrinth.versions({ projectId: url.searchParams.get('project'), ctx: {}, projectType: 'modpack' });
     return {
       versions: versions
@@ -171,7 +189,9 @@ module.exports = (router, { store, manager }, { serverFor, integrations }) => {
     if (!template?.modpacks) fail(400, 'This server does not use modpacks');
     if (manager.isActive(server.id)) fail(409, 'Stop the server before changing its modpack');
     if (!body.project) fail(400, 'Pick a modpack first');
-    manager.update(server.id, { vars: { MODPACK: String(body.project), MODPACK_VERSION: String(body.versionId || '') } });
+    const source = body.source === 'curseforge' ? 'curseforge' : 'modrinth';
+    if (source === 'curseforge' && !integrations().curseforgeKey) fail(400, 'Add a CurseForge API key in Settings, Integrations first.');
+    manager.update(server.id, { vars: { MODPACK: String(body.project), MODPACK_VERSION: String(body.versionId || ''), MODPACK_SOURCE: source } });
     manager.install(server.id, { reinstall: true }).catch((err) => logger.error('Modpack install failed:', err.message));
     store.addEvent('modpack.installed', `${server.name} switched to modpack ${body.project}`, { serverId: server.id });
     return { ok: true, queued: true, message: 'Installing the pack. Watch the console.' };

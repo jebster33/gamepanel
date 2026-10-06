@@ -6,8 +6,23 @@ import { themeColor } from '../dashboard.js';
 
 /* -------------------------------------------------------------- metrics */
 
+// Which window the graphs show: live (last few minutes, streaming) or a saved range.
+let range = 'live';
+let rangeData = null;
+const RANGES = [
+  ['live', 'Live'],
+  ['1h', '1 hour'],
+  ['24h', '24 hours'],
+  ['7d', '7 days'],
+  ['30d', '30 days'],
+];
+
 export function renderMetricsTab(host, server) {
   host.innerHTML = `
+    <div class="row mb-16" style="gap:6px;flex-wrap:wrap;align-items:center">
+      ${RANGES.map(([key, label]) => `<button class="btn btn-sm ${range === key ? 'btn-primary' : ''}" data-range="${key}">${label}</button>`).join('')}
+      <span class="faint" id="mv-span" style="font-size:12px;margin-left:8px"></span>
+    </div>
     <div class="chart-grid">
       <div class="chart-card"><h4>CPU usage</h4><div class="chart-value" id="mv-cpu">—</div><canvas id="chart-cpu"></canvas></div>
       <div class="chart-card"><h4>Memory</h4><div class="chart-value" id="mv-mem">—</div><canvas id="chart-mem"></canvas></div>
@@ -32,6 +47,24 @@ export function renderMetricsTab(host, server) {
       </table></div>
     </div>`;
 
+  host.querySelectorAll('[data-range]').forEach((el) =>
+    el.addEventListener('click', () => {
+      range = el.dataset.range;
+      rangeData = null;
+      renderMetricsTab(host, server);
+    })
+  );
+
+  if (range !== 'live') {
+    api(`/api/servers/${server.id}/history?range=${range}`)
+      .then((data) => {
+        rangeData = { id: server.id, points: data.history };
+        drawServerCharts(server.id);
+      })
+      .catch(() => {});
+    return;
+  }
+
   api(`/api/servers/${server.id}/history`)
     .then((data) => {
       const hist = { cpu: [], mem: [], players: [], ping: [] };
@@ -47,7 +80,37 @@ export function renderMetricsTab(host, server) {
     .catch(() => drawServerCharts(server.id));
 }
 
+function peaks(id) {
+  const set = (sel, text) => {
+    const el = $(sel);
+    if (el) el.textContent = text;
+  };
+  const points = rangeData?.id === id ? rangeData.points : [];
+  if (!points.length) {
+    set('#mv-span', 'Nothing recorded for this range yet. The panel keeps a point every minute for a day and every 15 minutes for 30 days.');
+    return null;
+  }
+  const max = (key) => Math.max(...points.map((p) => p[key] || 0));
+  const avg = (key) => points.reduce((n, p) => n + (p[key] || 0), 0) / points.length;
+  set('#mv-span', `${fmtTime(points[0].t)} to ${fmtTime(points.at(-1).t)}`);
+  set('#mv-cpu', `avg ${avg('cpu').toFixed(1)} % · peak ${max('cpu').toFixed(0)} %`);
+  set('#mv-mem', `avg ${fmtBytes(avg('mem'))} · peak ${fmtBytes(max('memMax'))}`);
+  set('#mv-players', `avg ${avg('players').toFixed(1)} · peak ${max('playersMax')}`);
+  set('#mv-ping', 'Live view only');
+  return points;
+}
+
 export function drawServerCharts(id) {
+  if (range !== 'live') {
+    const points = peaks(id);
+    if (!points) return;
+    const accent = themeColor('--accent', '#5e6ad2');
+    drawChart($('#chart-cpu'), points.map((p) => p.cpu), { color: accent });
+    drawChart($('#chart-mem'), points.map((p) => p.mem), { color: accent });
+    drawChart($('#chart-players'), points.map((p) => p.players), { color: themeColor('--success', '#4cb782') });
+    drawChart($('#chart-ping'), [], {});
+    return;
+  }
   const hist = state.serverHistory.get(id);
   if (!hist) return;
   const server = state.servers.find((s) => s.id === id);

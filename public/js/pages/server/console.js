@@ -7,6 +7,8 @@ import { confirmModal, openModal } from '../../ui/modal.js';
 
 /* -------------------------------------------------------------- console */
 
+let remotePoll = null;
+
 export function renderConsoleTab(host, server) {
   host.innerHTML = `
     <div id="doctor"></div>
@@ -26,6 +28,21 @@ export function renderConsoleTab(host, server) {
   const buffered = state.consoles.get(server.id) || [];
   appendConsoleLines(buffered, true);
   wsSubscribe(`console:${server.id}`);
+  // Servers on another node have no live stream here: poll their console instead.
+  if (server.node) {
+    clearInterval(remotePoll);
+    remotePoll = setInterval(async () => {
+      const r = state.route;
+      if (r.name !== 'server' || r.params.id !== server.id || (r.params.tab || 'console') !== 'console' || !$('#console')) {
+        clearInterval(remotePoll);
+        return;
+      }
+      const data = await api(`/api/servers/${server.id}/console`).catch(() => null);
+      const seen = state.consoleSeq.get(server.id) || 0;
+      const fresh = (data?.lines || []).filter((l) => l.seq > seen);
+      if (fresh.length) appendConsoleLines(fresh);
+    }, 2000);
+  }
 
   api(`/api/servers/${server.id}/console`)
     .then((data) => {

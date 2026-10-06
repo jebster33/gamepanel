@@ -3,7 +3,16 @@
 const { fail } = require('../../core/util');
 const { CAPABILITIES, DEFAULT_PERMISSIONS, sanitizePermissions } = require('../../core/auth');
 
-module.exports = (router, { store, auth }, { requireAdmin }) => {
+// Quick picks for the Access tab on a server.
+const PRESETS = [
+  { id: 'console', label: 'Console only', permissions: ['console', 'command'] },
+  { id: 'power', label: 'Start and stop', permissions: ['power', 'console'] },
+  { id: 'files', label: 'Files only', permissions: ['files', 'files.write'] },
+  { id: 'full', label: 'Full server access', permissions: ['power', 'console', 'command', 'settings', 'schedules', 'files', 'files.write', 'mods', 'backups', 'backups.restore'] },
+];
+
+module.exports = (router, { store, auth, manager }, { requireAdmin }) => {
+  require('./nodes')(router, { store, nodes: manager.nodes }, { requireAdmin });
   router.get('/api/users', ({ user }) => {
     requireAdmin(user);
     return { users: auth.users.map((u) => auth.publicUser(u)), capabilities: CAPABILITIES, defaults: DEFAULT_PERMISSIONS, requireAdmin2fa: Boolean(store.state.settings.requireAdmin2fa) };
@@ -53,6 +62,66 @@ module.exports = (router, { store, auth }, { requireAdmin }) => {
     requireAdmin(user);
     if (params.id === user.id) fail(400, 'You cannot delete your own account');
     auth.deleteUser(params.id);
+    return { ok: true };
+  });
+
+  /* ------------------------------------------- sub-users on one server -- */
+
+  router.get('/api/servers/:id/access', ({ user, params }) => {
+    requireAdmin(user);
+    const server = manager.require(params.id);
+    return {
+      users: auth.users.map((u) => ({
+        id: u.id,
+        username: u.username,
+        role: u.role,
+        access: auth.canAccessServer(u, server.id),
+        custom: Boolean(u.serverPerms?.[server.id]),
+        permissions: auth.permissionsFor(u, server.id),
+      })),
+      capabilities: CAPABILITIES.filter((c) => c.group !== 'Panel'),
+      presets: PRESETS,
+    };
+  });
+
+  const grant = (target, serverId, permissions) => {
+    if (target.role === 'admin') fail(400, 'Administrators already have every server');
+    target.servers = [...new Set([...(target.servers || []), serverId])];
+    target.serverPerms = { ...(target.serverPerms || {}), [serverId]: sanitizePermissions(permissions) };
+  };
+
+  /** Make a brand new account that only sees this server. */
+  router.post('/api/servers/:id/access', ({ user, params, body }) => {
+    requireAdmin(user);
+    const server = manager.require(params.id);
+    const permissions = sanitizePermissions(body.permissions);
+    const created = auth.createUser({ username: body.username, password: body.password, role: 'user', servers: [server.id], permissions });
+    grant(auth.users.find((u) => u.id === created.id), server.id, permissions);
+    store.save();
+    store.addEvent('user.created', `${user.username} added ${created.username} to ${server.name}`, { serverId: server.id });
+    return { ok: true };
+  });
+
+  router.put('/api/servers/:id/access/:userId', ({ user, params, body }) => {
+    requireAdmin(user);
+    const server = manager.require(params.id);
+    const target = auth.users.find((u) => u.id === params.userId);
+    if (!target) fail(404, 'User not found');
+    grant(target, server.id, body.permissions);
+    store.save();
+    store.addEvent('user.updated', `${user.username} set what ${target.username} can do on ${server.name}`, { serverId: server.id });
+    return { ok: true };
+  });
+
+  router.delete('/api/servers/:id/access/:userId', ({ user, params }) => {
+    requireAdmin(user);
+    const server = manager.require(params.id);
+    const target = auth.users.find((u) => u.id === params.userId);
+    if (!target) fail(404, 'User not found');
+    target.servers = (target.servers || []).filter((id) => id !== server.id);
+    if (target.serverPerms) delete target.serverPerms[server.id];
+    store.save();
+    store.addEvent('user.updated', `${user.username} removed ${target.username} from ${server.name}`, { serverId: server.id });
     return { ok: true };
   });
 };

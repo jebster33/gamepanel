@@ -47,6 +47,7 @@ export async function enterApp() {
   $('#user-role').textContent = state.user.role;
   $('#user-avatar').textContent = state.user.username.slice(0, 1).toUpperCase();
   const isAdmin = state.user.role === 'admin';
+  loadNodes();
   $$('.admin-only').forEach((el) => el.classList.toggle('hidden', !isAdmin));
 
   // Hide navigation the account cannot use at all, so nothing dead-ends in a
@@ -60,6 +61,12 @@ export async function enterApp() {
   connectWebSocket();
   renderSidebarServers();
   handleRoute();
+}
+
+/** Other machines this panel controls (administrators only). */
+export async function loadNodes() {
+  if (state.user?.role !== 'admin') return;
+  state.nodes = await api('/api/nodes').catch(() => null);
 }
 
 export async function loadServers() {

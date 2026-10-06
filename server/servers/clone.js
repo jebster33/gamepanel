@@ -17,7 +17,7 @@ const { fail, logger } = require('../core/util');
 const TAR = process.platform === 'win32' ? path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'tar.exe') : 'tar';
 const MANIFEST = 'gamepanel-server.json';
 // Settings an export carries to another panel. Ports are not: the new panel picks free ones.
-const PORTABLE = ['templateId', 'name', 'vars', 'memory', 'cpuLimit', 'maxPlayers', 'autoRestart', 'updateOnStart', 'startCommand', 'schedules', 'javaOverride', 'gameVersion', 'idleStopMinutes', 'hangRestartMinutes', 'alerts', 'backupRetention', 'notes'];
+const PORTABLE = ['templateId', 'name', 'vars', 'memory', 'cpuLimit', 'maxPlayers', 'autoRestart', 'updateOnStart', 'autoUpdate', 'startCommand', 'schedules', 'javaOverride', 'gameVersion', 'idleStopMinutes', 'hangRestartMinutes', 'alerts', 'backupRetention', 'notes'];
 
 const CARRY = ['javaOverride', 'resolvedVersion', 'gameVersion', 'idleStopMinutes', 'hangRestartMinutes', 'alerts', 'backupRetention', 'notes', 'installedAt'];
 

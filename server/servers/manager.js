@@ -46,7 +46,7 @@ const { docker } = require('./runtimes/docker-api');
 const { STATUS, CONTAINER_DIR } = require('./constants');
 
 /** Fields a PATCH may change. Anything else on a server is managed by the panel. */
-const EDITABLE = ['name', 'memory', 'cpuLimit', 'maxPlayers', 'autoStart', 'autoRestart', 'updateOnStart', 'startCommand', 'notes', 'ip', 'backupRetention', 'idleStopMinutes', 'hangRestartMinutes', 'alerts'];
+const EDITABLE = ['name', 'memory', 'cpuLimit', 'maxPlayers', 'autoStart', 'autoRestart', 'updateOnStart', 'autoUpdate', 'startCommand', 'notes', 'ip', 'backupRetention', 'idleStopMinutes', 'hangRestartMinutes', 'alerts'];
 
 class ServerManager extends EventEmitter {
   /**
@@ -305,6 +305,8 @@ class ServerManager extends EventEmitter {
       hasMods: Boolean(tpl?.mods?.providers?.length || tpl?.mods?.dir),
       hasModpacks: Boolean(tpl?.modpacks),
       canUpdate: Boolean((tpl?.install || []).some((s) => s.type === 'steamcmd') || tpl?.update),
+      canAutoUpdate: Boolean(this.steamApp(server)),
+      autoUpdateInfo: rt.autoUpdate || null,
       modProviders: tpl?.mods?.providers || [],
       gameVersion: this.gameVersion(server),
       joinNote: tpl?.joinNote || null,
@@ -458,6 +460,7 @@ class ServerManager extends EventEmitter {
     this.servers.splice(this.servers.indexOf(server), 1);
     this.runtime.delete(id);
     this.deleteHistory(id);
+    this.dropMetricHistory(id);
     // Free play.example.com so the name can be reused.
     if (server.subdomain) require('../features/dns').release(this.store, server).catch(() => {});
     this.store.save();
@@ -495,7 +498,9 @@ class ServerManager extends EventEmitter {
   }
 
   broadcastServers() {
-    this.bus.broadcast('servers', { servers: this.servers.map((s) => this.publicServer(s)) });
+    const local = this.servers.map((s) => this.publicServer(s));
+    for (const s of local) s.node = null;
+    this.bus.broadcast('servers', { servers: [...local, ...(this.nodes?.remoteServers() || [])] });
   }
 
   /** Snapshot for the dashboard header. */
@@ -574,6 +579,8 @@ Object.assign(
   require('./power'),
   require('./stats'),
   require('./history'),
+  require('./metrics-history'),
+  require('./auto-update'),
   require('./versions'),
   require('./doctor'),
   require('./worlds'),
