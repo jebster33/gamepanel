@@ -289,6 +289,28 @@ module.exports = (router, { store, manager, scheduler }, { requireAdmin, require
     return { results };
   });
 
+  /** Say something in the chat of every running server this account can command. */
+  router.post('/api/servers/broadcast', async ({ user, body }) => {
+    requireCap(user, 'command');
+    const message = String(body?.message || '').replace(/["\r\n]/g, '').trim().slice(0, 240);
+    if (!message) fail(400, 'Type a message');
+    const command = require('../../games/players').broadcastCommand;
+    const results = [];
+    for (const server of visibleServers(user)) {
+      const line = command(manager.template(server));
+      if (!line || !manager.isActive(server.id)) continue;
+      try {
+        await manager.sendCommand(server.id, line.replace('{msg}', message));
+        results.push({ server: server.name, ok: true });
+      } catch (err) {
+        results.push({ server: server.name, ok: false, error: err.message });
+      }
+    }
+    if (!results.length) fail(400, 'None of your servers are running a game with chat');
+    store.addEvent('server.broadcast', `${user.username} told ${results.filter((r) => r.ok).length} server(s): ${message}`);
+    return { results };
+  });
+
   /** Whitelist, operators and bans (Minecraft). */
   router.get('/api/servers/:id/player-lists', ({ user, params }) => {
     const server = serverFor(user, params.id, 'command');

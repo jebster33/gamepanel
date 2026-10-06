@@ -54,6 +54,7 @@ POST   /api/servers/:id/map              {"enabled"} BlueMap live web map (Paper
 POST   /api/servers/:id/pregen           {"action":"install|start|pause|continue|cancel","radius?"} Chunky pre-generation
 PUT    /api/servers/:id/subdomain        {"name"} Cloudflare A (+ SRV) record (admins)
 POST   /api/players/ban-everywhere       {"name","reason","unban?"} every Minecraft server
+POST   /api/servers/broadcast        {"message"} say it in chat on every running server
 GET    /api/players/search?q=            players on any visible server (admins: also by address)
 GET    /api/servers/:id/backups/:name/contents        files in a backup
 POST   /api/servers/:id/backups/:name/restore-files   {"paths"} put back single files or folders

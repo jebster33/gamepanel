@@ -1,6 +1,7 @@
 import { setCrumbs } from '../core/router.js';
 import { state } from '../core/state.js';
-import { $, esc, fmtBytes, icon, statusPill } from '../core/util.js';
+import { api } from '../core/api.js';
+import { $, can, esc, fmtBytes, icon, statusPill, toast } from '../core/util.js';
 import { revealChildren } from '../ui/fx.js';
 
 /* --------------------------------------------------------- server cards */
@@ -116,7 +117,23 @@ export function renderServers(view) {
     <div class="page-head">
       <h1>Servers</h1>
       <div class="spacer"></div>
+      ${can('command') && state.servers.length ? '<button class="btn" id="broadcast-all" title="Say something in the chat of every running server">Message all</button>' : ''}
       ${state.user.role === 'admin' ? '<button class="btn" data-import>Import existing</button><a class="btn btn-primary" href="#/templates">New server</a>' : ''}
     </div>
     ${renderServerCards()}`;
+  $('#broadcast-all')?.addEventListener('click', broadcastAll);
+}
+
+async function broadcastAll() {
+  const { promptModal } = await import('../ui/modal.js');
+  const message = await promptModal('Message every server', 'Shown in the chat of every running server', '', { hint: 'Handy for "Restarting everything in 5 minutes".' });
+  if (!message?.trim()) return;
+  try {
+    const { results } = await api('/api/servers/broadcast', { method: 'POST', body: { message } });
+    const ok = results.filter((r) => r.ok).length;
+    const failed = results.filter((r) => !r.ok);
+    toast(`Sent to ${ok} server${ok === 1 ? '' : 's'}${failed.length ? `. Failed on ${failed.map((r) => r.server).join(', ')}` : ''}`, failed.length ? 'warn' : 'info');
+  } catch (err) {
+    toast(err.message, 'error');
+  }
 }
