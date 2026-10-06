@@ -2586,6 +2586,62 @@ tbody tr:hover {
 .lime {
   color: var(--lime-text);
 }
+.imp-found {
+  max-height: 300px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 4px 12px;
+}
+.imp-found > p,
+.imp-found > .spinner {
+  margin: 10px 0;
+}
+.imp-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px 0;
+}
+.imp-row + .imp-row {
+  border-top: 1px solid var(--border);
+}
+.imp-row > input[type='checkbox'] {
+  margin-top: 9px;
+}
+.imp-row .grow {
+  min-width: 0;
+}
+.imp-top {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.imp-top input {
+  flex: 1;
+  min-width: 0;
+  padding: 5px 8px;
+}
+.imp-meta {
+  margin-top: 4px;
+  font-size: 11.5px;
+  color: var(--faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.imp-row select {
+  width: 190px;
+  flex: none;
+}
+@media (max-width: 640px) {
+  .imp-row {
+    flex-wrap: wrap;
+  }
+  .imp-row select {
+    width: 100%;
+  }
+}
 .dw-roles {
   display: flex;
   flex-wrap: wrap;

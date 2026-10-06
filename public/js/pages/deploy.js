@@ -492,70 +492,163 @@ function openWizardModal(template) {
 
 /* ------------------------------------------------------ import existing */
 
-/** Put a server that is already on this machine under the panel. */
+const SOURCES = { pterodactyl: 'Pterodactyl', amp: 'AMP', linuxgsm: 'LinuxGSM', folder: 'Folder' };
+
+/** Put servers that are already on this machine under the panel: found ones (Pterodactyl, AMP, LinuxGSM) or any folder. */
 export function openImportModal() {
   const templates = [...state.templates].sort((a, b) => a.name.localeCompare(b.name));
   if (!templates.length) return toast('No templates available', 'error');
   const example = /windows/i.test(state.host?.platform || '') ? 'D:\\Servers\\Valheim' : '/home/me/minecraft';
+  const gameOptions = (selected) =>
+    `<option value="">Pick the game…</option>${templates.map((t) => `<option value="${esc(t.id)}" ${t.id === selected ? 'selected' : ''}>${esc(t.icon || '🎮')} ${esc(t.name)}</option>`).join('')}`;
+  let found = [];
+
   const modal = openModal({
-    title: 'Import an existing server',
-    width: 620,
+    title: 'Import existing servers',
+    width: 720,
     body: `
       <p class="faint" style="margin-top:0;line-height:1.6">
-        Already running a server on this machine? Point the panel at its folder and pick the game. Nothing is downloaded or reinstalled.
+        Moving from Pterodactyl, AMP or LinuxGSM, or already running a server on this machine? Nothing is downloaded or reinstalled.
       </p>
+      <div class="field-label">Found on this machine</div>
+      <div id="imp-found" class="imp-found"><span class="spinner"></span> Looking for Pterodactyl, AMP and LinuxGSM servers…</div>
+      <details class="mt-8" id="imp-ptero">
+        <summary class="faint" style="cursor:pointer">Pterodactyl names, memory and ports from its panel (optional)</summary>
+        <div class="form-grid mt-8">
+          <label><span>Panel address</span><input id="imp-ptero-url" placeholder="https://panel.example.com" /></label>
+          <label><span>Application API key</span><input id="imp-ptero-key" type="password" placeholder="ptla_…" autocomplete="off" /></label>
+        </div>
+        <div class="row mt-8" style="justify-content:flex-end"><button class="btn btn-sm" id="imp-ptero-go">Fill in from Pterodactyl</button></div>
+      </details>
+
+      <div class="field-label mt-16">Or a folder</div>
+      <label class="field"><span>Folder on this machine</span>
+        <input id="imp-path" class="mono" placeholder="${esc(example)}" spellcheck="false" />
+        <div class="hint" id="imp-detected"></div>
+      </label>
       <div class="form-grid">
-        <label><span>Game</span><select id="imp-template">${templates
-          .map((t) => `<option value="${esc(t.id)}">${esc(t.icon || '🎮')} ${esc(t.name)}</option>`)
-          .join('')}</select></label>
+        <label><span>Game</span><select id="imp-template">${gameOptions('')}</select></label>
         <label><span>Server name</span><input id="imp-name" placeholder="My server" /></label>
       </div>
-      <label class="field mt-16"><span>Folder on this machine</span>
-        <input id="imp-path" class="mono" placeholder="${esc(example)}" spellcheck="false" />
-      </label>
-      <div class="field-label mt-16">Files</div>
-      <div class="checkbox-row"><input type="radio" name="imp-mode" id="imp-inplace" value="inplace" checked /><label for="imp-inplace">Use the folder where it is (deleting the server in the panel never deletes these files)</label></div>
-      <div class="checkbox-row"><input type="radio" name="imp-mode" id="imp-copy" value="copy" /><label for="imp-copy">Copy it into the panel's own folder and leave the original alone</label></div>
       <label class="field mt-16"><span>Start command (optional)</span>
         <input id="imp-start" class="mono" placeholder="Leave empty to start it the way the game's template does" spellcheck="false" />
-        <div class="hint">For a custom jar or launch script, e.g. <span class="mono">java -Xmx4G -jar server.jar nogui</span>. You can change it later in Settings.</div>
       </label>
-      <div class="hint mt-16">Moving a server from another GamePanel? Unpack its export into a folder and point here: the game and settings come from the export.</div>
-      <div class="hint mt-16">The panel's service account needs to be able to read and write the folder. Ports come from the server's own config when the panel can find them.</div>`,
+
+      <div class="field-label mt-16">Files</div>
+      <div class="checkbox-row"><input type="radio" name="imp-mode" id="imp-copy" value="copy" checked /><label for="imp-copy">Copy into the panel's own folder and leave the original alone (safest)</label></div>
+      <div class="checkbox-row"><input type="radio" name="imp-mode" id="imp-inplace" value="inplace" /><label for="imp-inplace">Use the folders where they are (stop them in the old panel first; deleting in GamePanel never deletes them)</label></div>
+      <div class="hint mt-16">Moving a server from another GamePanel? Unpack its export into a folder and point here: the game and settings come from the export. The panel's service account needs to read (and, in place, write) the folders.</div>`,
     actions: [
       { label: 'Cancel', close: true },
-      {
-        label: 'Import',
-        primary: true,
-        onClick: async (btn) => {
-          const template = state.templates.find((t) => t.id === $('#imp-template').value);
-          btn.disabled = true;
-          btn.innerHTML = '<span class="spinner"></span> Importing…';
-          try {
-            const data = await api('/api/servers/import', {
-              method: 'POST',
-              body: {
-                templateId: template.id,
-                name: $('#imp-name').value.trim(),
-                path: $('#imp-path').value.trim(),
-                mode: $('#imp-copy').checked ? 'copy' : 'inplace',
-                startCommand: $('#imp-start').value.trim(),
-                autoStart: false,
-              },
-            });
-            await loadServers();
-            modal.close();
-            toast('Server imported');
-            location.hash = `#/servers/${data.server.id}/console`;
-          } catch (err) {
-            toast(err.message, 'error');
-            btn.disabled = false;
-            btn.textContent = 'Import';
-          }
-        },
-      },
+      { label: 'Import', primary: true, onClick: (btn) => runImport(btn) },
     ],
   });
-  $('#imp-path').focus();
+
+  const drawFound = () => {
+    const box = $('#imp-found');
+    if (!box) return;
+    if (!found.length) {
+      box.innerHTML = '<p class="faint" style="margin:0">No Pterodactyl, AMP or LinuxGSM servers found here. Use a folder below.</p>';
+      return;
+    }
+    box.innerHTML = found
+      .map(
+        (f, i) => `<div class="imp-row">
+          <input type="checkbox" data-pick="${i}" ${f.templateId ? 'checked' : ''} />
+          <div class="grow">
+            <div class="imp-top"><span class="chip">${esc(SOURCES[f.source] || f.source)}</span><input data-name="${i}" value="${esc(f.name)}" /></div>
+            <div class="imp-meta mono" title="${esc(f.path)}">${f.ports?.game ? `port ${f.ports.game} · ` : ''}${f.memory ? `${f.memory} MB · ` : ''}${esc(f.path)}</div>
+            ${f.note ? `<div class="hint" style="margin:2px 0 0">${esc(f.note)}</div>` : ''}
+          </div>
+          <select data-game="${i}">${gameOptions(f.templateId)}</select>
+        </div>`
+      )
+      .join('');
+  };
+
+  api('/api/import/scan')
+    .then((r) => {
+      found = r.found;
+      drawFound();
+    })
+    .catch((err) => {
+      const box = $('#imp-found');
+      if (box) box.innerHTML = `<p class="faint" style="margin:0">${esc(err.message)}</p>`;
+    });
+
+  $('#imp-ptero-go').addEventListener('click', async (event) => {
+    const btn = event.currentTarget;
+    btn.disabled = true;
+    try {
+      const r = await api('/api/import/pterodactyl', { method: 'POST', body: { url: $('#imp-ptero-url').value, key: $('#imp-ptero-key').value } });
+      found = [...r.found, ...found.filter((f) => f.source !== 'pterodactyl')];
+      drawFound();
+      toast(`Matched ${r.found.length} Pterodactyl server${r.found.length === 1 ? '' : 's'}`);
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+    btn.disabled = false;
+  });
+
+  // Point at a folder: recognise the game and fill in what it gives away.
+  let manual = null;
+  $('#imp-path').addEventListener('change', async () => {
+    const p = $('#imp-path').value.trim();
+    manual = null;
+    $('#imp-detected').textContent = '';
+    if (!p) return;
+    try {
+      manual = await api('/api/import/inspect', { method: 'POST', body: { path: p } });
+      const t = templates.find((x) => x.id === manual.templateId);
+      $('#imp-detected').textContent = t ? `Looks like ${t.name}${manual.path !== p ? ` (in ${manual.path})` : ''}${manual.ports?.game ? `, port ${manual.ports.game}` : ''}.` : 'Could not tell which game this is: pick it below.';
+      if (t) $('#imp-template').value = t.id;
+      if (!$('#imp-name').value) $('#imp-name').value = manual.motd || manual.name;
+      if (!$('#imp-start').value && manual.startCommand) $('#imp-start').value = manual.startCommand;
+    } catch (err) {
+      $('#imp-detected').textContent = err.message;
+    }
+  });
+
+  async function runImport(btn) {
+    const mode = $('#imp-copy').checked ? 'copy' : 'inplace';
+    const items = [];
+    document.querySelectorAll('#imp-found [data-pick]').forEach((box) => {
+      if (!box.checked) return;
+      const i = Number(box.dataset.pick);
+      const f = found[i];
+      items.push({ ...f, name: document.querySelector(`[data-name="${i}"]`).value.trim() || f.name, templateId: document.querySelector(`[data-game="${i}"]`).value });
+    });
+    const p = $('#imp-path').value.trim();
+    if (p) items.push({ ...(manual || {}), path: manual?.path || p, name: $('#imp-name').value.trim(), templateId: $('#imp-template').value, startCommand: $('#imp-start').value.trim() });
+    if (!items.length) return toast('Pick a found server or enter a folder', 'error');
+    const missing = items.find((x) => !x.templateId);
+    if (missing) return toast(`Pick the game for ${missing.name || missing.path}`, 'error');
+
+    btn.disabled = true;
+    const done = [];
+    const failed = [];
+    for (const [n, item] of items.entries()) {
+      btn.innerHTML = `<span class="spinner"></span> Importing ${n + 1} of ${items.length}…`;
+      try {
+        const data = await api('/api/servers/import', {
+          method: 'POST',
+          body: { templateId: item.templateId, name: item.name, path: item.path, mode, startCommand: item.startCommand || '', ports: item.ports, memory: item.memory, maxPlayers: item.maxPlayers, autoStart: false },
+        });
+        done.push(data.server);
+      } catch (err) {
+        failed.push(`${item.name || item.path}: ${err.message}`);
+      }
+    }
+    await loadServers();
+    if (failed.length) {
+      toast(`${done.length} imported. ${failed.join(' · ')}`, done.length ? 'warn' : 'error', 9000);
+      btn.disabled = false;
+      btn.textContent = 'Import';
+      if (!done.length) return;
+    } else toast(done.length === 1 ? 'Server imported' : `${done.length} servers imported`);
+    modal.close();
+    location.hash = done.length === 1 ? `#/servers/${done[0].id}/console` : '#/servers';
+  }
+
   return modal;
 }

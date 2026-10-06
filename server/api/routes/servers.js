@@ -50,6 +50,22 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
     return { server: manager.publicServer(server) };
   });
 
+  /** Servers other panels (Pterodactyl, AMP, LinuxGSM) left on this machine, ready to import. */
+  router.get('/api/import/scan', ({ user }) => {
+    requireAdmin(user);
+    return { found: require('../../features/import-scan').scanAll(manager) };
+  });
+
+  router.post('/api/import/pterodactyl', async ({ user, body }) => {
+    requireAdmin(user);
+    return { found: await require('../../features/import-scan').scanPterodactylWithApi(manager.templates, body || {}) };
+  });
+
+  router.post('/api/import/inspect', ({ user, body }) => {
+    requireAdmin(user);
+    return require('../../features/import-scan').inspect(manager, body?.path);
+  });
+
   router.get('/api/servers/:id', ({ user, params }) => {
     const server = serverFor(user, params.id);
     const template = manager.template(server);
