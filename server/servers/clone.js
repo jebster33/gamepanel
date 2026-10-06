@@ -93,7 +93,9 @@ module.exports = {
     }
     const tmp = await fsp.mkdtemp(path.join(os.tmpdir(), 'gp-export-'));
     await fsp.writeFile(path.join(tmp, MANIFEST), JSON.stringify(manifest, null, 2), { mode: 0o600 });
-    const proc = spawn(TAR, ['-czf', '-', '-C', tmp, MANIFEST, '-C', server.dir, '.'], { stdio: ['ignore', 'pipe', 'ignore'], windowsHide: true });
+    // A file of that name inside the server (a mod or a player could put one there) is left out, and the real
+    // manifest goes last, so whatever is unpacked at the other end, the real one is what stays.
+    const proc = spawn(TAR, ['-czf', '-', `--exclude=./${MANIFEST}`, '-C', server.dir, '.', '-C', tmp, MANIFEST], { stdio: ['ignore', 'pipe', 'ignore'], windowsHide: true });
     proc.on('close', () => fsp.rm(tmp, { recursive: true, force: true }).catch(() => {}));
     return { proc, stream: proc.stdout };
   },
