@@ -30,6 +30,9 @@ module.exports = (router, { store, auth, manager, hostMetrics, notifier, bridge 
     return { events: visible.slice(0, limit) };
   });
 
+  /** The bell in the top bar: recent events this account may see. */
+  router.get('/api/notifications', ({ user }) => ({ notifications: require('../../features/live-notifications').list(store, auth, user) }));
+
   /** Who changed what, from the audit log. Administrators only. */
   router.get('/api/audit', ({ user, url }) => {
     requireAdmin(user);

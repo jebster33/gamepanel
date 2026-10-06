@@ -53,7 +53,8 @@ async function main() {
   const notifier = new Notifier(store);
   const bridge = new Bridge({ store, manager, secret });
   if (bridge.enabled) bridge.identity();
-  const api = createApi({ store, auth, manager, templates, hostMetrics, scheduler, notifier, bridge });
+  const api = createApi({ store, auth, manager, templates, hostMetrics, scheduler, notifier, bridge, wss });
+  require('./features/live-notifications').start({ store, auth, wss });
 
   /* ------------------------------------------------------ static assets -- */
 

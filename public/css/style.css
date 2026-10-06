@@ -618,6 +618,116 @@ textarea {
   gap: 6px;
 }
 
+/* The bell: recent events, unread count, pop-up switch. */
+.bell-wrap {
+  position: relative;
+}
+#bell-btn {
+  position: relative;
+}
+.bell-badge {
+  position: absolute;
+  top: -3px;
+  right: -4px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  font: 600 10px/16px var(--mono);
+  text-align: center;
+  color: var(--lime-ink);
+  background: var(--lime);
+  border-radius: 99px;
+}
+.bell-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 150;
+  width: min(380px, calc(100vw - 24px));
+  max-height: min(520px, calc(100vh - 90px));
+  display: flex;
+  flex-direction: column;
+  background: var(--raised);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.bell-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.bell-head b {
+  margin-right: auto;
+}
+.bell-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+  cursor: pointer;
+}
+.bell-toggle input {
+  width: auto;
+  margin: 0;
+}
+.bell-list {
+  overflow-y: auto;
+}
+.bell-item {
+  display: flex;
+  gap: 10px;
+  padding: 10px 14px;
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+}
+.bell-item:last-child {
+  border-bottom: 0;
+}
+a.bell-item[href]:hover {
+  background: var(--hover);
+  text-decoration: none;
+}
+.bell-text {
+  display: grid;
+  gap: 2px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.bell-text .faint {
+  font-size: 11px;
+}
+.bell-dot {
+  flex-shrink: 0;
+  width: 7px;
+  height: 7px;
+  margin-top: 6px;
+  border-radius: 50%;
+  background: var(--faint);
+}
+.bell-item.unread .bell-dot {
+  background: var(--lime);
+}
+.bell-item.unread.warn .bell-dot {
+  background: var(--amber);
+}
+.bell-item.unread.error .bell-dot {
+  background: var(--red);
+}
+@media (max-width: 640px) {
+  .bell-panel {
+    position: fixed;
+    top: calc(var(--topbar-height) + 6px);
+    right: 12px;
+  }
+}
+
 .conn-dot {
   display: inline-flex;
   align-items: center;

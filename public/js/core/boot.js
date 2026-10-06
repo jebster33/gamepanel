@@ -3,6 +3,7 @@ import { connectWebSocket } from './live.js';
 import { handleRoute } from './router.js';
 import { state } from './state.js';
 import { $, $$, can } from './util.js';
+import { initNotifications } from '../ui/notifications.js';
 import { renderSidebarServers, setBridgeNav } from '../ui/sidebar.js';
 
 /* ------------------------------------------------------------------ auth */
@@ -59,6 +60,7 @@ export async function enterApp() {
   await Promise.allSettled([loadServers(), loadTemplates(), loadSystem()]);
   setBridgeNav(state.bridgeEnabled);
   connectWebSocket();
+  initNotifications();
   renderSidebarServers();
   handleRoute();
 }

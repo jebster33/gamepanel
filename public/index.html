@@ -163,6 +163,20 @@
           <div class="crumbs" id="crumbs"></div>
           <div class="topbar-actions">
             <span class="conn-dot" id="ws-status" title="Live connection"></span>
+            <div class="bell-wrap">
+              <button class="icon-btn" id="bell-btn" title="Notifications" aria-haspopup="true" aria-expanded="false">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15zM10 20a2 2 0 0 0 4 0"/></svg>
+                <span class="bell-badge hidden" id="bell-badge"></span>
+              </button>
+              <div class="bell-panel hidden" id="bell-panel" role="dialog" aria-label="Notifications">
+                <div class="bell-head">
+                  <b>Notifications</b>
+                  <label class="bell-toggle" title="Show important ones as a pop-up"><input type="checkbox" id="bell-popups" /> Pop-ups</label>
+                  <button class="btn btn-sm hidden" id="bell-desktop">Desktop alerts</button>
+                </div>
+                <div class="bell-list" id="bell-list"></div>
+              </div>
+            </div>
             <button class="icon-btn" id="theme-toggle" title="Toggle theme">
               <svg id="theme-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
             </button>
