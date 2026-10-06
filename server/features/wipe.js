@@ -66,6 +66,7 @@ async function wipe(manager, server, { blueprints = false, newSeed = false, upda
   for (const name of files) fs.rmSync(path.join(dir, name), { force: true });
   log(`Deleted ${files.length} save file${files.length === 1 ? '' : 's'}${blueprints ? ', blueprints included' : ''}`);
   let seed = null;
+  let startError = null;
   if (newSeed && spec.seedVar) {
     seed = crypto.randomInt(1, 2_147_483_647);
     manager.update(server.id, { vars: { [spec.seedVar]: seed } });
@@ -75,9 +76,11 @@ async function wipe(manager, server, { blueprints = false, newSeed = false, upda
   manager.store.save();
   if (wasRunning || server.autoStart) {
     log('Starting on the fresh map');
-    await manager.start(server.id);
+    // The wipe itself is done; a server that will not start is reported, not undone.
+    startError = await manager.start(server.id).then(() => null, (err) => err.message);
+    if (startError) log(`Could not start it again: ${startError}`);
   }
-  return { deleted: files.length, blueprints: Boolean(blueprints), seed };
+  return { deleted: files.length, blueprints: Boolean(blueprints), seed, startError: startError || null };
 }
 
 /** The first given weekday of a month: day 1 to 7. */

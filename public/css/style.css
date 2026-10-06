@@ -1615,6 +1615,33 @@ tbody tr:hover {
   border: 1px solid var(--border);
   border-radius: var(--radius);
 }
+.mod-issues {
+  max-height: 340px;
+  overflow: auto;
+}
+.mod-issue {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 8px 0;
+  font-size: 13px;
+  border-top: 1px solid var(--border);
+}
+.mod-issue .dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  margin-top: 5px;
+  border-radius: 50%;
+  background: var(--amber);
+}
+.mod-issue.error .dot {
+  background: var(--red);
+}
+.mod-issue .mono {
+  font-size: 11px;
+  word-break: break-all;
+}
 .share-link {
   flex: 1;
   min-width: 0;

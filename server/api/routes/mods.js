@@ -24,11 +24,18 @@ module.exports = (router, { store, manager }, { serverFor, integrations }) => {
       supported: true,
       providers: mods.providersFor(template),
       context: { loader: ctx.loader, loaderLabel: ctx.loaderLabel, gameVersion: ctx.gameVersion || null, projectType: ctx.projectType, dir: ctx.dir, filter: describe(ctx) },
+      checkable: ctx.game === 'minecraft' && Boolean(require('../../features/mods/conflicts').acceptedKinds(ctx.loader, ctx.gameVersion)),
       workshop: template.mods.workshop?.strategy ? { strategy: template.mods.workshop.strategy } : template.mods.providers?.includes('workshop') ? { strategy: 'copy' } : null,
       installed: await mods.listInstalled(server, template),
       keys: { curseforge: Boolean(keys.curseforgeKey), workshop: Boolean(keys.steamApiKey), factorio: Boolean(keys.factorio?.token) },
       running: manager.isActive(server.id),
     };
+  });
+
+  /** Look inside the installed jars for wrong loaders, missing dependencies and clashes. */
+  router.get('/api/servers/:id/mods/check', ({ user, params }) => {
+    const { server, template } = modTarget(user, params.id);
+    return require('../../features/mods/conflicts').check(server, template);
   });
 
   router.get('/api/servers/:id/mods/search', async ({ user, params, url }) => {

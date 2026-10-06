@@ -301,8 +301,10 @@ function installedHtml(info) {
     <div class="card-head">
       <h4>Installed <span class="faint" style="letter-spacing:0">${items.length}</span></h4>
       <div class="spacer"></div>
+      ${info.checkable && items.length ? `<button class="btn btn-sm" id="mod-conflicts" title="Look inside the jars for problems">${icon('check', 12)} Check</button>` : ''}
       ${items.some((i) => i.key) ? `<button class="btn btn-sm" id="mod-check-updates">${icon('refresh', 12)} Updates</button>` : ''}
     </div>
+    <div id="mod-check"></div>
     <div id="mod-updates"></div>
     ${
       items.length
@@ -332,8 +334,44 @@ function installedRow(item) {
     </div>`;
 }
 
+/** Shows the jar check: quietly when there is nothing wrong, unless asked. */
+async function runModCheck(server, { quiet = false } = {}) {
+  const out = $('#mod-check');
+  if (!out) return;
+  if (!quiet) out.innerHTML = '<div class="faint mb-16"><span class="spinner"></span> Looking inside the jars…</div>';
+  try {
+    const r = await api(`/api/servers/${server.id}/mods/check`);
+    if (!out.isConnected) return;
+    const errors = r.issues.filter((i) => i.severity === 'error').length;
+    if (!r.issues.length) {
+      out.innerHTML = quiet ? '' : `<div class="filter-note mb-16">${icon('check', 12)} ${r.checked} jar${r.checked === 1 ? '' : 's'} checked: no problems found.</div>`;
+      return;
+    }
+    out.innerHTML = `
+      <div class="share-box mod-issues mb-16">
+        <div class="row mb-16"><b>${errors ? `${errors} problem${errors === 1 ? '' : 's'}` : `${r.issues.length} warning${r.issues.length === 1 ? '' : 's'}`}</b>
+          <span class="faint">${r.checked} jars, ${esc([r.loader, r.gameVersion].filter(Boolean).join(' '))}</span>
+          <div class="spacer"></div><button class="btn btn-sm btn-ghost" data-close-check title="Hide">${icon('kill', 12)}</button></div>
+        ${r.issues
+          .map(
+            (i) => `<div class="mod-issue ${i.severity}">
+              <span class="dot"></span>
+              <div class="grow"><div>${esc(i.message)}</div><div class="faint mono">${esc(i.file)}</div></div>
+            </div>`
+          )
+          .join('')}
+      </div>`;
+    out.querySelector('[data-close-check]').addEventListener('click', () => (out.innerHTML = ''));
+  } catch (err) {
+    if (!quiet) out.innerHTML = `<div class="filter-note mb-16">${esc(err.message)}</div>`;
+  }
+}
+
 function wireInstalled(server, info, refresh) {
   const box = $('#mod-installed');
+  $('#mod-conflicts')?.addEventListener('click', () => runModCheck(server));
+  // A quiet look every time the list is shown: only speaks up when something is wrong.
+  if (info.checkable && info.installed.items.length) runModCheck(server, { quiet: true });
   box.querySelectorAll('[data-mod]').forEach((row) => {
     const id = row.dataset.mod;
     const item = info.installed.items.find((i) => (i.key || i.name) === id);

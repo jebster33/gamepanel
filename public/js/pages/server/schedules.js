@@ -337,7 +337,7 @@ async function openWipeModal(server, onDone) {
               body: { blueprints: $('#wn-bp').checked, newSeed: $('#wn-seed').checked, updateFirst: $('#wn-update').checked },
             });
             modal.close();
-            toast(`Wiped: ${r.deleted} file${r.deleted === 1 ? '' : 's'} deleted${r.seed ? `, new seed ${r.seed}` : ''}`);
+            toast(`Wiped: ${r.deleted} file${r.deleted === 1 ? '' : 's'} deleted${r.seed ? `, new seed ${r.seed}` : ''}${r.startError ? `. It did not start again: ${r.startError}` : ''}`, r.startError ? 'warn' : 'info');
             onDone();
           } catch (err) {
             toast(err.message, 'error');
