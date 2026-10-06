@@ -20,7 +20,6 @@ const { ServerManager } = require('./servers/manager');
 const { HostMetrics, stopSampler } = require('./features/metrics');
 const { Scheduler } = require('./features/scheduler');
 const { Notifier } = require('./features/notify');
-const { Nodes } = require('./features/nodes');
 const { createApi, VERSION } = require('./api');
 
 const MIME = {
@@ -36,6 +35,7 @@ const MIME = {
   '.woff2': 'font/woff2',
   '.webmanifest': 'application/manifest+json',
 };
+const { Nodes } = require('./features/nodes');
 
 async function main() {
   ensureDirs();
@@ -46,11 +46,10 @@ async function main() {
   const wss = new WebSocketServer();
   const hostMetrics = new HostMetrics();
   const manager = new ServerManager(store, templates, wss);
+  const nodes = (manager.nodes = new Nodes({ store, manager, wss }));
   const scheduler = new Scheduler(manager, store);
   const notifier = new Notifier(store);
-  const nodes = new Nodes({ store, manager, wss });
-  manager.nodes = nodes;
-  const api = createApi({ store, auth, manager, templates, hostMetrics, scheduler, notifier, nodes });
+  const api = createApi({ store, auth, manager, templates, hostMetrics, scheduler, notifier });
 
   /* ------------------------------------------------------ static assets -- */
 
@@ -238,8 +237,8 @@ async function main() {
     shuttingDown = true;
     logger.info(`Received ${signal}, shutting down…`);
     clearInterval(systemTimer);
-    scheduler.stop();
     nodes.stop();
+    scheduler.stop();
     stopSampler();
     wss.close();
     server.close();

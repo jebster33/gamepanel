@@ -4,8 +4,8 @@ const { fail, logger } = require('../../core/util');
 const { rconCommand } = require('../../games/rcon');
 const { query } = require('../../games/query');
 
-module.exports = (router, { store, manager, scheduler, auth }, { requireAdmin, requireCap, serverFor, visibleServers, allVisibleServers }) => {
-  router.get('/api/servers', ({ user, url }) => ({ servers: url.searchParams.get('local') === '1' ? visibleServers(user) : allVisibleServers(user) }));
+module.exports = (router, { store, manager, scheduler }, { requireAdmin, requireCap, serverFor, visibleServers }) => {
+  router.get('/api/servers', ({ user }) => ({ servers: visibleServers(user) }));
 
   router.post('/api/servers', async ({ user, body }) => {
     requireAdmin(user);
@@ -297,7 +297,7 @@ module.exports = (router, { store, manager, scheduler, auth }, { requireAdmin, r
     const unban = Boolean(body?.unban);
     const results = [];
     for (const server of manager.servers) {
-      if (user.role !== 'admin' && !((user.servers || []).includes(server.id) && auth.can(user, 'command', server.id))) continue;
+      if (user.role !== 'admin' && !canCommand(user, server.id)) continue;
       if (!lists.listsFor(manager.template(server))?.bans) continue;
       try {
         await lists.changeList(manager, server, { list: 'bans', action: unban ? 'remove' : 'add', name: body?.name, reason: body?.reason }, user.username);
@@ -311,6 +311,15 @@ module.exports = (router, { store, manager, scheduler, auth }, { requireAdmin, r
     return { results };
   });
 
+  const canCommand = (user, id) => {
+    try {
+      serverFor(user, id, 'command');
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   /** Say something in the chat of every running server this account can command. */
   router.post('/api/servers/broadcast', async ({ user, body }) => {
     requireCap(user, 'command');
@@ -320,7 +329,7 @@ module.exports = (router, { store, manager, scheduler, auth }, { requireAdmin, r
     const results = [];
     for (const server of visibleServers(user)) {
       const line = command(manager.template(server));
-      if (!line || !manager.isActive(server.id) || !auth.can(user, 'command', server.id)) continue;
+      if (!line || !manager.isActive(server.id) || !canCommand(user, server.id)) continue;
       try {
         await manager.sendCommand(server.id, require('../../games/players').fillBroadcast(line, message));
         results.push({ server: server.name, ok: true });

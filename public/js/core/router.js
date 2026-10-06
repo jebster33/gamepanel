@@ -3,13 +3,13 @@ import { state } from './state.js';
 import { $, $$ } from './util.js';
 import { renderAccount } from '../pages/account.js';
 import { renderActivity } from '../pages/activity.js';
-import { renderAudit } from '../pages/audit.js';
 import { renderDashboard } from '../pages/dashboard.js';
 import { renderNodes } from '../pages/nodes.js';
 import { renderServerDetail } from '../pages/server/detail.js';
 import { renderServers } from '../pages/servers.js';
 import { renderSettings } from '../pages/settings.js';
 import { renderTemplates } from '../pages/templates.js';
+import { renderAudit } from '../pages/audit.js';
 import { renderUsers } from '../pages/users.js';
 import { closeSidebar, renderSidebarServers } from '../ui/sidebar.js';
 
@@ -25,10 +25,10 @@ const ROUTES = [
   { pattern: /^\/servers\/([^/]+)(?:\/([^/]+))?$/, name: 'server', keys: ['id', 'tab'], page: renderServerDetail },
   { pattern: /^\/(?:templates|deploy)$/, name: 'templates', page: renderTemplates },
   { pattern: /^\/activity$/, name: 'activity', page: renderActivity },
-  { pattern: /^\/account$/, name: 'account', page: renderAccount },
-  { pattern: /^\/users$/, name: 'users', page: renderUsers },
   { pattern: /^\/audit$/, name: 'audit', page: renderAudit },
   { pattern: /^\/nodes$/, name: 'nodes', page: renderNodes },
+  { pattern: /^\/account$/, name: 'account', page: renderAccount },
+  { pattern: /^\/users$/, name: 'users', page: renderUsers },
   { pattern: /^\/settings(?:\/([^/]+))?$/, name: 'settings', keys: ['section'], page: renderSettings },
 ];
 

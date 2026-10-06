@@ -21,7 +21,7 @@ const { RateLimiter } = require('../core/ratelimit');
 const audit = require('../features/audit');
 
 const VERSION = require('../../package.json').version;
-const ROUTES = ['auth', 'system', 'templates', 'servers', 'files', 'mods', 'network', 'backups', 'users', 'nodes'];
+const ROUTES = ['auth', 'system', 'templates', 'servers', 'files', 'mods', 'network', 'backups', 'users'];
 
 /** @param {{store, auth, manager, templates, hostMetrics, scheduler, notifier}} app */
 function createApi(app) {
@@ -41,8 +41,15 @@ function createApi(app) {
    * to a node, are passed through to that panel. Administrators only.
    */
   async function proxyToNode(req, res, url) {
-    const nodes = app.nodes;
+    const nodes = app.manager.nodes;
     if (!nodes?.list.length) return false;
+    // The server list: administrators also get the servers on other nodes.
+    if (req.method === 'GET' && url.pathname === '/api/servers' && url.searchParams.get('local') !== '1') {
+      const user = app.auth.userFromRequest(req);
+      if (user?.role !== 'admin') return false;
+      json(res, 200, { servers: [...app.manager.servers.map((s) => app.manager.publicServer(s)), ...nodes.remoteServers()] });
+      return true;
+    }
     let node;
     let path;
     const direct = url.pathname.match(/^\/api\/nodes\/([^/]+)\/proxy(\/api\/.*)$/);

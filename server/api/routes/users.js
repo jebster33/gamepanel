@@ -12,6 +12,7 @@ const PRESETS = [
 ];
 
 module.exports = (router, { store, auth, manager }, { requireAdmin }) => {
+  require('./nodes')(router, { store, nodes: manager.nodes }, { requireAdmin });
   router.get('/api/users', ({ user }) => {
     requireAdmin(user);
     return { users: auth.users.map((u) => auth.publicUser(u)), capabilities: CAPABILITIES, defaults: DEFAULT_PERMISSIONS, requireAdmin2fa: Boolean(store.state.settings.requireAdmin2fa) };
