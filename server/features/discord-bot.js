@@ -1,8 +1,8 @@
 'use strict';
 
 /**
- * A Discord bot with slash commands: /status, /players, /start, /stop,
- * /restart. It connects out to Discord's gateway, so it works behind a home
+ * A Discord bot with slash commands: /status, /players, /whois, /start,
+ * /stop, /restart. It connects out to Discord's gateway, so it works behind a home
  * router with no public address or open port.
  *
  * integrations.discordBot = { token, controllers: "123,456" }
@@ -22,6 +22,7 @@ const server = (required = true) => ({ type: 3, name: 'server', description: 'Wh
 const COMMANDS = [
   { name: 'status', description: 'Show every game server and who is online' },
   { name: 'players', description: 'Who is on a server right now', options: [server()] },
+  { name: 'whois', description: 'When a player was last on, and how long they have played', options: [{ type: 3, name: 'player', description: 'Player name', required: true }] },
   { name: 'start', description: 'Start a server', options: [server()] },
   { name: 'stop', description: 'Stop a server', options: [server()] },
   { name: 'restart', description: 'Restart a server', options: [server()] },
@@ -165,6 +166,19 @@ class DiscordBot {
         return `${on ? '🟢' : rt.status === STATUS.STARTING ? '🟡' : '🔴'} **${clean(s.name)}** ${on ? `· ${count} online` : `· ${rt.status}`}`;
       });
       return respond(null, [{ title: this.store.state.settings?.panelName || 'GamePanel', description: lines.join('\n') || 'No servers yet.', color: LIME }]);
+    }
+
+    if (name === 'whois') {
+      const wanted = String(options.player || '').trim().toLowerCase();
+      const rows = (this.manager.searchPlayers?.(this.manager.servers.map((s) => s.id), wanted) || []).filter((p) => p.name.toLowerCase() === wanted);
+      if (!rows.length) return respond(`Nobody called ${clean(options.player || '')} has played here.`, null, true);
+      const hours = (sec) => (sec < 3600 ? `${Math.round(sec / 60)}m` : `${(sec / 3600).toFixed(1)}h`);
+      const total = rows.reduce((n, p) => n + p.seconds, 0);
+      const lines = rows.map((p) => {
+        const s = this.manager.servers.find((x) => x.id === p.serverId);
+        return `**${clean(s?.name || p.serverId)}** · ${hours(p.seconds)} · ${p.online ? '🟢 online now' : `last seen <t:${Math.round(p.last / 1000)}:R>`}`;
+      });
+      return respond(null, [{ title: clean(rows[0].name), description: lines.join('\n'), color: LIME, footer: { text: `${hours(total)} played in total` } }]);
     }
 
     const target = this.findServer(options.server);

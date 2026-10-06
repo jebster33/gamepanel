@@ -511,7 +511,7 @@ function waitForPanel(attempt = 0) {
   }, 2000);
 }
 
-/** Slash commands in Discord: /status, /players, /start, /stop, /restart. */
+/** Slash commands in Discord: /status, /players, /whois, /start, /stop, /restart. */
 async function renderDiscordBot() {
   const host = $('#db-body');
   if (!host) return;
@@ -520,13 +520,13 @@ async function renderDiscordBot() {
   const pill = { online: `<span class="badge accent">Online as ${esc(st.user || 'bot')}</span>`, connecting: '<span class="badge warn">Connecting…</span>', error: '<span class="badge bad">Not connected</span>', off: '<span class="badge">Off</span>' }[st.status] || '';
   host.classList.remove('faint');
   host.innerHTML = `
-    <p class="faint" style="margin:0 0 12px">Lets your Discord use <span class="mono">/status</span>, <span class="mono">/players</span>, <span class="mono">/start</span>, <span class="mono">/stop</span> and <span class="mono">/restart</span>. It connects out to Discord, so no port needs opening.</p>
+    <p class="faint" style="margin:0 0 12px">Lets your Discord use <span class="mono">/status</span>, <span class="mono">/players</span>, <span class="mono">/whois</span>, <span class="mono">/start</span>, <span class="mono">/stop</span> and <span class="mono">/restart</span>. It connects out to Discord, so no port needs opening.</p>
     <div style="margin-bottom:12px">${pill}${st.error ? ` <span class="faint">${esc(st.error)}</span>` : ''}${st.invite ? ` <a href="${esc(st.invite)}" target="_blank" rel="noopener">Add the bot to your Discord</a>` : ''}</div>
     <div class="form-grid">
       <label><span>Bot token</span><input id="db-token" type="password" placeholder="${st.configured ? 'Saved (leave empty to keep)' : 'From discord.com/developers'}" autocomplete="off" /></label>
       <label><span>Who can start/stop (Discord user IDs)</span><input id="db-controllers" value="${esc(st.controllers)}" placeholder="123456789012345678, …" /></label>
     </div>
-    <div class="hint">Create an application at discord.com/developers, add a Bot, copy its token here. Everyone in your Discord can use /status and /players. Only the user IDs listed can start, stop or restart (right-click a user with Developer Mode on, then Copy User ID).</div>
+    <div class="hint">Create an application at discord.com/developers, add a Bot, copy its token here. Everyone in your Discord can use /status, /players and /whois. Only the user IDs listed can start, stop or restart (right-click a user with Developer Mode on, then Copy User ID).</div>
     <div class="row mt-16" style="gap:8px">
       <button class="btn" id="db-save">Save</button>
       ${st.configured ? '<button class="btn btn-ghost" id="db-off">Turn off</button>' : ''}
