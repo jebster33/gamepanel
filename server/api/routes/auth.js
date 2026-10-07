@@ -143,7 +143,7 @@ module.exports = (router, app) => {
   router.get('/api/auth/api-keys', ({ user }) => ({ keys: auth.listApiKeys(user.id) }));
 
   router.post('/api/auth/api-keys', ({ user, req, body }) => {
-    const created = auth.createApiKey(user.id, { name: body?.name, readOnly: Boolean(body?.readOnly) });
+    const created = auth.createScriptKey(user.id, { name: body?.name, readOnly: Boolean(body?.readOnly) });
     store.addEvent('user.api_key', `${user.username} created the API key "${created.name}"${created.readOnly ? ' (read-only)' : ''}`, { ip: clientIp(req) });
     return created;
   });

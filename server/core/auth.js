@@ -497,7 +497,7 @@ class Auth {
 
   /* API keys: for scripts and bots. Stored hashed; read-only keys can only GET. */
 
-  createApiKey(userId, { name, readOnly = false } = {}) {
+  createScriptKey(userId, { name, readOnly = false } = {}) {
     const user = this.users.find((u) => u.id === userId);
     if (!user) fail(404, 'User not found');
     const label = String(name || '').trim().slice(0, 40);

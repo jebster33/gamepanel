@@ -135,7 +135,7 @@ test('a session token in the query string is not accepted', async () => {
 });
 
 test('an API key cannot create accounts through a server Access tab', async () => {
-  const { key } = auth.createApiKey(admin.id, { name: 'bot' });
+  const { key } = auth.createScriptKey(admin.id, { name: 'bot' });
   const res = await call('POST', '/api/servers/custom1/access', { token: key, body: { username: 'sneaky', password: 'a very long password', permissions: ['console'] } });
   assert.strictEqual(res.status, 401);
   assert.ok(!auth.findByUsername('sneaky'));

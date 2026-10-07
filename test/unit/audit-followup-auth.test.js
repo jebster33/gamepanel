@@ -55,7 +55,7 @@ test('logging out ends that session on the server, even if a copy of the token i
 
 test('a password change or "sign out everywhere" also revokes API keys', async () => {
   const { app, auth, user } = setup();
-  const key = auth.createApiKey(user.id, { name: 'script' }).key;
+  const key = auth.createScriptKey(user.id, { name: 'script' }).key;
   assert.ok(auth.userFromApiKey(key));
   const api = load('auth', app);
   const res = fakeRes();
@@ -63,7 +63,7 @@ test('a password change or "sign out everywhere" also revokes API keys', async (
   assert.strictEqual(out.apiKeysRevoked, 1);
   assert.strictEqual(auth.userFromApiKey(key), null);
 
-  const second = auth.createApiKey(user.id, { name: 'bot' }).key;
+  const second = auth.createScriptKey(user.id, { name: 'bot' }).key;
   const changed = await api.call('POST', '/api/auth/password', { user, body: { currentPassword: PW, newPassword: 'another horse 77' }, req: fakeReq(), res });
   assert.strictEqual(changed.apiKeysRevoked, 1);
   assert.strictEqual(auth.userFromApiKey(second), null);
@@ -128,7 +128,7 @@ test('adding or removing a passkey asks for the password, and guessing it counts
 
 test('API keys are stored under a keyed hash, and a key stored the old way keeps working and is upgraded', () => {
   const { auth, user } = setup();
-  const { key } = auth.createApiKey(user.id, { name: 'script' });
+  const { key } = auth.createScriptKey(user.id, { name: 'script' });
   const stored = user.apiKeys[0].hash;
   assert.notStrictEqual(stored, crypto.createHash('sha256').update(key).digest('hex'), 'not a bare SHA-256 of the key');
   assert.ok(auth.userFromApiKey(key));

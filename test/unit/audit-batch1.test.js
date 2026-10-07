@@ -34,16 +34,22 @@ test('NBT: a negative array length is refused (it used to loop forever)', () => 
 
 test('a FIFO or a link where a file should be never blocks or leaks', () => {
   const dir = tmp();
-  execFileSync('mkfifo', [path.join(dir, 'fifo')]);
-  assert.throws(() => safefs.readRegular(path.join(dir, 'fifo')), /not a regular file/);
+  // Windows has no FIFOs.
+  const fifo = process.platform !== 'win32';
+  if (fifo) {
+    execFileSync('mkfifo', [path.join(dir, 'fifo')]);
+    assert.throws(() => safefs.readRegular(path.join(dir, 'fifo')), /not a regular file/);
+  }
   put(dir, 'real.txt', 'hello');
   fs.symlinkSync(path.join(dir, 'real.txt'), path.join(dir, 'link.txt'));
   assert.strictEqual(safefs.readText(path.join(dir, 'real.txt')), 'hello');
   assert.throws(() => safefs.readRegular(path.join(dir, 'link.txt')));
   assert.throws(() => safefs.readRegular(path.join(dir, 'real.txt'), 3), /larger/);
-  assert.strictEqual(safefs.tailText(path.join(dir, 'fifo')), '');
   assert.strictEqual(safefs.tailText(path.join(dir, 'real.txt'), 3), 'llo');
-  assert.throws(() => zip.open(path.join(dir, 'fifo')), /not a regular file/);
+  if (fifo) {
+    assert.strictEqual(safefs.tailText(path.join(dir, 'fifo')), '');
+    assert.throws(() => zip.open(path.join(dir, 'fifo')), /not a regular file/);
+  }
 });
 
 test('datapacks: the record of installed packs cannot name a path outside the folder', async () => {
