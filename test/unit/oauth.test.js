@@ -3,6 +3,12 @@
 const test = require('node:test');
 const assert = require('node:assert');
 const http = require('http');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+
+// Provider secrets are sealed with the panel's key, which lives in the data folder.
+process.env.GP_DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'gp-oauth-data-'));
 const oauth = require('../../server/features/oauth');
 const { Auth } = require('../../server/core/auth');
 

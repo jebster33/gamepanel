@@ -38,8 +38,10 @@ function inPowerShell(template, name) {
  * space in its value would start another game argument (not a shell command,
  * but still not something a settings account should be able to add).
  */
+const escapeRe = (text) => String(text).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 function inBareWord(template, name) {
-  const re = new RegExp(`^\\{\\{\\s*${name}\\s*\\}\\}`);
+  const re = new RegExp(`^\\{\\{\\s*${escapeRe(name)}\\s*\\}\\}`);
   for (const text of [template?.startCommand, template?.windows?.startCommand]) {
     if (typeof text !== 'string') continue;
     let quote = null;

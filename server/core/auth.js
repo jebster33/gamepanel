@@ -144,7 +144,8 @@ function parseCookies(header) {
   return out;
 }
 
-const hashKey = (key) => crypto.createHash('sha256').update(String(key)).digest('hex');
+// Keys made before the panel's own secret went into their hash; found by this and upgraded the next time they are used.
+const legacyKeyHash = (key) => crypto.createHash('sha256').update(String(key)).digest('hex');
 /** A request's path the way the router matches it: empty segments dropped. */
 const routePath = (url) => `/${new URL(url, 'http://localhost').pathname.split('/').filter(Boolean).join('/')}`;
 
@@ -159,6 +160,11 @@ class Auth {
     this.secret = secret;
     this.failures = new Map(); // ip -> { count, until }
     this.usedTickets = new Map(); // two-factor ticket id -> expiry
+  }
+
+  /** What is stored for an API key or a revoked session token: a keyed hash, so panel.json alone cannot be used to check guesses against it. */
+  keyHash(value) {
+    return crypto.createHmac('sha256', this.secret).update(`gamepanel stored token v1:${value}`).digest('hex');
   }
 
   /** A ticket for the code step: good once, for five minutes, and only while the account's sessions are as they were. */
@@ -499,7 +505,7 @@ class Auth {
     user.apiKeys = user.apiKeys || [];
     if (user.apiKeys.length >= 20) fail(400, 'An account can have at most 20 keys');
     const key = `gp_${crypto.randomBytes(24).toString('base64url')}`;
-    const record = { id: crypto.randomBytes(6).toString('hex'), name: label, readOnly: Boolean(readOnly), hash: hashKey(key), prefix: key.slice(0, 7), createdAt: Date.now(), lastUsed: null };
+    const record = { id: crypto.randomBytes(6).toString('hex'), name: label, readOnly: Boolean(readOnly), hash: this.keyHash(key), prefix: key.slice(0, 7), createdAt: Date.now(), lastUsed: null };
     user.apiKeys.push(record);
     this.store.save();
     return { key, ...publicKey(record) };
@@ -519,10 +525,25 @@ class Auth {
     this.store.save();
   }
 
-  apiKeyRecord(key) {
-    const hash = hashKey(key);
-    for (const user of this.users) for (const k of user.apiKeys || []) if (k.hash === hash) return k;
+  /** The stored record for an API key, with the account that owns it. A key stored the old way is upgraded on the spot. */
+  findApiKey(key) {
+    const hash = this.keyHash(key);
+    const legacy = legacyKeyHash(key);
+    for (const user of this.users) {
+      for (const record of user.apiKeys || []) {
+        if (record.hash === hash) return { user, record };
+        if (record.hash === legacy) {
+          record.hash = hash;
+          this.store.save();
+          return { user, record };
+        }
+      }
+    }
     return null;
+  }
+
+  apiKeyRecord(key) {
+    return this.findApiKey(key)?.record || null;
   }
 
   apiKeyIsReadOnly(key) {
@@ -530,19 +551,16 @@ class Auth {
   }
 
   userFromApiKey(key, method = 'GET') {
-    const hash = hashKey(key);
-    for (const user of this.users) {
-      const record = (user.apiKeys || []).find((k) => k.hash.length === hash.length && crypto.timingSafeEqual(Buffer.from(k.hash), Buffer.from(hash)));
-      if (!record) continue;
-      if (record.readOnly && !['GET', 'HEAD'].includes(String(method).toUpperCase())) return null;
-      // Remember use at most once a minute, so busy scripts do not rewrite the state file.
-      if (!record.lastUsed || Date.now() - record.lastUsed > 60_000) {
-        record.lastUsed = Date.now();
-        this.store.save();
-      }
-      return user;
+    const found = this.findApiKey(key);
+    if (!found) return null;
+    const { user, record } = found;
+    if (record.readOnly && !['GET', 'HEAD'].includes(String(method).toUpperCase())) return null;
+    // Remember use at most once a minute, so busy scripts do not rewrite the state file.
+    if (!record.lastUsed || Date.now() - record.lastUsed > 60_000) {
+      record.lastUsed = Date.now();
+      this.store.save();
     }
-    return null;
+    return user;
   }
 
   userFromToken(token) {
@@ -553,7 +571,7 @@ class Auth {
     // Signing out everywhere (or a password change) bumps the epoch, which
     // retires every session issued before it.
     if (!user || (payload.v || 0) !== (user.sessionEpoch || 0)) return null;
-    if (this.store.state.revokedTokens?.[hashKey(token)]) return null;
+    if (this.store.state.revokedTokens?.[this.keyHash(token)]) return null;
     return user;
   }
 
@@ -587,7 +605,7 @@ class Auth {
     // Past the cap the oldest go: they expire first anyway (every token lives a week).
     const keys = Object.keys(denied);
     if (keys.length >= MAX_REVOKED_TOKENS) for (const h of keys.slice(0, keys.length - MAX_REVOKED_TOKENS + 1)) delete denied[h];
-    denied[hashKey(token)] = payload.exp;
+    denied[this.keyHash(token)] = payload.exp;
     this.store.save();
     return true;
   }

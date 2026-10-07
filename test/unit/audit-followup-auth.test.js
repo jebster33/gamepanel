@@ -125,3 +125,17 @@ test('adding or removing a passkey asks for the password, and guessing it counts
   for (let i = 0; i < 10; i++) assert.throws(() => auth.checkPassword(user, 'nope nope nope'), /not right/);
   assert.throws(() => auth.checkPassword(user, PW), /Too many failed attempts/);
 });
+
+test('API keys are stored under a keyed hash, and a key stored the old way keeps working and is upgraded', () => {
+  const { auth, user } = setup();
+  const { key } = auth.createApiKey(user.id, { name: 'script' });
+  const stored = user.apiKeys[0].hash;
+  assert.notStrictEqual(stored, crypto.createHash('sha256').update(key).digest('hex'), 'not a bare SHA-256 of the key');
+  assert.ok(auth.userFromApiKey(key));
+
+  // What an earlier version wrote.
+  user.apiKeys[0].hash = crypto.createHash('sha256').update(key).digest('hex');
+  assert.ok(auth.userFromApiKey(key), 'still accepted');
+  assert.strictEqual(user.apiKeys[0].hash, stored, 'and rewritten in the new form');
+  assert.strictEqual(auth.userFromApiKey('gp_notakey'), null);
+});
