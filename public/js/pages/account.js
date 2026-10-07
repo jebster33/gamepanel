@@ -99,8 +99,8 @@ export async function renderAccount(view) {
   renderLinkedAccounts($('#linked-card'));
   $('#a-revoke').addEventListener('click', async () => {
     try {
-      await api('/api/auth/sessions/revoke', { method: 'POST' });
-      toast('Signed out of every other device');
+      const { apiKeysRevoked } = await api('/api/auth/sessions/revoke', { method: 'POST' });
+      toast(`Signed out of every other device${apiKeysRevoked ? `, and ${apiKeysRevoked} API key${apiKeysRevoked === 1 ? '' : 's'} revoked` : ''}`);
     } catch (err) {
       toast(err.message, 'error');
     }
@@ -108,8 +108,8 @@ export async function renderAccount(view) {
 
   $('#a-save').addEventListener('click', async () => {
     try {
-      await api('/api/auth/password', { method: 'POST', body: { currentPassword: $('#a-current').value, newPassword: $('#a-new').value } });
-      toast('Password updated');
+      const { apiKeysRevoked } = await api('/api/auth/password', { method: 'POST', body: { currentPassword: $('#a-current').value, newPassword: $('#a-new').value } });
+      toast(`Password updated${apiKeysRevoked ? `. ${apiKeysRevoked} API key${apiKeysRevoked === 1 ? ' was' : 's were'} revoked: create new ones for your scripts.` : ''}`);
       $('#a-current').value = '';
       $('#a-new').value = '';
     } catch (err) {
@@ -388,8 +388,10 @@ function renderPasskeys(me) {
   body.querySelectorAll('[data-pk-remove]').forEach((btn) =>
     btn.addEventListener('click', async () => {
       if (!(await confirmModal('Remove passkey', 'It stops working for this panel. You can add it again later.', 'Remove'))) return;
+      const password = await promptModal('Remove passkey', 'Your password', '', { type: 'password' });
+      if (password === null) return;
       try {
-        update((await api(`/api/auth/passkeys/${encodeURIComponent(btn.dataset.pkRemove)}`, { method: 'DELETE' })).user);
+        update((await api(`/api/auth/passkeys/${encodeURIComponent(btn.dataset.pkRemove)}`, { method: 'DELETE', body: { password } })).user);
         toast('Passkey removed');
       } catch (err) {
         toast(err.message, 'error');
@@ -398,8 +400,10 @@ function renderPasskeys(me) {
   );
   $('#pk-add').onclick = async () => {
     const guess = /iPhone|iPad/.test(navigator.userAgent) ? 'iPhone' : /Android/.test(navigator.userAgent) ? 'Android phone' : /Mac/.test(navigator.platform) ? 'Mac' : /Win/.test(navigator.platform) ? 'Windows PC' : 'This device';
+    const password = await promptModal('Add a passkey', 'Your password', '', { type: 'password', hint: 'Adding a way to sign in asks for your password.' });
+    if (password === null) return;
     try {
-      update(await addPasskey(guess));
+      update(await addPasskey(guess, password));
       toast('Passkey added. Next time, choose "Sign in with a passkey".');
     } catch (err) {
       toast(err.message, 'error');

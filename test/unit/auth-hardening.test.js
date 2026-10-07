@@ -14,8 +14,8 @@ function setup() {
   const store = new Store();
   const auth = new Auth(store, 'test-secret-test-secret-test-secret');
   const admin = auth.createUser({ username: 'boss', password: 'correct horse 42', role: 'admin' });
-  const full = auth.createApiKey(admin.id, { name: 'script' });
-  const ro = auth.createApiKey(admin.id, { name: 'status', readOnly: true });
+  const full = auth.createScriptKey(admin.id, { name: 'script' });
+  const ro = auth.createScriptKey(admin.id, { name: 'status', readOnly: true });
   return { store, auth, admin, full: full.key || full, ro: ro.key || ro };
 }
 const req = (url, method, key, extra = {}) => ({ url, method, headers: { authorization: `Bearer ${key}`, ...(extra.headers || {}) }, socket: { remoteAddress: extra.addr || '203.0.113.9' } });

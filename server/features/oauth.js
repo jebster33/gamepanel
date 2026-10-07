@@ -132,7 +132,7 @@ async function finish(store, auth, req, id, query) {
   const c = settings(store)[id] || {};
   const body = new URLSearchParams({
     client_id: c.clientId,
-    client_secret: c.clientSecret,
+    client_secret: require('../core/secrets').open(c.clientSecret || ''),
     code: String(query.get('code') || ''),
     grant_type: 'authorization_code',
     redirect_uri: redirectUri(store, req, id),
@@ -195,7 +195,7 @@ function update(store, body) {
     s[id] = {
       clientId: input.clientId !== undefined ? String(input.clientId).trim() : current.clientId || '',
       // An empty secret keeps the saved one; `clear` removes the provider.
-      clientSecret: input.clear ? '' : input.clientSecret ? String(input.clientSecret).trim() : current.clientSecret || '',
+      clientSecret: input.clear ? '' : input.clientSecret ? require('../core/secrets').seal(String(input.clientSecret).trim()) : current.clientSecret || '',
     };
     if (input.clear) s[id].clientId = '';
   }

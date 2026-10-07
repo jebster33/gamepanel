@@ -1,6 +1,6 @@
 # HTTP API
 
-Everything the UI does is a REST call. Authenticate with the session cookie, `Authorization: Bearer <token>` from `POST /api/auth/login`, or an API key.
+Everything the UI does is a REST call. Authenticate with the session cookie (`POST /api/auth/login` sets it; the response does not carry the token) or an API key.
 
 ## Rate limits
 

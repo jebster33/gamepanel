@@ -78,11 +78,12 @@ test('appeals: closed by default, one open appeal per ban, accept lifts the ban'
   const message = 'I am sorry, it was my little brother on my account.';
   assert.throws(() => bans.submitAppeal(t.store, { name: 'Steve', message }), /not open/);
   bans.updateAppealSettings(t.store, { enabled: true, intro: 'Be honest.' });
-  assert.throws(() => bans.submitAppeal(t.store, { name: 'Nobody', message }), /no ban/i);
+  // A name that is not banned gets the same answer as one that is.
+  assert.match(bans.submitAppeal(t.store, { name: 'Nobody', message }).code, /^[A-Z0-9]{8}$/);
+  assert.strictEqual(bans.view(t.manager, t.store).appeals.length, 0, 'and nothing reaches the admins');
   assert.throws(() => bans.submitAppeal(t.store, { name: 'Steve', message: 'pls' }), /more/);
   const { code } = bans.submitAppeal(t.store, { name: 'steve', message, contact: 'steve#1' });
   assert.match(code, /^[A-Z0-9]{8}$/);
-  assert.throws(() => bans.submitAppeal(t.store, { name: 'Steve', message }), /already an open appeal/);
   assert.strictEqual(bans.appealStatus(t.store, code.toLowerCase()).status, 'open');
   assert.throws(() => bans.appealStatus(t.store, 'WRONG'), /No appeal/);
 

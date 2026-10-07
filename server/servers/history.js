@@ -342,6 +342,9 @@ module.exports = {
     const key = String(name || '').trim().toLowerCase();
     if (!/^[a-z0-9_.\- ]{1,32}$/.test(key)) fail(400, 'That is not a player name');
     const notes = (this.store.state.playerNotes ||= {});
+    // Panel-wide: an existing note or watchlist entry is changed by an administrator or whoever wrote it.
+    const existing = notes[key];
+    if (existing && actor && actor.role !== 'admin' && existing.by !== actor.username) fail(403, 'That note was written by someone else. Ask an administrator to change it.');
     const text = String(note || '').trim().slice(0, 1000);
     if (!text && !watch) delete notes[key];
     else notes[key] = { note: text, watch: Boolean(watch), by: actor?.username || null, at: Date.now() };

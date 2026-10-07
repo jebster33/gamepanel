@@ -60,8 +60,10 @@ function takeChallenge(id) {
 
 /* ---------------------------------------------------------- registering -- */
 
-function registerOptions(auth, store, sessionUser, req) {
+function registerOptions(auth, store, sessionUser, req, password) {
   const user = auth.users.find((u) => u.id === sessionUser.id);
+  // A passkey is a way in that outlives the session that added it: whoever adds one proves they know the password.
+  auth.checkPassword(user, password);
   const site = siteOf(req);
   if ((user.passkeys || []).length >= MAX_PASSKEYS) fail(400, `An account can have at most ${MAX_PASSKEYS} passkeys`);
   if (!user.webauthnId) {
@@ -125,8 +127,9 @@ function rename(auth, store, sessionUser, id, name) {
   return p;
 }
 
-function remove(auth, store, sessionUser, id) {
+function remove(auth, store, sessionUser, id, password) {
   const user = auth.users.find((u) => u.id === sessionUser.id);
+  auth.checkPassword(user, password);
   const rest = (user.passkeys || []).filter((p) => p.id !== id);
   if (rest.length === (user.passkeys || []).length) fail(404, 'Passkey not found');
   // The admin two-factor rule must still be met afterwards.
@@ -161,7 +164,10 @@ function login(auth, store, req, ip, { requestId, credential }) {
   if (handle && handle !== user.webauthnId) return auth.recordFailure(ip, 'This passkey belongs to another account');
   let result;
   try {
-    result = webauthn.verifyAuthentication(credential.response || {}, passkey, entry);
+    // The key answers for the site it was made for, which is not necessarily the name in this request's Origin.
+    const rpId = passkey.rpId || entry.rpId;
+    if (rpId !== entry.rpId && !entry.rpId.endsWith(`.${rpId}`)) throw new Error('This passkey was made for another site');
+    result = webauthn.verifyAuthentication(credential.response || {}, passkey, { ...entry, rpId });
   } catch (err) {
     return auth.recordFailure(ip, err.message);
   }

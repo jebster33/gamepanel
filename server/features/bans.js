@@ -23,6 +23,8 @@ const players = require('../games/players');
 const NAME_RE = /^[A-Za-z0-9_. -]{2,32}$/;
 const MAX_BANS = 5000;
 const MAX_OPEN_APPEALS = 500;
+// Several people may claim the same name, so one junk appeal cannot block the real one.
+const MAX_OPEN_PER_BAN = 3;
 
 const stateOf = (store) => (store.state.bans ||= { list: [], appeals: [] });
 const active = (store, now = Date.now()) => stateOf(store).list.filter((b) => !b.until || b.until > now);
@@ -192,19 +194,28 @@ function updateAppealSettings(store, input) {
   return appealSettings(store);
 }
 
-/** A banned player asks to be let back in. Returns the code they check on it with. */
+/**
+ * A banned player asks to be let back in. Returns the code they check on it
+ * with. The answer is the same whether or not the name is banned (or the
+ * ban already has appeals waiting), so the page cannot be used to look up
+ * who is banned; an appeal that goes nowhere is kept as a decoy that reads
+ * "open" like any other.
+ */
 function submitAppeal(store, { name, message, contact }) {
   if (!appealSettings(store).enabled) fail(404, 'Appeals are not open');
   name = cleanName(name);
   const text = String(message || '').trim();
   if (text.length < 20) fail(400, 'Tell us a little more (at least 20 characters)');
   if (text.length > 2000) fail(400, 'Keep it under 2000 characters');
-  const target = active(store).find((b) => b.name.toLowerCase() === name.toLowerCase());
-  if (!target) fail(404, `There is no ban for ${name} on this panel's list`);
   const s = stateOf(store);
-  if (s.appeals.some((a) => a.banId === target.id && a.status === 'open')) fail(409, 'There is already an open appeal for this ban. Use your code to check on it.');
   if (s.appeals.filter((a) => a.status === 'open').length >= MAX_OPEN_APPEALS) fail(503, 'Too many open appeals right now. Try again later.');
   const code = crypto.randomBytes(6).toString('base64url').toUpperCase().replace(/[^A-Z0-9]/g, 'X');
+  const target = active(store).find((b) => b.name.toLowerCase() === name.toLowerCase());
+  if (!target || s.appeals.filter((a) => a.banId === target.id && a.status === 'open').length >= MAX_OPEN_PER_BAN) {
+    s.decoys = [{ codeHash: hash(code), name, at: Date.now() }, ...(s.decoys || [])].slice(0, 2000);
+    store.save();
+    return { code };
+  }
   s.appeals.unshift({
     id: uid(8),
     codeHash: hash(code),
@@ -223,8 +234,14 @@ function submitAppeal(store, { name, message, contact }) {
 }
 
 function appealStatus(store, code) {
-  const a = stateOf(store).appeals.find((x) => x.codeHash === hash(String(code || '').trim().toUpperCase()));
-  if (!a) fail(404, 'No appeal with that code');
+  const wanted = hash(String(code || '').trim().toUpperCase());
+  const s = stateOf(store);
+  const a = s.appeals.find((x) => x.codeHash === wanted);
+  if (!a) {
+    const decoy = (s.decoys || []).find((x) => x.codeHash === wanted);
+    if (decoy) return { name: decoy.name, status: 'open', reply: '', at: decoy.at, decidedAt: null };
+    fail(404, 'No appeal with that code');
+  }
   return { name: a.name, status: a.status, reply: a.reply || '', at: a.at, decidedAt: a.decidedAt || null };
 }
 
@@ -237,6 +254,12 @@ async function decide(manager, store, id, { decision, reply }, by) {
   a.reply = String(reply || '').trim().slice(0, 1000);
   a.decidedBy = by;
   a.decidedAt = Date.now();
+  // Lifting the ban settles every appeal waiting on it.
+  if (decision === 'accept') {
+    for (const other of stateOf(store).appeals) {
+      if (other !== a && other.banId === a.banId && other.status === 'open') Object.assign(other, { status: 'accepted', reply: a.reply, decidedBy: by, decidedAt: a.decidedAt });
+    }
+  }
   store.save();
   if (decision === 'accept') {
     const banEntry = stateOf(store).list.find((b) => b.id === a.banId);

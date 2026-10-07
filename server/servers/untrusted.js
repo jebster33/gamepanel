@@ -33,10 +33,33 @@ function inPowerShell(template, name) {
   return steps.some((s) => [s.run, s.script].some((t) => typeof t === 'string' && re.test(t)));
 }
 
-function checkText(label, value, max = 256, { powershell = false } = {}) {
+/**
+ * True when {{NAME}} sits outside any quotes in the start command, where a
+ * space in its value would start another game argument (not a shell command,
+ * but still not something a settings account should be able to add).
+ */
+const escapeRe = (text) => String(text).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+function inBareWord(template, name) {
+  const re = new RegExp(`^\\{\\{\\s*${escapeRe(name)}\\s*\\}\\}`);
+  for (const text of [template?.startCommand, template?.windows?.startCommand]) {
+    if (typeof text !== 'string') continue;
+    let quote = null;
+    for (let i = 0; i < text.length; i++) {
+      const ch = text[i];
+      if (!quote && re.test(text.slice(i))) return true;
+      if (quote === ch) quote = null;
+      else if (!quote && (ch === '"' || ch === "'")) quote = ch;
+    }
+  }
+  return false;
+}
+
+function checkText(label, value, max = 256, { powershell = false, bareWord = false } = {}) {
   const text = String(value ?? '');
   if (text.length > max) fail(400, `${label} is too long`);
   if (UNSAFE.test(text)) fail(400, `${label} cannot contain ${UNSAFE_LIST}`);
+  if (bareWord && /\s/.test(text)) fail(400, `${label} cannot contain spaces: it is passed to the game as a single argument`);
   if (powershell && /['\u2018\u2019\u201a\u201b]/.test(text)) fail(400, `${label} cannot contain a single quote on a Windows server`);
   return text;
 }
@@ -51,7 +74,7 @@ function checkPatch(template, patch = {}, server = {}) {
   const same = (a, b) => String(a ?? '') === String(b ?? '');
   if (patch.startCommand !== undefined && !same(patch.startCommand, server.startCommand)) fail(403, 'Only administrators can change the start command');
   if (patch.ip !== undefined && !same(patch.ip, server.ip)) fail(403, 'Only administrators can change the address a server listens on');
-  if (patch.name !== undefined && !same(String(patch.name).trim(), server.name)) checkText('The server name', patch.name, 60, { powershell: inPowerShell(template, 'SERVER_NAME') });
+  if (patch.name !== undefined && !same(String(patch.name).trim(), server.name)) checkText('The server name', patch.name, 60, { powershell: inPowerShell(template, 'SERVER_NAME'), bareWord: inBareWord(template, 'SERVER_NAME') });
   if (patch.vars !== undefined) {
     if (!patch.vars || typeof patch.vars !== 'object' || Array.isArray(patch.vars)) fail(400, 'vars must be an object');
     const defs = new Map((template?.variables || []).map((v) => [v.name, v]));
@@ -62,7 +85,7 @@ function checkPatch(template, patch = {}, server = {}) {
       const label = def.label || name;
       if (CODE_NAME.test(name) || inCommandPosition(template, name)) fail(403, `Only administrators can change ${label}`);
       if (value !== null && typeof value === 'object') fail(400, `${label} must be text`);
-      const text = checkText(label, value, 256, { powershell: inPowerShell(template, name) });
+      const text = checkText(label, value, 256, { powershell: inPowerShell(template, name), bareWord: inBareWord(template, name) });
       if (def.type === 'number' && text.trim() !== '' && !Number.isFinite(Number(text))) fail(400, `${label} must be a number`);
       if (def.options?.length && !def.allowCustom && text !== '') {
         const allowed = def.options.map((o) => String(typeof o === 'object' ? o.value : o));
@@ -73,4 +96,4 @@ function checkPatch(template, patch = {}, server = {}) {
   return patch;
 }
 
-module.exports = { checkPatch, checkText, inCommandPosition, inPowerShell, UNSAFE };
+module.exports = { checkPatch, checkText, inCommandPosition, inPowerShell, inBareWord, UNSAFE };

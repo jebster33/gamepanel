@@ -79,6 +79,7 @@ function fakeAuth() {
     users,
     failures: [],
     checkLockout() {},
+    checkPassword() {}, // covered with a real Auth in audit-followup-auth.test.js
     recordFailure(ip, message) {
       const err = new Error(message);
       err.status = 401;
@@ -162,4 +163,25 @@ test('CBOR decoding handles what authenticators send', () => {
   assert.deepStrictEqual([...m.get('b')], [1, 2, 3]);
   assert.throws(() => webauthn.decode(Buffer.from([0x5f])), /indefinite/);
   assert.throws(() => webauthn.decode(Buffer.from([0x45, 1])), /ends early/);
+});
+
+test('a passkey answers for the site it was made for (its stored rpId), not whatever the request claims', () => {
+  const auth = fakeAuth();
+  const key = authenticator('ec');
+  const reg = passkeys.registerOptions(auth, store, { id: 'u1' }, req());
+  passkeys.register(auth, store, { id: 'u1' }, req(), { requestId: reg.requestId, credential: key.create(reg.options, 'https://panel.example.com') });
+  assert.strictEqual(auth.users[0].passkeys[0].rpId, 'panel.example.com');
+
+  // A passkey made for the parent domain works from a panel on a subdomain of it.
+  auth.users[0].passkeys[0].rpId = 'example.com';
+  let o = passkeys.loginOptions(req());
+  const result = passkeys.login(auth, store, req(), 'ip', { requestId: o.requestId, credential: key.get({ ...o.options, rpId: 'example.com' }, 'https://panel.example.com') });
+  assert.strictEqual(result.token, 'session');
+
+  // One made for an unrelated site is refused, even when the browser claims this one.
+  auth.users[0].passkeys[0].rpId = 'other.test';
+  o = passkeys.loginOptions(req());
+  assert.throws(() => passkeys.login(auth, store, req(), 'ip', { requestId: o.requestId, credential: key.get({ ...o.options, rpId: 'other.test' }, 'https://panel.example.com') }), /another site/);
+  o = passkeys.loginOptions(req());
+  assert.throws(() => passkeys.login(auth, store, req(), 'ip', { requestId: o.requestId, credential: key.get(o.options, 'https://panel.example.com') }), /another site/);
 });

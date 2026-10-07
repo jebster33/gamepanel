@@ -37,8 +37,8 @@ export async function signInWithPasskey() {
 }
 
 /** Add a passkey to the signed-in account. Returns the updated account. */
-export async function addPasskey(name) {
-  const { requestId, options } = await api('/api/auth/passkeys/options', { method: 'POST', body: {} });
+export async function addPasskey(name, password) {
+  const { requestId, options } = await api('/api/auth/passkeys/options', { method: 'POST', body: { password } });
   let cred;
   try {
     cred = await navigator.credentials.create({

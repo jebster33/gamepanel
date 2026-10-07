@@ -492,6 +492,26 @@ class ServerManager extends EventEmitter {
     return server;
   }
 
+  /**
+   * Take a deleted server's id out of the places that remember one: accounts'
+   * server lists and per-server permissions (ids are not reused today, but a
+   * stale grant is a grant waiting for the day one is) and the public status page.
+   */
+  forgetServerEverywhere(id) {
+    for (const user of this.store.state.users || []) {
+      if (Array.isArray(user.servers)) user.servers = user.servers.filter((s) => s !== id);
+      if (user.serverPerms && id in user.serverPerms) {
+        const { [id]: removed, ...rest } = user.serverPerms;
+        user.serverPerms = rest;
+      }
+    }
+    const page = this.store.state.settings.statusPage;
+    if (page) {
+      if (Array.isArray(page.servers)) page.servers = page.servers.filter((s) => s !== id);
+      if (page.blurbs && id in page.blurbs) delete page.blurbs[id];
+    }
+  }
+
   async remove(id, deleteFiles = true) {
     const server = this.require(id);
     if (this.isActive(id)) await this.stop(id).catch(() => {});
@@ -504,6 +524,7 @@ class ServerManager extends EventEmitter {
     require('../features/config-history').forget(id);
     // Free play.example.com so the name can be reused.
     if (server.subdomain) require('../features/dns').release(this.store, server).catch(() => {});
+    this.forgetServerEverywhere(id);
     this.store.save();
     // A server imported in place keeps its folder: those files were never the panel's.
     if (deleteFiles && server.imported?.inPlace) {

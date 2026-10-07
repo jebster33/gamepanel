@@ -169,7 +169,8 @@ class CloudBackups {
   }
 
   get settings() {
-    return { ...DEFAULTS, ...(this.store.state.settings.cloudBackups || {}) };
+    const saved = { ...DEFAULTS, ...(this.store.state.settings.cloudBackups || {}) };
+    return { ...saved, secretAccessKey: require('../core/secrets').open(saved.secretAccessKey) };
   }
 
   get enabled() {
@@ -211,7 +212,7 @@ class CloudBackups {
     if (body.pathStyle !== undefined) s.pathStyle = Boolean(body.pathStyle);
     if (body.enabled !== undefined) s.enabled = Boolean(body.enabled);
     if (s.enabled && !(s.endpoint && s.bucket && s.accessKeyId && s.secretAccessKey)) fail(400, 'Fill in the endpoint, bucket and both keys before turning cloud backups on');
-    this.store.state.settings.cloudBackups = s;
+    this.store.state.settings.cloudBackups = { ...s, secretAccessKey: require('../core/secrets').seal(s.secretAccessKey) };
     this.store.save();
     return this.publicSettings();
   }
@@ -315,4 +316,4 @@ function cloudBackups(store, manager) {
   return instance;
 }
 
-module.exports = { cloudBackups, S3, guessRegion };
+module.exports = { cloudBackups, CloudBackups, S3, guessRegion };

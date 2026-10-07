@@ -126,27 +126,43 @@ class Reader {
  *   and channel.close() to answer.
  * @param {(line) => void} [opts.log]
  */
-function createServer({ hostKey, authenticate, subsystem, log = () => {}, banner = '', maxPerIp = 10, maxTotal = 100 }) {
+function createServer({ hostKey, authenticate, subsystem, log = () => {}, banner = '', maxPerIp = 10, maxTotal = 100, maxUnauth = 20, maxUnauthPerIp = 3 }) {
   const hostPub = crypto.createPublicKey(hostKey).export({ format: 'jwk' });
   const hostBlob = Buffer.concat([str('ssh-ed25519'), str(Buffer.from(hostPub.x, 'base64url'))]);
   const perIp = new Map();
+  // Connections that have not signed in yet are capped on their own, so a flood of idle ones cannot take every slot from the people who have.
+  const unauthPerIp = new Map();
   let total = 0;
+  let unauth = 0;
+  const bump = (map, ip, by) => {
+    const n = (map.get(ip) || 0) + by;
+    if (n > 0) map.set(ip, n);
+    else map.delete(ip);
+  };
 
   const server = net.createServer((socket) => {
     const ip = socket.remoteAddress?.replace(/^::ffff:/, '') || 'unknown';
-    if (total >= maxTotal || (perIp.get(ip) || 0) >= maxPerIp) {
+    if (total >= maxTotal || (perIp.get(ip) || 0) >= maxPerIp || unauth >= maxUnauth || (unauthPerIp.get(ip) || 0) >= maxUnauthPerIp) {
       socket.destroy();
       return;
     }
     total++;
-    perIp.set(ip, (perIp.get(ip) || 0) + 1);
+    unauth++;
+    bump(perIp, ip, 1);
+    bump(unauthPerIp, ip, 1);
+    let waiting = true;
+    const signedIn = () => {
+      if (!waiting) return;
+      waiting = false;
+      unauth--;
+      bump(unauthPerIp, ip, -1);
+    };
     socket.on('close', () => {
       total--;
-      const n = (perIp.get(ip) || 1) - 1;
-      if (n) perIp.set(ip, n);
-      else perIp.delete(ip);
+      bump(perIp, ip, -1);
+      signedIn();
     });
-    new Connection(socket, { ip, hostKey, hostBlob, authenticate, subsystem, log, banner });
+    new Connection(socket, { ip, hostKey, hostBlob, authenticate, subsystem, log, banner, onAuthed: signedIn });
   });
   server.fingerprint = `SHA256:${crypto.createHash('sha256').update(hostBlob).digest('base64').replace(/=+$/, '')}`;
   return server;
@@ -177,8 +193,8 @@ class Connection {
 
     socket.setNoDelay(true);
     socket.setTimeout(15 * 60_000, () => this.disconnect(11, 'idle'));
-    // Sign in within a minute or go.
-    this.authTimer = setTimeout(() => !this.authed && this.disconnect(2, 'authentication timeout'), 60_000);
+    // Sign in within half a minute or go.
+    this.authTimer = setTimeout(() => !this.authed && this.disconnect(2, 'authentication timeout'), 30_000);
     socket.on('data', (d) => this.onData(d));
     socket.on('error', () => this.cleanup());
     socket.on('close', () => this.cleanup());
@@ -436,6 +452,7 @@ class Connection {
       const result = await this.authenticate({ username, password, code, ip: this.ip });
       if (result?.needCode) return 'code';
       this.authed = result;
+      this.onAuthed?.();
       clearTimeout(this.authTimer);
       this.send(byte(MSG.USERAUTH_SUCCESS));
       return 'ok';

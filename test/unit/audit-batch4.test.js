@@ -34,7 +34,8 @@ test('datapack names that could break out of a console command are not sent to t
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'gp-ab4-'));
   fs.mkdirSync(path.join(dir, 'world/datapacks'), { recursive: true });
   const evil = 'x"\nop eve.zip';
-  fs.writeFileSync(path.join(dir, 'world/datapacks', evil), 'zip');
+  // Windows cannot hold a file with a quote or a line break in its name; the name is refused before any file is looked at.
+  if (process.platform !== 'win32') fs.writeFileSync(path.join(dir, 'world/datapacks', evil), 'zip');
   fs.writeFileSync(path.join(dir, 'world/datapacks', 'fine pack.zip'), 'zip');
   const sent = [];
   const manager = {

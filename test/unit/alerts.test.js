@@ -71,8 +71,8 @@ test('API keys: read-only keys only read, and no key changes accounts', () => {
   const auth = new Auth({ state: { users: [] }, save() {}, addEvent() {} }, 'x'.repeat(32));
   auth.createUser({ username: 'chris', password: 'correct horse battery', role: 'admin' });
   const id = auth.users[0].id;
-  const ro = auth.createApiKey(id, { name: 'bot', readOnly: true }).key;
-  const full = auth.createApiKey(id, { name: 'script' }).key;
+  const ro = auth.createScriptKey(id, { name: 'bot', readOnly: true }).key;
+  const full = auth.createScriptKey(id, { name: 'script' }).key;
   const req = (method, url, key) => ({ method, url, headers: { authorization: `Bearer ${key}` } });
   assert.ok(auth.userFromRequest(req('GET', '/api/servers', ro)));
   assert.strictEqual(auth.userFromRequest(req('POST', '/api/servers/a/power', ro)), null);

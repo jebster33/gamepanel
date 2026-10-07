@@ -5,7 +5,7 @@ const mods = require('../../features/mods');
 const { installWorkshop } = require('../../features/mods/workshop');
 const { describe } = require('../../features/mods/compat');
 
-module.exports = (router, { store, manager }, { serverFor, integrations }) => {
+module.exports = (router, { store, manager }, { serverFor, requireCap, integrations }) => {
   /** The server, its template and the version the game itself reports. */
   const modTarget = (user, id, capability = 'mods') => {
     const server = serverFor(user, id, capability);
@@ -268,6 +268,9 @@ module.exports = (router, { store, manager }, { serverFor, integrations }) => {
   /** Switch the server to a modpack (or another version of it) and reinstall. */
   router.post('/api/servers/:id/modpacks/install', async ({ user, params, body }) => {
     const server = serverFor(user, params.id, 'mods');
+    // It reinstalls the server, so it needs what a reinstall needs.
+    requireCap(user, 'power', server.id);
+    requireCap(user, 'files.write', server.id);
     const template = manager.template(server);
     if (!template?.modpacks) fail(400, 'This server does not use modpacks');
     if (manager.isActive(server.id)) fail(409, 'Stop the server before changing its modpack');

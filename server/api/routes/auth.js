@@ -1,7 +1,6 @@
 'use strict';
 
 const { fail } = require('../../core/util');
-const { verifyPassword } = require('../../core/auth');
 const { clientIp, isSecure } = require('../helpers');
 const VERSION = require('../../../package.json').version;
 
@@ -67,7 +66,7 @@ module.exports = (router, app) => {
     { public: true }
   );
 
-  router.post('/api/auth/passkeys/options', ({ user, req }) => passkeys.registerOptions(auth, store, user, req));
+  router.post('/api/auth/passkeys/options', ({ user, req, body }) => passkeys.registerOptions(auth, store, user, req, body?.password));
 
   router.post('/api/auth/passkeys', ({ user, req, body }) => {
     const passkey = passkeys.register(auth, store, user, req, body || {});
@@ -80,8 +79,8 @@ module.exports = (router, app) => {
     return { user: auth.publicUser(auth.users.find((u) => u.id === user.id)) };
   });
 
-  router.delete('/api/auth/passkeys/:id', ({ user, params, req }) => {
-    passkeys.remove(auth, store, user, params.id);
+  router.delete('/api/auth/passkeys/:id', ({ user, params, req, body }) => {
+    passkeys.remove(auth, store, user, params.id, body?.password);
     store.addEvent('user.passkey', `${user.username} removed a passkey`, { ip: clientIp(req) });
     return { user: auth.publicUser(auth.users.find((u) => u.id === user.id)) };
   });
@@ -105,12 +104,16 @@ module.exports = (router, app) => {
           store.addEvent('user.new_ip', `${user.username} signed in from a new address: ${ip}${location ? ` (${location})` : ''}`, { ip });
         }
       });
-    return { ok: true, user, token };
+    // The session lives in the cookie only: a token in the response would end up in scripts, logs and browser storage.
+    return { ok: true, user };
   }
 
   router.post(
     '/api/auth/logout',
-    async ({ res }) => {
+    async ({ req, res }) => {
+      // The cookie is cleared, and the token itself stops working, in case a copy of it was taken.
+      const token = auth.tokenFromRequest(req);
+      if (token) auth.revokeToken(token);
       res.setHeader('Set-Cookie', auth.clearCookieHeader());
       return { ok: true };
     },
@@ -121,12 +124,18 @@ module.exports = (router, app) => {
 
   router.post('/api/auth/password', async ({ user, body, req, res }) => {
     const record = auth.users.find((u) => u.id === user.id);
-    if (!verifyPassword(body.currentPassword, record.password)) fail(403, 'Your current password is not right');
+    try {
+      auth.checkPassword(record, body.currentPassword);
+    } catch (err) {
+      if (err.code === 403) fail(403, 'Your current password is not right');
+      throw err;
+    }
+    const apiKeysRevoked = (record.apiKeys || []).length;
     auth.setPassword(user.id, body.newPassword);
     // Every other device is signed out; this one gets a fresh session.
     keepThisDevice(req, res, record);
-    store.addEvent('user.password', `${user.username} changed their password (other devices signed out)`, { ip: clientIp(req) });
-    return { ok: true };
+    store.addEvent('user.password', `${user.username} changed their password (other devices signed out${apiKeysRevoked ? `, ${apiKeysRevoked} API key${apiKeysRevoked === 1 ? '' : 's'} revoked` : ''})`, { ip: clientIp(req) });
+    return { ok: true, apiKeysRevoked };
   });
 
   /** Sign out every other device, e.g. after using a shared computer. */
@@ -134,7 +143,7 @@ module.exports = (router, app) => {
   router.get('/api/auth/api-keys', ({ user }) => ({ keys: auth.listApiKeys(user.id) }));
 
   router.post('/api/auth/api-keys', ({ user, req, body }) => {
-    const created = auth.createApiKey(user.id, { name: body?.name, readOnly: Boolean(body?.readOnly) });
+    const created = auth.createScriptKey(user.id, { name: body?.name, readOnly: Boolean(body?.readOnly) });
     store.addEvent('user.api_key', `${user.username} created the API key "${created.name}"${created.readOnly ? ' (read-only)' : ''}`, { ip: clientIp(req) });
     return created;
   });
@@ -146,10 +155,10 @@ module.exports = (router, app) => {
 
   router.post('/api/auth/sessions/revoke', ({ user, req, res }) => {
     const record = auth.users.find((u) => u.id === user.id);
-    auth.revokeSessions(user.id);
+    const { apiKeysRevoked } = auth.revokeSessions(user.id);
     keepThisDevice(req, res, record);
-    store.addEvent('user.sessions_revoked', `${user.username} signed out of all other devices`, { ip: clientIp(req) });
-    return { ok: true };
+    store.addEvent('user.sessions_revoked', `${user.username} signed out of all other devices${apiKeysRevoked ? ` and revoked ${apiKeysRevoked} API key${apiKeysRevoked === 1 ? '' : 's'}` : ''}`, { ip: clientIp(req) });
+    return { ok: true, apiKeysRevoked };
   });
 
   function keepThisDevice(req, res, record) {
@@ -254,7 +263,7 @@ module.exports = (router, app) => {
 
   const requirePassword = (user, password) => {
     const record = auth.users.find((u) => u.id === user.id);
-    if (!verifyPassword(password, record.password)) fail(403, 'Your password is not right');
+    auth.checkPassword(record, password);
     return record;
   };
 
