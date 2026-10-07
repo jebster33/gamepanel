@@ -12,9 +12,18 @@ const fs = require('fs');
 
 const FLAGS = fs.constants.O_RDONLY | (fs.constants.O_NONBLOCK || 0) | (fs.constants.O_NOFOLLOW || 0);
 
+/**
+ * Open without following a link. Windows has no O_NOFOLLOW, so there the link
+ * is looked for first (a narrow window is left between the look and the open).
+ */
+function openFlat(file) {
+  if (!fs.constants.O_NOFOLLOW && fs.lstatSync(file).isSymbolicLink()) throw Object.assign(new Error('not a regular file (it is a link)'), { code: 'ELOOP' });
+  return fs.openSync(file, FLAGS);
+}
+
 /** A file's contents as a Buffer, or throws. */
 function readRegular(file, max = 4 * 1024 * 1024) {
-  const fd = fs.openSync(file, FLAGS);
+  const fd = openFlat(file);
   try {
     const st = fs.fstatSync(fd);
     if (!st.isFile()) throw Object.assign(new Error('not a regular file'), { code: 'ENOTREG' });
@@ -38,7 +47,7 @@ const readText = (file, max) => readRegular(file, max).toString('utf8');
 function tailText(file, bytes = 2 * 1024 * 1024) {
   let fd;
   try {
-    fd = fs.openSync(file, FLAGS);
+    fd = openFlat(file);
     const st = fs.fstatSync(fd);
     if (!st.isFile()) return '';
     const len = Math.min(st.size, bytes);
@@ -54,7 +63,7 @@ function tailText(file, bytes = 2 * 1024 * 1024) {
 
 /** An open file descriptor for a regular file (for readers that seek), or throws. */
 function openRegular(file) {
-  const fd = fs.openSync(file, FLAGS);
+  const fd = openFlat(file);
   if (!fs.fstatSync(fd).isFile()) {
     fs.closeSync(fd);
     throw Object.assign(new Error('not a regular file'), { code: 'ENOTREG' });
