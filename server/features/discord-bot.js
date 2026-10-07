@@ -43,7 +43,8 @@ class DiscordBot {
   }
 
   get settings() {
-    return this.store.state.settings?.integrations?.discordBot || {};
+    const saved = this.store.state.settings?.integrations?.discordBot || {};
+    return { ...saved, token: require('../core/secrets').open(saved.token || '') };
   }
 
   status() {

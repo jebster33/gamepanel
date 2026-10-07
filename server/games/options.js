@@ -16,6 +16,18 @@ const TTL_MS = 10 * 60 * 1000;
 const TIMEOUT_MS = 8000;
 
 const cache = new Map();
+// Every distinct search text is a key, and anyone signed in can make up search texts.
+const MAX_CACHED = 200;
+const MAX_QUERY = 100;
+
+/** Keep a result, dropping expired entries and then the oldest once the cache is full. */
+function remember(key, value) {
+  const now = Date.now();
+  if (cache.size >= MAX_CACHED) for (const [k, v] of cache) if (now - v.at >= TTL_MS) cache.delete(k);
+  while (cache.size >= MAX_CACHED) cache.delete(cache.keys().next().value);
+  cache.delete(key);
+  cache.set(key, { at: now, value });
+}
 
 async function getJson(url) {
   const res = await fetch(url, {
@@ -252,6 +264,7 @@ const PROVIDERS = {
 async function getOptions(source, query = '') {
   const provider = PROVIDERS[source];
   if (!provider) return { options: [], error: `Unknown option source: ${source}` };
+  query = String(query || '').slice(0, MAX_QUERY);
 
   const key = query ? `${source}:${query}` : source;
   const cached = cache.get(key);
@@ -259,7 +272,7 @@ async function getOptions(source, query = '') {
 
   try {
     const value = await provider(query);
-    cache.set(key, { at: Date.now(), value });
+    remember(key, value);
     return value;
   } catch (err) {
     logger.warn(`Option source "${key}" failed: ${err.message}`);
@@ -269,4 +282,4 @@ async function getOptions(source, query = '') {
   }
 }
 
-module.exports = { getOptions, SOURCES: Object.keys(PROVIDERS) };
+module.exports = { getOptions, remember, cacheSize: () => cache.size, MAX_CACHED, SOURCES: Object.keys(PROVIDERS) };

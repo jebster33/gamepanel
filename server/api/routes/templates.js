@@ -2,6 +2,16 @@
 
 const { fail } = require('../../core/util');
 
+/** A template without its install steps: what someone choosing a game needs, not the script a custom template may hold. */
+function catalogueView(template) {
+  const { install, ...rest } = template;
+  if (rest.windows) {
+    const { install: windowsInstall, ...windows } = rest.windows;
+    rest.windows = windows;
+  }
+  return rest;
+}
+
 module.exports = (router, { templates, manager, auth }, { requireAdmin, requireCap }) => {
   router.get('/api/templates', ({ user }) => {
     // People who may create their own servers need the catalogue to pick from.
@@ -16,12 +26,17 @@ module.exports = (router, { templates, manager, auth }, { requireAdmin, requireC
         runnable = false;
         runsAs = err.message;
       }
-      return { ...t, runnable, runsAs };
+      return { ...(user.role === 'admin' ? t : catalogueView(t)), runnable, runsAs };
     });
     return { templates: list, categories: templates.categories() };
   });
 
-  router.get('/api/templates/:id', ({ params }) => ({ template: templates.require(params.id) }));
+  // The full file holds the install script, so only administrators get it; the catalogue entry is enough to pick a game.
+  router.get('/api/templates/:id', ({ user, params }) => {
+    if (user.role === 'admin') return { template: templates.require(params.id) };
+    if (!auth.can(user, 'deploy')) requireCap(user, 'templates');
+    return { template: catalogueView(templates.require(params.id)) };
+  });
 
   /** Live choices for template dropdowns (game versions, build channels…). */
   router.get('/api/options/:source', async ({ params, url }) =>

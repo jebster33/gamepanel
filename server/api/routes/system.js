@@ -4,6 +4,7 @@ const { json, fail, clamp } = require('../../core/util');
 const { config } = require('../../core/config');
 const { describeHost, HOST_PLATFORM } = require('../../core/platform');
 const updater = require('../../features/updater');
+const secrets = require('../../core/secrets');
 const { EVENT_CHOICES } = require('../../features/notify');
 const VERSION = require('../../../package.json').version;
 
@@ -25,8 +26,8 @@ module.exports = (router, { store, auth, manager, hostMetrics, notifier, bridge 
     requireCap(user, 'activity');
     const limit = clamp(url.searchParams.get('limit') || 100, 1, 500);
     const all = store.state.events;
-    // Account events carry addresses and locations: administrators only.
-    const visible = user.role === 'admin' ? all : all.filter((e) => (e.serverId ? auth.canAccessServer(user, e.serverId) : !e.type.startsWith('user.')));
+    // Panel-level events (nodes with their URLs, bridge connections, ban appeals, sign-ins) are for administrators; everyone else sees their own servers'.
+    const visible = user.role === 'admin' ? all : all.filter((e) => e.serverId && auth.canAccessServer(user, e.serverId));
     return { events: visible.slice(0, limit) };
   });
 
@@ -106,10 +107,18 @@ module.exports = (router, { store, auth, manager, hostMetrics, notifier, bridge 
     return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, /token|secret|key|password|passphrase|webhook/i.test(k) && typeof v === 'string' ? '' : blankSecrets(v)]));
   };
 
+  /** The settings page's copy: sealed tokens are never sent back, only whether one is saved. */
+  const settingsView = () => {
+    const s = store.state.settings;
+    const view = secrets.maskSealed({ ...s, nodes: undefined, oauth: undefined, backupPassphrase: undefined, backupPassphraseSet: Boolean(s.backupPassphrase) });
+    if (view.integrations?.cloudflare) view.integrations.cloudflare = { ...view.integrations.cloudflare, tokenSet: Boolean(s.integrations?.cloudflare?.token) };
+    return view;
+  };
+
   router.get('/api/settings', ({ user, req }) => {
     requireAdmin(user);
     // Sign-in provider secrets have their own endpoint that never sends them back.
-    const settings = { ...store.state.settings, nodes: undefined, oauth: undefined, backupPassphrase: undefined, backupPassphraseSet: Boolean(store.state.settings.backupPassphrase) };
+    const settings = settingsView();
     // A read-only API key (a status bot, a dashboard) never sees the keys and tokens the panel holds.
     return { settings: req.gpApiKey?.readOnly ? blankSecrets(settings) : settings, notificationEvents: EVENT_CHOICES };
   });
@@ -157,14 +166,17 @@ module.exports = (router, { store, auth, manager, hostMetrics, notifier, bridge 
       if (cloudflare !== undefined) {
         const domain = String(cloudflare.domain || '').trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
         if (domain && !/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(domain)) fail(400, 'Enter the domain like example.com');
-        s.integrations.cloudflare = { token: String(cloudflare.token || '').trim(), domain };
+        // The saved token is never shown, so leaving the box empty keeps it; `clearToken` removes it.
+        const typed = String(cloudflare.token || '').trim();
+        const token = cloudflare.clearToken ? '' : typed ? secrets.seal(typed) : s.integrations.cloudflare?.token || '';
+        s.integrations.cloudflare = { token, domain };
       }
       if (factorio !== undefined) {
         s.integrations.factorio = { username: String(factorio.username || '').trim(), token: String(factorio.token || '').trim() };
       }
     }
     store.save();
-    return { settings: { ...s, nodes: undefined, oauth: undefined, backupPassphrase: undefined, backupPassphraseSet: Boolean(s.backupPassphrase) } };
+    return { settings: settingsView() };
   });
 
   /* --------------------------------------------------------- status bots -- */
@@ -243,7 +255,7 @@ module.exports = (router, { store, auth, manager, hostMetrics, notifier, bridge 
   router.post('/api/system/panel-backup', ({ user, body, res }) => {
     requireAdmin(user);
     const record = auth.users.find((u) => u.id === user.id);
-    if (!require('../../core/auth').verifyPassword(String(body?.password || ''), record?.password)) fail(403, 'Your password is not right');
+    auth.checkPassword(record, body?.password);
     const fs = require('fs');
     const path = require('path');
     const { spawn } = require('child_process');
@@ -275,8 +287,9 @@ module.exports = (router, { store, auth, manager, hostMetrics, notifier, bridge 
       .split(/[\s,]+/)
       .filter((id) => /^\d{15,22}$/.test(id))
       .join(',');
-    const token = body?.token === undefined ? s.integrations?.discordBot?.token || '' : String(body.token).trim();
-    s.integrations = { ...(s.integrations || {}), discordBot: { token, controllers } };
+    const token = body?.token === undefined ? s.integrations?.discordBot?.token || '' : secrets.seal(String(body.token).trim());
+    // Spread first: the status-bot presence settings live beside the token.
+    s.integrations = { ...(s.integrations || {}), discordBot: { ...(s.integrations?.discordBot || {}), token, controllers } };
     store.save();
     discordBot.reload();
     return discordBot.status();

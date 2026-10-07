@@ -58,14 +58,17 @@ async function until(fn, what, ms = 20000) {
 }
 
 let PANEL;
-let TOKEN;
+let COOKIE;
 async function api(method, url, body) {
   const res = await fetch(PANEL + url, {
     method,
-    headers: { 'Content-Type': 'application/json', ...(TOKEN ? { Authorization: `Bearer ${TOKEN}` } : {}) },
+    headers: { 'Content-Type': 'application/json', ...(COOKIE ? { Cookie: COOKIE } : {}) },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   if (!res.ok) throw new Error(`${method} ${url} → ${res.status} ${await res.text()}`);
+  // The session is in the cookie; keep it for the calls that follow.
+  const set = res.headers.getSetCookie?.().find((c) => c.startsWith('gp_session='));
+  if (set) COOKIE = set.split(';')[0];
   const type = res.headers.get('content-type') || '';
   return type.includes('json') ? res.json() : Buffer.from(await res.arrayBuffer());
 }
@@ -187,7 +190,7 @@ async function main() {
   let panel = await startPanel();
 
   await api('POST', '/api/setup', { username: 'admin', password: 'Correct-Horse-42' });
-  TOKEN = (await api('POST', '/api/auth/login', { username: 'admin', password: 'Correct-Horse-42' })).token;
+  await api('POST', '/api/auth/login', { username: 'admin', password: 'Correct-Horse-42' });
 
   step('tunnel is closed while the bridge is off');
   assert.strictEqual(await upgradeStatus(port), 404, 'tunnel must not answer while off');

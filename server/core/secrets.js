@@ -48,4 +48,34 @@ function secretNames(template) {
   return new Set((template?.variables || []).filter((v) => v.secret).map((v) => v.name));
 }
 
-module.exports = { seal, open, isSealed, secretNames };
+/**
+ * Seal the tokens and keys the panel holds in its settings (Discord bot,
+ * Cloudflare, node API keys, S3 secret, sign-in provider secrets). Safe to run
+ * on every start: sealed values are left alone, so settings saved by an older
+ * version are converted the first time. Returns true when something changed.
+ */
+function sealSettings(settings) {
+  let changed = false;
+  const put = (holder, field) => {
+    if (holder && typeof holder[field] === 'string' && holder[field] && !isSealed(holder[field])) {
+      holder[field] = seal(holder[field]);
+      changed = true;
+    }
+  };
+  put(settings.integrations?.discordBot, 'token');
+  put(settings.integrations?.cloudflare, 'token');
+  for (const node of settings.nodes || []) put(node, 'key');
+  put(settings.cloudBackups, 'secretAccessKey');
+  for (const provider of Object.values(settings.oauth || {})) if (provider && typeof provider === 'object') put(provider, 'clientSecret');
+  return changed;
+}
+
+/** A copy of a settings tree with every sealed value blanked: what the settings page may be sent. */
+function maskSealed(value) {
+  if (Array.isArray(value)) return value.map(maskSealed);
+  if (isSealed(value)) return '';
+  if (!value || typeof value !== 'object') return value;
+  return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, maskSealed(v)]));
+}
+
+module.exports = { seal, open, isSealed, secretNames, sealSettings, maskSealed };

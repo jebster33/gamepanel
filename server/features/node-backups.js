@@ -26,6 +26,18 @@ const ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
 
 /* --------------------------------------------------- receiving: the store -- */
 
+/**
+ * Where one sender's copies live. The sender names its own folder, but only
+ * inside a prefix taken from the API key it signed in with, so a sender can
+ * neither read, overwrite nor delete the copies another panel's key put here.
+ */
+function scopedSource(req, user, source) {
+  const owner = req.gpApiKeyId ? `k${req.gpApiKeyId}` : `u${user.id}`;
+  const scoped = `${owner}-${String(source)}`;
+  if (!ID_RE.test(scoped)) fail(400, 'Bad panel or server id');
+  return scoped;
+}
+
 const storeRoot = () => path.join(config.dataDir, 'backups-from-nodes');
 
 function storeDir(source, serverId) {
@@ -271,4 +283,4 @@ function nodeBackups(store, manager) {
   return instance;
 }
 
-module.exports = { nodeBackups, NodeBackups, receive, listStored, storeFile, storedSummary };
+module.exports = { nodeBackups, NodeBackups, receive, listStored, storeFile, storedSummary, scopedSource };

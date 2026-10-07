@@ -77,7 +77,19 @@ Things that were tightened after a security review, and what is still on you:
 - **Wake on join** lets anyone who knows a whitelisted name (or anyone, with the whitelist off) start a
   stopped server, at most once a minute. Leave it off for servers you do not want started by strangers.
 - **Backup copies on another node** use that node's administrator API key. Use `https://` between
-  machines you do not trust, and give each panel its own node key.
-- **Start-command arguments.** A sub-user who may edit a setting such as a map name can add extra
-  arguments to the game's own command line (not to the shell). Treat the "settings" permission as trusted.
+  machines you do not trust, and give each panel its own node key: copies are filed under the key that
+  sent them, so one key cannot read, overwrite or delete another's. (Copies stored by an older version
+  sit under the sender's own panel id and are not listed any more; move the folders under
+  `backups-from-nodes/` into `k<key id>-<panel id>/` if you need them.)
+- **Start-command arguments.** A setting that sits unquoted in a game's command line cannot contain
+  spaces for a sub-user, so it stays one argument. Settings are still a trusted permission.
+- **Sessions.** Signing out ends that session on the server, not only in the browser. A password change
+  or "sign out everywhere" also revokes the account's API keys. Sign-in answers do not carry the session
+  token (it lives in the cookie), a two-factor ticket works once, and adding or removing a passkey asks
+  for the password.
+- **Tokens in the settings** (the Discord bot, Cloudflare, node keys, the S3 secret and sign-in provider
+  secrets) are sealed with a key derived from `secret.key`, like server passwords. They are converted
+  the first time an updated panel starts, and the settings page never gets them back.
+- **Public ban appeals** answer the same whether or not a name is banned, and a ban keeps at most three
+  open appeals, so a junk appeal does not use up the real one.
 

@@ -49,15 +49,19 @@ const CAPABILITY_IDS = CAPABILITIES.map((c) => c.id);
 /** A sensible starting point: run the server, look at it, leave it intact. */
 const DEFAULT_PERMISSIONS = ['power', 'console', 'command', 'files', 'backups'];
 
-const SCRYPT_PARAMS = { N: 16384, r: 8, p: 1, keylen: 64 };
+// 2^15 (about 32 MB, tens of milliseconds); hashes stored with a lower cost are upgraded the next time their owner signs in.
+const SCRYPT_PARAMS = { N: 32768, r: 8, p: 1, keylen: 64 };
+// Node refuses scrypt above 32 MB unless told otherwise.
+const SCRYPT_MAXMEM = 128 * 1024 * 1024;
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const COOKIE_NAME = 'gp_session';
 // How long the second step of a two-factor sign-in may take.
 const TICKET_TTL_MS = 5 * 60 * 1000;
+const MAX_REVOKED_TOKENS = 20000;
 
 function hashPassword(password) {
   const salt = crypto.randomBytes(16);
-  const key = crypto.scryptSync(password, salt, SCRYPT_PARAMS.keylen, SCRYPT_PARAMS);
+  const key = crypto.scryptSync(password, salt, SCRYPT_PARAMS.keylen, { ...SCRYPT_PARAMS, maxmem: SCRYPT_MAXMEM });
   return `scrypt$${SCRYPT_PARAMS.N}$${SCRYPT_PARAMS.r}$${SCRYPT_PARAMS.p}$${salt.toString('base64')}$${key.toString('base64')}`;
 }
 
@@ -74,11 +78,18 @@ function verifyPassword(password, stored) {
       N: Number(N),
       r: Number(r),
       p: Number(p),
+      maxmem: SCRYPT_MAXMEM,
     });
     return crypto.timingSafeEqual(expected, actual);
   } catch {
     return false;
   }
+}
+
+/** True when a stored hash was made with less work than the current setting. */
+function needsRehash(stored) {
+  const [scheme, N, r, p] = String(stored).split('$');
+  return scheme !== 'scrypt' || Number(N) < SCRYPT_PARAMS.N || Number(r) < SCRYPT_PARAMS.r || Number(p) < SCRYPT_PARAMS.p;
 }
 
 function base64url(buf) {
@@ -147,6 +158,12 @@ class Auth {
     this.store = store;
     this.secret = secret;
     this.failures = new Map(); // ip -> { count, until }
+    this.usedTickets = new Map(); // two-factor ticket id -> expiry
+  }
+
+  /** A ticket for the code step: good once, for five minutes, and only while the account's sessions are as they were. */
+  newTicket(user) {
+    return signToken(this.secret, { sub: user.id, v: user.sessionEpoch || 0, jti: crypto.randomBytes(9).toString('base64url'), purpose: '2fa', exp: Date.now() + TICKET_TTL_MS });
   }
 
   get users() {
@@ -211,7 +228,20 @@ class Auth {
     checkPasswordStrength(password, user.username);
     user.password = hashPassword(password);
     user.sessionEpoch = (user.sessionEpoch || 0) + 1;
+    // A key made in a session that has just been ended would otherwise outlive the password change.
+    user.apiKeys = [];
     this.store.save();
+  }
+
+  /** Ask for the password again before something sensitive; guessing it here counts against the account like a sign-in does. */
+  checkPassword(user, password) {
+    const key = `pw:${user.id}`;
+    this.checkLockout(key);
+    if (!verifyPassword(String(password ?? ''), user.password)) {
+      this.noteAccountFailure(key);
+      fail(403, 'Your password is not right');
+    }
+    this.failures.delete(key);
   }
 
   deleteUser(userId) {
@@ -272,9 +302,14 @@ class Auth {
     }
     this.failures.delete(account);
     if (user.totp?.secret) {
-      return { twoFactor: true, ticket: signToken(this.secret, { sub: user.id, purpose: '2fa', exp: Date.now() + TICKET_TTL_MS }) };
+      return { twoFactor: true, ticket: this.newTicket(user) };
     }
     this.passkeyOnlyAdmin(user);
+    // A hash made with less work than today's setting is replaced now that the password is at hand.
+    if (needsRehash(user.password)) {
+      user.password = hashPassword(password);
+      this.store.save();
+    }
     return this.startSession(user, ip);
   }
 
@@ -296,6 +331,12 @@ class Auth {
     if (!payload || payload.purpose !== '2fa') fail(401, 'That sign-in took too long. Enter your password again.');
     const user = this.users.find((u) => u.id === payload.sub);
     if (!user?.totp?.secret) fail(401, 'That sign-in took too long. Enter your password again.');
+    // Signing out everywhere (or a password change) since the password step cancels it, and so does having used it.
+    const now = Date.now();
+    for (const [id, exp] of this.usedTickets) if (exp < now) this.usedTickets.delete(id);
+    if ((payload.v || 0) !== (user.sessionEpoch || 0) || (payload.jti && this.usedTickets.has(payload.jti)) || !payload.jti) {
+      fail(401, 'That sign-in took too long. Enter your password again.');
+    }
     // Someone who has the password can fetch fresh tickets from many addresses;
     // the account's own limit stops them cycling through codes.
     const account = `2fa:${user.id}`;
@@ -306,6 +347,7 @@ class Auth {
       this.recordFailure(ip, 'That code is not right');
     }
     this.failures.delete(account);
+    this.usedTickets.set(payload.jti, payload.exp);
     return { ...this.startSession(user, ip), usedRecoveryCode: how === 'recovery', recoveryCodesLeft: (user.totp.recovery || []).length };
   }
 
@@ -315,9 +357,7 @@ class Auth {
    * right password.
    */
   loginLinked(user, ip = 'unknown') {
-    if (user.totp?.secret) {
-      return { twoFactor: true, ticket: signToken(this.secret, { sub: user.id, purpose: '2fa', exp: Date.now() + TICKET_TTL_MS }) };
-    }
+    if (user.totp?.secret) return { twoFactor: true, ticket: this.newTicket(user) };
     this.passkeyOnlyAdmin(user);
     return this.startSession(user, ip);
   }
@@ -416,7 +456,10 @@ class Auth {
       if (req.method !== 'GET' && isAccountRoute(req.url)) return null;
       const user = this.requireTwoFactor(this.userFromApiKey(token, req.method), req);
       // Remembered on the request, so the WebSocket and account linking can tell a script from a person.
-      if (user) req.gpApiKey = { readOnly: this.apiKeyIsReadOnly(token) };
+      if (user) {
+        req.gpApiKey = { readOnly: this.apiKeyIsReadOnly(token) };
+        req.gpApiKeyId = this.apiKeyRecord(token)?.id;
+      }
       return user;
     }
     return this.requireTwoFactor(this.userFromToken(token), req);
@@ -476,10 +519,14 @@ class Auth {
     this.store.save();
   }
 
-  apiKeyIsReadOnly(key) {
+  apiKeyRecord(key) {
     const hash = hashKey(key);
-    for (const user of this.users) for (const k of user.apiKeys || []) if (k.hash === hash) return Boolean(k.readOnly);
-    return false;
+    for (const user of this.users) for (const k of user.apiKeys || []) if (k.hash === hash) return k;
+    return null;
+  }
+
+  apiKeyIsReadOnly(key) {
+    return Boolean(this.apiKeyRecord(key)?.readOnly);
   }
 
   userFromApiKey(key, method = 'GET') {
@@ -506,6 +553,7 @@ class Auth {
     // Signing out everywhere (or a password change) bumps the epoch, which
     // retires every session issued before it.
     if (!user || (payload.v || 0) !== (user.sessionEpoch || 0)) return null;
+    if (this.store.state.revokedTokens?.[hashKey(token)]) return null;
     return user;
   }
 
@@ -514,7 +562,34 @@ class Auth {
     const user = this.users.find((u) => u.id === userId);
     if (!user) fail(404, 'User not found');
     user.sessionEpoch = (user.sessionEpoch || 0) + 1;
+    // API keys count as sessions here: "everywhere" includes scripts that were set up from a stolen session.
+    const keys = (user.apiKeys || []).length;
+    user.apiKeys = [];
     this.store.save();
+    return { apiKeysRevoked: keys };
+  }
+
+  /** The session token a request carries (cookie, or Authorization: Bearer): not an API key. */
+  tokenFromRequest(req) {
+    const authHeader = req.headers.authorization;
+    // Never from the query string: URLs end up in logs, history and Referer headers.
+    const token = parseCookies(req.headers.cookie)[COOKIE_NAME] || (authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null);
+    return token && !token.startsWith('gp_') ? token : null;
+  }
+
+  /** Sign out of this one session for good: its token stops working even before it would have expired. */
+  revokeToken(token) {
+    const payload = verifyToken(this.secret, token);
+    if (!payload || payload.purpose) return false;
+    const denied = (this.store.state.revokedTokens ||= {});
+    const now = Date.now();
+    for (const [h, exp] of Object.entries(denied)) if (exp < now) delete denied[h];
+    // Past the cap the oldest go: they expire first anyway (every token lives a week).
+    const keys = Object.keys(denied);
+    if (keys.length >= MAX_REVOKED_TOKENS) for (const h of keys.slice(0, keys.length - MAX_REVOKED_TOKENS + 1)) delete denied[h];
+    denied[hashKey(token)] = payload.exp;
+    this.store.save();
+    return true;
   }
 
   publicUser(user) {
@@ -593,6 +668,7 @@ module.exports = {
   Auth,
   hashPassword,
   verifyPassword,
+  needsRehash,
   checkPasswordStrength,
   sanitizePermissions,
   COOKIE_NAME,

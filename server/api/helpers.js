@@ -91,4 +91,20 @@ function isSecure(req) {
   return config.behindProxy && String(req.headers['x-forwarded-proto'] || '').includes('https');
 }
 
-module.exports = { createHelpers, clientIp, isSecure, sameOrigin, redactServer, scopeBroadcast };
+/** Browsers that have seen the panel over HTTPS keep using it (a year). Not sent over plain HTTP, where it would be ignored. */
+function hsts(req) {
+  return isSecure(req) ? 'max-age=31536000' : null;
+}
+
+const MAX_SUBSCRIPTIONS = 64;
+const MAX_TOPIC_LENGTH = 100;
+
+/** Add a WebSocket topic unless the connection already has plenty (each is a lookup on every broadcast). Returns false when refused. */
+function addSubscription(conn, topic) {
+  if (typeof topic !== 'string' || topic.length > MAX_TOPIC_LENGTH) return false;
+  if (!conn.subscriptions.has(topic) && conn.subscriptions.size >= MAX_SUBSCRIPTIONS) return false;
+  conn.subscriptions.add(topic);
+  return true;
+}
+
+module.exports = { createHelpers, clientIp, isSecure, hsts, sameOrigin, redactServer, scopeBroadcast, addSubscription, MAX_SUBSCRIPTIONS };

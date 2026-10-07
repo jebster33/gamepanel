@@ -202,19 +202,19 @@ module.exports = (router, { store, manager }, { requireAdmin, requireCap, server
     '/api/backup-store/:source/:serverId/:name',
     ({ user, params, req }) => {
       requireAdmin(user);
-      return nb.receive(req, params.source, params.serverId, params.name);
+      return nb.receive(req, nb.scopedSource(req, user, params.source), params.serverId, params.name);
     },
     { rawBody: true }
   );
-  router.get('/api/backup-store/:source/:serverId', ({ user, params }) => {
+  router.get('/api/backup-store/:source/:serverId', ({ user, params, req }) => {
     requireAdmin(user);
-    return { backups: nb.listStored(params.source, params.serverId) };
+    return { backups: nb.listStored(nb.scopedSource(req, user, params.source), params.serverId) };
   });
   router.get(
     '/api/backup-store/:source/:serverId/:name',
-    ({ user, params, res }) => {
+    ({ user, params, req, res }) => {
       requireAdmin(user);
-      const file = nb.storeFile(params.source, params.serverId, params.name);
+      const file = nb.storeFile(nb.scopedSource(req, user, params.source), params.serverId, params.name);
       if (!fs.existsSync(file)) fail(404, 'No such copy');
       res.writeHead(200, { 'Content-Type': 'application/gzip', 'Content-Length': fs.statSync(file).size });
       fs.createReadStream(file).pipe(res);
@@ -222,9 +222,9 @@ module.exports = (router, { store, manager }, { requireAdmin, requireCap, server
     },
     { raw: true }
   );
-  router.delete('/api/backup-store/:source/:serverId/:name', ({ user, params }) => {
+  router.delete('/api/backup-store/:source/:serverId/:name', ({ user, params, req }) => {
     requireAdmin(user);
-    fs.rmSync(nb.storeFile(params.source, params.serverId, params.name), { force: true });
+    fs.rmSync(nb.storeFile(nb.scopedSource(req, user, params.source), params.serverId, params.name), { force: true });
     return { ok: true };
   });
 

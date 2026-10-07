@@ -31,7 +31,7 @@ async function cf(token, method, path, body) {
 function settingsOf(store) {
   const c = store.state.settings?.integrations?.cloudflare;
   if (!c?.token || !c?.domain) fail(400, 'Add a Cloudflare token and domain under Settings, Integrations first');
-  return c;
+  return { ...c, token: require('../core/secrets').open(c.token) };
 }
 
 async function zoneId(c) {

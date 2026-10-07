@@ -119,8 +119,9 @@ async function challengeListener(s) {
 
 async function cloudflareTxt(store, domain, value) {
   const dns = require('./dns');
-  const c = store.state.settings?.integrations?.cloudflare;
-  if (!c?.token) fail(400, 'Add a Cloudflare token under Settings → Integrations to use the Cloudflare method');
+  const saved = store.state.settings?.integrations?.cloudflare;
+  if (!saved?.token) fail(400, 'Add a Cloudflare token under Settings → Integrations to use the Cloudflare method');
+  const c = { ...saved, token: require('../core/secrets').open(saved.token) };
   const zones = await dns.cf(c.token, 'GET', `/zones?name=${encodeURIComponent(c.domain || domain.split('.').slice(-2).join('.'))}`);
   if (!zones?.length) fail(400, `Cloudflare has no zone for ${domain} with that token`);
   const zone = zones[0].id;

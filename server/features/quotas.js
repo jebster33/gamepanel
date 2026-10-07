@@ -51,10 +51,22 @@ function checkCreate(manager, user, memoryMb) {
 
 /** Raising one server's memory counts against the account too. */
 function checkMemory(manager, user, server, memoryMb) {
+  // Someone who did not deploy this server works within what an administrator gave it.
+  if (user.role !== 'admin' && server.ownerId !== user.id && memoryMb > (Number(server.memory) || 0)) {
+    fail(403, `This server has ${server.memory} MB. Only an administrator, or whoever created the server, can give it more.`);
+  }
   const q = quotaFor(user);
   if (!q.memoryMb || server.ownerId !== user.id) return;
   const others = usage(manager, user).memoryMb - (Number(server.memory) || 0);
   if (others + memoryMb > q.memoryMb) fail(403, `Your account has ${q.memoryMb} MB of memory in total; ${Math.max(0, q.memoryMb - others)} MB is free for this server.`);
+}
+
+/** The same for the CPU cap: 0 means no cap, so for someone who is not the owner, removing or raising one is an administrator's call. */
+function checkCpu(user, server, cpuLimit) {
+  if (user.role === 'admin' || server.ownerId === user.id) return;
+  const current = Number(server.cpuLimit) || 0;
+  const next = Number(cpuLimit) || 0;
+  if (current && (!next || next > current)) fail(403, `This server is capped at ${current}% CPU. Only an administrator, or whoever created the server, can raise or remove the cap.`);
 }
 
 /** A server whose owner is over their disk quota does not start. */
@@ -66,4 +78,4 @@ function checkDisk(manager, server, users) {
   if (q.diskGb && usage(manager, owner).diskBytes > q.diskGb * GB) fail(403, `The owner's servers use more than their ${q.diskGb} GB of disk. Delete files or backups, or ask an administrator for more space.`);
 }
 
-module.exports = { DEFAULT_QUOTA, OWNER_PERMISSIONS, quotaFor, cleanQuota, usage, checkCreate, checkMemory, checkDisk };
+module.exports = { DEFAULT_QUOTA, OWNER_PERMISSIONS, quotaFor, cleanQuota, usage, checkCreate, checkMemory, checkCpu, checkDisk };

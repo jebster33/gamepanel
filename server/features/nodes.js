@@ -14,6 +14,7 @@ const http = require('http');
 const https = require('https');
 const os = require('os');
 const { fail, uid, logger } = require('../core/util');
+const secrets = require('../core/secrets');
 
 const POLL_MS = 3000;
 const TIMEOUT_MS = 8000;
@@ -26,6 +27,8 @@ const hostOf = (url) => {
     return '';
   }
 };
+
+const MAX_REWRITE = 4 * 1024 * 1024;
 
 class Nodes {
   constructor({ store, manager, wss }) {
@@ -95,7 +98,7 @@ class Nodes {
     if (!/^gp_/.test(String(key || ''))) fail(400, 'Paste an API key from the other panel (Account page, API keys). It starts with gp_.');
     const node = { id: uid(6).replace(/[^A-Za-z0-9]/g, 'x'), name, url: this.cleanUrl(url), key: String(key).trim() };
     await this.request(node, 'GET', '/api/servers').catch((err) => fail(400, `Could not reach ${node.url}: ${err.message}`));
-    this.list.push(node);
+    this.list.push({ ...node, key: secrets.seal(node.key) });
     this.store.save();
     await this.poll(node).catch(() => {});
     return this.publicNode(node);
@@ -110,7 +113,7 @@ class Nodes {
       if (url !== node.url && !body.key) fail(400, 'Changing the address needs the node\'s API key again');
       node.url = url;
     }
-    if (body.key) node.key = String(body.key).trim();
+    if (body.key) node.key = secrets.seal(String(body.key).trim());
     this.store.save();
     return this.publicNode(node);
   }
@@ -195,7 +198,7 @@ class Nodes {
         {
           method,
           timeout: TIMEOUT_MS,
-          headers: { Authorization: `Bearer ${node.key}`, Accept: 'application/json', ...(payload ? { 'Content-Type': 'application/json', 'Content-Length': payload.length } : {}) },
+          headers: { Authorization: `Bearer ${secrets.open(node.key)}`, Accept: 'application/json', ...(payload ? { 'Content-Type': 'application/json', 'Content-Length': payload.length } : {}) },
         },
         (res) => {
           const chunks = [];
@@ -228,15 +231,39 @@ class Nodes {
     return new Promise((resolve) => {
       const target = new URL(path, node.url);
       const lib = target.protocol === 'https:' ? https : http;
-      const headers = { Authorization: `Bearer ${node.key}`, Accept: req.headers.accept || '*/*' };
+      const headers = { Authorization: `Bearer ${secrets.open(node.key)}`, Accept: req.headers.accept || '*/*' };
       for (const h of ['content-type', 'content-length', 'x-filename', 'range']) if (req.headers[h]) headers[h] = req.headers[h];
       const upstream = lib.request(target, { method: req.method, headers, timeout: 60_000 }, (up) => {
         const type = String(up.headers['content-type'] || '');
         const length = Number(up.headers['content-length'] || 0);
-        if (type.includes('application/json') && length < 4 * 1024 * 1024) {
+        // JSON answers are read whole so server ids can be rewritten, up to a limit; a longer one (or one that never said its length) is passed on as it is.
+        if (type.includes('application/json') && length < MAX_REWRITE) {
           const chunks = [];
-          up.on('data', (c) => chunks.push(c));
+          let size = 0;
+          let passing = false;
+          up.on('data', (c) => {
+            if (passing) {
+              if (!res.write(c)) {
+                up.pause();
+                res.once('drain', () => up.resume());
+              }
+              return;
+            }
+            chunks.push(c);
+            size += c.length;
+            if (size > MAX_REWRITE) {
+              passing = true;
+              res.writeHead(up.statusCode, { 'Content-Type': type });
+              res.write(Buffer.concat(chunks));
+              chunks.length = 0;
+            }
+          });
           up.on('end', () => {
+            if (passing) {
+              res.end();
+              resolve();
+              return;
+            }
             let text = Buffer.concat(chunks).toString('utf8');
             try {
               const data = JSON.parse(text);

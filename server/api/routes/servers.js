@@ -116,7 +116,9 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
     if (!admin) {
       serverFor(user, params.id, 'settings');
       // Raising a server's memory counts against its owner's quota.
-      if (body.memory !== undefined) quotas.checkMemory(manager, user, manager.require(params.id), Math.max(256, Number(body.memory) || 0));
+      const target = manager.require(params.id);
+      if (body.memory !== undefined) quotas.checkMemory(manager, user, target, Math.max(256, Number(body.memory) || 0));
+      if (body.cpuLimit !== undefined) quotas.checkCpu(user, target, body.cpuLimit);
     }
     return { server: manager.publicServer(manager.update(params.id, body, { trusted: admin })) };
   });
@@ -457,11 +459,15 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
     return manager.runDiagnosis(server) || { findings: [] };
   });
 
+  const REINSTALL_CAPS = ['power', 'files.write'];
+
   router.post('/api/servers/:id/diagnose/fix', async ({ user, params, body }) => {
     const action = String(body?.action || '');
     const cap = ['disable-mod', 'disable-plugin', 'eula'].includes(action) ? 'files.write' : 'settings';
     const server = serverFor(user, params.id, cap);
     if (action === 'memory') requireAdmin(user);
+    // A reinstall rewrites the game files: what a direct reinstall or a wipe needs, not just the settings.
+    if (action === 'reinstall') for (const c of REINSTALL_CAPS) requireCap(user, c, server.id);
     return manager.applyFix(server.id, body || {}, user);
   });
 
@@ -592,6 +598,7 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
   /** A staff note on a player, and whether to alert when they join any server. */
   router.put('/api/players/:name/note', ({ user, params, body }) => {
     requireCap(user, 'command');
+    // Notes are panel-wide: a sub-user can add one, but only an administrator or its author changes it.
     const note = manager.setPlayerNote(params.name, { note: body?.note, watch: body?.watch }, user);
     store.addEvent('player.note', `${user.username} ${note?.watch ? 'put' : 'updated'} ${params.name}${note?.watch ? ' on the watchlist' : "'s note"}`);
     return { note };
@@ -673,7 +680,7 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
   /* ---------------------------------------------------------- schedules -- */
 
   router.get('/api/servers/:id/schedules', ({ user, params }) => {
-    const server = serverFor(user, params.id);
+    const server = serverFor(user, params.id, 'schedules');
     return { schedules: scheduler.list(server) };
   });
 

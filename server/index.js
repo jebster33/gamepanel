@@ -21,7 +21,7 @@ const { HostMetrics, stopSampler } = require('./features/metrics');
 const { Scheduler } = require('./features/scheduler');
 const { Notifier } = require('./features/notify');
 const { Bridge } = require('./features/bridge');
-const { clientIp, redactServer, scopeBroadcast, sameOrigin } = require('./api/helpers');
+const { clientIp, redactServer, scopeBroadcast, sameOrigin, hsts, addSubscription, MAX_SUBSCRIPTIONS } = require('./api/helpers');
 const { createApi, VERSION } = require('./api');
 
 const MIME = {
@@ -50,6 +50,8 @@ async function main() {
   const store = new Store(config.stateFile, isWindows ? { tmpDir: config.runDir } : {});
   if (isWindows && config.service) require('./core/acl').hardenWindowsData(config.dataDir, { run, logger, store }).catch((err) => logger.warn('Could not restrict the data folder:', err.message));
   const auth = new Auth(store, secret);
+  // Tokens and keys saved in plain text by an older version are sealed now.
+  if (require('./core/secrets').sealSettings(store.state.settings)) store.save();
   const templates = new TemplateRegistry();
   const wss = new WebSocketServer();
   const hostMetrics = new HostMetrics();
@@ -144,6 +146,8 @@ async function main() {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=(), usb=()');
     res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+    const transport = hsts(req);
+    if (transport) res.setHeader('Strict-Transport-Security', transport);
   }
 
   /* -------------------------------------------------------- http server -- */
@@ -249,14 +253,17 @@ async function main() {
         // Deleted, or signed out everywhere since this socket opened.
         if (!scopeBroadcast(auth, conn, 'session', {})) return;
         if (msg.type === 'subscribe' && Array.isArray(msg.topics)) {
-          for (const topic of msg.topics) {
+          for (const topic of msg.topics.slice(0, MAX_SUBSCRIPTIONS)) {
+            if (typeof topic !== 'string') continue;
             // Console streams are per-server and access controlled.
             if (topic.startsWith('console:')) {
               const id = topic.slice(8);
               if (!auth.canAccessServer(conn.user, id) || !auth.can(conn.user, 'console', id)) continue;
+              if (!addSubscription(conn, topic)) continue;
               conn.send({ topic, type: 'lines', serverId: id, lines: manager.getConsole(id) });
+              continue;
             }
-            conn.subscriptions.add(topic);
+            addSubscription(conn, topic);
           }
         } else if (msg.type === 'unsubscribe' && Array.isArray(msg.topics)) {
           for (const topic of msg.topics) conn.subscriptions.delete(topic);
