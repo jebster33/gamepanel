@@ -23,10 +23,13 @@ module.exports = {
       const newest = fs
         .readdirSync(dir)
         .filter((f) => f.endsWith('.txt'))
-        .map((f) => ({ f, t: fs.statSync(path.join(dir, f)).mtimeMs }))
+        .map((f) => ({ f, st: fs.lstatSync(path.join(dir, f)) }))
+        // A game can leave a link or a pipe here; only plain files are read.
+        .filter((e) => e.st.isFile())
+        .map((e) => ({ f: e.f, t: e.st.mtimeMs }))
         .sort((a, b) => b.t - a.t)[0];
       if (!newest || Date.now() - newest.t > 5 * 60_000) return '';
-      return fs.readFileSync(path.join(dir, newest.f), 'utf8').slice(0, 200_000);
+      return require('../core/safefs').readText(path.join(dir, newest.f), 4 * 1024 * 1024).slice(0, 200_000);
     } catch {
       return '';
     }

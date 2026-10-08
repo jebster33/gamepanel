@@ -48,6 +48,8 @@ function open(source) {
     const count = tail.readUInt16LE(eocd + 10);
     const cdSize = tail.readUInt32LE(eocd + 12);
     const cdOffset = tail.readUInt32LE(eocd + 16);
+    // The sizes come from the file itself: never trust them past the end of it.
+    if (cdOffset + cdSize > r.size || cdSize > 64 * 1024 * 1024) throw new Error('not a zip file');
     const cd = r.read(cdOffset, cdSize);
     const entries = new Map();
     let p = 0;

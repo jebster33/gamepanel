@@ -79,7 +79,7 @@ module.exports = {
     if (isBedrock(server)) return null;
     const read = (rel) => {
       try {
-        return JSON.parse(fs.readFileSync(containedPath(server.dir, rel), 'utf8'));
+        return JSON.parse(require('../core/safefs').readText(containedPath(server.dir, rel), 4 * 1024 * 1024));
       } catch {
         return null;
       }

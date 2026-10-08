@@ -80,3 +80,23 @@ test('a malformed percent-escape in a route is a 400, not a server error', () =>
     (err) => err instanceof HttpError && err.code === 400
   );
 });
+
+test('files a game plants in its folder (pipes, links) cannot hang or mislead the panel', { skip: process.platform === 'win32' }, () => {
+  const { spawnSync } = require('child_process');
+  const dir = tmp();
+  const srv = path.join(dir, 'srv');
+  fs.mkdirSync(path.join(srv, 'crash-reports'), { recursive: true });
+  spawnSync('mkfifo', [path.join(srv, 'server.properties')]);
+  spawnSync('mkfifo', [path.join(srv, 'crash-reports', 'a.txt')]);
+  // Run in a child with a timeout: before the fix these calls never returned.
+  const code = `
+    process.env.GP_DATA_DIR = ${JSON.stringify(path.join(dir, 'data'))};
+    const server = { dir: ${JSON.stringify(srv)} };
+    const { readMotd } = require(${JSON.stringify(path.join(__dirname, '../../server/features/status-page.js'))});
+    const doctor = require(${JSON.stringify(path.join(__dirname, '../../server/servers/doctor.js'))});
+    if (readMotd(server) !== null) process.exit(2);
+    if (doctor.latestCrashReport(server) !== '') process.exit(3);
+  `;
+  const r = spawnSync(process.execPath, ['-e', code], { timeout: 8000 });
+  assert.equal(r.status, 0, `exit ${r.status} ${r.signal || ''} ${r.stderr}`);
+});
