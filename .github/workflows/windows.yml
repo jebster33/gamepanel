@@ -74,12 +74,22 @@ jobs:
             dist/GamePanel-Setup-*.exe
             dist/GamePanel-*-windows-x64.zip
 
+      - name: Release notes
+        id: notes
+        if: startsWith(github.ref, 'refs/tags/v') || inputs.release != ''
+        shell: bash
+        run: |
+          f="docs/releases/${{ inputs.release || github.ref_name }}.md"
+          if [ -f "$f" ]; then echo "file=$f" >> "$GITHUB_OUTPUT"; else echo "file=" >> "$GITHUB_OUTPUT"; fi
+
       - name: Publish release
         if: startsWith(github.ref, 'refs/tags/v') || inputs.release != ''
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ inputs.release || github.ref_name }}
           target_commitish: ${{ github.sha }}
+          body_path: ${{ steps.notes.outputs.file }}
+          fail_on_unmatched_files: true
           files: |
             dist/GamePanel-Setup-*.exe
             dist/GamePanel-*-windows-x64.zip
