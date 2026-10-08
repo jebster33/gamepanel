@@ -79,7 +79,7 @@ async function main() {
     // The iPhone app: /app, /app/
     if (rel === '/app' || rel === '/app/') rel = '/app.html';
     const file = path.join(config.publicDir, path.normalize(rel).replace(/^(\.\.[/\\])+/, ''));
-    if (!file.startsWith(config.publicDir)) {
+    if (file !== config.publicDir && !file.startsWith(config.publicDir + path.sep)) {
       json(res, 400, { error: 'Bad path' });
       return;
     }

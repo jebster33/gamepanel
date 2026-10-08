@@ -161,6 +161,8 @@ class Push {
       },
       body,
       signal: AbortSignal.timeout(15_000),
+      // A push service answering with a redirect must not steer the panel to another address.
+      redirect: 'error',
     });
     // The phone unsubscribed or the app was removed.
     if (res.status === 404 || res.status === 410) {
