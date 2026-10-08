@@ -171,8 +171,8 @@ function renderTwoFactor(me) {
         <button class="btn btn-danger" id="tf-off">Turn off</button>
       </div>`;
     $('#tf-codes').addEventListener('click', () =>
-      askPassword('New recovery codes', 'Your old recovery codes stop working.', false, async ({ password }) => {
-        const data = await api('/api/auth/2fa/recovery-codes', { method: 'POST', body: { password } });
+      askPassword('New recovery codes', 'Your old recovery codes stop working.', true, async ({ password, code }) => {
+        const data = await api('/api/auth/2fa/recovery-codes', { method: 'POST', body: { password, code } });
         showRecoveryCodes(data.recoveryCodes);
         me.recoveryCodesLeft = data.recoveryCodes.length;
         renderTwoFactor(me);

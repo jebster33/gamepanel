@@ -181,6 +181,12 @@ class WebSocketConnection extends EventEmitter {
       header.writeBigUInt64BE(BigInt(len), 2);
     }
     header[0] = 0x80 | opcode;
+    // A client that stops reading must not make the panel queue messages for it without end.
+    if (this.socket.writableLength > 4 * 1024 * 1024) {
+      logger.debug('ws client too slow, closing');
+      this._destroy();
+      return;
+    }
     try {
       this.socket.write(Buffer.concat([header, payload]));
     } catch (err) {

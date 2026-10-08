@@ -511,7 +511,7 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
       }
     }
     if (!results.length) fail(400, 'No Minecraft Java servers you can moderate');
-    store.addEvent(unban ? 'player.unban' : 'player.ban', `${user.username} ${unban ? 'unbanned' : 'banned'} ${String(body?.name || '')} on ${results.filter((r) => r.ok).length} server(s)`);
+    store.addEvent(unban ? 'player.unban' : 'player.ban', `${user.username} ${unban ? 'unbanned' : 'banned'} ${String(body?.name || '').slice(0, 40)} on ${results.filter((r) => r.ok).length} server(s)`);
     return { results };
   });
 
@@ -591,7 +591,7 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
   /** Find a player on any server this account can see. */
   router.get('/api/players/search', ({ user, url }) => {
     requireCap(user, 'console');
-    const ids = visibleServers(user).map((s) => s.id);
+    const ids = visibleServers(user).filter((s) => auth.can(user, 'console', s.id)).map((s) => s.id);
     return { players: manager.searchPlayers(ids, url.searchParams.get('q'), { byAddress: user.role === 'admin' }) };
   });
 
@@ -686,7 +686,7 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
 
   // A schedule does its action later on the user's behalf, so it needs the same permission.
   // A wipe deletes saves, so it needs what the direct wipe does; an action not listed here is administrators only.
-  const SCHEDULE_CAPS = { command: ['command'], backup: ['backups'], mods: ['mods'], start: ['power'], stop: ['power'], restart: ['power'], update: ['power'], wipe: ['files.write', 'power'] };
+  const SCHEDULE_CAPS = { command: ['command'], backup: ['backups', 'backups.restore'], mods: ['mods'], start: ['power'], stop: ['power'], restart: ['power'], update: ['power'], wipe: ['files.write', 'power'] };
   const requireScheduleCap = (user, server, action) => {
     if (!SCHEDULE_CAPS[action]) return requireAdmin(user);
     for (const cap of SCHEDULE_CAPS[action]) requireCap(user, cap, server.id);

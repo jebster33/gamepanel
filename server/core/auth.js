@@ -118,8 +118,11 @@ function signToken(secret, payload) {
 }
 
 function verifyToken(secret, token) {
-  if (typeof token !== 'string' || !token.includes('.')) return null;
-  const [body, sig] = token.split('.');
+  if (typeof token !== 'string') return null;
+  // Exactly body.signature: anything appended would verify but dodge the sign-out list, which keys on the whole string.
+  const parts = token.split('.');
+  if (parts.length !== 2) return null;
+  const [body, sig] = parts;
   if (!body || !sig) return null;
   const expected = base64url(crypto.createHmac('sha256', secret).update(body).digest());
   if (!timingSafeEqual(sig, expected)) return null;
@@ -139,7 +142,12 @@ function parseCookies(header) {
   for (const part of String(header).split(';')) {
     const idx = part.indexOf('=');
     if (idx === -1) continue;
-    out[part.slice(0, idx).trim()] = decodeURIComponent(part.slice(idx + 1).trim());
+    const value = part.slice(idx + 1).trim();
+    try {
+      out[part.slice(0, idx).trim()] = decodeURIComponent(value);
+    } catch {
+      /* a cookie some other page set with a stray %: ignore it rather than failing every request */
+    }
   }
   return out;
 }
@@ -468,7 +476,16 @@ class Auth {
       }
       return user;
     }
-    return this.requireTwoFactor(this.userFromToken(token), req);
+    const session = this.requireTwoFactor(this.userFromToken(token), req);
+    if (session) req.gpSessionToken = token;
+    return session;
+  }
+
+  /** False once the key or session an open WebSocket was opened with has been deleted or signed out. */
+  credentialValid(user, { apiKeyId, sessionToken }) {
+    if (apiKeyId) return (user.apiKeys || []).some((k) => k.id === apiKeyId);
+    if (sessionToken) return !this.store.state.revokedTokens?.[this.keyHash(sessionToken)];
+    return true;
   }
 
   /**

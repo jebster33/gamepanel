@@ -34,6 +34,9 @@ function request(method, path, { body, headers = {}, timeout = 120000 } = {}) {
       },
       (res) => {
         const chunks = [];
+        // Docker restarting mid-answer: without this the promise never settles and whatever awaits it hangs.
+        res.on('aborted', () => reject(new Error('Docker closed the connection mid-answer')));
+        res.on('error', reject);
         res.on('data', (c) => chunks.push(c));
         res.on('end', () => {
           const text = Buffer.concat(chunks).toString('utf8');

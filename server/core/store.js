@@ -45,29 +45,56 @@ class Store extends EventEmitter {
   constructor(file, { tmpDir } = {}) {
     super();
     this.file = file;
-    this.tmp = tmpDir ? path.join(tmpDir, path.basename(file) + '.tmp') : file + '.tmp';
+    this.tmp = file && (tmpDir ? path.join(tmpDir, path.basename(file) + '.tmp') : file + '.tmp');
+    // The previous good copy, kept for when the main file is cut short.
+    this.backup = file && file + '.bak';
     this.state = null;
     this._writeTimer = null;
     this._writing = false;
     this._dirty = false;
+    this.lastWriteError = null;
     this.load();
   }
 
   load() {
+    // No file: an in-memory store (tests, one-off tools).
+    if (!this.file) {
+      this.state = structuredClone(DEFAULT_STATE);
+      return this.state;
+    }
+    const read = (file) => {
+      const parsed = JSON.parse(fs.readFileSync(file, 'utf8'));
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('not a panel state object');
+      return parsed;
+    };
+    let parsed = null;
     try {
-      const raw = fs.readFileSync(this.file, 'utf8');
-      const parsed = JSON.parse(raw);
-      this.state = { ...structuredClone(DEFAULT_STATE), ...parsed };
-      this.state.settings = { ...structuredClone(DEFAULT_STATE.settings), ...(parsed.settings || {}) };
+      parsed = read(this.file);
     } catch (err) {
+      // Permissions or a failing disk: the file may be fine, so never start over on top of it.
+      if (['EACCES', 'EPERM', 'EIO', 'EISDIR'].includes(err.code)) throw new Error(`Cannot read ${this.file} (${err.code}). Fix its owner or permissions and start the panel again.`);
       if (err.code !== 'ENOENT') {
-        logger.error('Could not read state file, starting fresh:', err.message);
+        logger.error('Could not read state file:', err.message);
         try {
           fs.copyFileSync(this.file, this.file + '.corrupt.' + Date.now());
         } catch {
           /* nothing to preserve */
         }
       }
+      // A cut-short write (power loss, full disk) leaves the copy from the save before it.
+      try {
+        parsed = read(this.backup);
+        logger.warn(`Restored the panel state from ${path.basename(this.backup)}; the last few seconds of changes may be missing.`);
+      } catch (backupErr) {
+        if (err.code !== 'ENOENT' || backupErr.code !== 'ENOENT') logger.error('No usable backup of the state file either; starting fresh.');
+      }
+    }
+    if (parsed) {
+      this.state = { ...structuredClone(DEFAULT_STATE), ...parsed };
+      this.state.settings = { ...structuredClone(DEFAULT_STATE.settings), ...(parsed.settings || {}) };
+      // Lists other code walks must be lists, even in a hand-edited file.
+      for (const key of ['users', 'servers', 'events']) if (!Array.isArray(this.state[key])) this.state[key] = [];
+    } else {
       this.state = structuredClone(DEFAULT_STATE);
       this.saveNow();
     }
@@ -93,19 +120,36 @@ class Store extends EventEmitter {
     this._writing = true;
     this._dirty = false;
     try {
+      if (!this.file) return;
       fs.mkdirSync(path.dirname(this.file), { recursive: true });
       fs.mkdirSync(path.dirname(this.tmp), { recursive: true });
       // This file holds password hashes, RCON passwords and API keys — it must
       // not be readable by other accounts on the machine.
-      fs.writeFileSync(this.tmp, JSON.stringify(this.state, null, 2), { mode: 0o600 });
+      // Flushed to disk before the rename, so a crash or power cut leaves the old file or the new one, never half of one.
+      const fd = fs.openSync(this.tmp, 'w', 0o600);
+      try {
+        fs.writeFileSync(fd, JSON.stringify(this.state, null, 2));
+        fs.fsyncSync(fd);
+      } finally {
+        fs.closeSync(fd);
+      }
+      try {
+        fs.copyFileSync(this.file, this.backup);
+        fs.chmodSync(this.backup, 0o600);
+      } catch {
+        /* first save, or best effort */
+      }
       fs.renameSync(this.tmp, this.file);
       try {
         fs.chmodSync(this.file, 0o600);
       } catch {
         /* best effort on non-POSIX */
       }
+      this.lastWriteError = null;
     } catch (err) {
-      logger.error('Failed to persist state:', err.message);
+      // A full or read-only disk: kept so /api/health can say so instead of only the log.
+      if (!this.lastWriteError) logger.error('Failed to persist state:', err.message);
+      this.lastWriteError = { message: err.message, at: Date.now() };
     } finally {
       this._writing = false;
       if (this._dirty) setTimeout(() => this.saveNow(), 50).unref?.();
@@ -114,7 +158,7 @@ class Store extends EventEmitter {
 
   /** Append to the audit/event log, keeping the most recent 500 entries. */
   addEvent(type, message, meta = {}) {
-    const event = { id: Date.now() + '-' + Math.random().toString(36).slice(2, 7), type, message, ...meta, at: Date.now() };
+    const event = { id: Date.now() + '-' + Math.random().toString(36).slice(2, 7), type, message: typeof message === 'string' ? message.slice(0, 500) : message, ...meta, at: Date.now() };
     this.state.events.unshift(event);
     if (this.state.events.length > 500) this.state.events.length = 500;
     this.save();

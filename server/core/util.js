@@ -81,9 +81,12 @@ async function readJson(req, limit) {
   const buf = await readBody(req, limit);
   if (!buf.length) return {};
   try {
-    return JSON.parse(buf.toString('utf8'));
+    const parsed = JSON.parse(buf.toString('utf8'));
+    // Every handler reads fields off the body: null, a list or a number would be a 500.
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('not an object');
+    return parsed;
   } catch {
-    throw new HttpError(400, 'Invalid JSON body');
+    throw new HttpError(400, 'Invalid JSON body (expected an object)');
   }
 }
 

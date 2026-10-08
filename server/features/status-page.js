@@ -27,7 +27,7 @@ function cleanUrl(value, label) {
 function readMotd(server) {
   try {
     const file = require('./files').containedPath(server.dir, 'server.properties');
-    const line = fs.readFileSync(file, 'utf8').split(/\r?\n/).find((l) => /^motd\s*=/.test(l));
+    const line = require('../core/safefs').readText(file, 1024 * 1024).split(/\r?\n/).find((l) => /^motd\s*=/.test(l));
     if (!line) return null;
     const raw = line.replace(/^motd\s*=\s*/, '').replace(/\\u([0-9a-fA-F]{4})/g, (m, hex) => String.fromCharCode(parseInt(hex, 16))).replace(/\\n/g, ' ').replace(/\\(.)/g, '$1');
     return raw.replace(/§[0-9a-fk-or]/gi, '').trim().slice(0, 200) || null;

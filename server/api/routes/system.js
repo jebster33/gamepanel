@@ -9,6 +9,16 @@ const { EVENT_CHOICES } = require('../../features/notify');
 const VERSION = require('../../../package.json').version;
 
 module.exports = (router, { store, auth, manager, hostMetrics, notifier, bridge }, { requireAdmin, requireCap }) => {
+  // For uptime monitors and load balancers: no account needed, nothing about the host given away.
+  router.get(
+    '/api/health',
+    ({ res }) => {
+      const ok = !store.lastWriteError;
+      json(res, ok ? 200 : 503, { ok, ...(ok ? {} : { problem: 'The panel cannot save its settings (is the disk full?)' }) });
+    },
+    { public: true }
+  );
+
   router.get('/api/system', ({ user }) => ({
     host: hostMetrics.last,
     overview: manager.overview(),
@@ -27,7 +37,7 @@ module.exports = (router, { store, auth, manager, hostMetrics, notifier, bridge 
     const limit = clamp(url.searchParams.get('limit') || 100, 1, 500);
     const all = store.state.events;
     // Panel-level events (nodes with their URLs, bridge connections, ban appeals, sign-ins) are for administrators; everyone else sees their own servers'.
-    const visible = user.role === 'admin' ? all : all.filter((e) => e.serverId && auth.canAccessServer(user, e.serverId));
+    const visible = all.filter((e) => require('../../features/live-notifications').visibleTo(auth, user, e));
     return { events: visible.slice(0, limit) };
   });
 

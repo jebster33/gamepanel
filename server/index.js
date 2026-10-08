@@ -79,7 +79,7 @@ async function main() {
     // The iPhone app: /app, /app/
     if (rel === '/app' || rel === '/app/') rel = '/app.html';
     const file = path.join(config.publicDir, path.normalize(rel).replace(/^(\.\.[/\\])+/, ''));
-    if (!file.startsWith(config.publicDir)) {
+    if (file !== config.publicDir && !file.startsWith(config.publicDir + path.sep)) {
       json(res, 400, { error: 'Bad path' });
       return;
     }
@@ -190,8 +190,12 @@ async function main() {
       if (err instanceof HttpError) {
         json(res, err.code, { error: err.message });
       } else {
-        logger.error(`${req.method} ${url.pathname} failed:`, err);
-        json(res, 500, { error: err.message || 'Internal server error' });
+        // Errors the code raises on purpose ("Docker is not running") are worth showing. Bugs and
+        // file-system errors carry paths and internals: those stay in the log, under a reference.
+        const ref = require('crypto').randomBytes(4).toString('hex');
+        logger.error(`${req.method} ${url.pathname} failed [${ref}]:`, err);
+        const internal = !(err instanceof Error) || err.syscall || err.errno !== undefined || [TypeError, ReferenceError, RangeError, SyntaxError].some((T) => err instanceof T);
+        json(res, 500, { error: internal ? `Something went wrong on the panel (reference ${ref}). The panel log has the details.` : err.message || 'Internal server error', ref });
       }
     }
   };
@@ -209,7 +213,14 @@ async function main() {
   /* ---------------------------------------------------------- websocket -- */
 
   const handleUpgrade = (req, socket, head) => {
-    const url = new URL(req.url, 'http://localhost');
+    let url;
+    try {
+      url = new URL(req.url, 'http://localhost');
+    } catch {
+      socket.end('HTTP/1.1 400 Bad Request\r\n\r\n');
+      socket.destroy();
+      return;
+    }
     // Bridge clients authenticate inside their own pinned TLS, not with a cookie.
     if (url.pathname === '/bridge/tunnel') {
       bridge.handleUpgrade(req, socket, head, clientIp(req));
@@ -238,6 +249,7 @@ async function main() {
     if (!conn) return;
     conn.user = user;
     conn.epoch = user.sessionEpoch || 0;
+    conn.credential = { apiKeyId: req.gpApiKeyId, sessionToken: req.gpSessionToken };
     // A read-only API key may watch, never type into a console.
     conn.readOnly = Boolean(req.gpApiKey?.readOnly);
     conn.subscriptions.add('servers');
@@ -259,7 +271,8 @@ async function main() {
             if (topic.startsWith('console:')) {
               const id = topic.slice(8);
               if (!auth.canAccessServer(conn.user, id) || !auth.can(conn.user, 'console', id)) continue;
-              if (!addSubscription(conn, topic)) continue;
+              // Re-subscribing to a topic already held must not replay the backlog.
+              if (conn.subscriptions.has(topic) || !addSubscription(conn, topic)) continue;
               conn.send({ topic, type: 'lines', serverId: id, lines: manager.getConsole(id) });
               continue;
             }

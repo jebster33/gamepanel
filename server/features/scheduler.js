@@ -80,6 +80,8 @@ function validate(input) {
     fail(400, err.message);
   }
   if (action === 'command' && !String(input.command || '').trim()) fail(400, 'Enter the console command to run');
+  if (String(input.cron).length > 100) fail(400, 'That schedule is too long');
+  if (String(input.command || '').length > 500) fail(400, 'That console command is too long (500 characters at most)');
   return {
     name: String(input.name || '').trim().slice(0, 60) || `${action[0].toUpperCase()}${action.slice(1)}`,
     cron: String(input.cron).trim(),
@@ -273,6 +275,7 @@ class Scheduler {
   }
 
   add(server, input) {
+    if ((server.schedules || []).length >= 50) fail(400, 'A server can have 50 schedules at most');
     const schedule = { id: uid(6), ...validate(input), createdAt: Date.now(), lastRun: null };
     server.schedules = [...(server.schedules || []), schedule];
     this.store.save();

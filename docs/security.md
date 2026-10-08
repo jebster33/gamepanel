@@ -92,4 +92,12 @@ Things that were tightened after a security review, and what is still on you:
   the first time an updated panel starts, and the settings page never gets them back.
 - **Public ban appeals** answer the same whether or not a name is banned, and a ban keeps at most three
   open appeals, so a junk appeal does not use up the real one.
-
+- **Sign-out and revoked keys end open pages too.** A WebSocket opened with a session or API key is closed
+  the next time it is used once that session is signed out or the key deleted. A session token with
+  anything appended no longer counts as a session. Read-only API keys cannot reach other nodes through the
+  proxy, and new recovery codes need a two-factor code as well as the password.
+- **Failures.** The state file is flushed to disk before it replaces the old one, the previous copy is kept
+  as `panel.json.bak` and used if the main file is cut short, and an unreadable file (permissions, disk
+  errors) stops the panel instead of being replaced by an empty one. `GET /api/health` answers 200, or 503
+  when the panel cannot save its state, for uptime monitors. Errors that are bugs show a reference in the
+  browser and the details only in the panel log.

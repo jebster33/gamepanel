@@ -38,11 +38,14 @@ function rconCommand({ host = '127.0.0.1', port, password, command, timeout = 50
     let output = '';
     let settleTimer = null;
     let done = false;
+    // The idle timeout alone never fires for a peer that keeps trickling data.
+    const deadline = setTimeout(() => finish(new Error('RCON took too long')), Math.max(timeout * 3, 15000));
 
     const finish = (err, value) => {
       if (done) return;
       done = true;
       clearTimeout(settleTimer);
+      clearTimeout(deadline);
       socket.destroy();
       if (err) reject(err);
       else resolve(value);
@@ -54,6 +57,8 @@ function rconCommand({ host = '127.0.0.1', port, password, command, timeout = 50
       buffer = Buffer.concat([buffer, chunk]);
       while (buffer.length >= 4) {
         const size = buffer.readInt32LE(0);
+        // A real packet is 10 bytes plus its body (at most about 4 KB); anything else is not RCON, and a negative size would loop forever.
+        if (size < 10 || size > 8192) return finish(new Error('Malformed RCON packet'));
         if (buffer.length < size + 4) break;
         const id = buffer.readInt32LE(4);
         const type = buffer.readInt32LE(8);
@@ -69,7 +74,7 @@ function rconCommand({ host = '127.0.0.1', port, password, command, timeout = 50
           continue;
         }
         if (type === TYPE.RESPONSE_VALUE) {
-          output += body;
+          if (output.length < 1024 * 1024) output += body;
           // Responses can arrive in several packets; settle briefly before resolving.
           clearTimeout(settleTimer);
           settleTimer = setTimeout(() => finish(null, output), 250);

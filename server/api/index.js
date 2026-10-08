@@ -23,6 +23,13 @@ const { RateLimiter } = require('../core/ratelimit');
 const audit = require('../features/audit');
 
 const VERSION = require('../../package.json').version;
+const safeDecode = (v) => {
+  try {
+    return decodeURIComponent(v);
+  } catch {
+    return v;
+  }
+};
 const ROUTES = ['auth', 'system', 'templates', 'servers', 'files', 'mods', 'network', 'backups', 'users', 'bridge', 'bans'];
 
 /** @param {{store, auth, manager, templates, hostMetrics, scheduler, notifier, bridge}} app */
@@ -60,7 +67,7 @@ function createApi(app) {
       node = nodes.list.find((n) => n.id === direct[1]);
       path = direct[2];
     } else if (viaId) {
-      const target = nodes.parseId(decodeURIComponent(viaId[1]));
+      const target = nodes.parseId(safeDecode(viaId[1]));
       if (!target) return false;
       node = target.node;
       path = `/api/servers/${encodeURIComponent(target.remoteId)}${viaId[2] || ''}`;
@@ -77,6 +84,11 @@ function createApi(app) {
     }
     if (user.role !== 'admin') {
       json(res, 403, { error: 'Only administrators can manage servers on other nodes' });
+      return true;
+    }
+    // The remote panel only sees the node's own admin key, so a read-only key's limits would not carry over.
+    if (req.gpApiKey?.readOnly) {
+      json(res, 403, { error: 'A read-only API key cannot reach other nodes' });
       return true;
     }
     // The block on account changes for API keys must hold through a node's proxy too, where the node would answer to the admin key it was given.
