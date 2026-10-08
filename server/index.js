@@ -190,8 +190,12 @@ async function main() {
       if (err instanceof HttpError) {
         json(res, err.code, { error: err.message });
       } else {
-        logger.error(`${req.method} ${url.pathname} failed:`, err);
-        json(res, 500, { error: err.message || 'Internal server error' });
+        // Errors the code raises on purpose ("Docker is not running") are worth showing. Bugs and
+        // file-system errors carry paths and internals: those stay in the log, under a reference.
+        const ref = require('crypto').randomBytes(4).toString('hex');
+        logger.error(`${req.method} ${url.pathname} failed [${ref}]:`, err);
+        const internal = !(err instanceof Error) || err.syscall || err.errno !== undefined || [TypeError, ReferenceError, RangeError, SyntaxError].some((T) => err instanceof T);
+        json(res, 500, { error: internal ? `Something went wrong on the panel (reference ${ref}). The panel log has the details.` : err.message || 'Internal server error', ref });
       }
     }
   };

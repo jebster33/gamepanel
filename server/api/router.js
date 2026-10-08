@@ -2,6 +2,8 @@
 
 /** A tiny pattern router: "/api/servers/:id/files" style paths, nothing more. */
 
+const { HttpError } = require('../core/util');
+
 class Router {
   constructor() {
     this.routes = [];
@@ -39,7 +41,7 @@ class Router {
       let ok = true;
       for (let i = 0; i < segs.length; i++) {
         const part = route.parts[i];
-        if (part.startsWith(':')) params[part.slice(1)] = decodeURIComponent(segs[i]);
+        if (part.startsWith(':')) params[part.slice(1)] = decodeSegment(segs[i]);
         else if (part !== segs[i]) {
           ok = false;
           break;
@@ -48,6 +50,15 @@ class Router {
       if (ok) return { route, params };
     }
     return null;
+  }
+}
+
+/** A "%zz" in a path is the caller's mistake, not a server error. */
+function decodeSegment(seg) {
+  try {
+    return decodeURIComponent(seg);
+  } catch {
+    throw new HttpError(400, 'Malformed URL');
   }
 }
 

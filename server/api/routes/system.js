@@ -9,6 +9,16 @@ const { EVENT_CHOICES } = require('../../features/notify');
 const VERSION = require('../../../package.json').version;
 
 module.exports = (router, { store, auth, manager, hostMetrics, notifier, bridge }, { requireAdmin, requireCap }) => {
+  // For uptime monitors and load balancers: no account needed, nothing about the host given away.
+  router.get(
+    '/api/health',
+    ({ res }) => {
+      const ok = !store.lastWriteError;
+      json(res, ok ? 200 : 503, { ok, ...(ok ? {} : { problem: 'The panel cannot save its settings (is the disk full?)' }) });
+    },
+    { public: true }
+  );
+
   router.get('/api/system', ({ user }) => ({
     host: hostMetrics.last,
     overview: manager.overview(),
