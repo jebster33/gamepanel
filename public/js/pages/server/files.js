@@ -3,11 +3,12 @@ import { state } from '../../core/state.js';
 import { $, esc, fmtBytes, fmtTime, icon, toast } from '../../core/util.js';
 import { confirmModal, openModal, promptModal } from '../../ui/modal.js';
 import { openConfigHistory, openConfigHistoryList } from './config-history.js';
+import { skeleton } from '../../ui/skeleton.js';
 
 /* ----------------------------------------------------------------- files */
 
 export async function renderFilesTab(host, server, dirPath) {
-  host.innerHTML = '<div class="card"><span class="spinner"></span> Loading files…</div>';
+  host.innerHTML = skeleton('list', 'Loading files…', 6);
   let data;
   try {
     data = await api(`/api/servers/${server.id}/files?path=${encodeURIComponent(dirPath)}`);

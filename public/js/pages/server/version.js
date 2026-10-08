@@ -1,5 +1,5 @@
 import { api } from '../../core/api.js';
-import { esc, toast } from '../../core/util.js';
+import { esc, toast, icon } from '../../core/util.js';
 import { openModal } from '../../ui/modal.js';
 
 /* ------------------------------------------------------ version switching */
@@ -33,7 +33,7 @@ export async function renderVersionCard(host, server) {
   const last = info.history[0];
   host.innerHTML = `
     <div class="card mb-16 version-card">
-      <span class="version-icon">${esc(info.types.find((t) => t.id === info.templateId)?.icon || server.templateIcon || '🎮')}</span>
+      <span class="version-icon">${icon('gamepad', 20)}</span>
       <div style="flex:1;min-width:0">
         <div class="kpi-label">Version</div>
         <div class="version-now">${esc(versionLabel(info))}</div>
@@ -56,7 +56,7 @@ function openSwitcher(server, info, done) {
         info.types.length
           ? `<div class="field-label">Server type</div>
              <div class="type-grid">${info.types
-               .map((t) => `<button type="button" class="type-tile ${t.id === typeId ? 'active' : ''}" data-type="${esc(t.id)}"><span>${esc(t.icon || '')}</span>${esc(t.name)}</button>`)
+               .map((t) => `<button type="button" class="type-tile ${t.id === typeId ? 'active' : ''}" data-type="${esc(t.id)}">${esc(t.name)}</button>`)
                .join('')}</div>`
           : ''
       }

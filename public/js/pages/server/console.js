@@ -1,7 +1,7 @@
 import { api } from '../../core/api.js';
 import { wsSubscribe } from '../../core/live.js';
 import { state } from '../../core/state.js';
-import { $, can, esc, toast } from '../../core/util.js';
+import { $, can, esc, toast, icon } from '../../core/util.js';
 import { copyToClipboard } from '../../ui/clipboard.js';
 import { confirmModal, openModal } from '../../ui/modal.js';
 
@@ -222,7 +222,7 @@ export function patchDoctor(server) {
   box.innerHTML = findings.length
     ? `<div class="card doctor-card mb-16">
         <div class="doctor-head"><span class="doctor-badge">Crash doctor</span><span class="faint">Why ${esc(server.name)} stopped</span>
-          <button class="icon-btn" data-doctor-close aria-label="Dismiss">✕</button></div>
+          <button class="icon-btn" data-doctor-close aria-label="Dismiss">${icon('close', 14)}</button></div>
         ${findings
           .map(
             (f, i) => `<div class="doctor-item">

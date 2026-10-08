@@ -2,6 +2,7 @@ import { api } from '../../core/api.js';
 import { $, $$, can, esc, fmtBytes, fmtTime, toast } from '../../core/util.js';
 import { diffStats, lineDiff, renderDiff } from '../../ui/diff.js';
 import { confirmModal, openModal } from '../../ui/modal.js';
+import { skeleton } from '../../ui/skeleton.js';
 
 /* -------------------------------------------------------- config history */
 
@@ -74,7 +75,7 @@ export async function openConfigHistory(server, rel, onReverted) {
             <span class="faint" id="history-summary" style="flex:1"></span>
             ${canRevert ? '<button class="btn btn-sm btn-primary" id="history-revert">Put this version back</button>' : ''}
           </div>
-          <div id="history-diff"><span class="spinner"></span></div>
+          <div id="history-diff">${skeleton('lines', 'Loading the change…')}</div>
         </div>
       </div>`,
     actions: [{ label: 'Close', close: true }],
@@ -84,7 +85,7 @@ export async function openConfigHistory(server, rel, onReverted) {
   const show = async (id) => {
     selected = id;
     $$('.history-item').forEach((b) => b.classList.toggle('active', b.dataset.version === id));
-    $('#history-diff').innerHTML = '<span class="spinner"></span>';
+    $('#history-diff').innerHTML = skeleton('lines', 'Loading the change…');
     const version = await api(`${qs(server, rel, 'version')}&version=${encodeURIComponent(id)}`).catch((err) => ({ error: err.message }));
     if (!$('#history-diff') || selected !== id) return;
     if (version.error) {

@@ -49,6 +49,7 @@
   --topbar-height: 52px;
   --shadow: 0 20px 50px -20px rgba(0, 0, 0, 0.75);
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --skel-shine: rgba(255, 255, 255, 0.045);
 
   /* Older names some markup still uses. */
   --accent: var(--lime);
@@ -61,6 +62,7 @@
 
 :root[data-theme="light"] {
   color-scheme: light;
+  --skel-shine: rgba(255, 255, 255, 0.75);
 
   --bg: #f3f2ed;
   --sidebar: #ebeae4;
@@ -2048,9 +2050,35 @@ tbody tr:hover {
   display: grid;
   place-items: center;
   padding: 20px;
-  background: #111210 url("/img/login-bg.jpg") center / cover no-repeat;
+  background: #111210;
+  overflow: hidden;
+  isolation: isolate;
+}
+/* The photo drifts very slowly so the screen feels powered on, not printed. */
+.auth-screen::before {
+  content: "";
+  position: absolute;
+  inset: -4%;
+  z-index: -2;
+  background: url("/img/login-bg.jpg") center / cover no-repeat;
+  animation: auth-drift 48s ease-in-out infinite alternate;
+}
+/* A faint scan line sweeps the screen every few seconds. */
+.auth-screen::after {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 22vh;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(to bottom, transparent, rgba(198, 244, 50, 0.035) 85%, rgba(198, 244, 50, 0.08));
+  transform: translateY(-100%);
+  animation: auth-scan 7s linear 1.2s infinite;
 }
 .auth-card {
+  position: relative;
+  overflow: hidden;
+  animation: auth-card-in 0.5s var(--ease) both;
   width: 100%;
   max-width: 380px;
   padding: 30px 28px;
@@ -2079,6 +2107,17 @@ tbody tr:hover {
 }
 .auth-brand h1 {
   font-size: 19px;
+}
+.auth-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 6px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #6f6d66;
 }
 .auth-brand p {
   margin: 0;
@@ -3227,7 +3266,6 @@ tbody tr:hover {
   background: var(--raised);
 }
 .world-row.active { border-color: var(--lime-soft); }
-.world-icon { font-size: 22px; }
 .world-name { font-weight: 600; display: flex; align-items: center; gap: 8px; }
 @media (max-width: 640px) {
   .world-row { flex-wrap: wrap; }
@@ -3532,6 +3570,340 @@ tr.clickable:hover td {
   .srv-header #detail-power {
     flex-basis: 100%;
   }
+}
+
+/* ------------------------------------------------------------- motion
+
+   Motion explains a change: something arrived, something is live, something
+   went wrong. Entrances run once and stay under half a second, ambient
+   loops are slow and faint, and only opacity, transform and clip-path move
+   so nothing reflows. prefers-reduced-motion switches all of it off below. */
+
+/* Sign-in: the card powers on, then its contents settle in order. */
+.auth-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--lime), transparent);
+  transform-origin: left;
+  opacity: 0.45;
+  animation: auth-edge 0.9s var(--ease) 0.15s both;
+}
+.auth-brand > *,
+#auth-form > *,
+#otp-form > *,
+.oauth-buttons:not(.hidden) {
+  animation: rise 0.4s var(--ease) backwards;
+}
+.auth-brand > :nth-child(2) { animation-delay: 60ms; }
+.auth-brand > :nth-child(3) { animation-delay: 100ms; }
+.auth-brand > :nth-child(4) { animation-delay: 140ms; }
+#auth-form > :nth-child(1),
+#otp-form > :nth-child(1) { animation-delay: 170ms; }
+#auth-form > :nth-child(2),
+#otp-form > :nth-child(2) { animation-delay: 210ms; }
+#auth-form > :nth-child(3),
+#otp-form > :nth-child(3) { animation-delay: 250ms; }
+#auth-form > :nth-child(4) { animation-delay: 270ms; }
+#auth-form > :nth-child(n + 5),
+.oauth-buttons:not(.hidden) { animation-delay: 290ms; }
+
+.auth-card label > span:first-child {
+  transition: color 0.15s;
+}
+.auth-card label:focus-within > span:first-child {
+  color: var(--lime);
+}
+#auth-form > .auth-error:not(.hidden),
+#otp-form > .auth-error:not(.hidden) {
+  animation: rise 0.2s var(--ease);
+}
+
+/* Waiting on the server: the label gives way to a spinner and the button
+   stops taking clicks, so nobody double-submits. */
+.btn.is-busy {
+  position: relative;
+  color: transparent !important;
+  pointer-events: none;
+}
+.btn.is-busy::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 14px;
+  height: 14px;
+  border: 2px solid;
+  border-color: var(--lime-ink) var(--lime-ink) transparent transparent;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+/* Lit LEDs breathe out a faint ring so "running" reads as live. */
+.led.on,
+.status.running .dot {
+  position: relative;
+}
+.led.on::after,
+.status.running .dot::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--lime);
+  opacity: 0;
+  animation: led-ping 3s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+/* Shell: after sign-in the sidebar fades up and the nav settles in order. */
+.app:not(.hidden) .sidebar {
+  animation: fade 0.3s ease-out backwards;
+}
+.app:not(.hidden) .nav-item {
+  animation: rise 0.35s var(--ease) backwards;
+  animation-delay: calc(var(--n, 0) * 22ms + 60ms);
+}
+.nav-item:nth-child(2) { --n: 1; }
+.nav-item:nth-child(3) { --n: 2; }
+.nav-item:nth-child(4) { --n: 3; }
+.nav-item:nth-child(5) { --n: 4; }
+.nav-item:nth-child(6) { --n: 5; }
+.nav-item:nth-child(7) { --n: 6; }
+.nav-item:nth-child(8) { --n: 7; }
+.nav-item:nth-child(n + 9) { --n: 8; }
+.app:not(.hidden) .topbar {
+  animation: fade 0.3s ease-out 0.1s backwards;
+}
+.nav-item.active::before {
+  animation: nav-mark 0.25s var(--ease);
+}
+.nav-item svg {
+  transition: transform 0.15s var(--ease), opacity 0.15s;
+}
+.nav-item:hover svg {
+  transform: translateX(1px);
+  opacity: 1;
+}
+
+/* Dashboard: sparklines draw in left to right, meters fill from empty, and
+   a live value that changed glows lime for a moment. */
+.tile canvas {
+  animation: chart-wipe 0.9s var(--ease) 0.2s backwards;
+}
+.meter > i {
+  transform-origin: left;
+  animation: meter-fill 0.7s var(--ease) 0.15s backwards;
+}
+.flash {
+  animation: flash 0.9s ease-out;
+}
+.bell-panel:not(.hidden) {
+  animation: rise 0.18s var(--ease);
+  transform-origin: top right;
+}
+
+/* Skeletons: the shape of what is loading, with a slow sheen across it. */
+.skel {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  background: var(--raised);
+  border-radius: 5px;
+}
+.skel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, var(--skel-shine), transparent);
+  animation: skel-sheen 1.5s ease-in-out infinite;
+}
+.skel-wrap {
+  animation: fade 0.25s ease-out 0.12s backwards;
+}
+.skel-line {
+  height: 10px;
+  margin: 7px 0;
+  max-width: 100%;
+}
+.skel-sm {
+  height: 8px;
+}
+.skel-title {
+  height: 12px;
+  margin-bottom: 16px;
+}
+.skel-big {
+  height: 22px;
+  margin-top: 12px;
+}
+.skel-h1 {
+  height: 22px;
+}
+.skel-pill {
+  height: 22px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+.skel-thumb {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  flex-shrink: 0;
+}
+.skel-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+}
+.skel-row + .skel-row {
+  border-top: 1px solid var(--border);
+}
+.skel-stack {
+  flex: 1;
+  min-width: 0;
+}
+.skel-list {
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+.skel-head {
+  margin-bottom: 24px;
+}
+.skel-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.skel-lines {
+  padding: 2px 0;
+}
+tr.skel-wrap td {
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Icons that replaced emoji: small lit tiles and inline glyphs. */
+.feature-icon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  color: var(--lime-text);
+  background: var(--lime-soft);
+  border-radius: 12px;
+}
+.inline-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  vertical-align: -2px;
+}
+.art-fallback {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  color: var(--lime-text);
+}
+.game-card .g-art .art-fallback svg {
+  width: 34px;
+  height: 34px;
+}
+.world-icon,
+.version-icon,
+.act-icon,
+.advice-icon {
+  display: grid;
+  place-items: center;
+}
+.world-icon {
+  color: var(--lime-text);
+}
+.version-icon {
+  color: var(--lime-text);
+}
+.chip svg,
+.badge svg,
+td svg {
+  vertical-align: -2px;
+}
+
+@keyframes skel-sheen {
+  to {
+    transform: translateX(100%);
+  }
+}
+@keyframes auth-drift {
+  to {
+    transform: scale(1.06) translate(-1%, -1%);
+  }
+}
+@keyframes auth-scan {
+  to {
+    transform: translateY(560%);
+  }
+}
+@keyframes auth-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.98);
+  }
+}
+@keyframes auth-edge {
+  from {
+    transform: scaleX(0);
+    opacity: 1;
+  }
+}
+@keyframes led-ping {
+  0% {
+    transform: scale(1);
+    opacity: 0.45;
+  }
+  45%,
+  100% {
+    transform: scale(2.6);
+    opacity: 0;
+  }
+}
+@keyframes nav-mark {
+  from {
+    transform: scaleY(0);
+  }
+}
+@keyframes chart-wipe {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+}
+@keyframes meter-fill {
+  from {
+    transform: scaleX(0);
+  }
+}
+@keyframes flash {
+  from {
+    color: var(--lime-text);
+  }
+}
+
+/* Theme switch crossfades instead of snapping (where the browser can). */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.25s;
 }
 
 @media (prefers-reduced-motion: reduce) {

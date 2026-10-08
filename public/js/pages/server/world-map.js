@@ -1,5 +1,5 @@
 import { api } from '../../core/api.js';
-import { esc } from '../../core/util.js';
+import { esc, icon } from '../../core/util.js';
 
 /* ------------------------------------------------------------- world map */
 
@@ -19,7 +19,7 @@ export async function renderWorldMapCard(host, server) {
         : '';
   host.innerHTML = `
     <div class="card mb-16 row" style="align-items:center;gap:16px;flex-wrap:wrap">
-      <div style="font-size:26px">🗺️</div>
+      <div class="feature-icon">${icon('map', 20)}</div>
       <div style="flex:1;min-width:220px">
         <h4 style="margin:0 0 4px">World map</h4>
         <div class="faint" style="font-size:13px">${esc(map.note || '')}</div>

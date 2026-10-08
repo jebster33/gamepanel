@@ -1,6 +1,7 @@
 import { api } from '../../core/api.js';
 import { $, can, esc, icon, toast } from '../../core/util.js';
 import { openModal } from '../../ui/modal.js';
+import { skeleton } from '../../ui/skeleton.js';
 
 /* -------------------------------------------------------------- modpacks */
 
@@ -32,7 +33,7 @@ let source = 'modrinth';
 let installed = null;
 
 export async function renderModpacksTab(host, server) {
-  host.innerHTML = '<div class="card"><span class="spinner"></span> Loading modpacks…</div>';
+  host.innerHTML = skeleton('card', 'Loading modpacks…');
   let info;
   try {
     info = await api(`/api/servers/${server.id}/modpacks`);
@@ -114,7 +115,7 @@ export async function renderModpacksTab(host, server) {
 
   const runSearch = async () => {
     const results = $('#pack-results');
-    results.innerHTML = '<div class="card"><span class="spinner"></span> Searching…</div>';
+    results.innerHTML = skeleton('list', 'Searching…', 5);
     try {
       const data = await api(
         `/api/servers/${server.id}/modpacks/search?source=${source}&query=${encodeURIComponent($('#pack-search').value.trim())}`

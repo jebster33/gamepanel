@@ -2,6 +2,7 @@ import { api } from '../core/api.js';
 import { setCrumbs } from '../core/router.js';
 import { state } from '../core/state.js';
 import { $, esc, fmtTime } from '../core/util.js';
+import { skeletonRows } from '../ui/skeleton.js';
 
 /* ------------------------------------------------------------ audit log */
 
@@ -20,7 +21,7 @@ export async function renderAudit(view) {
     </div>
     <div class="card card-flush"><div class="table-wrap"><table>
       <thead><tr><th>When</th><th>Who</th><th>Did</th><th>Server</th><th>From</th><th></th></tr></thead>
-      <tbody id="au-rows"><tr><td colspan="6"><span class="spinner"></span></td></tr></tbody>
+      <tbody id="au-rows">${skeletonRows(6)}</tbody>
     </table></div></div>
     <div class="row mt-16"><button class="btn" id="au-more" hidden>Older</button></div>`;
 

@@ -1,5 +1,5 @@
 import { api } from '../../core/api.js';
-import { esc, toast, can } from '../../core/util.js';
+import { esc, toast, can, icon } from '../../core/util.js';
 
 /* ---------------------------------------------------- Bedrock crossplay */
 
@@ -17,7 +17,7 @@ export async function renderCrossplayCard(host, server) {
   const addr = `${location.hostname}`;
   host.innerHTML = `
     <div class="card mb-16 row" style="align-items:center;gap:16px;flex-wrap:wrap">
-      <div style="font-size:26px">📱</div>
+      <div class="feature-icon">${icon('phone', 20)}</div>
       <div style="flex:1;min-width:220px">
         <h4 style="margin:0 0 4px">Bedrock crossplay ${on ? '<span class="badge accent">On</span>' : ''}</h4>
         <div class="faint" style="font-size:13px">${
@@ -59,7 +59,7 @@ export async function renderMapCard(host, server) {
   const url = on ? `http://${location.hostname}:${info.port}` : '';
   host.innerHTML = `
     <div class="card mb-16 row" style="align-items:center;gap:16px;flex-wrap:wrap">
-      <div style="font-size:26px">🗺️</div>
+      <div class="feature-icon">${icon('map', 20)}</div>
       <div style="flex:1;min-width:220px">
         <h4 style="margin:0 0 4px">Live map ${on ? '<span class="badge accent">On</span>' : ''}</h4>
         <div class="faint" style="font-size:13px">${
@@ -115,7 +115,7 @@ export async function renderPregenCard(host, server) {
   host.innerHTML = `
     <div class="card mb-16">
       <div class="row" style="align-items:center;gap:16px;flex-wrap:wrap">
-        <div style="font-size:26px">⛰️</div>
+        <div class="feature-icon">${icon('mountain', 20)}</div>
         <div style="flex:1;min-width:220px">
           <h4 style="margin:0 0 4px">Pre-generate the world ${active ? `<span class="badge accent">${p.percent.toFixed(1)}%</span>` : ''}</h4>
           <div class="faint" style="font-size:13px">${status}</div>

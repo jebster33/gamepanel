@@ -6,6 +6,7 @@ import { state } from '../core/state.js';
 import { $, esc, fmtBytes, fmtDuration, fmtTime, icon, toast } from '../core/util.js';
 import { confirmModal } from '../ui/modal.js';
 import { setBridgeNav } from '../ui/sidebar.js';
+import { skeleton } from '../ui/skeleton.js';
 
 /* -------------------------------------------------------------- settings */
 
@@ -110,12 +111,12 @@ export async function renderSettings(view) {
 
     <div class="card mb-16" id="https">
       <div class="card-head"><h4>HTTPS</h4><div class="spacer"></div><label class="switch"><input type="checkbox" id="tls-on" /><i></i></label></div>
-      <div id="tls-body"><span class="spinner"></span></div>
+      <div id="tls-body">${skeleton('lines')}</div>
     </div>
 
     <div class="card mb-16" id="sftp">
       <div class="card-head"><h4>SFTP</h4><div class="spacer"></div><label class="switch"><input type="checkbox" id="sftp-on" /><i></i></label></div>
-      <div id="sftp-body"><span class="spinner"></span></div>
+      <div id="sftp-body">${skeleton('lines')}</div>
     </div>
 
     <div class="card mb-16" id="backup-checks">
@@ -159,7 +160,7 @@ export async function renderSettings(view) {
 
     <div class="card mb-16" id="discord-bot">
       <h4>Discord bot</h4>
-      <div id="db-body" class="faint">Loading…</div>
+      <div id="db-body" class="faint">${skeleton('lines')}</div>
     </div>
 
     <div class="card mb-16" id="integrations">
@@ -191,7 +192,7 @@ export async function renderSettings(view) {
         Optional. Copies every backup (by hand or scheduled) to an S3-compatible bucket, so a dead disk does not take your worlds with it.
         Works with Backblaze B2, Cloudflare R2, Amazon S3, Wasabi and MinIO. Use a key that can only reach this one bucket.
       </p>
-      <div id="cloud-form" class="faint"><span class="spinner"></span> Loading…</div>
+      <div id="cloud-form" class="faint">${skeleton('lines')}</div>
     </div>
 
     <div class="card mb-16" id="node-copies">
@@ -199,7 +200,7 @@ export async function renderSettings(view) {
       <p class="faint" style="margin:0 0 14px;line-height:1.6">
         Optional. Sends every archive backup to one of your nodes (another machine running GamePanel), so losing this machine does not lose the backups. Nothing to sign up for.
       </p>
-      <div id="node-copies-form" class="faint"><span class="spinner"></span> Loading…</div>
+      <div id="node-copies-form" class="faint">${skeleton('lines')}</div>
     </div>
 
     <div class="card mb-16" id="oauth">
@@ -208,7 +209,7 @@ export async function renderSettings(view) {
         People link one of these on their Account page, then sign in with it instead of their password. No account is ever created this way.
         Register the panel as an app with the service and paste its client ID and secret here.
       </p>
-      <div id="oauth-form" class="faint"><span class="spinner"></span> Loading…</div>
+      <div id="oauth-form" class="faint">${skeleton('lines')}</div>
     </div>
 
     <div class="card mb-16" id="status-page">
@@ -216,7 +217,7 @@ export async function renderSettings(view) {
       <p class="faint" style="margin:0 0 14px;line-height:1.6">
         A page anyone with the link can open, no sign-in: which servers are up, who is on, the message of the day and the address to join, with a Join button for games that have one. Good for a Discord channel or a website.
       </p>
-      <div id="sp-form" class="faint"><span class="spinner"></span> Loading…</div>
+      <div id="sp-form" class="faint">${skeleton('lines')}</div>
     </div>
 
     <div class="card mb-16">
@@ -583,7 +584,7 @@ async function renderStatusPageForm() {
             .filter((x) => !x.node)
             .map(
               (x) => `<div class="sp-server">
-                <label class="perm-row"><input type="checkbox" data-sp-server="${esc(x.id)}" ${picked.has(x.id) ? 'checked' : ''} /><span>${esc(x.templateIcon || '🎮')} ${esc(x.name)}</span></label>
+                <label class="perm-row"><input type="checkbox" data-sp-server="${esc(x.id)}" ${picked.has(x.id) ? 'checked' : ''} /><span>${esc(x.name)}</span></label>
                 <input data-sp-blurb="${esc(x.id)}" value="${esc(sp.blurbs?.[x.id] || '')}" placeholder="A line about it (optional), e.g. Semi-vanilla, no resets" maxlength="200" />
               </div>`
             )

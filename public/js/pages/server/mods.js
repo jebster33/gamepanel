@@ -3,6 +3,7 @@ import { $, esc, fmtBytes, icon, toast } from '../../core/util.js';
 import { confirmModal, openModal } from '../../ui/modal.js';
 import { sideBadge } from './modpacks.js';
 import { renderWorkshopPacks } from './workshop-packs.js';
+import { skeleton } from '../../ui/skeleton.js';
 
 /* ------------------------------------------------------------------ mods */
 
@@ -23,7 +24,7 @@ const PROVIDER_NOTE = {
 };
 
 export async function renderModsTab(host, server) {
-  host.innerHTML = '<div class="card"><span class="spinner"></span> Loading mods…</div>';
+  host.innerHTML = skeleton('list', 'Loading mods…', 5);
   let info;
   try {
     info = await api(`/api/servers/${server.id}/mods`);
@@ -116,7 +117,7 @@ export async function renderModsTab(host, server) {
 
   const search = async () => {
     const results = $('#mod-results');
-    results.innerHTML = '<div class="card"><span class="spinner"></span> Searching…</div>';
+    results.innerHTML = skeleton('list', 'Searching…', 5);
     try {
       const data = await api(
         `/api/servers/${server.id}/mods/search?provider=${encodeURIComponent(provider.id)}&query=${encodeURIComponent(modState.query)}`

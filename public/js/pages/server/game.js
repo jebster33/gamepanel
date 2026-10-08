@@ -6,6 +6,7 @@ import { renderWorldsCard } from './worlds.js';
 import { renderDatapacksCard } from './datapacks.js';
 import { renderCrossplayCard, renderGameruleCard, renderMapCard, renderPregenCard } from './crossplay.js';
 import { renderWorldMapCard } from './world-map.js';
+import { skeleton } from '../../ui/skeleton.js';
 
 /* ---------------------------------------------------- game settings tab */
 
@@ -26,7 +27,7 @@ export async function renderGameTab(root, server) {
   renderWorldsCard(root.querySelector('#gw-card'), server);
   renderDatapacksCard(root.querySelector('#gd-card'), server);
   const host = root.querySelector('#gs-body');
-  host.innerHTML = '<div class="card"><span class="spinner"></span> Reading the game\'s settings…</div>';
+  host.innerHTML = skeleton('card', 'Reading the game\'s settings…');
   let data;
   try {
     data = await api(`/api/servers/${server.id}/game-settings`);

@@ -1,6 +1,7 @@
 import { api } from '../../core/api.js';
-import { can, esc, fmtDuration, fmtTime, toast } from '../../core/util.js';
+import { can, esc, fmtDuration, fmtTime, toast, icon } from '../../core/util.js';
 import { confirmModal, openModal, promptModal } from '../../ui/modal.js';
+import { skeleton } from '../../ui/skeleton.js';
 
 /* --------------------------------------------------------------- players */
 
@@ -169,7 +170,7 @@ function ago(ts) {
 }
 
 async function renderHistory(box, server) {
-  box.innerHTML = '<div class="card"><span class="spinner"></span> Loading player history…</div>';
+  box.innerHTML = skeleton('list', 'Loading player history…');
   let data;
   try {
     data = await api(`/api/servers/${server.id}/player-history`);
@@ -328,7 +329,7 @@ export async function openProfile(serverId, name, ctx = current) {
         ${avatar(server, p.name, 52)}
         <div>
           <div class="profile-name">${esc(p.name)}</div>
-          <div class="faint" style="font-size:12.5px">${p.online ? '<span class="lime">● Online now</span>' : `Last seen ${esc(ago(p.last))}`}</div>
+          <div class="faint" style="font-size:12.5px">${p.online ? '<span class="lime inline-icon"><span class="led on"></span> Online now</span>' : `Last seen ${esc(ago(p.last))}`}</div>
         </div>
       </div>
       <div class="kpi-grid kpi-small">
@@ -466,13 +467,15 @@ const LOG_TEXT = {
   stop: () => 'Server stopped',
   crash: () => '<span class="bad-text">Server crashed</span>',
 };
-const LOG_ICON = { wake: '☀', inventory: '🎒', datapack: '📦', automod: '🛡', join: '→', leave: '←', chat: '💬', kick: '⤫', ban: '⛔', unban: '✓', whitelist: '＋', unwhitelist: '−', op: '★', deop: '☆', start: '▶', stop: '■', crash: '⚠', version: '⇅' };
+const LOG_ICON = Object.fromEntries(
+  Object.entries({ wake: 'sun', inventory: 'backpack', datapack: 'box', automod: 'shield', join: 'login', leave: 'logout', chat: 'message', kick: 'close', ban: 'ban', unban: 'check', whitelist: 'plus', unwhitelist: 'minus', op: 'starFill', deop: 'star', start: 'play', stop: 'stop', crash: 'alert', version: 'swap' }).map(([type, name]) => [type, icon(name, 13)])
+);
 
 function logRow(e) {
   const text = (LOG_TEXT[e.type] || ((x) => esc(x.type)))(e);
   return `<div class="act-row act-${esc(e.type)}">
     <span class="act-time mono faint" title="${esc(new Date(e.t).toLocaleString())}">${esc(new Date(e.t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))}</span>
-    <span class="act-icon">${LOG_ICON[e.type] || '•'}</span>
+    <span class="act-icon">${LOG_ICON[e.type] || '<span class="led"></span>'}</span>
     <span class="act-text">${text}</span>
   </div>`;
 }

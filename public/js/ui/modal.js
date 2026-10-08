@@ -1,5 +1,6 @@
 import { api } from '../core/api.js';
 import { $, esc, icon } from '../core/util.js';
+import { reducedMotion } from './fx.js';
 
 /* ---------------------------------------------------------------- modals */
 
@@ -9,16 +10,29 @@ export function openModal({ title, body, actions = [], width = 620 }) {
   backdrop.className = 'modal-backdrop';
   backdrop.innerHTML = `
     <div class="modal" style="width:min(${width}px,100%)">
-      <div class="modal-head"><h2>${title}</h2><button class="icon-btn" data-close>✕</button></div>
+      <div class="modal-head"><h2>${title}</h2><button class="icon-btn" data-close aria-label="Close">${icon('close', 14)}</button></div>
       <div class="modal-body">${body}</div>
       <div class="modal-foot"></div>
     </div>`;
   root.appendChild(backdrop);
 
+  let closed = false;
   const api = {
     close() {
-      backdrop.remove();
+      if (closed) return;
+      closed = true;
       document.removeEventListener('keydown', onKey);
+      if (reducedMotion || !backdrop.animate) return backdrop.remove();
+      // Fade out rather than vanish. Ids go first so a modal opened right
+      // after this one never finds this one's fields.
+      // It also moves to the back, so ".modal-backdrop:last-child" lookups
+      // keep finding the modal that is still open.
+      backdrop.parentNode?.prepend(backdrop);
+      backdrop.inert = true;
+      backdrop.querySelectorAll('[id]').forEach((el) => el.removeAttribute('id'));
+      backdrop.style.pointerEvents = 'none';
+      backdrop.querySelector('.modal').animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateY(6px) scale(0.98)' }], { duration: 150, easing: 'ease-in', fill: 'forwards' });
+      backdrop.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 170, easing: 'ease-in', fill: 'forwards' }).finished.finally(() => backdrop.remove());
     },
   };
 

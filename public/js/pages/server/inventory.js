@@ -1,6 +1,7 @@
 import { api } from '../../core/api.js';
-import { can, esc, fmtTime, toast } from '../../core/util.js';
+import { can, esc, fmtTime, toast, icon } from '../../core/util.js';
 import { confirmModal } from '../../ui/modal.js';
+import { skeleton } from '../../ui/skeleton.js';
 
 /* ------------------------------------------------- a Minecraft player's inventory */
 
@@ -40,7 +41,7 @@ function grid(items, from, to) {
 export async function renderInventory(box, serverId, name) {
   let backupsList = [];
   const draw = async (backup = '') => {
-    box.innerHTML = '<span class="spinner"></span>';
+    box.innerHTML = skeleton('card', 'Reading the inventory…');
     let inv;
     try {
       inv = await api(`/api/servers/${encodeURIComponent(serverId)}/players/${encodeURIComponent(name)}/inventory${backup ? `?backup=${encodeURIComponent(backup)}` : ''}`);
@@ -53,7 +54,7 @@ export async function renderInventory(box, serverId, name) {
     const a = inv.armor;
     box.innerHTML = `
       ${picker(backup)}
-      <div class="inv-stats faint">❤ ${inv.health} · 🍗 ${inv.food} · ✦ level ${inv.level}${inv.gamemode ? ` · ${esc(inv.gamemode)}` : ''}${inv.pos ? ` · ${esc(inv.dimension)} ${inv.pos.join(', ')}` : ''}${inv.online && !backup ? ' · <span class="lime">online: this may be a few minutes old</span>' : ''}</div>
+      <div class="inv-stats faint"><span class="inline-icon">${icon('heart', 13)} ${inv.health}</span> · <span class="inline-icon">${icon('food', 13)} ${inv.food}</span> · <span class="inline-icon">${icon('level', 13)} level ${inv.level}</span>${inv.gamemode ? ` · ${esc(inv.gamemode)}` : ''}${inv.pos ? ` · ${esc(inv.dimension)} ${inv.pos.join(', ')}` : ''}${inv.online && !backup ? ' · <span class="lime">online: this may be a few minutes old</span>' : ''}</div>
       <div class="inv-wrap">
         <div class="inv-side">${slot(a.head)}${slot(a.chest)}${slot(a.legs)}${slot(a.feet)}<div class="inv-gap"></div>${slot(inv.offhand)}</div>
         <div class="inv-main">

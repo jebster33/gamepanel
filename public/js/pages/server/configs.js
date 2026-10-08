@@ -1,5 +1,6 @@
 import { api } from '../../core/api.js';
 import { can, esc, fmtBytes, toast } from '../../core/util.js';
+import { skeleton } from '../../ui/skeleton.js';
 
 /* ------------------------------------------------------------ configs tab */
 
@@ -12,7 +13,7 @@ import { can, esc, fmtBytes, toast } from '../../core/util.js';
 let lastPath = {}; // per server: the file open last, so coming back lands there
 
 export async function renderConfigsTab(root, server) {
-  root.innerHTML = '<div class="card"><span class="spinner"></span> Looking for config files…</div>';
+  root.innerHTML = skeleton('list', 'Looking for config files…');
   let files;
   try {
     ({ files } = await api(`/api/servers/${server.id}/configs`));
@@ -75,7 +76,7 @@ export async function renderConfigsTab(root, server) {
 }
 
 async function renderForm(host, server, rel) {
-  host.innerHTML = '<div class="card"><span class="spinner"></span></div>';
+  host.innerHTML = skeleton('card');
   let form;
   try {
     form = await api(`/api/servers/${server.id}/configs/form?path=${encodeURIComponent(rel)}`);

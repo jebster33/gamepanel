@@ -2,19 +2,20 @@ import { api } from '../../core/api.js';
 import { $, esc, fmtBytes, fmtTime, icon, toast } from '../../core/util.js';
 import { confirmModal, openModal } from '../../ui/modal.js';
 import { openRestorePreview } from './restore-preview.js';
+import { skeleton } from '../../ui/skeleton.js';
 
 /* --------------------------------------------------------------- backups */
 
-/** "✓ 2 h ago" or "✗ broken", for the Checked column. */
+/** A tick and "2 h ago", or a cross and "Failed", for the Checked column. */
 function checkLabel(check) {
   if (!check) return '<span class="faint">—</span>';
-  if (!check.ok) return `<span style="color:var(--danger)" title="${esc(check.error || '')}">✗ Failed</span>`;
+  if (!check.ok) return `<span style="color:var(--danger)" title="${esc(check.error || '')}">${icon('close', 12)} Failed</span>`;
   const how = check.mode === 'read' ? 'Read end to end (not enough room to unpack it)' : `Unpacked ${check.files} files into a scratch folder`;
-  return `<span style="color:var(--success)" title="${esc(how)} ${esc(fmtTime(check.at))}">✓ ${esc(fmtTime(check.at))}</span>`;
+  return `<span style="color:var(--success)" title="${esc(how)} ${esc(fmtTime(check.at))}">${icon('check', 12)} ${esc(fmtTime(check.at))}</span>`;
 }
 
 export async function renderBackupsTab(host, server) {
-  host.innerHTML = '<div class="card"><span class="spinner"></span> Loading backups…</div>';
+  host.innerHTML = skeleton('list', 'Loading backups…');
   const data = await api(`/api/servers/${server.id}/backups`).catch((err) => ({ backups: [], error: err.message }));
   if (!host.isConnected) return; // the user moved to another tab meanwhile
 
@@ -37,7 +38,7 @@ export async function renderBackupsTab(host, server) {
               ? data.backups
                   .map(
                     (b) => `<tr>
-                      <td class="mono">${esc(b.name)}${b.kind === 'incremental' ? ` <span class="chip chip-sm" title="Only what changed since the backup before">${b.encrypted ? '🔒 ' : ''}incremental</span>` : ''}</td>
+                      <td class="mono">${esc(b.name)}${b.kind === 'incremental' ? ` <span class="chip chip-sm" title="Only what changed since the backup before">${b.encrypted ? icon('lock', 11) : ''}incremental</span>` : ''}</td>
                       <td class="faint nowrap" ${b.total ? `title="Stored ${esc(fmtBytes(b.size))} new; restores ${esc(fmtBytes(b.total))}"` : ''}>${b.kind === 'incremental' ? `+${fmtBytes(b.size)}` : fmtBytes(b.size)}</td>
                       <td class="faint nowrap">${fmtTime(b.createdAt)}</td>
                       <td class="nowrap" data-check-cell="${esc(b.name)}">${checkLabel(b.check)}</td>
@@ -137,7 +138,7 @@ async function renderCopies(host, server, local, kind) {
     const name = cell.dataset[`copy${kind[0].toUpperCase()}${kind.slice(1)}`];
     const st = status[name];
     if (name.endsWith('.snap')) cell.innerHTML = `<span class="faint" title="Copies are made of archive backups">—</span>`;
-    else if (remote.has(name)) cell.innerHTML = '<span class="badge" style="color:var(--lime-text)">✓ copied</span>';
+    else if (remote.has(name)) cell.innerHTML = `<span class="badge" style="color:var(--lime-text)">${icon('check', 11)} copied</span>`;
     else if (['queued', 'uploading', 'sending'].includes(st)) cell.innerHTML = `<span class="faint"><span class="spinner"></span> ${esc(st)}</span>`;
     else cell.innerHTML = `${st ? `<span class="badge bad" title="${esc(st)}">failed</span> ` : ''}<button class="btn btn-sm" data-send-${kind}="${esc(name)}">Copy</button>`;
   });
@@ -218,7 +219,7 @@ async function browseBackup(server, name) {
       <div class="faint mono" style="font-size:12px;margin-bottom:10px">${esc(name)}</div>
       <input id="bb-q" type="search" placeholder="Search every file in this backup" autocomplete="off" spellcheck="false" />
       <div id="bb-crumbs" class="bb-crumbs"></div>
-      <div id="bb-list" class="bb-list"><div class="faint"><span class="spinner"></span> Reading the backup…</div></div>`,
+      <div id="bb-list" class="bb-list">${skeleton('lines', 'Reading the backup…')}</div>`,
     actions: [
       { label: 'Cancel', close: true },
       { label: 'Restore selected', primary: true, onClick: (btn) => restoreSelected(btn) },
@@ -242,7 +243,7 @@ async function browseBackup(server, name) {
   const row = (e, label) => `
     <label class="bb-row">
       <input type="checkbox" data-pick="${esc(e.path)}" ${pick.has(e.path) ? 'checked' : ''} />
-      ${e.dir ? `<a href="#" data-open="${esc(e.path)}">📁 ${esc(label)}</a>` : `<span>${esc(label)}</span>`}
+      ${e.dir ? `<a href="#" data-open="${esc(e.path)}" class="inline-icon">${icon('folder', 13)} ${esc(label)}</a>` : `<span>${esc(label)}</span>`}
       <span class="faint mono">${e.dir ? '' : fmtBytes(e.size)}</span>
     </label>`;
 
