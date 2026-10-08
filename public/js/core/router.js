@@ -17,6 +17,7 @@ import { renderNetworks } from '../pages/networks.js';
 import { renderUsers } from '../pages/users.js';
 import { closeSidebar, renderSidebarServers } from '../ui/sidebar.js';
 import { reducedMotion } from '../ui/fx.js';
+import { skeleton } from '../ui/skeleton.js';
 
 /* ---------------------------------------------------------------- router */
 
@@ -76,9 +77,11 @@ export function handleRoute() {
   renderSidebarServers();
   render();
 
-  // A new page fades in; switching tabs on the same server does not.
-  const samePage = previous.name === state.route.name && previous.params.id === state.route.params.id;
-  if (!samePage && !reducedMotion) $('#view').animate?.([{ opacity: 0 }, { opacity: 1 }], { duration: 180, easing: 'ease-out' });
+  // A new page fades in; on the same server only the new tab's content does.
+  if (reducedMotion) return;
+  const sameServer = previous.name === 'server' && state.route.name === 'server' && previous.params.id === state.route.params.id;
+  const target = sameServer ? $('#tab-content') : $('#view');
+  target?.animate?.([{ opacity: 0 }, { opacity: 1 }], { duration: 180, easing: 'ease-out' });
 }
 
 /* ----------------------------------------------------------------- views */
@@ -86,6 +89,8 @@ export function handleRoute() {
 export function render() {
   const view = $('#view');
   const route = ROUTES.find((r) => r.name === state.route.name);
+  // Pages that fetch before drawing show the page's shape meanwhile, not the last page.
+  if (route?.page.constructor.name === 'AsyncFunction') view.innerHTML = skeleton('page');
   if (route) route.page(view);
   else view.innerHTML = '<div class="empty"><h3>Page not found</h3></div>';
 }

@@ -1,8 +1,9 @@
 import { api } from '../../core/api.js';
 import { state } from '../../core/state.js';
-import { esc, toast } from '../../core/util.js';
+import { esc, toast, icon } from '../../core/util.js';
 import { confirmModal } from '../../ui/modal.js';
 import { avatar } from './players.js';
+import { skeleton } from '../../ui/skeleton.js';
 
 /* ----------------------------------------------- whitelist, ops and bans */
 
@@ -14,7 +15,7 @@ const HINTS = {
 };
 
 export async function renderLists(box, server) {
-  box.innerHTML = '<div class="card"><span class="spinner"></span> Reading the lists…</div>';
+  box.innerHTML = skeleton('list', 'Reading the lists…');
   let data;
   try {
     data = await api(`/api/servers/${server.id}/player-lists`);
@@ -150,7 +151,7 @@ function listCard(server, list) {
           ? list.entries
               .map(
                 (e) => `<div class="list-entry">
-                  ${list.ip ? '<span class="player-avatar">⌁</span>' : avatar(server, e.name || '?')}
+                  ${list.ip ? `<span class="player-avatar">${icon('network', 14)}</span>` : avatar(server, e.name || '?')}
                   <div style="min-width:0;flex:1">
                     <div class="list-name">${esc(e.name || e.uuid || '?')}${e.level ? ` <span class="badge">level ${esc(e.level)}</span>` : ''}</div>
                     ${e.reason || e.source ? `<div class="faint list-meta">${esc([e.reason, e.source && `by ${e.source}`].filter(Boolean).join(' · '))}</div>` : ''}

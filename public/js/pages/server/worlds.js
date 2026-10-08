@@ -1,5 +1,5 @@
 import { api } from '../../core/api.js';
-import { esc, toast, fmtBytes, fmtTime, can } from '../../core/util.js';
+import { esc, toast, fmtBytes, fmtTime, can, icon } from '../../core/util.js';
 import { openModal, confirmModal } from '../../ui/modal.js';
 
 /* ------------------------------------------------------- Minecraft worlds */
@@ -33,7 +33,7 @@ export async function renderWorldsCard(host, server) {
               .map(
                 (w) => `
             <div class="world-row ${w.active ? 'active' : ''}">
-              <div class="world-icon">🌍</div>
+              <div class="world-icon">${icon('globe', 18)}</div>
               <div style="flex:1;min-width:0">
                 <div class="world-name">${esc(w.name)}${w.active ? ' <span class="badge accent">Loaded</span>' : ''}</div>
                 <div class="faint" style="font-size:12px">${fmtBytes(w.size)} · ${w.dimensions > 1 ? `${w.dimensions} dimensions · ` : ''}saved ${esc(fmtTime(w.modified))}</div>

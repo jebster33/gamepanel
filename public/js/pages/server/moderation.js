@@ -1,5 +1,6 @@
 import { api } from '../../core/api.js';
 import { esc, fmtTime, toast } from '../../core/util.js';
+import { skeleton } from '../../ui/skeleton.js';
 
 /* -------------------------------------------------------- chat moderation */
 
@@ -11,7 +12,7 @@ const STEPS = [
 ];
 
 export async function renderModeration(box, server) {
-  box.innerHTML = '<div class="card"><span class="spinner"></span></div>';
+  box.innerHTML = skeleton('card');
   let data;
   try {
     data = await api(`/api/servers/${server.id}/moderation`);

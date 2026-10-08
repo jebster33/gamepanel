@@ -2,13 +2,14 @@ import { api } from '../core/api.js';
 import { setCrumbs } from '../core/router.js';
 import { $, esc, fmtTime, toast } from '../core/util.js';
 import { promptModal } from '../ui/modal.js';
+import { skeleton } from '../ui/skeleton.js';
 
 /* ------------------------------------------------------------------ bans */
 
 /** One ban list for every server, and the appeals banned players send in. */
 export async function renderBans(view) {
   setCrumbs('Bans');
-  view.innerHTML = '<div class="page-head"><h1>Bans</h1></div><div id="bans-body"><div class="card"><span class="spinner"></span></div></div>';
+  view.innerHTML = `<div class="page-head"><h1>Bans</h1></div><div id="bans-body">${skeleton('list', 'Loading bans…')}</div>`;
   let data;
   try {
     data = await api('/api/bans');

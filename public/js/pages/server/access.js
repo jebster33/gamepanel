@@ -1,6 +1,7 @@
 import { api } from '../../core/api.js';
 import { $, esc, icon, toast } from '../../core/util.js';
 import { confirmModal, openModal } from '../../ui/modal.js';
+import { skeleton } from '../../ui/skeleton.js';
 
 /* --------------------------------------------------------------- access */
 
@@ -9,7 +10,7 @@ import { confirmModal, openModal } from '../../ui/modal.js';
  * Permissions set here apply to this server only.
  */
 export async function renderAccessTab(host, server) {
-  host.innerHTML = '<div class="card"><span class="spinner"></span> Loading…</div>';
+  host.innerHTML = skeleton('list', 'Loading…', 3);
   let data;
   try {
     data = await api(`/api/servers/${server.id}/access`);

@@ -1,6 +1,7 @@
 import { api } from '../../core/api.js';
 import { esc, fmtBytes, icon, toast, can } from '../../core/util.js';
 import { confirmModal, openModal } from '../../ui/modal.js';
+import { skeleton } from '../../ui/skeleton.js';
 
 /* ------------------------------------------------------ Minecraft datapacks */
 
@@ -155,7 +156,7 @@ function openBrowser(server, data, done) {
         <input id="dp-q" placeholder="Search Modrinth datapacks" style="flex:1" />
       </div>
       <div class="faint mb-8" style="font-size:12.5px">${data.gameVersion ? `Only packs with a release for Minecraft ${esc(data.gameVersion)}.` : 'The server version is not known yet, so every pack is listed.'}</div>
-      <div id="dp-results" class="list"><div class="faint"><span class="spinner"></span> Loading…</div></div>`,
+      <div id="dp-results" class="list">${skeleton('lines')}</div>`,
     actions: [{ label: 'Close', close: true }],
   });
   const root = document.querySelector('.modal-backdrop:last-child');

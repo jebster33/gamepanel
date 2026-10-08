@@ -19,23 +19,22 @@ const STEAM_ART = 'https://cdn.cloudflare.steamstatic.com/steam/apps';
 /**
  * A game's artwork as HTML: a banner when `wide`, otherwise square cover art.
  * Steam games use their store art; templates can set their own `logo`. Falls
- * back to the template's emoji when there is none or it fails to load.
+ * back to a drawn gamepad when there is none or it fails to load.
  */
 export function gameArt(game, { wide = false } = {}) {
-  const emoji = esc(game?.icon || '🎮');
   const steam = game?.storeAppId ? `${STEAM_ART}/${Number(game.storeAppId)}/${wide ? 'header.jpg' : 'library_600x900.jpg'}` : '';
   const src = game?.logo || steam;
-  if (!src) return emoji;
-  return `<img src="${esc(src)}" alt="" loading="lazy" class="${game?.logo ? 'art-contain' : ''}" data-fallback="${emoji}" />`;
+  if (!src) return GAME_FALLBACK;
+  return `<img src="${esc(src)}" alt="" loading="lazy" class="${game?.logo ? 'art-contain' : ''}" data-fallback />`;
 }
 
-// The CSP blocks inline onerror handlers, so swap broken art for its emoji here.
+// The CSP blocks inline onerror handlers, so swap broken art for the gamepad here.
 // Image errors don't bubble, hence the capture listener.
 document.addEventListener(
   'error',
   (event) => {
     const img = event.target;
-    if (img instanceof HTMLImageElement && img.dataset.fallback !== undefined) img.replaceWith(img.dataset.fallback);
+    if (img instanceof HTMLImageElement && img.dataset.fallback !== undefined) img.outerHTML = GAME_FALLBACK;
   },
   true
 );
@@ -127,7 +126,35 @@ const ICON_PATHS = {
   puzzle: '<path d="M10 4a2 2 0 1 1 4 0v2h4v4h-2a2 2 0 1 0 0 4h2v4h-4v-2a2 2 0 1 0-4 0v2H6v-4h2a2 2 0 1 0 0-4H6V6h4z"/>',
   arrowUp: '<path d="M12 19V5m0 0-6 6m6-6 6 6"/>',
   bell: '<path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15zM10 20a2 2 0 0 0 4 0"/>',
+  gamepad: '<path d="M7.5 7h9a4.5 4.5 0 0 1 4.4 5.5l-1 4.3a2.4 2.4 0 0 1-4.2 1L14 16h-4l-1.7 1.8a2.4 2.4 0 0 1-4.2-1l-1-4.3A4.5 4.5 0 0 1 7.5 7z"/><path d="M8 10v3M6.5 11.5h3M15.5 10.5h.01M17.5 12.5h.01"/>',
+  close: '<path d="M18 6 6 18M6 6l12 12"/>',
+  minus: '<path d="M5 12h14"/>',
+  message: '<path d="M4 5h16v11H9l-5 4z"/>',
+  star: '<path d="m12 3.5 2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/>',
+  starFill: '<path d="m12 3.5 2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z" fill="currentColor"/>',
+  globe: '<circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.4 2.6 3.5 5.4 3.5 8.5s-1.1 5.9-3.5 8.5c-2.4-2.6-3.5-5.4-3.5-8.5s1.1-5.9 3.5-8.5z"/>',
+  wrench: '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.4-3.4a6 6 0 0 1-7.9 7.9l-6.9 6.9a2.1 2.1 0 0 1-3-3l6.9-6.9a6 6 0 0 1 7.9-7.9z"/>',
+  map: '<path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5zM9 4v13.5M15 6.5V20"/>',
+  phone: '<rect x="7" y="3" width="10" height="18" rx="2"/><path d="M11 17.5h2"/>',
+  mountain: '<path d="m3 19 6.5-11 4 6.5 2-3L21 19z"/>',
+  alert: '<path d="M12 4 2.8 19.5h18.4z"/><path d="M12 10v4M12 16.8h.01"/>',
+  bulb: '<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2V16h5v-.1c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"/>',
+  lock: '<rect x="5" y="10.5" width="14" height="10" rx="2"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/>',
+  backpack: '<path d="M6 10a6 6 0 0 1 12 0v9a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2z"/><path d="M9 4.5V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v.5M9 14h6v4H9z"/>',
+  box: '<path d="M3.5 7.5 12 3l8.5 4.5v9L12 21l-8.5-4.5z"/><path d="M3.5 7.5 12 12l8.5-4.5M12 12v9"/>',
+  shield: '<path d="M12 3 4.5 6v6c0 4.4 3.2 7.9 7.5 9 4.3-1.1 7.5-4.6 7.5-9V6z"/>',
+  ban: '<circle cx="12" cy="12" r="8.5"/><path d="m6 6 12 12"/>',
+  login: '<path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/>',
+  logout: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>',
+  swap: '<path d="M7 4v16m0 0-3-3m3 3 3-3M17 20V4m0 0-3 3m3-3 3 3"/>',
+  heart: '<path d="M12 20s-7.5-4.6-7.5-10A4.3 4.3 0 0 1 12 7.4 4.3 4.3 0 0 1 19.5 10c0 5.4-7.5 10-7.5 10z"/>',
+  food: '<path d="M15 3.5a5.5 5.5 0 0 1 0 11c-1.2 0-2.3-.4-3.2-1L9 16.3a2 2 0 1 1-2.6 2.6 2 2 0 1 1-1.3-2.6 2 2 0 1 1 2.6-1.3l2.8-2.8A5.5 5.5 0 0 1 15 3.5z"/>',
+  level: '<path d="M12 3.5 14 10l6.5 2-6.5 2-2 6.5-2-6.5-6.5-2L10 10z"/>',
+  network: '<rect x="3" y="15" width="6" height="5" rx="1"/><rect x="15" y="15" width="6" height="5" rx="1"/><rect x="9" y="4" width="6" height="5" rx="1"/><path d="M12 9v3M6 15v-3h12v3"/>',
 };
+
+/** What a game without artwork shows: a gamepad on the tile. */
+const GAME_FALLBACK = `<span class="art-fallback">${icon('gamepad', 18)}</span>`;
 
 export function icon(name, size = 14) {
   const path = ICON_PATHS[name];

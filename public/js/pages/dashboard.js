@@ -2,7 +2,7 @@ import { api } from '../core/api.js';
 import { drawChart } from '../core/charts.js';
 import { setCrumbs } from '../core/router.js';
 import { state } from '../core/state.js';
-import { $, esc, fmtBytes, fmtDuration, fmtRate } from '../core/util.js';
+import { $, esc, fmtBytes, fmtDuration, fmtRate, icon } from '../core/util.js';
 import { renderServerCards } from './servers.js';
 import { countUp, flash, revealChildren } from '../ui/fx.js';
 
@@ -149,7 +149,7 @@ async function renderChecklist() {
         </div>
         <ol>${data.items
           .map(
-            (i) => `<li class="${i.done ? 'done' : ''}"><a href="${esc(i.link)}"><span class="tick">✓</span><span class="text">${esc(i.label)}</span></a></li>`
+            (i) => `<li class="${i.done ? 'done' : ''}"><a href="${esc(i.link)}"><span class="tick">${icon('check', 12)}</span><span class="text">${esc(i.label)}</span></a></li>`
           )
           .join('')}</ol>
       </div>

@@ -298,7 +298,7 @@ export function openCreateServerModal(templateId) {
     .join('');
 
   const modal = openModal({
-    title: `${esc(template.icon || '🎮')} Deploy ${esc(template.name)}`,
+    title: `Deploy ${esc(template.name)}`,
     width: 660,
     body: `
       <p class="faint" style="margin-top:0">${esc(template.description || '')}</p>
@@ -426,7 +426,7 @@ function openWizardModal(template) {
     .join('');
 
   const modal = openModal({
-    title: `${esc(template.icon || '🎮')} ${esc(template.name)} setup`,
+    title: `${esc(template.name)} setup`,
     width: 660,
     body: `<div class="wizard-progress">${allSteps
       .map((_, i) => `<i data-dot="${i}" class="${i === 0 ? 'active' : ''}"></i>`)
@@ -500,7 +500,7 @@ export function openImportModal() {
   if (!templates.length) return toast('No templates available', 'error');
   const example = /windows/i.test(state.host?.platform || '') ? 'D:\\Servers\\Valheim' : '/home/me/minecraft';
   const gameOptions = (selected) =>
-    `<option value="">Pick the game…</option>${templates.map((t) => `<option value="${esc(t.id)}" ${t.id === selected ? 'selected' : ''}>${esc(t.icon || '🎮')} ${esc(t.name)}</option>`).join('')}`;
+    `<option value="">Pick the game…</option>${templates.map((t) => `<option value="${esc(t.id)}" ${t.id === selected ? 'selected' : ''}>${esc(t.name)}</option>`).join('')}`;
   let found = [];
 
   const modal = openModal({

@@ -1,8 +1,9 @@
 import { api } from '../../core/api.js';
 import { drawChart } from '../../core/charts.js';
 import { state } from '../../core/state.js';
-import { $, esc, fmtBytes, fmtTime, toast } from '../../core/util.js';
+import { $, esc, fmtBytes, fmtTime, toast, icon } from '../../core/util.js';
 import { themeColor } from '../dashboard.js';
+import { skeleton } from '../../ui/skeleton.js';
 
 /* -------------------------------------------------------------- metrics */
 
@@ -29,7 +30,7 @@ export function renderMetricsTab(host, server) {
       <div class="chart-card"><h4>Players online</h4><div class="chart-value" id="mv-players">—</div><canvas id="chart-players"></canvas></div>
       <div class="chart-card"><h4>Ping</h4><div class="chart-value" id="mv-ping">—</div><canvas id="chart-ping"></canvas></div>
     </div>
-    <div class="card mt-16" id="mv-advice"><h4 style="margin:0 0 12px">Advice</h4><div class="faint"><span class="spinner"></span> Looking at how it runs…</div></div>
+    <div class="card mt-16" id="mv-advice"><h4 style="margin:0 0 12px">Advice</h4>${skeleton('lines', 'Looking at how it runs…')}</div>
     <div class="card mt-16">
       <h4 style="margin:0 0 12px">Details</h4>
       <div class="table-wrap"><table>
@@ -137,7 +138,7 @@ export function drawServerCharts(id) {
 
 /* -------------------------------------------------------------- advice */
 
-const ADVICE_ICON = { warn: '⚠', tip: '💡', good: '✓' };
+const ADVICE_ICON = { warn: icon('alert', 15), tip: icon('bulb', 15), good: icon('check', 15) };
 
 /** Memory and settings advice, with one-click fixes for administrators. */
 async function renderAdvice(box, server) {
@@ -146,7 +147,10 @@ async function renderAdvice(box, server) {
   try {
     data = await api(`/api/servers/${server.id}/advice`);
   } catch (err) {
-    box.querySelector('.faint').textContent = err.message;
+    const note = document.createElement('div');
+    note.className = 'faint';
+    note.textContent = err.message;
+    box.querySelector('.skel-wrap')?.replaceWith(note);
     return;
   }
   if (!box.isConnected) return;

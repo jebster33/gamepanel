@@ -3,13 +3,14 @@ import { loadServers } from '../core/boot.js';
 import { setCrumbs } from '../core/router.js';
 import { $, esc, statusPill, toast } from '../core/util.js';
 import { confirmModal, openModal } from '../ui/modal.js';
+import { skeleton } from '../ui/skeleton.js';
 
 /* -------------------------------------------------------------- networks */
 
 /** Velocity proxies and the Paper/Purpur servers behind them. */
 export async function renderNetworks(view) {
   setCrumbs('<a href="#/servers">Servers</a> <span class="sep">/</span> Networks');
-  view.innerHTML = '<div class="page-head"><div><h1>Minecraft networks</h1></div></div><div id="net-body"><div class="card"><span class="spinner"></span></div></div>';
+  view.innerHTML = `<div class="page-head"><div><h1>Minecraft networks</h1></div></div><div id="net-body">${skeleton('list', 'Loading networks…', 3)}</div>`;
   let data;
   try {
     data = await api('/api/networks');

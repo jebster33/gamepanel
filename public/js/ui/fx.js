@@ -85,9 +85,9 @@ export function shake(el) {
 /** Let a live value glow for a moment when it changes. */
 export function flash(el) {
   if (reducedMotion || !el) return;
-  el.classList.remove('tick');
+  el.classList.remove('flash');
   void el.offsetWidth;
-  el.classList.add('tick');
+  el.classList.add('flash');
 }
 
 /** Fade an element out before it is swapped away; resolves straight away without motion. */
@@ -99,4 +99,27 @@ export function fadeAway(el, duration = 220) {
   );
   // A background tab can stall the animation: never hold up signing in.
   return Promise.race([anim.finished.catch(() => {}), new Promise((r) => setTimeout(r, duration + 150))]).then(() => anim);
+}
+
+/**
+ * When a skeleton is swapped for real content, the content fades up into its
+ * place instead of popping in. One observer covers every page and modal, so
+ * pages only have to draw a skeleton first (see skeleton.js).
+ */
+const ENTER = [
+  { opacity: 0, transform: 'translateY(6px)' },
+  { opacity: 1, transform: 'none' },
+];
+if (!reducedMotion && 'animate' in Element.prototype) {
+  new MutationObserver((records) => {
+    for (const record of records) {
+      if (!record.removedNodes.length || !record.addedNodes.length) continue;
+      if (![...record.removedNodes].some((n) => n.classList?.contains('skel-wrap'))) continue;
+      let i = 0;
+      for (const node of record.addedNodes) {
+        if (node.nodeType !== 1 || node.classList.contains('skel-wrap')) continue;
+        node.animate(ENTER, { duration: 300, delay: Math.min(i++, 8) * 35, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'backwards' });
+      }
+    }
+  }).observe(document.body, { childList: true, subtree: true });
 }

@@ -2,12 +2,13 @@ import { api } from '../core/api.js';
 import { setCrumbs } from '../core/router.js';
 import { state } from '../core/state.js';
 import { $, can, esc, fmtTime } from '../core/util.js';
+import { skeleton } from '../ui/skeleton.js';
 
 /* -------------------------------------------------------------- activity */
 
 export async function renderActivity(view) {
   setCrumbs('Activity');
-  view.innerHTML = '<div class="card"><span class="spinner"></span> Loading…</div>';
+  view.innerHTML = skeleton('page', 'Loading activity…');
   const data = await api('/api/events?limit=200').catch(() => ({ events: [] }));
   if (state.route.name !== 'activity') return; // the user moved to another page meanwhile
   // A coloured dot reads faster than an icon per event type.
@@ -95,7 +96,7 @@ function wirePlayerSearch() {
                    <td><b>${esc(p.name)}</b>${p.note?.watch ? ' <span class="badge warn">watched</span>' : p.note?.note ? ' <span class="badge">note</span>' : ''}</td>
                    <td>${esc(server?.name || p.serverId)}</td>
                    <td class="mono">${hours(p.seconds)}</td>
-                   <td class="faint nowrap">${p.online ? '<span class="lime">● online</span>' : ago(p.last)}</td>
+                   <td class="faint nowrap">${p.online ? '<span class="lime inline-icon"><span class="led on"></span> online</span>' : ago(p.last)}</td>
                  </tr>`;
                })
                .join('')}</tbody></table></div>`

@@ -6,6 +6,18 @@
 const slug = location.pathname.split('/').filter(Boolean)[1] || '';
 const $ = (id) => document.getElementById(id);
 
+/** Stroked icons in the panel's style, inline so the page needs no assets. */
+const svg = (path, size = 15) =>
+  `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${path}</svg>`;
+const ICON = {
+  message: svg('<path d="M4 5h16v11H9l-5 4z"/>'),
+  star: svg('<path d="m12 3.5 2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/>'),
+  globe: svg('<circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.4 2.6 3.5 5.4 3.5 8.5s-1.1 5.9-3.5 8.5c-2.4-2.6-3.5-5.4-3.5-8.5s1.1-5.9 3.5-8.5z"/>'),
+  map: svg('<path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5zM9 4v13.5M15 6.5V20"/>', 13),
+  wrench: svg('<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.4-3.4a6 6 0 0 1-7.9 7.9l-6.9 6.9a2.1 2.1 0 0 1-3-3l6.9-6.9a6 6 0 0 1 7.9-7.9z"/>', 13),
+  gamepad: svg('<path d="M7.5 7h9a4.5 4.5 0 0 1 4.4 5.5l-1 4.3a2.4 2.4 0 0 1-4.2 1L14 16h-4l-1.7 1.8a2.4 2.4 0 0 1-4.2-1l-1-4.3A4.5 4.5 0 0 1 7.5 7z"/><path d="M8 10v3M6.5 11.5h3M15.5 10.5h.01M17.5 12.5h.01"/>', 22),
+};
+
 const esc = (value) =>
   String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
@@ -79,9 +91,9 @@ function render(data) {
   const host = data.host || location.hostname;
   brand(data);
   const links = [
-    data.links?.discord && `<a href="${esc(data.links.discord)}" target="_blank" rel="noopener">💬 Discord</a>`,
-    data.links?.vote && `<a href="${esc(data.links.vote)}" target="_blank" rel="noopener">⭐ Vote for us</a>`,
-    data.links?.website && `<a href="${esc(data.links.website)}" target="_blank" rel="noopener">🌐 Website</a>`,
+    data.links?.discord && `<a href="${esc(data.links.discord)}" target="_blank" rel="noopener">${ICON.message} Discord</a>`,
+    data.links?.vote && `<a href="${esc(data.links.vote)}" target="_blank" rel="noopener">${ICON.star} Vote for us</a>`,
+    data.links?.website && `<a href="${esc(data.links.website)}" target="_blank" rel="noopener">${ICON.globe} Website</a>`,
   ].filter(Boolean);
   $('links').hidden = !links.length;
   $('links').innerHTML = links.join('');
@@ -102,7 +114,7 @@ function render(data) {
       return `
       <article class="card ${esc(s.maintenance ? 'starting' : s.status)}" style="${first ? `animation-delay:${i * 50}ms` : 'animation:none'}">
         <div class="top">
-          <span class="icon">${esc(s.icon || '🎮')}</span>
+          <span class="icon">${ICON.gamepad}</span>
           <div style="min-width:0">
             <div class="name">${esc(s.name)}</div>
             <div class="game">${esc(s.game)}${s.version ? ` · ${esc(s.version)}` : ''}</div>
@@ -120,8 +132,8 @@ function render(data) {
         }
         ${s.blurb ? `<div class="blurb">${esc(s.blurb)}</div>` : ''}
         ${s.motd ? `<div class="motd">${esc(s.motd)}</div>` : ''}
-        ${address ? `<div class="row"><span class="address">${esc(address)} <button data-copy="${esc(address)}">Copy</button></span>${s.join && s.status === 'online' ? `<a class="join" href="${esc(s.join.replace('{host}', host))}">Join</a>` : ''}${s.mapPort ? `<a class="meta" href="http://${esc(host)}:${s.mapPort}" target="_blank" rel="noopener">🗺️ Live map</a>` : s.mapUrl ? `<a class="meta" href="${esc(s.mapUrl)}" target="_blank" rel="noopener">🗺️ Map</a>` : ''}</div>` : ''}
-        ${s.maintenance ? `<div class="meta" style="margin-top:8px">🛠 ${esc(s.maintenance)}</div>` : ''}
+        ${address ? `<div class="row"><span class="address">${esc(address)} <button data-copy="${esc(address)}">Copy</button></span>${s.join && s.status === 'online' ? `<a class="join" href="${esc(s.join.replace('{host}', host))}">Join</a>` : ''}${s.mapPort ? `<a class="meta" href="http://${esc(host)}:${s.mapPort}" target="_blank" rel="noopener">${ICON.map} Live map</a>` : s.mapUrl ? `<a class="meta" href="${esc(s.mapUrl)}" target="_blank" rel="noopener">${ICON.map} Map</a>` : ''}</div>` : ''}
+        ${s.maintenance ? `<div class="meta" style="margin-top:8px;display:flex;align-items:center;gap:6px">${ICON.wrench} ${esc(s.maintenance)}</div>` : ''}
         ${s.joinNote ? `<div class="meta" style="margin-top:8px">${esc(s.joinNote)}</div>` : ''}
         ${uptimeBars(s.uptime30)}
         ${

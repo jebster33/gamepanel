@@ -31,7 +31,7 @@ const STEPS = {
 };
 
 const STARTERS = {
-  blank: () => ({ id: '', name: '', category: 'Other', icon: '🎮', description: '', defaultMemory: 2048, platforms: ['linux'], ports: [{ name: 'game', default: 27015, protocol: 'udp' }], variables: [], install: [], startCommand: '', stopSignal: 'SIGINT', stopTimeout: 30, logPatterns: {} }),
+  blank: () => ({ id: '', name: '', category: 'Other', description: '', defaultMemory: 2048, platforms: ['linux'], ports: [{ name: 'game', default: 27015, protocol: 'udp' }], variables: [], install: [], startCommand: '', stopSignal: 'SIGINT', stopTimeout: 30, logPatterns: {} }),
   steam: () => ({
     ...STARTERS.blank(),
     install: [{ type: 'steamcmd', appid: '', branch: '' }],
@@ -310,7 +310,6 @@ function formHtml(t, categories) {
         ${field('Name', 'name', t.name, { placeholder: 'My Game' })}
         ${field('Id', 'id', t.id, { placeholder: 'my-game', hint: 'Lowercase, used in file and folder names. Cannot change after servers use it.' })}
         <label class="field"><span>Category</span><input data-k="category" list="tb-cats" value="${esc(t.category || '')}" /><datalist id="tb-cats">${categories.map((c) => `<option value="${esc(c)}">`).join('')}</datalist></label>
-        ${field('Icon (an emoji)', 'icon', t.icon, { placeholder: '🎮', attrs: 'maxlength="8"' })}
         ${field('Memory it needs (MB)', 'defaultMemory', t.defaultMemory, { num: true, type: 'number', attrs: 'min="128" step="256"' })}
       </div>
       <label class="field"><span>Description</span><textarea data-k="description" rows="2" placeholder="One or two lines shown on the Games page">${esc(t.description || '')}</textarea></label>

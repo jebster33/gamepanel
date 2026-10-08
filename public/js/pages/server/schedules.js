@@ -2,6 +2,7 @@ import { api } from '../../core/api.js';
 import { $, esc, fmtTime, icon, toast } from '../../core/util.js';
 import { confirmModal, openModal } from '../../ui/modal.js';
 import { renderEventsCard } from './events.js';
+import { skeleton } from '../../ui/skeleton.js';
 
 /* ------------------------------------------------------------ schedules */
 
@@ -41,7 +42,7 @@ const whenLabel = (cron, firstOfMonth) => {
 };
 
 export async function renderSchedulesTab(host, server) {
-  host.innerHTML = '<div class="card"><span class="spinner"></span> Loading schedules…</div>';
+  host.innerHTML = skeleton('list', 'Loading schedules…', 3);
   let schedules;
   try {
     ({ schedules } = await api(`/api/servers/${server.id}/schedules`));

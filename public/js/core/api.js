@@ -9,7 +9,13 @@ export async function api(path, options = {}) {
     init.headers['Content-Type'] = 'application/json';
     init.body = JSON.stringify(options.body);
   }
-  const res = await fetch(path, init);
+  let res;
+  try {
+    res = await fetch(path, init);
+  } catch {
+    // The browser's own text ("Failed to fetch") says nothing a person can act on.
+    throw new Error(navigator.onLine === false ? 'You are offline. Check your connection and try again.' : 'Cannot reach the panel. It may be restarting. Try again in a moment.');
+  }
   if (res.status === 401 && !path.includes('/auth/login') && !path.includes('/status')) {
     showAuth();
     throw new Error('Session expired — please sign in again');

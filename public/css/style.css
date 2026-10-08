@@ -49,6 +49,7 @@
   --topbar-height: 52px;
   --shadow: 0 20px 50px -20px rgba(0, 0, 0, 0.75);
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --skel-shine: rgba(255, 255, 255, 0.045);
 
   /* Older names some markup still uses. */
   --accent: var(--lime);
@@ -61,6 +62,7 @@
 
 :root[data-theme="light"] {
   color-scheme: light;
+  --skel-shine: rgba(255, 255, 255, 0.75);
 
   --bg: #f3f2ed;
   --sidebar: #ebeae4;
@@ -3264,7 +3266,6 @@ tbody tr:hover {
   background: var(--raised);
 }
 .world-row.active { border-color: var(--lime-soft); }
-.world-icon { font-size: 22px; }
 .world-name { font-weight: 600; display: flex; align-items: center; gap: 8px; }
 @media (max-width: 640px) {
   .world-row { flex-wrap: wrap; }
@@ -3694,10 +3695,157 @@ tr.clickable:hover td {
   transform-origin: left;
   animation: meter-fill 0.7s var(--ease) 0.15s backwards;
 }
-.tick {
-  animation: tick 0.9s ease-out;
+.flash {
+  animation: flash 0.9s ease-out;
+}
+.bell-panel:not(.hidden) {
+  animation: rise 0.18s var(--ease);
+  transform-origin: top right;
 }
 
+/* Skeletons: the shape of what is loading, with a slow sheen across it. */
+.skel {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  background: var(--raised);
+  border-radius: 5px;
+}
+.skel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, var(--skel-shine), transparent);
+  animation: skel-sheen 1.5s ease-in-out infinite;
+}
+.skel-wrap {
+  animation: fade 0.25s ease-out 0.12s backwards;
+}
+.skel-line {
+  height: 10px;
+  margin: 7px 0;
+  max-width: 100%;
+}
+.skel-sm {
+  height: 8px;
+}
+.skel-title {
+  height: 12px;
+  margin-bottom: 16px;
+}
+.skel-big {
+  height: 22px;
+  margin-top: 12px;
+}
+.skel-h1 {
+  height: 22px;
+}
+.skel-pill {
+  height: 22px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+.skel-thumb {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  flex-shrink: 0;
+}
+.skel-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+}
+.skel-row + .skel-row {
+  border-top: 1px solid var(--border);
+}
+.skel-stack {
+  flex: 1;
+  min-width: 0;
+}
+.skel-list {
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+.skel-head {
+  margin-bottom: 24px;
+}
+.skel-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.skel-lines {
+  padding: 2px 0;
+}
+tr.skel-wrap td {
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Icons that replaced emoji: small lit tiles and inline glyphs. */
+.feature-icon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  color: var(--lime-text);
+  background: var(--lime-soft);
+  border-radius: 12px;
+}
+.inline-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  vertical-align: -2px;
+}
+.art-fallback {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  color: var(--lime-text);
+}
+.game-card .g-art .art-fallback svg {
+  width: 34px;
+  height: 34px;
+}
+.world-icon,
+.version-icon,
+.act-icon,
+.advice-icon {
+  display: grid;
+  place-items: center;
+}
+.world-icon {
+  color: var(--lime-text);
+}
+.version-icon {
+  color: var(--lime-text);
+}
+.chip svg,
+.badge svg,
+td svg {
+  vertical-align: -2px;
+}
+
+@keyframes skel-sheen {
+  to {
+    transform: translateX(100%);
+  }
+}
 @keyframes auth-drift {
   to {
     transform: scale(1.06) translate(-1%, -1%);
@@ -3746,7 +3894,7 @@ tr.clickable:hover td {
     transform: scaleX(0);
   }
 }
-@keyframes tick {
+@keyframes flash {
   from {
     color: var(--lime-text);
   }
