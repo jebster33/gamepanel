@@ -37,7 +37,7 @@ module.exports = (router, { store, auth, manager, hostMetrics, notifier, bridge 
     const limit = clamp(url.searchParams.get('limit') || 100, 1, 500);
     const all = store.state.events;
     // Panel-level events (nodes with their URLs, bridge connections, ban appeals, sign-ins) are for administrators; everyone else sees their own servers'.
-    const visible = user.role === 'admin' ? all : all.filter((e) => e.serverId && auth.canAccessServer(user, e.serverId));
+    const visible = all.filter((e) => require('../../features/live-notifications').visibleTo(auth, user, e));
     return { events: visible.slice(0, limit) };
   });
 

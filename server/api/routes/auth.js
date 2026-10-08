@@ -284,7 +284,9 @@ module.exports = (router, app) => {
   });
 
   router.post('/api/auth/2fa/recovery-codes', ({ user, body }) => {
-    requirePassword(user, body.password);
+    const record = requirePassword(user, body.password);
+    // New codes are a way past the second factor, so they need it, as turning it off does.
+    if (record.totp && !auth.checkSecondFactor(record, body.code)) fail(403, 'That code is not right');
     return auth.newRecoveryCodes(user.id);
   });
 

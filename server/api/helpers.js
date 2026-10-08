@@ -56,6 +56,11 @@ function scopeBroadcast(auth, conn, topic, payload) {
     conn.close(4001, 'Signed out');
     return null;
   }
+  // The key or session this socket was opened with was deleted or signed out since.
+  if (conn.credential && !auth.credentialValid(user, conn.credential)) {
+    conn.close(4001, 'Signed out');
+    return null;
+  }
   if (user.role === 'admin') return payload;
   const consoleOf = topic.startsWith('console:') ? topic.slice(8) : null;
   if (consoleOf && !(auth.canAccessServer(user, consoleOf) && auth.can(user, 'console', consoleOf))) return null;

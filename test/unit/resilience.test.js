@@ -100,3 +100,14 @@ test('files a game plants in its folder (pipes, links) cannot hang or mislead th
   const r = spawnSync(process.execPath, ['-e', code], { timeout: 8000 });
   assert.equal(r.status, 0, `exit ${r.status} ${r.signal || ''} ${r.stderr}`);
 });
+
+test('a session token with anything appended is not a session, and a cookie with a stray % does not throw', () => {
+  const { Store: S } = require('../../server/core/store');
+  const { Auth } = require('../../server/core/auth');
+  const auth = new Auth(new S(), 'test-secret-test-secret-test-secret');
+  const user = auth.createUser({ username: 'chris', password: 'correct horse battery', role: 'admin' });
+  const { token } = auth.startSession(user, '127.0.0.1');
+  assert.ok(auth.userFromToken(token));
+  assert.equal(auth.userFromToken(token + '.x'), null);
+  assert.doesNotThrow(() => auth.userFromRequest({ headers: { cookie: 'a=%E0%A4%A; b=1' }, method: 'GET', url: '/api/x' }));
+});

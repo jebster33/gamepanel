@@ -242,6 +242,7 @@ async function main() {
     if (!conn) return;
     conn.user = user;
     conn.epoch = user.sessionEpoch || 0;
+    conn.credential = { apiKeyId: req.gpApiKeyId, sessionToken: req.gpSessionToken };
     // A read-only API key may watch, never type into a console.
     conn.readOnly = Boolean(req.gpApiKey?.readOnly);
     conn.subscriptions.add('servers');

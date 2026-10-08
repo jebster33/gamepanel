@@ -79,6 +79,11 @@ function createApi(app) {
       json(res, 403, { error: 'Only administrators can manage servers on other nodes' });
       return true;
     }
+    // The remote panel only sees the node's own admin key, so a read-only key's limits would not carry over.
+    if (req.gpApiKey?.readOnly) {
+      json(res, 403, { error: 'A read-only API key cannot reach other nodes' });
+      return true;
+    }
     // The block on account changes for API keys must hold through a node's proxy too, where the node would answer to the admin key it was given.
     if (req.method !== 'GET' && req.gpApiKey && require('../core/auth').isAccountRoute(path)) {
       json(res, 403, { error: 'Account changes need a person signed in, not an API key' });
