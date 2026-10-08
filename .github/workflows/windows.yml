@@ -80,6 +80,9 @@ jobs:
         with:
           tag_name: ${{ inputs.release || github.ref_name }}
           target_commitish: ${{ github.sha }}
+          # Notes live in docs/releases/<tag>.md when there is one.
+          body_path: docs/releases/${{ inputs.release || github.ref_name }}.md
+          fail_on_unmatched_files: true
           files: |
             dist/GamePanel-Setup-*.exe
             dist/GamePanel-*-windows-x64.zip
