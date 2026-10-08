@@ -16,6 +16,7 @@ import { renderBans } from '../pages/bans.js';
 import { renderNetworks } from '../pages/networks.js';
 import { renderUsers } from '../pages/users.js';
 import { closeSidebar, renderSidebarServers } from '../ui/sidebar.js';
+import { reducedMotion } from '../ui/fx.js';
 
 /* ---------------------------------------------------------------- router */
 
@@ -74,6 +75,10 @@ export function handleRoute() {
   closeSidebar();
   renderSidebarServers();
   render();
+
+  // A new page fades in; switching tabs on the same server does not.
+  const samePage = previous.name === state.route.name && previous.params.id === state.route.params.id;
+  if (!samePage && !reducedMotion) $('#view').animate?.([{ opacity: 0 }, { opacity: 1 }], { duration: 180, easing: 'ease-out' });
 }
 
 /* ----------------------------------------------------------------- views */

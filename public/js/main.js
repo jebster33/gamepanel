@@ -19,7 +19,8 @@ import { drawServerCharts } from './pages/server/metrics.js';
 import { copyToClipboard } from './ui/clipboard.js';
 import { wireOtp } from './ui/otp.js';
 import { closeSidebar } from './ui/sidebar.js';
-import { applyTheme } from './ui/theme.js';
+import { fadeAway, shake } from './ui/fx.js';
+import { applyTheme, switchTheme } from './ui/theme.js';
 import { signInWithPasskey } from './core/passkey.js';
 
 /* ------------------------------------------------------- global handlers */
@@ -57,10 +58,12 @@ document.addEventListener('click', async (event) => {
     const data = await signInWithPasskey();
     if (data.twoFactor) return showOtpStep(data.ticket);
     state.user = data.user;
+    await leaveAuth();
     await enterApp();
   } catch (err) {
     error.textContent = err.message;
     error.classList.remove('hidden');
+    shake($('#auth-form'));
   } finally {
     btn.disabled = false;
   }
@@ -72,7 +75,10 @@ $('#auth-form').addEventListener('submit', async (event) => {
   const username = $('#auth-username').value.trim();
   const password = $('#auth-password').value;
   const error = $('#auth-error');
+  const submit = $('#auth-submit');
   error.classList.add('hidden');
+  submit.classList.add('is-busy');
+  submit.setAttribute('aria-busy', 'true');
 
   try {
     if (mode === 'setup') {
@@ -83,12 +89,24 @@ $('#auth-form').addEventListener('submit', async (event) => {
     $('#auth-password').value = '';
     if (data.twoFactor) return showOtpStep(data.ticket);
     state.user = data.user;
+    await leaveAuth();
     await enterApp();
   } catch (err) {
     error.textContent = err.message;
     error.classList.remove('hidden');
+    shake($('#auth-form'));
+  } finally {
+    submit.classList.remove('is-busy');
+    submit.removeAttribute('aria-busy');
   }
 });
+
+/** Signed in: the card steps back before the panel takes over the screen. */
+async function leaveAuth() {
+  const anim = await fadeAway($('.auth-card'));
+  // enterApp hides the screen; drop the held frame so a later sign-out shows the card again.
+  requestAnimationFrame(() => anim?.cancel());
+}
 
 /* ------------------------------------------------- two-factor sign-in */
 
@@ -104,6 +122,7 @@ async function submitSecondFactor(code) {
   } catch (err) {
     error.textContent = err.message;
     error.classList.remove('hidden');
+    shake($('#otp-form .otp-recovery:not(.hidden)'));
     // The ticket ran out: back to the password.
     if (/took too long/.test(err.message)) setTimeout(hideOtpStep, 1600);
     return null;
@@ -120,6 +139,7 @@ const otp = wireOtp($('#otp-form'), async (code) => {
 });
 
 async function finishOtp(data) {
+  await leaveAuth();
   hideOtpStep();
   await enterApp();
   if (data.usedRecoveryCode) toast(`Recovery code used. ${data.recoveryCodesLeft} left. Make new ones under Account.`, 'warn', 10000);
@@ -181,7 +201,7 @@ $('#new-server-btn').addEventListener('click', () => {
 
 $('#theme-toggle').addEventListener('click', () => {
   const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-  applyTheme(next);
+  switchTheme(next);
 });
 
 applyTheme(localStorage.getItem('gp-theme') || 'dark');

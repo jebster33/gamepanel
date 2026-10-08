@@ -3,6 +3,13 @@ import { $, icon } from '../core/util.js';
 import { drawHostCharts } from '../pages/dashboard.js';
 import { drawServerCharts } from '../pages/server/metrics.js';
 
+/** Crossfade the switch where the browser supports view transitions. */
+export function switchTheme(theme) {
+  const calm = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (!document.startViewTransition || calm) return applyTheme(theme);
+  document.startViewTransition(() => applyTheme(theme));
+}
+
 export function applyTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
   localStorage.setItem('gp-theme', theme);
