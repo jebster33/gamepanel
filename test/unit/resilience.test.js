@@ -111,3 +111,48 @@ test('a session token with anything appended is not a session, and a cookie with
   assert.equal(auth.userFromToken(token + '.x'), null);
   assert.doesNotThrow(() => auth.userFromRequest({ headers: { cookie: 'a=%E0%A4%A; b=1' }, method: 'GET', url: '/api/x' }));
 });
+
+test('RCON: a negative or silly packet size ends the call instead of spinning forever', async () => {
+  const net = require('net');
+  const { rconCommand } = require('../../server/games/rcon');
+  const server = net.createServer((sock) => {
+    sock.on('data', () => {
+      const b = Buffer.alloc(12);
+      b.writeInt32LE(-4, 0);
+      b.writeInt32LE(1, 4);
+      b.writeInt32LE(2, 8);
+      sock.write(b);
+    });
+  });
+  await new Promise((r) => server.listen(0, '127.0.0.1', r));
+  await assert.rejects(rconCommand({ host: '127.0.0.1', port: server.address().port, password: 'x', command: 'list', timeout: 1000 }), /Malformed RCON/);
+  server.close();
+});
+
+test('a body that is not a JSON object is a 400', async () => {
+  const { readJson } = require('../../server/core/util');
+  const { Readable } = require('stream');
+  for (const text of ['null', '[]', '1', '"x"']) {
+    const req = Readable.from([Buffer.from(text)]);
+    req.headers = {};
+    await assert.rejects(readJson(req), (e) => e.code === 400);
+  }
+});
+
+test('removing a server twice at once leaves the other servers alone', async () => {
+  const { ServerManager } = require('../../server/servers/manager');
+  const m = Object.create(ServerManager.prototype);
+  const mine = { id: 'a' };
+  const other = { id: 'b' };
+  m.store = { state: { servers: [mine, other] }, save() {}, addEvent() {} };
+  m.require = (id) => m.store.state.servers.find((s) => s.id === id) || mine;
+  m.isActive = () => false;
+  m.killTree = () => {};
+  m.dockerAvailable = true;
+  m.cleanupContainers = () => new Promise((r) => setTimeout(r, 30));
+  m.runtime = new Map();
+  m.deleteHistory = m.dropMetricHistory = m.forgetServerEverywhere = m.broadcastServers = () => {};
+  const results = await Promise.allSettled([m.remove('a', false), m.remove('a', false)]);
+  assert.deepEqual(m.store.state.servers, [other]);
+  assert.equal(results.filter((r) => r.status === 'rejected').length, 1);
+});

@@ -202,6 +202,8 @@ class Nodes {
         },
         (res) => {
           const chunks = [];
+          res.on('aborted', () => reject(new Error('the node closed the connection mid-answer')));
+          res.on('error', (err) => reject(err));
           res.on('data', (c) => chunks.push(c));
           res.on('end', () => {
             let data = null;

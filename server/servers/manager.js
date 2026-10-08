@@ -443,6 +443,8 @@ class ServerManager extends EventEmitter {
     const server = this.require(id);
     if (!trusted) checkPatch(this.template(server), patch, server);
     for (const key of EDITABLE) if (patch[key] !== undefined) server[key] = patch[key];
+    if (typeof server.notes !== 'string') server.notes = '';
+    server.notes = server.notes.slice(0, 4000);
     if (patch.name !== undefined) server.name = String(patch.name).trim().slice(0, 60) || server.name;
     // These end up in start commands as {{MAX_PLAYERS}} and friends: numbers only.
     for (const key of ['maxPlayers', 'cpuLimit', 'backupRetention']) {
@@ -514,10 +516,13 @@ class ServerManager extends EventEmitter {
 
   async remove(id, deleteFiles = true) {
     const server = this.require(id);
+    if (server.removing) fail(409, 'This server is already being deleted');
+    server.removing = true;
     if (this.isActive(id)) await this.stop(id).catch(() => {});
     this.killTree(id);
     if (this.dockerAvailable) await this.cleanupContainers(server).catch(() => {});
-    this.servers.splice(this.servers.indexOf(server), 1);
+    const at = this.servers.indexOf(server);
+    if (at !== -1) this.servers.splice(at, 1);
     this.runtime.delete(id);
     this.deleteHistory(id);
     this.dropMetricHistory(id);

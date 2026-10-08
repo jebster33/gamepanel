@@ -23,6 +23,13 @@ const { RateLimiter } = require('../core/ratelimit');
 const audit = require('../features/audit');
 
 const VERSION = require('../../package.json').version;
+const safeDecode = (v) => {
+  try {
+    return decodeURIComponent(v);
+  } catch {
+    return v;
+  }
+};
 const ROUTES = ['auth', 'system', 'templates', 'servers', 'files', 'mods', 'network', 'backups', 'users', 'bridge', 'bans'];
 
 /** @param {{store, auth, manager, templates, hostMetrics, scheduler, notifier, bridge}} app */
@@ -60,7 +67,7 @@ function createApi(app) {
       node = nodes.list.find((n) => n.id === direct[1]);
       path = direct[2];
     } else if (viaId) {
-      const target = nodes.parseId(decodeURIComponent(viaId[1]));
+      const target = nodes.parseId(safeDecode(viaId[1]));
       if (!target) return false;
       node = target.node;
       path = `/api/servers/${encodeURIComponent(target.remoteId)}${viaId[2] || ''}`;

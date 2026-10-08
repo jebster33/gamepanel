@@ -213,7 +213,14 @@ async function main() {
   /* ---------------------------------------------------------- websocket -- */
 
   const handleUpgrade = (req, socket, head) => {
-    const url = new URL(req.url, 'http://localhost');
+    let url;
+    try {
+      url = new URL(req.url, 'http://localhost');
+    } catch {
+      socket.end('HTTP/1.1 400 Bad Request\r\n\r\n');
+      socket.destroy();
+      return;
+    }
     // Bridge clients authenticate inside their own pinned TLS, not with a cookie.
     if (url.pathname === '/bridge/tunnel') {
       bridge.handleUpgrade(req, socket, head, clientIp(req));
@@ -264,7 +271,8 @@ async function main() {
             if (topic.startsWith('console:')) {
               const id = topic.slice(8);
               if (!auth.canAccessServer(conn.user, id) || !auth.can(conn.user, 'console', id)) continue;
-              if (!addSubscription(conn, topic)) continue;
+              // Re-subscribing to a topic already held must not replay the backlog.
+              if (conn.subscriptions.has(topic) || !addSubscription(conn, topic)) continue;
               conn.send({ topic, type: 'lines', serverId: id, lines: manager.getConsole(id) });
               continue;
             }

@@ -75,10 +75,12 @@ function queryMinecraft(host, port, timeout = DEFAULT_TIMEOUT) {
     const socket = net.createConnection({ host, port, timeout });
     let buffer = Buffer.alloc(0);
     let done = false;
+    const deadline = setTimeout(() => finish(offline('No answer')), timeout * 2);
 
     const finish = (result) => {
       if (done) return;
       done = true;
+      clearTimeout(deadline);
       socket.destroy();
       resolve(result);
     };
@@ -100,6 +102,7 @@ function queryMinecraft(host, port, timeout = DEFAULT_TIMEOUT) {
       buffer = Buffer.concat([buffer, chunk]);
       const lenField = readVarInt(buffer, 0);
       if (!lenField) return;
+      if (lenField.value <= 0 || lenField.value > 1024 * 1024) return finish(offline('Malformed response'));
       const total = lenField.size + lenField.value;
       if (buffer.length < total) return;
 

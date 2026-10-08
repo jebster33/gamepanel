@@ -511,7 +511,7 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
       }
     }
     if (!results.length) fail(400, 'No Minecraft Java servers you can moderate');
-    store.addEvent(unban ? 'player.unban' : 'player.ban', `${user.username} ${unban ? 'unbanned' : 'banned'} ${String(body?.name || '')} on ${results.filter((r) => r.ok).length} server(s)`);
+    store.addEvent(unban ? 'player.unban' : 'player.ban', `${user.username} ${unban ? 'unbanned' : 'banned'} ${String(body?.name || '').slice(0, 40)} on ${results.filter((r) => r.ok).length} server(s)`);
     return { results };
   });
 

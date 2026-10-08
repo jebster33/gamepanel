@@ -71,6 +71,8 @@ class Store extends EventEmitter {
     try {
       parsed = read(this.file);
     } catch (err) {
+      // Permissions or a failing disk: the file may be fine, so never start over on top of it.
+      if (['EACCES', 'EPERM', 'EIO', 'EISDIR'].includes(err.code)) throw new Error(`Cannot read ${this.file} (${err.code}). Fix its owner or permissions and start the panel again.`);
       if (err.code !== 'ENOENT') {
         logger.error('Could not read state file:', err.message);
         try {
@@ -156,7 +158,7 @@ class Store extends EventEmitter {
 
   /** Append to the audit/event log, keeping the most recent 500 entries. */
   addEvent(type, message, meta = {}) {
-    const event = { id: Date.now() + '-' + Math.random().toString(36).slice(2, 7), type, message, ...meta, at: Date.now() };
+    const event = { id: Date.now() + '-' + Math.random().toString(36).slice(2, 7), type, message: typeof message === 'string' ? message.slice(0, 500) : message, ...meta, at: Date.now() };
     this.state.events.unshift(event);
     if (this.state.events.length > 500) this.state.events.length = 500;
     this.save();
