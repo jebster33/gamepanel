@@ -7,6 +7,9 @@ on:
     paths: ['ios/**', '.github/workflows/ios.yml']
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   simulator:
     runs-on: macos-26
@@ -60,6 +63,20 @@ jobs:
             grep -E "error:|failed|XCTAssert" "$RUNNER_TEMP/xcodebuild.log" | sort -u | head -15 | sed 's/^/::error title=xcode::/'
             exit $STATUS
           fi
+
+      # Artifacts need a GitHub sign-in to download; a branch is viewable by anyone with the link.
+      - name: Publish screenshots to the ios-screenshots branch
+        if: always()
+        run: |
+          [ -d "$RUNNER_TEMP/screenshots" ] || exit 0
+          cd "$RUNNER_TEMP/screenshots"
+          git init -q -b ios-screenshots
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          printf '# iOS Simulator screenshots\n\nFrom %s, run %s.\n\n' "$GITHUB_SHA" "$GITHUB_RUN_ID" > README.md
+          for f in *.png; do printf '### %s\n![%s](%s)\n\n' "$f" "$f" "$f" >> README.md; done
+          git add -A && git commit -qm "Screenshots from run $GITHUB_RUN_ID"
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" ios-screenshots
 
       - name: Upload screenshots
         if: always()

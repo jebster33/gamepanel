@@ -28,7 +28,8 @@ final class ScreenshotTour: XCTestCase {
         snap("sign-in-filled")
         app.buttons["Sign in"].firstMatch.tap()
 
-        let server = app.staticTexts["Survival SMP"]
+        // Server rows are one combined accessibility element ("Survival SMP, …").
+        let server = element("Survival SMP")
         XCTAssertTrue(server.waitForExistence(timeout: 20), "server list after sign-in")
         sleep(2)
         snap("servers")
@@ -55,7 +56,7 @@ final class ScreenshotTour: XCTestCase {
             }
         }
 
-        let files = app.staticTexts["server.properties"]
+        let files = element("server.properties")
         if app.buttons["Files"].firstMatch.exists {
             app.buttons["Files"].firstMatch.tap()
             if files.waitForExistence(timeout: 5) {
@@ -74,6 +75,10 @@ final class ScreenshotTour: XCTestCase {
         app.tabBars.buttons["Settings"].tap()
         sleep(1)
         snap("settings")
+    }
+
+    private func element(_ text: String) -> XCUIElement {
+        app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", text)).firstMatch
     }
 
     private func snap(_ name: String) {
