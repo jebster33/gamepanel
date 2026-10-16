@@ -28,6 +28,13 @@ final class ScreenshotTour: XCTestCase {
         snap("sign-in-filled")
         app.buttons["Sign in"].firstMatch.tap()
 
+        // iOS offers to save the password after a sign-in; that sheet covers the app.
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        for owner in [app!, springboard] {
+            let notNow = owner.buttons["Not Now"]
+            if notNow.waitForExistence(timeout: 4) { notNow.tap(); break }
+        }
+
         // Server rows are one combined accessibility element ("Survival SMP, …").
         let server = element("Survival SMP")
         XCTAssertTrue(server.waitForExistence(timeout: 20), "server list after sign-in")
