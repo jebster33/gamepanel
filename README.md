@@ -1,6 +1,6 @@
 # iOS Simulator screenshots
 
-From 1d8700d4381e6b9b914b995cef01272048ded36f, run 38975608297.
+From 5c0af046d32fa635d287254f16d6825761b6e460, run 38976792288.
 
 ### 01-sign-in.png
 ![01-sign-in.png](01-sign-in.png)
