@@ -54,7 +54,12 @@ jobs:
             -scheme GamePanel \
             -destination "id=$DEVICE" \
             -resultBundlePath "$RUNNER_TEMP/tour.xcresult" \
-            | tee "$RUNNER_TEMP/xcodebuild.log" | grep -E "error:|warning: .*GamePanel|Test Case|passed|failed|\*\*" ; exit ${PIPESTATUS[0]}
+            > "$RUNNER_TEMP/xcodebuild.log" 2>&1 && STATUS=0 || STATUS=$?
+          grep -E "error:|Test Case|\*\*" "$RUNNER_TEMP/xcodebuild.log" | tail -40
+          if [ $STATUS -ne 0 ]; then
+            grep -E "error:|failed|XCTAssert" "$RUNNER_TEMP/xcodebuild.log" | sort -u | head -15 | sed 's/^/::error title=xcode::/'
+            exit $STATUS
+          fi
 
       - name: Upload screenshots
         if: always()
