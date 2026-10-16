@@ -69,14 +69,26 @@ jobs:
         if: always()
         run: |
           [ -d "$RUNNER_TEMP/screenshots" ] || exit 0
-          cd "$RUNNER_TEMP/screenshots"
-          git init -q -b ios-screenshots
+          # A normal commit on top: the repository's rules refuse force-pushes.
+          REPO="https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
+          OUT="$RUNNER_TEMP/shots-branch"
+          git clone -q --depth 1 --branch ios-screenshots "$REPO" "$OUT" 2>/dev/null || { mkdir -p "$OUT" && git -C "$OUT" init -q -b ios-screenshots; }
+          cd "$OUT"
+          git rm -q --ignore-unmatch '*.png' README.md
+          cp "$RUNNER_TEMP"/screenshots/*.png .
+          printf '# iOS Simulator screenshots
+
+From %s, run %s.
+
+' "$GITHUB_SHA" "$GITHUB_RUN_ID" > README.md
+          for f in *.png; do printf '### %s
+![%s](%s)
+
+' "$f" "$f" "$f" >> README.md; done
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          printf '# iOS Simulator screenshots\n\nFrom %s, run %s.\n\n' "$GITHUB_SHA" "$GITHUB_RUN_ID" > README.md
-          for f in *.png; do printf '### %s\n![%s](%s)\n\n' "$f" "$f" "$f" >> README.md; done
           git add -A && git commit -qm "Screenshots from run $GITHUB_RUN_ID"
-          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" HEAD:refs/heads/ios-screenshots 2>&1 | tail -3 | sed 's/^/::notice title=push::/' 
+          git push "$REPO" HEAD:refs/heads/ios-screenshots 2>&1 | tail -3 | sed 's/^/::notice title=push::/' 
 
       - name: Upload screenshots
         if: always()
