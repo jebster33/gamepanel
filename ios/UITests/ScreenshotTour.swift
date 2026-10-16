@@ -34,7 +34,7 @@ final class ScreenshotTour: XCTestCase {
         sleep(2)
         snap("servers")
 
-        server.tap()
+        press(server)
         sleep(3)
         snap("server-console")
 
@@ -50,7 +50,7 @@ final class ScreenshotTour: XCTestCase {
             let button = app.buttons[section].firstMatch
             if !button.isHittable { app.scrollViews.firstMatch.swipeLeft() }
             if button.waitForExistence(timeout: 5) {
-                button.tap()
+                press(button)
                 sleep(3)
                 snap("server-\(section.lowercased())")
             }
@@ -60,7 +60,7 @@ final class ScreenshotTour: XCTestCase {
         if app.buttons["Files"].firstMatch.exists {
             app.buttons["Files"].firstMatch.tap()
             if files.waitForExistence(timeout: 5) {
-                files.tap()
+                press(files)
                 sleep(2)
                 snap("file-editor")
                 app.navigationBars.buttons.firstMatch.tap()
@@ -75,6 +75,11 @@ final class ScreenshotTour: XCTestCase {
         app.tabBars.buttons["Settings"].tap()
         sleep(1)
         snap("settings")
+    }
+
+    /// iOS 26 list rows can report "not hittable" while on screen; tap their centre then.
+    private func press(_ element: XCUIElement) {
+        if element.isHittable { element.tap() } else { element.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap() }
     }
 
     private func element(_ text: String) -> XCUIElement {

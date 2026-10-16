@@ -76,7 +76,7 @@ jobs:
           printf '# iOS Simulator screenshots\n\nFrom %s, run %s.\n\n' "$GITHUB_SHA" "$GITHUB_RUN_ID" > README.md
           for f in *.png; do printf '### %s\n![%s](%s)\n\n' "$f" "$f" "$f" >> README.md; done
           git add -A && git commit -qm "Screenshots from run $GITHUB_RUN_ID"
-          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" ios-screenshots
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" HEAD:refs/heads/ios-screenshots 2>&1 | tail -3 | sed 's/^/::notice title=push::/' 
 
       - name: Upload screenshots
         if: always()
