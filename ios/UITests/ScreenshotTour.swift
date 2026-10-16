@@ -9,6 +9,7 @@ final class ScreenshotTour: XCTestCase {
     override func setUp() {
         continueAfterFailure = true
         app = XCUIApplication()
+        app.launchArguments = ["-ui-tour"]
         app.launch()
     }
 

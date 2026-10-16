@@ -19,6 +19,9 @@ struct SignInView: View {
 
     enum Field { case address, username, password, code }
 
+    /// The Simulator screenshot tour turns AutoFill off: its "Save Password?" sheet covers the app.
+    private static let autofill = !ProcessInfo.processInfo.arguments.contains("-ui-tour")
+
     var body: some View {
         Form {
             Section {
@@ -49,14 +52,14 @@ struct SignInView: View {
                 }
                 Section("Account") {
                     TextField("Username", text: $username)
-                        .textContentType(.username)
+                        .textContentType(Self.autofill ? .username : nil)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                         .focused($field, equals: .username)
                         .submitLabel(.next)
                         .onSubmit { field = .password }
                     SecureField("Password", text: $password)
-                        .textContentType(.password)
+                        .textContentType(Self.autofill ? .password : nil)
                         .focused($field, equals: .password)
                         .submitLabel(.go)
                         .onSubmit(submit)
