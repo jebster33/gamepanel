@@ -21,7 +21,13 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/gp"
           GP_DATA_DIR="$RUNNER_TEMP/gp" GP_PORT=8420 GP_HOST=127.0.0.1 nohup node server/index.js > "$RUNNER_TEMP/panel.log" 2>&1 &
-          node ios/ci/seed-panel.mjs
+          # On failure, show why as annotations: they're readable without signing in.
+          node ios/ci/seed-panel.mjs > "$RUNNER_TEMP/seed.log" 2>&1 || {
+            grep -v '^\s*at ' "$RUNNER_TEMP/seed.log" | tail -6 | sed 's/^/::error title=seed::/'
+            tail -12 "$RUNNER_TEMP/panel.log" | sed 's/^/::error title=panel::/'
+            exit 1
+          }
+          cat "$RUNNER_TEMP/seed.log"
 
       - name: Pick the newest Xcode
         run: |
