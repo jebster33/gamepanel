@@ -77,7 +77,8 @@ const idle = await create('Creative World');
 await waitInstalled(live);
 await waitInstalled(idle);
 
-await api('POST', `/api/servers/${idle}/backups`, { label: 'Before the update' });
+// The panel's backups use GNU tar options macOS's tar lacks; the Backups screen still shows its empty state.
+await api('POST', `/api/servers/${idle}/backups`, { label: 'Before the update' }).catch((err) => console.log(`backup skipped: ${err.message}`));
 await api('POST', `/api/servers/${live}/power`, { action: 'start' });
 await sleep(6000);
 await api('POST', `/api/servers/${live}/command`, { command: 'say hello from CI' });
