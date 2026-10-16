@@ -5,7 +5,12 @@ import Security
 enum Keychain {
     private static let service = "com.jebster33.gamepanel.session"
 
+    /// Tokens for this launch. If the Keychain refuses a write (an unsigned build, a locked
+    /// device), the sign-in still works until the app quits instead of failing straight away.
+    private static var memory: [UUID: String] = [:]
+
     static func token(for panel: UUID) -> String? {
+        if let token = memory[panel] { return token }
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -20,6 +25,7 @@ enum Keychain {
 
     static func setToken(_ token: String, for panel: UUID) {
         removeToken(for: panel)
+        memory[panel] = token
         let item: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -31,6 +37,7 @@ enum Keychain {
     }
 
     static func removeToken(for panel: UUID) {
+        memory[panel] = nil
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,

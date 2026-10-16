@@ -8,7 +8,10 @@ options:
 settings:
   base:
     SWIFT_VERSION: "5.0"
-    CODE_SIGNING_ALLOWED: "NO"
+    # Ad-hoc signing: the Simulator only gives signed apps a Keychain, like a phone does.
+    CODE_SIGN_IDENTITY: "-"
+    CODE_SIGN_STYLE: Manual
+    DEVELOPMENT_TEAM: ""
 targets:
   GamePanel:
     type: application
