@@ -4,6 +4,9 @@
 
 const { getJson } = require('../http');
 
+/** How many plugins uMod puts on one search page. */
+const UMOD_PAGE = 10;
+
 const umod = {
   id: 'umod',
   label: 'uMod',
@@ -15,17 +18,32 @@ const umod = {
   },
 
   async search({ query = '', page = 0, limit = 24, ctx }) {
-    const params = new URLSearchParams({
-      query,
-      page: String(page + 1),
-      sort: query ? 'title' : 'downloads',
-      sortdir: query ? 'asc' : 'desc',
-      categories: ctx.umodGame || 'rust',
-    });
-    const data = await getJson(`https://umod.org/plugins/search.json?${params}`);
+    // uMod pages hold 10 plugins whatever is asked for, so one panel page spans several.
+    // The game filter must be sent as categories[]: a plain "categories" is ignored and
+    // returns every game's plugins.
+    const fetchPage = (n) => {
+      const params = new URLSearchParams({
+        query,
+        page: String(n),
+        sort: query ? 'title' : 'downloads',
+        sortdir: query ? 'asc' : 'desc',
+      });
+      params.append('categories[]', ctx.umodGame || 'rust');
+      return getJson(`https://umod.org/plugins/search.json?${params}`);
+    };
+    const start = page * limit;
+    const perPage = UMOD_PAGE;
+    const firstPage = Math.floor(start / perPage) + 1;
+    const first = await fetchPage(firstPage);
+    const lastPage = Math.min(Math.floor((start + limit - 1) / perPage) + 1, Number(first.last_page) || firstPage);
+    const rest = await Promise.all(
+      Array.from({ length: Math.max(0, lastPage - firstPage) }, (_, i) => fetchPage(firstPage + 1 + i).catch(() => ({ data: [] })))
+    );
+    const plugins = [first, ...rest].flatMap((d) => d.data || []);
+    const skip = start - (firstPage - 1) * perPage;
     return {
-      total: data.total ?? data.data.length,
-      items: data.data.slice(0, limit).map((plugin) => ({
+      total: first.total ?? plugins.length,
+      items: plugins.slice(skip, skip + limit).map((plugin) => ({
         provider: 'umod',
         id: plugin.name,
         slug: plugin.slug,
