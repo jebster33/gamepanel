@@ -1,0 +1,39 @@
+# Project configuration
+name = "GamePanel"
+bundle_id = "com.jebster33.gamepanel"
+version = "1.0.0"
+build = "1"
+# Liquid Glass (glassEffect, glass tab bar) needs iOS 26.
+deployment_target = "26.0"
+
+# Source files
+sources = ["Sources/**/*.swift"]
+
+# Resource files
+resources = []
+
+# Linked frameworks
+frameworks = ["Foundation", "UIKit", "SwiftUI", "Charts", "Security"]
+
+# Extra compiler flags
+swift_flags = []
+
+# Extra linker flags, e.g. ["-lsqlite3"]
+linker_flags = []
+
+# Tables last, every key below one belongs to it
+# Signing entitlements
+[entitlements]
+
+# Extra property list entries
+[info_plist]
+CFBundleDisplayName = "GamePanel"
+UIUserInterfaceStyle = "Dark"
+UILaunchScreen = { UIColorName = "", UIImageRespectsSafeAreaInsets = true }
+UISupportedInterfaceOrientations = ["UIInterfaceOrientationPortrait", "UIInterfaceOrientationLandscapeLeft", "UIInterfaceOrientationLandscapeRight"]
+# Panels run on plain http://<ip>:8420 unless HTTPS is switched on in the panel.
+NSAppTransportSecurity = { NSAllowsArbitraryLoads = true, NSAllowsLocalNetworking = true }
+NSLocalNetworkUsageDescription = "GamePanel connects to your panel on your home network."
+
+# Swift packages, e.g. Collections = { url = "https://github.com/apple/swift-collections", from = "1.1.0" }
+[dependencies]
