@@ -24,7 +24,7 @@ final class ScreenshotTour: XCTestCase {
         user.typeText("demo")
         let pass = app.secureTextFields["Password"]
         pass.tap()
-        pass.typeText("demo-password-123")
+        pass.typeText("tour-pass-7391-ok")
         snap("sign-in-filled")
         app.buttons["Sign in"].firstMatch.tap()
 

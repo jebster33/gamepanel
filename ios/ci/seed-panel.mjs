@@ -40,7 +40,12 @@ async function waitInstalled(id) {
   for (let i = 0; i < 120; i++) {
     const { server } = await api('GET', `/api/servers/${id}`);
     if (server.installedAt && server.status === 'offline') return;
-    if (server.status === 'install_failed') throw new Error(`install of ${id} failed`);
+    if (server.status === 'install_failed') {
+      // Annotations are readable on the run page without signing in.
+      const { lines } = await api('GET', `/api/servers/${id}/console`);
+      for (const l of lines.slice(-8)) console.log(`::error title=install ${id}::${l.line.replace(/[\r\n]/g, ' ')}`);
+      throw new Error(`install of ${id} failed`);
+    }
     await sleep(1000);
   }
   throw new Error(`install of ${id} timed out`);
@@ -55,8 +60,8 @@ for (let i = 0; i < 120; i++) {
   }
 }
 
-await api('POST', '/api/setup', { username: 'demo', password: 'demo-password-123' });
-await api('POST', '/api/auth/login', { username: 'demo', password: 'demo-password-123' });
+await api('POST', '/api/setup', { username: 'demo', password: 'tour-pass-7391-ok' });
+await api('POST', '/api/auth/login', { username: 'demo', password: 'tour-pass-7391-ok' });
 
 const create = (name) =>
   api('POST', '/api/servers', {
