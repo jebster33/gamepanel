@@ -76,15 +76,8 @@ jobs:
           cd "$OUT"
           git rm -q --ignore-unmatch '*.png' README.md
           cp "$RUNNER_TEMP"/screenshots/*.png .
-          printf '# iOS Simulator screenshots
-
-From %s, run %s.
-
-' "$GITHUB_SHA" "$GITHUB_RUN_ID" > README.md
-          for f in *.png; do printf '### %s
-![%s](%s)
-
-' "$f" "$f" "$f" >> README.md; done
+          printf '# iOS Simulator screenshots\n\nFrom %s, run %s.\n\n' "$GITHUB_SHA" "$GITHUB_RUN_ID" > README.md
+          for f in *.png; do printf '### %s\n![%s](%s)\n\n' "$f" "$f" "$f" >> README.md; done
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A && git commit -qm "Screenshots from run $GITHUB_RUN_ID"
