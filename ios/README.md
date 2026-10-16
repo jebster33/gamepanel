@@ -32,7 +32,9 @@ apple-dev swift --project ios\GamePanel build
 
 ## Install on your iPhone (free Apple ID)
 
-Sign in to Apple in your own terminal, never in chat or a script:
+**Easiest: Sideloadly.** Zip `build/GamePanel.app` as `Payload/GamePanel.app` into `GamePanel.ipa`, open it in [Sideloadly](https://sideloadly.io), sign in with your Apple ID there and press Start. Re-sign every 7 days (Sideloadly can do it automatically).
+
+**With iosc.** As of October 2026 Apple rejects iosc's free-account sign-in (GrandSlam error -80045, or a 503 with local anisette), even for valid accounts. When that's fixed upstream, `ios/apple-login.ps1` signs in, and `ios/iosc.ps1` runs iosc with TLS verification on (iosc turns it off by default). Sign in to Apple in your own terminal, never in chat or a script:
 
 ```powershell
 apple-dev swift auth login you@example.com
