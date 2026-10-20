@@ -492,6 +492,30 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
   router.post('/api/servers/:id/datapacks/:name/toggle', ({ user, params, body }) => datapacks.toggle(manager, serverFor(user, params.id, 'mods'), params.name, Boolean(body?.on), user.username));
   router.delete('/api/servers/:id/datapacks/:name', ({ user, params }) => datapacks.remove(manager, store, serverFor(user, params.id, 'mods'), params.name, user.username));
 
+  /** Resource pack hosting (Minecraft Java). */
+  const resourcePack = require('../../features/resource-pack');
+  router.get('/api/servers/:id/resource-pack', ({ user, params, req }) => resourcePack.view(manager, store, serverFor(user, params.id, 'mods'), req));
+  router.post(
+    '/api/servers/:id/resource-pack',
+    async ({ user, params, url, req }) => resourcePack.upload(manager, store, serverFor(user, params.id, 'mods'), url.searchParams.get('name'), await readBody(req, 251 * 1024 * 1024), req, user.username),
+    { rawBody: true }
+  );
+  router.patch('/api/servers/:id/resource-pack', ({ user, params, body, req }) => resourcePack.update(manager, store, serverFor(user, params.id, 'mods'), body || {}, req));
+  router.delete('/api/servers/:id/resource-pack', ({ user, params }) => resourcePack.remove(manager, store, serverFor(user, params.id, 'mods'), user.username));
+  router.get(
+    '/api/public/resource-pack/:slug/pack.zip',
+    ({ params, res }) => {
+      const hit = resourcePack.lookup(store, manager, params.slug);
+      if (!hit) fail(404, 'Not found');
+      res.writeHead(200, { 'Content-Type': 'application/zip', 'Content-Length': hit.size, 'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'public, max-age=300', ETag: `"${hit.sha1}"` });
+      const stream = require('fs').createReadStream(hit.file);
+      stream.on('error', () => res.destroy());
+      stream.pipe(res);
+      return undefined;
+    },
+    { public: true }
+  );
+
   /** ARK: despawn every wild dino. */
   router.post('/api/servers/:id/dino-wipe', async ({ user, params }) => manager.wipeWildDinos(serverFor(user, params.id, 'command').id, user));
 
