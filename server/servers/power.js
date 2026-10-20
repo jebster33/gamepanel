@@ -36,6 +36,7 @@ module.exports = {
     this.applyPropertyPatches(server, template);
     // In a Velocity network: the proxy's server list and the forwarding secret follow port changes.
     if (this.store.state.networks?.length) require('../features/networks').reapplyFor(this, this.store, server.id);
+    if (this.store.state.arkClusters?.length) require('../features/ark-clusters').prepare(this, this.store, server.id);
     this.patchCrossplay(server);
     this.patchMap(server);
 

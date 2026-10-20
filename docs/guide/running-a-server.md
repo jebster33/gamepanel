@@ -110,3 +110,13 @@ each option does. **Restart now** applies changes that need a restart. Minecraft
 
 **Start all**, **Stop all** and **Message all** (a chat message to every running server) sit at the
 top of **Servers**, next to **Import existing**.
+
+## ARK clusters
+
+**Servers → Clusters → New cluster** links ARK servers (one per map) so players can upload a character, items or dinos at an obelisk or terminal on one map and download them on another.
+
+1. Create the ARK servers first, each on its own map. Evolved and Ascended cannot be mixed.
+2. Pick the servers, choose what players may upload and download (characters, items, dinos), and save.
+3. Restart the servers. They now share one cluster ID and one folder, kept in the panel's data folder (`clusters/`), mounted into Docker servers automatically.
+
+Only servers on the same machine can join a cluster; servers on another node cannot share its folder. Removing a cluster keeps the uploaded data. The optional timers set how long uploads last before they expire.

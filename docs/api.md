@@ -117,6 +117,9 @@ POST   /api/import/inspect               {"path"} which game a folder holds
 POST   /api/move                         {"serverId","to":"local|<node id>","keepSource"} move to another node
 GET    /api/networks                     Velocity networks (admins)
 POST   /api/networks                     {"name","proxyId","servers":[{"serverId","name"}]}
+GET    /api/clusters                     ARK clusters (admins)
+POST   /api/clusters                     {"name","servers":[serverId],"options":{"uploadDinos","downloadDinos","survivorExpirySeconds",…}}
+PUT    /api/clusters/:id                 same body; DELETE removes the cluster
 GET    /api/settings/https               HTTPS settings and certificate (admins)
 PUT    /api/settings/https               {"enabled","domain","email","method":"http|cloudflare","port","redirect","staging"}
 POST   /api/settings/https/issue         get or renew the certificate now
