@@ -4585,3 +4585,11 @@ pre.code-block {
 .cap-legend { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 8px; font-size: 12px; color: var(--muted); }
 .cap-key { display: inline-block; width: 9px; height: 9px; margin-right: 6px; border-radius: 2px; background: var(--c); }
 .cap-key.hatch { background: repeating-linear-gradient(135deg, var(--c) 0 2px, transparent 2px 4px); }
+
+/* Rust tab */
+.rt-header { display: block; width: 100%; max-height: 160px; object-fit: cover; border-radius: 8px; margin-bottom: 14px; }
+.rt-facts th { text-align: left; font: 11px var(--mono, monospace); text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); padding: 3px 16px 3px 0; white-space: nowrap; }
+.rt-facts td { padding: 3px 0; }
+.rt-cats { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.rt-cats label { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+.rt-cats input { width: 64px; }

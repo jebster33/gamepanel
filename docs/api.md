@@ -90,6 +90,15 @@ POST   /api/servers/:id/events           {"name","cron","hours","changes":{key:v
 POST   /api/servers/:id/events/:eid/start|end   run or end one now
 POST   /api/servers/:id/network/check    can the internet reach it? (mcsrvstat.us, portchecker.io)
 GET    /api/servers/:id/world-map        Rust, Valheim and Terraria map links
+GET    /api/servers/:id/rust-tools       Rust presets, day length and AFK kick settings
+POST   /api/servers/:id/rust-tools/plugin {"plugin":"loot|stack"} install BetterLoot / StackSizeController
+POST   /api/servers/:id/rust-tools/loot  {"preset":"2x"|"custom","multiplier"} BetterLoot loot multiplier
+POST   /api/servers/:id/rust-tools/stack {"preset":"5x"|"custom","all","categories"} StackSizeController
+PUT    /api/servers/:id/rust-tools/time  {"preset"|"day","night"} env.daylength / env.nightlength
+PUT    /api/servers/:id/rust-tools/afk   AFK and high-ping kick settings
+GET    /api/servers/:id/rust-teams       teams, members, bases, clans (console permission)
+GET    /api/servers/:id/rust-entities    entities per player, ranked (console permission)
+GET    /api/servers/:id/rust-info        public-safe server card and join link
 GET    /api/servers/:id/workshop-packs   saved Workshop packs for this game
 POST   /api/servers/:id/workshop-packs   {"name","input"} or {"name","fromServer":true}
 POST   /api/servers/:id/workshop-packs/:pid/apply   add a pack's items
