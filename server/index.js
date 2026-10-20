@@ -74,6 +74,8 @@ async function main() {
     if (rel === '/' || rel === '') rel = '/index.html';
     // Public status pages: /status/<link id>
     if (/^\/status\/[A-Za-z0-9_-]+\/?$/.test(rel)) rel = '/status.html';
+    // Player mod lists: /mods/<link id>
+    if (/^\/mods\/[A-Za-z0-9_-]+\/?$/.test(rel)) rel = '/mods.html';
     // Ban appeals: /appeal
     if (rel === '/appeal' || rel === '/appeal/') rel = '/appeal.html';
     // The iPhone app: /app, /app/

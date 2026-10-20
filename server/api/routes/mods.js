@@ -5,6 +5,8 @@ const mods = require('../../features/mods');
 const { installWorkshop } = require('../../features/mods/workshop');
 const { describe } = require('../../features/mods/compat');
 
+const share = require('../../features/mods/share');
+
 module.exports = (router, { store, manager }, { serverFor, requireCap, integrations }) => {
   /** The server, its template and the version the game itself reports. */
   const modTarget = (user, id, capability = 'mods') => {
@@ -86,6 +88,7 @@ module.exports = (router, { store, manager }, { serverFor, requireCap, integrati
 
     if (providerId === 'workshop') {
       const result = await installWorkshop(server, template, manager, { input: body.input || body.projectId }, integrations());
+      await share.addCollections(store, server.id, result.collections).catch(() => {});
       store.addEvent('mod.installed', `Workshop ${result.items.join(', ')} added to ${server.name}`, { serverId: server.id });
       return result;
     }
@@ -166,6 +169,7 @@ module.exports = (router, { store, manager }, { serverFor, requireCap, integrati
     const pack = packs.get(store, params.packId);
     if (pack.appId !== appId) fail(400, `${pack.name} is a pack for a different game`);
     const result = await installWorkshop(server, template, manager, { input: pack.items.join(',') }, integrations());
+    await share.addCollections(store, server.id, pack.collections).catch(() => {});
     store.addEvent('mod.installed', `Workshop pack ${pack.name} added to ${server.name}`, { serverId: server.id });
     return result;
   });
@@ -177,6 +181,63 @@ module.exports = (router, { store, manager }, { serverFor, requireCap, integrati
     packs.remove(store, pack.id);
     return { ok: true };
   });
+
+  /* ------------------------------------------- public list for players -- */
+
+  router.get('/api/servers/:id/mods/share', ({ user, params }) => {
+    modTarget(user, params.id);
+    return { share: share.view(store, params.id) };
+  });
+
+  router.patch('/api/servers/:id/mods/share', ({ user, params, body }) => {
+    const { server } = modTarget(user, params.id);
+    const cfg = share.update(store, server.id, body || {});
+    store.addEvent('mod.share', `Player mod list for ${server.name} ${cfg.enabled ? 'on' : 'off'}${body?.newLink ? ' (new link)' : ''} (${user.username})`, { serverId: server.id });
+    return { share: cfg };
+  });
+
+  router.delete('/api/servers/:id/mods/share/collections/:collection', ({ user, params }) => {
+    const { server } = modTarget(user, params.id);
+    return { share: share.removeCollection(store, server.id, params.collection) };
+  });
+
+  const publicCache = new Map();
+  const cached = async (key, make) => {
+    const hit = publicCache.get(key);
+    if (hit && Date.now() - hit.at < 5 * 60_000) return hit.value;
+    const value = await make();
+    if (value) publicCache.set(key, { at: Date.now(), value });
+    if (publicCache.size > 200) publicCache.delete(publicCache.keys().next().value);
+    return value;
+  };
+
+  router.get(
+    '/api/public/mods/:slug',
+    async ({ params, res }) => {
+      const view = await cached(`v:${params.slug}`, () => share.publicView(store, manager, params.slug));
+      if (!view) fail(404, 'This mod list does not exist or is turned off');
+      res.setHeader('Cache-Control', 'no-store');
+      return view;
+    },
+    { public: true }
+  );
+
+  router.get(
+    '/api/public/mods/:slug/pack.mrpack',
+    async ({ params, res }) => {
+      const pack = await cached(`p:${params.slug}`, () => share.mrpack(store, manager, params.slug));
+      if (!pack) fail(404, 'This mod list does not exist or is turned off');
+      res.writeHead(200, {
+        'Content-Type': 'application/zip',
+        'Content-Length': pack.data.length,
+        'Content-Disposition': `attachment; filename="${pack.filename}"`,
+        'X-Content-Type-Options': 'nosniff',
+      });
+      res.end(pack.data);
+      return undefined;
+    },
+    { public: true }
+  );
 
   /* ----------------------------------------------------------- modpacks -- */
 

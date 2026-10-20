@@ -552,6 +552,7 @@ class ServerManager extends EventEmitter {
         user.serverPerms = rest;
       }
     }
+    require('../features/mods/share').forget(this.store, id);
     const page = this.store.state.settings.statusPage;
     if (page) {
       if (Array.isArray(page.servers)) page.servers = page.servers.filter((s) => s !== id);
