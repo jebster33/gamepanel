@@ -34,6 +34,195 @@
       "name": "PUBLIC_IP",
       "label": "Public IP (optional)",
       "default": ""
+    },
+    {
+      "name": "PAL_DIFFICULTY",
+      "label": "Difficulty",
+      "default": "None",
+      "options": [
+        {
+          "value": "None",
+          "label": "Normal"
+        },
+        {
+          "value": "Casual",
+          "label": "Casual"
+        },
+        {
+          "value": "Hard",
+          "label": "Hard"
+        }
+      ],
+      "group": "Rules"
+    },
+    {
+      "name": "EXP_RATE",
+      "label": "XP rate",
+      "type": "number",
+      "default": 1,
+      "description": "1 is normal, 2 doubles the XP.",
+      "group": "Rates"
+    },
+    {
+      "name": "CAPTURE_RATE",
+      "label": "Pal capture rate",
+      "type": "number",
+      "default": 1,
+      "group": "Rates"
+    },
+    {
+      "name": "SPAWN_RATE",
+      "label": "Pal spawn rate",
+      "type": "number",
+      "default": 1,
+      "description": "Lower it if the server struggles.",
+      "group": "Rates"
+    },
+    {
+      "name": "EGG_HATCH_HOURS",
+      "label": "Egg hatch time (hours)",
+      "type": "number",
+      "default": 72,
+      "description": "0 hatches eggs instantly.",
+      "group": "Rates"
+    },
+    {
+      "name": "DAY_SPEED",
+      "label": "Day speed",
+      "type": "number",
+      "default": 1,
+      "group": "Time"
+    },
+    {
+      "name": "NIGHT_SPEED",
+      "label": "Night speed",
+      "type": "number",
+      "default": 1,
+      "group": "Time"
+    },
+    {
+      "name": "DEATH_PENALTY",
+      "label": "On death",
+      "default": "All",
+      "options": [
+        {
+          "value": "None",
+          "label": "Drop nothing"
+        },
+        {
+          "value": "Item",
+          "label": "Drop items"
+        },
+        {
+          "value": "ItemAndEquipment",
+          "label": "Drop items and equipment"
+        },
+        {
+          "value": "All",
+          "label": "Drop everything, including Pals"
+        }
+      ],
+      "group": "Rules"
+    },
+    {
+      "name": "PVP",
+      "label": "PvP",
+      "default": "False",
+      "options": [
+        {
+          "value": "True",
+          "label": "Yes"
+        },
+        {
+          "value": "False",
+          "label": "No"
+        }
+      ],
+      "group": "Rules"
+    },
+    {
+      "name": "RAIDS",
+      "label": "Base raids",
+      "default": "True",
+      "options": [
+        {
+          "value": "True",
+          "label": "Yes"
+        },
+        {
+          "value": "False",
+          "label": "No"
+        }
+      ],
+      "description": "Enemies that attack player bases.",
+      "group": "Rules"
+    },
+    {
+      "name": "HARDCORE",
+      "label": "Hardcore (characters die for good)",
+      "default": "False",
+      "options": [
+        {
+          "value": "True",
+          "label": "Yes"
+        },
+        {
+          "value": "False",
+          "label": "No"
+        }
+      ],
+      "group": "Rules"
+    },
+    {
+      "name": "COLLECTION_DROP_RATE",
+      "label": "Gather rate (trees, ore, plants)",
+      "type": "number",
+      "default": 1,
+      "description": "2 doubles what you get from gathering.",
+      "group": "Rates"
+    },
+    {
+      "name": "ENEMY_DROP_RATE",
+      "label": "Enemy drop rate",
+      "type": "number",
+      "default": 1,
+      "group": "Rates"
+    },
+    {
+      "name": "WORK_SPEED",
+      "label": "Pal work speed",
+      "type": "number",
+      "default": 1,
+      "group": "Rates"
+    },
+    {
+      "name": "PLAYER_HUNGER",
+      "label": "Player hunger rate",
+      "type": "number",
+      "default": 1,
+      "description": "Lower is slower.",
+      "group": "Survival"
+    },
+    {
+      "name": "PAL_HUNGER",
+      "label": "Pal hunger rate",
+      "type": "number",
+      "default": 1,
+      "group": "Survival"
+    },
+    {
+      "name": "GUILD_MAX",
+      "label": "Max players per guild",
+      "type": "number",
+      "default": 20,
+      "group": "Rules"
+    },
+    {
+      "name": "BASE_CAMP_MAX",
+      "label": "Max bases on the server",
+      "type": "number",
+      "default": 128,
+      "group": "Rules"
     }
   ],
   "ports": [
@@ -109,6 +298,138 @@
     "startCommand": "Pal\\Binaries\\Win64\\PalServer-Win64-Shipping-Cmd.exe Pal -useperfthreads -NoAsyncLoadingThread -UseMultithreadForDS -port={{PORT}} -queryport={{PORT_QUERY}} -players={{MAX_PLAYERS}} -RconEnabled=True -RconPort={{PORT_RCON}} -AdminPassword=\"{{ADMIN_PASSWORD}}\" -ServerPassword=\"{{SERVER_PASSWORD}}\" -ServerName=\"{{SERVER_NAME}}\"",
     "tailFiles": [
       "Pal/Saved/Logs/Pal.log"
+    ],
+    "patchProperties": [
+      {
+        "path": "Pal/Saved/Config/WindowsServer/PalWorldSettings.ini",
+        "format": "tuple",
+        "key": "OptionSettings",
+        "section": "/Script/Pal.PalGameWorldSettings",
+        "createIfMissing": true,
+        "set": {
+          "Difficulty": "{{PAL_DIFFICULTY}}",
+          "ExpRate": "{{EXP_RATE}}",
+          "PalCaptureRate": "{{CAPTURE_RATE}}",
+          "PalSpawnNumRate": "{{SPAWN_RATE}}",
+          "PalEggDefaultHatchingTime": "{{EGG_HATCH_HOURS}}",
+          "DayTimeSpeedRate": "{{DAY_SPEED}}",
+          "NightTimeSpeedRate": "{{NIGHT_SPEED}}",
+          "DeathPenalty": "{{DEATH_PENALTY}}",
+          "bIsPvP": "{{PVP}}",
+          "bEnableInvaderEnemy": "{{RAIDS}}",
+          "bHardcore": "{{HARDCORE}}",
+          "CollectionDropRate": "{{COLLECTION_DROP_RATE}}",
+          "EnemyDropItemRate": "{{ENEMY_DROP_RATE}}",
+          "WorkSpeedRate": "{{WORK_SPEED}}",
+          "PlayerStomachDecreaceRate": "{{PLAYER_HUNGER}}",
+          "PalStomachDecreaceRate": "{{PAL_HUNGER}}",
+          "GuildPlayerMaxNum": "{{GUILD_MAX}}",
+          "BaseCampMaxNum": "{{BASE_CAMP_MAX}}"
+        }
+      }
     ]
-  }
+  },
+  "patchProperties": [
+    {
+      "path": "Pal/Saved/Config/LinuxServer/PalWorldSettings.ini",
+      "format": "tuple",
+      "key": "OptionSettings",
+      "section": "/Script/Pal.PalGameWorldSettings",
+      "createIfMissing": true,
+      "set": {
+        "Difficulty": "{{PAL_DIFFICULTY}}",
+        "ExpRate": "{{EXP_RATE}}",
+        "PalCaptureRate": "{{CAPTURE_RATE}}",
+        "PalSpawnNumRate": "{{SPAWN_RATE}}",
+        "PalEggDefaultHatchingTime": "{{EGG_HATCH_HOURS}}",
+        "DayTimeSpeedRate": "{{DAY_SPEED}}",
+        "NightTimeSpeedRate": "{{NIGHT_SPEED}}",
+        "DeathPenalty": "{{DEATH_PENALTY}}",
+        "bIsPvP": "{{PVP}}",
+        "bEnableInvaderEnemy": "{{RAIDS}}",
+        "bHardcore": "{{HARDCORE}}",
+        "CollectionDropRate": "{{COLLECTION_DROP_RATE}}",
+        "EnemyDropItemRate": "{{ENEMY_DROP_RATE}}",
+        "WorkSpeedRate": "{{WORK_SPEED}}",
+        "PlayerStomachDecreaceRate": "{{PLAYER_HUNGER}}",
+        "PalStomachDecreaceRate": "{{PAL_HUNGER}}",
+        "GuildPlayerMaxNum": "{{GUILD_MAX}}",
+        "BaseCampMaxNum": "{{BASE_CAMP_MAX}}"
+      }
+    }
+  ],
+  "presets": [
+    {
+      "id": "normal",
+      "label": "Normal",
+      "description": "standard rates",
+      "vars": {
+        "EXP_RATE": 1,
+        "CAPTURE_RATE": 1,
+        "EGG_HATCH_HOURS": 72,
+        "COLLECTION_DROP_RATE": 1,
+        "ENEMY_DROP_RATE": 1,
+        "WORK_SPEED": 1,
+        "PLAYER_HUNGER": 1,
+        "PAL_HUNGER": 1
+      }
+    },
+    {
+      "id": "2x",
+      "label": "2x",
+      "description": "double rates",
+      "vars": {
+        "EXP_RATE": 2,
+        "CAPTURE_RATE": 1.5,
+        "EGG_HATCH_HOURS": 24,
+        "COLLECTION_DROP_RATE": 2,
+        "ENEMY_DROP_RATE": 2,
+        "WORK_SPEED": 2,
+        "PLAYER_HUNGER": 0.75,
+        "PAL_HUNGER": 0.75
+      }
+    },
+    {
+      "id": "5x",
+      "label": "5x",
+      "description": "five times the rates",
+      "vars": {
+        "EXP_RATE": 5,
+        "CAPTURE_RATE": 2,
+        "EGG_HATCH_HOURS": 6,
+        "COLLECTION_DROP_RATE": 5,
+        "ENEMY_DROP_RATE": 3,
+        "WORK_SPEED": 4,
+        "PLAYER_HUNGER": 0.5,
+        "PAL_HUNGER": 0.5
+      }
+    },
+    {
+      "id": "relaxed",
+      "label": "Relaxed",
+      "description": "low pressure, easy captures",
+      "vars": {
+        "PAL_DIFFICULTY": "Casual",
+        "DEATH_PENALTY": "None",
+        "EXP_RATE": 2,
+        "CAPTURE_RATE": 2,
+        "PLAYER_HUNGER": 0.5,
+        "PAL_HUNGER": 0.5,
+        "HARDCORE": "False",
+        "PVP": "False"
+      }
+    },
+    {
+      "id": "hardcore",
+      "label": "Hardcore",
+      "description": "permanent death, drop everything",
+      "vars": {
+        "PAL_DIFFICULTY": "Hard",
+        "DEATH_PENALTY": "All",
+        "HARDCORE": "True",
+        "EXP_RATE": 1,
+        "CAPTURE_RATE": 1
+      }
+    }
+  ]
 }

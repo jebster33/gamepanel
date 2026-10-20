@@ -75,6 +75,303 @@
       "label": "RCON password",
       "generate": "password",
       "default": ""
+    },
+    {
+      "name": "DAY_LENGTH",
+      "label": "Day length (real minutes)",
+      "type": "number",
+      "default": 60,
+      "group": "Time"
+    },
+    {
+      "name": "DAYLIGHT_HOURS",
+      "label": "Daylight hours per day",
+      "type": "number",
+      "default": 18,
+      "description": "The rest of the day is night.",
+      "group": "Time"
+    },
+    {
+      "name": "BLOOD_MOON_FREQUENCY",
+      "label": "Blood moon every (days)",
+      "type": "number",
+      "default": 7,
+      "description": "0 turns the blood moon off.",
+      "group": "Blood moon"
+    },
+    {
+      "name": "BLOOD_MOON_RANGE",
+      "label": "Blood moon random range (days)",
+      "type": "number",
+      "default": 0,
+      "description": "Moves the blood moon this many days either side of the schedule.",
+      "group": "Blood moon"
+    },
+    {
+      "name": "BLOOD_MOON_ENEMIES",
+      "label": "Blood moon zombies per player",
+      "type": "number",
+      "default": 8,
+      "group": "Blood moon"
+    },
+    {
+      "name": "ZOMBIE_MOVE",
+      "label": "Zombie speed by day",
+      "default": "0",
+      "options": [
+        {
+          "value": "0",
+          "label": "Walk"
+        },
+        {
+          "value": "1",
+          "label": "Jog"
+        },
+        {
+          "value": "2",
+          "label": "Run"
+        },
+        {
+          "value": "3",
+          "label": "Sprint"
+        },
+        {
+          "value": "4",
+          "label": "Nightmare"
+        }
+      ],
+      "group": "Zombies"
+    },
+    {
+      "name": "ZOMBIE_MOVE_NIGHT",
+      "label": "Zombie speed at night",
+      "default": "3",
+      "options": [
+        {
+          "value": "0",
+          "label": "Walk"
+        },
+        {
+          "value": "1",
+          "label": "Jog"
+        },
+        {
+          "value": "2",
+          "label": "Run"
+        },
+        {
+          "value": "3",
+          "label": "Sprint"
+        },
+        {
+          "value": "4",
+          "label": "Nightmare"
+        }
+      ],
+      "group": "Zombies"
+    },
+    {
+      "name": "ENEMY_DIFFICULTY",
+      "label": "Enemy type",
+      "default": "0",
+      "options": [
+        {
+          "value": "0",
+          "label": "Normal"
+        },
+        {
+          "value": "1",
+          "label": "Feral"
+        }
+      ],
+      "group": "Zombies"
+    },
+    {
+      "name": "ENEMY_SPAWN",
+      "label": "Zombies and animals spawn",
+      "default": "true",
+      "options": [
+        {
+          "value": "true",
+          "label": "Yes"
+        },
+        {
+          "value": "false",
+          "label": "No"
+        }
+      ],
+      "group": "Zombies"
+    },
+    {
+      "name": "MAX_ZOMBIES",
+      "label": "Max zombies at once",
+      "type": "number",
+      "default": 64,
+      "description": "Lower it if the server lags.",
+      "group": "Zombies"
+    },
+    {
+      "name": "DROP_ON_DEATH",
+      "label": "On death, drop",
+      "default": "1",
+      "options": [
+        {
+          "value": "0",
+          "label": "Nothing"
+        },
+        {
+          "value": "1",
+          "label": "Everything"
+        },
+        {
+          "value": "2",
+          "label": "Toolbelt only"
+        },
+        {
+          "value": "3",
+          "label": "Backpack only"
+        },
+        {
+          "value": "4",
+          "label": "Delete everything"
+        }
+      ],
+      "group": "Rules"
+    },
+    {
+      "name": "DROP_ON_QUIT",
+      "label": "On logout, drop",
+      "default": "0",
+      "options": [
+        {
+          "value": "0",
+          "label": "Nothing"
+        },
+        {
+          "value": "1",
+          "label": "Everything"
+        },
+        {
+          "value": "2",
+          "label": "Toolbelt only"
+        },
+        {
+          "value": "3",
+          "label": "Backpack only"
+        }
+      ],
+      "group": "Rules"
+    },
+    {
+      "name": "PLAYER_KILLING",
+      "label": "Player killing",
+      "default": "3",
+      "options": [
+        {
+          "value": "0",
+          "label": "No player killing"
+        },
+        {
+          "value": "1",
+          "label": "Only allies"
+        },
+        {
+          "value": "2",
+          "label": "Only strangers"
+        },
+        {
+          "value": "3",
+          "label": "Everyone"
+        }
+      ],
+      "group": "Rules"
+    },
+    {
+      "name": "XP_MULTIPLIER",
+      "label": "XP gain (%)",
+      "type": "number",
+      "default": 100,
+      "group": "Rates"
+    },
+    {
+      "name": "LOOT_ABUNDANCE",
+      "label": "Loot abundance (%)",
+      "type": "number",
+      "default": 100,
+      "group": "Rates"
+    },
+    {
+      "name": "LOOT_RESPAWN_DAYS",
+      "label": "Loot respawn (days)",
+      "type": "number",
+      "default": 7,
+      "description": "0 turns respawning off.",
+      "group": "Rates"
+    },
+    {
+      "name": "BLOCK_DAMAGE_PLAYER",
+      "label": "Block damage by players (%)",
+      "type": "number",
+      "default": 100,
+      "group": "Rates"
+    },
+    {
+      "name": "AIRDROP_FREQUENCY",
+      "label": "Airdrop every (hours)",
+      "type": "number",
+      "default": 72,
+      "description": "0 turns airdrops off.",
+      "group": "Rates"
+    },
+    {
+      "name": "WORLD_GEN_SEED",
+      "label": "Random world seed",
+      "default": "asdf",
+      "description": "Only used when the world is RWG (a generated world).",
+      "group": "World"
+    },
+    {
+      "name": "WORLD_GEN_SIZE",
+      "label": "Random world size",
+      "default": "6144",
+      "options": [
+        {
+          "value": "6144",
+          "label": "6144"
+        },
+        {
+          "value": "8192",
+          "label": "8192"
+        },
+        {
+          "value": "10240",
+          "label": "10240"
+        }
+      ],
+      "description": "Only used when the world is RWG. Bigger worlds take longer to generate.",
+      "group": "World"
+    },
+    {
+      "name": "SERVER_DESCRIPTION",
+      "label": "Description",
+      "default": "Hosted with GamePanel",
+      "group": "Listing"
+    },
+    {
+      "name": "EAC_ENABLED",
+      "label": "Easy Anti-Cheat",
+      "default": "true",
+      "options": [
+        {
+          "value": "true",
+          "label": "Yes"
+        },
+        {
+          "value": "false",
+          "label": "No"
+        }
+      ],
+      "group": "Listing"
     }
   ],
   "ports": [
@@ -122,7 +419,7 @@
     {
       "path": "gamepanel.xml",
       "mode": "overwrite",
-      "content": "<?xml version=\"1.0\"?>\n<ServerSettings>\n  <property name=\"ServerName\" value=\"{{SERVER_NAME}}\"/>\n  <property name=\"ServerPassword\" value=\"{{SERVER_PASSWORD}}\"/>\n  <property name=\"ServerMaxPlayerCount\" value=\"{{MAX_PLAYERS}}\"/>\n  <property name=\"ServerPort\" value=\"{{PORT}}\"/>\n  <property name=\"ServerVisibility\" value=\"2\"/>\n  <property name=\"GameWorld\" value=\"{{WORLD_NAME}}\"/>\n  <property name=\"GameName\" value=\"{{GAME_NAME}}\"/>\n  <property name=\"GameDifficulty\" value=\"{{GAME_DIFFICULTY}}\"/>\n  <property name=\"WebDashboardEnabled\" value=\"false\"/>\n  <property name=\"TelnetEnabled\" value=\"false\"/>\n  <property name=\"UserDataFolder\" value=\"{{SERVER_DIR}}/data\"/>\n</ServerSettings>\n"
+      "content": "<?xml version=\"1.0\"?>\n<ServerSettings>\n  <property name=\"ServerName\" value=\"{{SERVER_NAME}}\"/>\n  <property name=\"ServerPassword\" value=\"{{SERVER_PASSWORD}}\"/>\n  <property name=\"ServerMaxPlayerCount\" value=\"{{MAX_PLAYERS}}\"/>\n  <property name=\"ServerPort\" value=\"{{PORT}}\"/>\n  <property name=\"ServerVisibility\" value=\"2\"/>\n  <property name=\"GameWorld\" value=\"{{WORLD_NAME}}\"/>\n  <property name=\"GameName\" value=\"{{GAME_NAME}}\"/>\n  <property name=\"GameDifficulty\" value=\"{{GAME_DIFFICULTY}}\"/>\n  <property name=\"WebDashboardEnabled\" value=\"false\"/>\n  <property name=\"TelnetEnabled\" value=\"false\"/>\n  <property name=\"UserDataFolder\" value=\"{{SERVER_DIR}}/data\"/>\n  <property name=\"ServerDescription\" value=\"{{SERVER_DESCRIPTION}}\"/>\n  <property name=\"EACEnabled\" value=\"{{EAC_ENABLED}}\"/>\n  <property name=\"WorldGenSeed\" value=\"{{WORLD_GEN_SEED}}\"/>\n  <property name=\"WorldGenSize\" value=\"{{WORLD_GEN_SIZE}}\"/>\n  <property name=\"DayNightLength\" value=\"{{DAY_LENGTH}}\"/>\n  <property name=\"DayLightLength\" value=\"{{DAYLIGHT_HOURS}}\"/>\n  <property name=\"BloodMoonFrequency\" value=\"{{BLOOD_MOON_FREQUENCY}}\"/>\n  <property name=\"BloodMoonRange\" value=\"{{BLOOD_MOON_RANGE}}\"/>\n  <property name=\"BloodMoonEnemyCount\" value=\"{{BLOOD_MOON_ENEMIES}}\"/>\n  <property name=\"ZombieMove\" value=\"{{ZOMBIE_MOVE}}\"/>\n  <property name=\"ZombieMoveNight\" value=\"{{ZOMBIE_MOVE_NIGHT}}\"/>\n  <property name=\"EnemyDifficulty\" value=\"{{ENEMY_DIFFICULTY}}\"/>\n  <property name=\"EnemySpawnMode\" value=\"{{ENEMY_SPAWN}}\"/>\n  <property name=\"MaxSpawnedZombies\" value=\"{{MAX_ZOMBIES}}\"/>\n  <property name=\"DropOnDeath\" value=\"{{DROP_ON_DEATH}}\"/>\n  <property name=\"DropOnQuit\" value=\"{{DROP_ON_QUIT}}\"/>\n  <property name=\"PlayerKillingMode\" value=\"{{PLAYER_KILLING}}\"/>\n  <property name=\"XPMultiplier\" value=\"{{XP_MULTIPLIER}}\"/>\n  <property name=\"LootAbundance\" value=\"{{LOOT_ABUNDANCE}}\"/>\n  <property name=\"LootRespawnDays\" value=\"{{LOOT_RESPAWN_DAYS}}\"/>\n  <property name=\"BlockDamagePlayer\" value=\"{{BLOCK_DAMAGE_PLAYER}}\"/>\n  <property name=\"AirDropFrequency\" value=\"{{AIRDROP_FREQUENCY}}\"/>\n</ServerSettings>\n"
     }
   ],
   "startCommand": "./7DaysToDieServer.x86_64 -logfile /dev/stdout -quit -batchmode -nographics -dedicated -configfile=gamepanel.xml",
@@ -157,5 +454,64 @@
     "tailFiles": [
       "logs/server.log"
     ]
-  }
+  },
+  "presets": [
+    {
+      "id": "default",
+      "label": "Default",
+      "description": "the usual game",
+      "vars": {
+        "ZOMBIE_MOVE": "0",
+        "ZOMBIE_MOVE_NIGHT": "3",
+        "ENEMY_DIFFICULTY": "0",
+        "DROP_ON_DEATH": "1",
+        "PLAYER_KILLING": "3",
+        "LOOT_ABUNDANCE": 100,
+        "XP_MULTIPLIER": 100,
+        "BLOOD_MOON_FREQUENCY": 7
+      }
+    },
+    {
+      "id": "easy",
+      "label": "Easy",
+      "description": "slower zombies, keep your gear",
+      "vars": {
+        "ZOMBIE_MOVE": "0",
+        "ZOMBIE_MOVE_NIGHT": "1",
+        "ENEMY_DIFFICULTY": "0",
+        "DROP_ON_DEATH": "0",
+        "PLAYER_KILLING": "0",
+        "LOOT_ABUNDANCE": 150,
+        "XP_MULTIPLIER": 150,
+        "BLOOD_MOON_FREQUENCY": 7
+      }
+    },
+    {
+      "id": "pve",
+      "label": "Friendly PvE",
+      "description": "no player killing, longer days",
+      "vars": {
+        "PLAYER_KILLING": "0",
+        "DAY_LENGTH": 90,
+        "DAYLIGHT_HOURS": 20,
+        "DROP_ON_DEATH": "3",
+        "LOOT_ABUNDANCE": 125
+      }
+    },
+    {
+      "id": "hardcore",
+      "label": "Hardcore",
+      "description": "feral nightmare zombies, lose everything",
+      "vars": {
+        "ZOMBIE_MOVE": "3",
+        "ZOMBIE_MOVE_NIGHT": "4",
+        "ENEMY_DIFFICULTY": "1",
+        "DROP_ON_DEATH": "4",
+        "PLAYER_KILLING": "3",
+        "LOOT_ABUNDANCE": 50,
+        "XP_MULTIPLIER": 75,
+        "BLOOD_MOON_FREQUENCY": 5
+      }
+    }
+  ]
 }

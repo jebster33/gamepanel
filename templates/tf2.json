@@ -43,6 +43,120 @@
       "label": "RCON password",
       "generate": "password",
       "default": ""
+    },
+    {
+      "name": "FRIENDLY_FIRE",
+      "label": "Friendly fire",
+      "default": "",
+      "options": [
+        {
+          "value": "",
+          "label": "Game default"
+        },
+        {
+          "value": "1",
+          "label": "On"
+        },
+        {
+          "value": "0",
+          "label": "Off"
+        }
+      ],
+      "description": "Teammates can hurt each other.",
+      "group": "Rules"
+    },
+    {
+      "name": "TIME_LIMIT",
+      "label": "Time limit per map (minutes)",
+      "type": "number",
+      "default": "",
+      "description": "0 means no limit. Blank keeps the game default.",
+      "group": "Rules"
+    },
+    {
+      "name": "WIN_LIMIT",
+      "label": "Rounds to win the map",
+      "type": "number",
+      "default": "",
+      "description": "0 means no limit.",
+      "group": "Rules"
+    },
+    {
+      "name": "MAX_ROUNDS",
+      "label": "Rounds per map",
+      "type": "number",
+      "default": "",
+      "description": "0 means no limit.",
+      "group": "Rules"
+    },
+    {
+      "name": "ALLTALK",
+      "label": "Everyone can hear everyone",
+      "default": "",
+      "options": [
+        {
+          "value": "",
+          "label": "Game default"
+        },
+        {
+          "value": "1",
+          "label": "On"
+        },
+        {
+          "value": "0",
+          "label": "Off"
+        }
+      ],
+      "description": "Dead players and the other team hear voice chat too.",
+      "group": "Rules"
+    },
+    {
+      "name": "AUTO_TEAM_BALANCE",
+      "label": "Auto team balance",
+      "default": "",
+      "options": [
+        {
+          "value": "",
+          "label": "Game default"
+        },
+        {
+          "value": "1",
+          "label": "On"
+        },
+        {
+          "value": "0",
+          "label": "Off"
+        }
+      ],
+      "group": "Rules"
+    },
+    {
+      "name": "CRITS",
+      "label": "Random critical hits",
+      "default": "",
+      "options": [
+        {
+          "value": "",
+          "label": "Game default"
+        },
+        {
+          "value": "1",
+          "label": "On"
+        },
+        {
+          "value": "0",
+          "label": "Off"
+        }
+      ],
+      "group": "Rules"
+    },
+    {
+      "name": "RESPAWN_WAVE",
+      "label": "Respawn wave time (seconds)",
+      "type": "number",
+      "default": "",
+      "description": "Blank keeps the game default.",
+      "group": "Rules"
     }
   ],
   "ports": [
@@ -80,9 +194,14 @@
       "path": "tf/cfg/server.cfg",
       "mode": "create",
       "content": "hostname \"{{SERVER_NAME}}\"\nrcon_password \"{{RCON_PASSWORD}}\"\nsv_lan 0\nmp_timelimit 30\n"
+    },
+    {
+      "path": "tf/cfg/gamepanel-rules.cfg",
+      "mode": "overwrite",
+      "content": "// Written by GamePanel from the game settings. A blank value leaves the game default alone.\nmp_friendlyfire {{FRIENDLY_FIRE}}\nmp_timelimit {{TIME_LIMIT}}\nmp_winlimit {{WIN_LIMIT}}\nmp_maxrounds {{MAX_ROUNDS}}\nsv_alltalk {{ALLTALK}}\nmp_autoteambalance {{AUTO_TEAM_BALANCE}}\ntf_weapon_criticals {{CRITS}}\nmp_respawnwavetime {{RESPAWN_WAVE}}\n"
     }
   ],
-  "startCommand": "./srcds_run_64 -game tf -console -norestart -port {{PORT}} +tv_port {{PORT_TV}} +maxplayers {{MAX_PLAYERS}} +map {{MAP}} +sv_setsteamaccount \"{{GSLT}}\"",
+  "startCommand": "./srcds_run_64 -game tf -console -norestart -port {{PORT}} +tv_port {{PORT_TV}} +maxplayers {{MAX_PLAYERS}} +map {{MAP}} +sv_setsteamaccount \"{{GSLT}}\" +exec gamepanel-rules.cfg",
   "stopCommand": "quit",
   "stopTimeout": 45,
   "query": {
@@ -115,7 +234,7 @@
         "label": "Install the Visual C++ runtime"
       }
     ],
-    "startCommand": "srcds.exe -console -nocrashdialog -condebug -game tf -port {{PORT}} +tv_port {{PORT_TV}} +maxplayers {{MAX_PLAYERS}} +map {{MAP}} +sv_setsteamaccount \"{{GSLT}}\"",
+    "startCommand": "srcds.exe -console -nocrashdialog -condebug -game tf -port {{PORT}} +tv_port {{PORT_TV}} +maxplayers {{MAX_PLAYERS}} +map {{MAP}} +sv_setsteamaccount \"{{GSLT}}\" +exec gamepanel-rules.cfg",
     "tailFiles": [
       "tf/console.log"
     ],

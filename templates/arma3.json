@@ -48,6 +48,87 @@
       "label": "Extra -mod folders",
       "default": "",
       "description": "Optional, e.g. @CBA_A3;@ace for mods you copied in yourself. Workshop mods are added automatically."
+    },
+    {
+      "name": "BATTLEYE",
+      "label": "BattlEye anti-cheat",
+      "default": "1",
+      "options": [
+        {
+          "value": "1",
+          "label": "Yes"
+        },
+        {
+          "value": "0",
+          "label": "No"
+        }
+      ],
+      "group": "Rules"
+    },
+    {
+      "name": "VERIFY_SIGNATURES",
+      "label": "Mod signature check",
+      "default": "2",
+      "options": [
+        {
+          "value": "2",
+          "label": "On"
+        },
+        {
+          "value": "0",
+          "label": "Off"
+        }
+      ],
+      "description": "Kicks players whose mods are not signed by a key in the keys folder.",
+      "group": "Rules"
+    },
+    {
+      "name": "PERSISTENT",
+      "label": "Keep the mission running when empty",
+      "default": "1",
+      "options": [
+        {
+          "value": "1",
+          "label": "Yes"
+        },
+        {
+          "value": "0",
+          "label": "No"
+        }
+      ],
+      "group": "Rules"
+    },
+    {
+      "name": "DISABLE_VON",
+      "label": "Turn voice chat off",
+      "default": "0",
+      "options": [
+        {
+          "value": "1",
+          "label": "Yes"
+        },
+        {
+          "value": "0",
+          "label": "No"
+        }
+      ],
+      "group": "Rules"
+    },
+    {
+      "name": "KICK_DUPLICATE",
+      "label": "Kick duplicate player IDs",
+      "default": "1",
+      "options": [
+        {
+          "value": "1",
+          "label": "Yes"
+        },
+        {
+          "value": "0",
+          "label": "No"
+        }
+      ],
+      "group": "Rules"
     }
   ],
   "ports": [
@@ -168,5 +249,18 @@
   },
   "ci": {
     "skip": "needs a Steam account to download"
-  }
+  },
+  "patchProperties": [
+    {
+      "path": "server.cfg",
+      "format": "properties",
+      "set": {
+        "BattleEye": "{{BATTLEYE}};",
+        "verifySignatures": "{{VERIFY_SIGNATURES}};",
+        "persistent": "{{PERSISTENT}};",
+        "disableVoN": "{{DISABLE_VON}};",
+        "kickDuplicate": "{{KICK_DUPLICATE}};"
+      }
+    }
+  ]
 }

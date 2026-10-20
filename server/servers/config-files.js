@@ -53,6 +53,52 @@ function patchKeyValue(existing, values, { section } = {}) {
   return out.join('\n');
 }
 
+/** Split "A=1,B=(x,y),C=\"a,b\"" at the commas that are not inside quotes or brackets. */
+function splitTuple(body) {
+  const parts = [];
+  let depth = 0;
+  let quoted = false;
+  let start = 0;
+  for (let i = 0; i < body.length; i++) {
+    const ch = body[i];
+    if (ch === '"') quoted = !quoted;
+    else if (!quoted && ch === '(') depth++;
+    else if (!quoted && ch === ')') depth--;
+    else if (!quoted && depth === 0 && ch === ',') {
+      parts.push(body.slice(start, i));
+      start = i + 1;
+    }
+  }
+  if (body.slice(start).trim()) parts.push(body.slice(start));
+  return parts;
+}
+
+/**
+ * Files that keep all their settings on one line, like Palworld's
+ * OptionSettings=(Difficulty=None,ExpRate=1.000000,...). Changes or adds the
+ * given entries and leaves the rest of the tuple alone.
+ */
+function patchTuple(existing, values, { section, key }) {
+  const entries = new Map(Object.entries(values));
+  const line = new RegExp(`^(\\s*${key}\\s*=\\s*\\()(.*)(\\)\\s*)$`);
+  const lines = existing ? existing.split(/\r?\n/) : [];
+  const at = lines.findIndex((l) => line.test(l));
+  if (at !== -1) {
+    const m = lines[at].match(line);
+    const kept = splitTuple(m[2]).map((part) => {
+      const name = part.split('=')[0].trim();
+      if (!entries.has(name)) return part;
+      const value = entries.get(name);
+      entries.delete(name);
+      return `${name}=${value}`;
+    });
+    lines[at] = `${m[1]}${[...kept, ...[...entries].map(([k, v]) => `${k}=${v}`)].join(',')}${m[3]}`;
+    return lines.join('\n');
+  }
+  const created = `${key}=(${[...entries].map(([k, v]) => `${k}=${v}`).join(',')})`;
+  return [...lines.filter((l, i) => i < lines.length - 1 || l !== ''), ...(section && !lines.some((l) => l.trim() === `[${section}]`) ? [`[${section}]`] : []), created, ''].join('\n');
+}
+
 module.exports = {
   /** Write template config files (only creating missing ones unless told otherwise). */
   writeConfigFiles(server, template, { overwrite = false } = {}) {
@@ -76,7 +122,7 @@ module.exports = {
 
   /**
    * Re-apply the panel-owned keys (ports, passwords, slots) before each boot.
-   * Formats: properties, ini (with optional "section"), json (dotted keys).
+   * Formats: properties, ini (with optional "section"), json (dotted keys), tuple (one Key=(A=1,B=2) line named by "key").
  * A missing file is skipped unless `createIfMissing` or a `seedFrom` file exists.
    */
   applyPropertyPatches(server, template) {
@@ -118,6 +164,8 @@ module.exports = {
             node[parts[0]] = typed(raw);
           }
           next = JSON.stringify(obj, null, 2);
+        } else if (patch.format === 'tuple') {
+          next = patchTuple(existing, values, { section: patch.section, key: patch.key });
         } else {
           next = patchKeyValue(existing, values, { section: patch.section });
         }
@@ -131,3 +179,4 @@ module.exports = {
 };
 
 module.exports.patchKeyValue = patchKeyValue;
+module.exports.patchTuple = patchTuple;

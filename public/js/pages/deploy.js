@@ -219,7 +219,33 @@ function memoryField(defaultMb) {
     </label>`;
 }
 
-function variableField(v) {
+/** A dropdown of the template's presets (2x, 3x, softcore…). Picking one fills in the fields below it. */
+export function presetField(template, current = {}) {
+  if (!template.presets?.length) return '';
+  const matches = (p) => Object.entries(p.vars).every(([k, v]) => String(current[k] ?? template.variables?.find((x) => x.name === k)?.default ?? '') === String(v));
+  const active = template.presets.find(matches);
+  return `<label class="preset-picker"><span>Preset</span>
+    <select data-preset>
+      <option value="">Custom</option>
+      ${template.presets
+        .map((p) => `<option value="${esc(p.id)}" data-vars="${esc(JSON.stringify(p.vars))}" ${active?.id === p.id ? 'selected' : ''}>${esc(p.label)} · ${esc(p.description)}</option>`)
+        .join('')}
+    </select>
+    <div class="hint">Fills in the settings below. You can still change any of them before saving.</div></label>`;
+}
+
+// Choosing a preset sets the fields it names; the person can still change any of them before saving.
+document.addEventListener('change', (e) => {
+  const select = e.target.closest?.('[data-preset]');
+  if (!select) return;
+  const vars = JSON.parse(select.selectedOptions[0]?.dataset.vars || '{}');
+  for (const [name, value] of Object.entries(vars)) {
+    const field = document.querySelector(`[data-var="${CSS.escape(name)}"]`);
+    if (field) field.value = String(value);
+  }
+});
+
+export function variableField(v) {
   const id = `var-${v.name}`;
 
   // Choices fetched live from the panel (game versions, modpacks, channels…).
@@ -287,7 +313,18 @@ export function openCreateServerModal(templateId) {
   if (!template) return toast('No templates available', 'error');
   if (template.wizard?.length) return openWizardModal(template);
 
-  const variableFields = (template.variables || []).map(variableField).join('');
+  const variableFields = (template.variables || []).filter((v) => !v.group).map(variableField).join('');
+  // Everyday game rules (difficulty, PvP, PvE…) sit in a collapsed section so the form stays short.
+  const ruleGroups = [...new Set((template.variables || []).filter((v) => v.group).map((v) => v.group))]
+    .map(
+      (group) =>
+        `<h5 class="section-title mt-16">${esc(group)}</h5><div class="form-grid">${(template.variables || [])
+          .filter((v) => v.group === group)
+          .map(variableField)
+          .join('')}</div>`
+    )
+    .join('');
+  const ruleFields = ruleGroups ? `<details class="mt-16"><summary>More game settings</summary><div class="form-grid mt-16">${presetField(template)}</div>${ruleGroups}</details>` : '';
 
   const portFields = (template.ports || [])
     .map(
@@ -309,6 +346,7 @@ export function openCreateServerModal(templateId) {
       </div>
       ${portFields ? `<h4 class="section-title mt-16">Ports</h4><div class="form-grid">${portFields}</div>` : ''}
       ${variableFields ? `<h4 class="section-title mt-16">Game settings</h4><div class="form-grid">${variableFields}</div>` : ''}
+      ${ruleFields}
       <div class="checkbox-row mt-16"><input type="checkbox" id="new-autostart" checked /><label for="new-autostart">Start with the panel</label></div>
       <div class="checkbox-row"><input type="checkbox" id="new-autorestart" checked /><label for="new-autorestart">Restart after crashes</label></div>
       <div class="hint">Installation starts immediately and streams to the server console. Large games can take a while.</div>`,

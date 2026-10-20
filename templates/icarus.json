@@ -28,6 +28,38 @@
       "label": "Admin password",
       "default": "",
       "generate": "password"
+    },
+    {
+      "name": "ALLOW_NON_ADMIN_PROSPECTS",
+      "label": "Anyone can start a prospect",
+      "default": "True",
+      "options": [
+        {
+          "value": "True",
+          "label": "Yes"
+        },
+        {
+          "value": "False",
+          "label": "No"
+        }
+      ],
+      "group": "Rules"
+    },
+    {
+      "name": "SHUTDOWN_NOT_JOINED",
+      "label": "Stop if nobody joins within (seconds)",
+      "type": "number",
+      "default": 300,
+      "description": "-1 never stops.",
+      "group": "Rules"
+    },
+    {
+      "name": "SHUTDOWN_EMPTY",
+      "label": "Stop after being empty for (seconds)",
+      "type": "number",
+      "default": 300,
+      "description": "-1 never stops.",
+      "group": "Rules"
     }
   ],
   "ports": [
@@ -77,7 +109,10 @@
         "SessionName": "{{SERVER_NAME}}",
         "JoinPassword": "{{SERVER_PASSWORD}}",
         "MaxPlayers": "{{MAX_PLAYERS}}",
-        "AdminPassword": "{{ADMIN_PASSWORD}}"
+        "AdminPassword": "{{ADMIN_PASSWORD}}",
+        "AllowNonAdminsToLaunchProspects": "{{ALLOW_NON_ADMIN_PROSPECTS}}",
+        "ShutdownIfNotJoinedFor": "{{SHUTDOWN_NOT_JOINED}}",
+        "ShutdownIfEmptyFor": "{{SHUTDOWN_EMPTY}}"
       }
     }
   ],

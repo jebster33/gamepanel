@@ -35,7 +35,7 @@ const path = require('path');
 const { EventEmitter } = require('events');
 
 const { config } = require('../core/config');
-const { logger, uid, slugify, fail, sleep } = require('../core/util');
+const { logger, uid, slugify, fail, sleep, interpolate } = require('../core/util');
 const { HOST_PLATFORM, isWindows } = require('../core/platform');
 const { variant } = require('../games/templates');
 const { playerCommands, playerDetails } = require('../games/players');
@@ -248,6 +248,8 @@ class ServerManager extends EventEmitter {
       MAX_PLAYERS: server.maxPlayers || 20,
       ...Object.fromEntries(Object.entries(server.vars || {}).map(([k, v]) => [k, secrets.open(v)])),
     };
+    // Settings a template gained after this server was created still get their default.
+    for (const v of this.template(server)?.variables || []) if (!(v.name in out) && v.default !== undefined) out[v.name] = v.default;
     if (!out.JAVA_VERSION) out.JAVA_VERSION = '21';
     // ARK clusters add -clusterid and -ClusterDirOverride (set by the panel, never by a user).
     if (this.store.state.arkClusters?.length) out.CLUSTER_ARGS = require('../features/ark-clusters').argsFor(this, this.store, server);
@@ -599,6 +601,27 @@ class ServerManager extends EventEmitter {
     rt.status = status;
     this.bus.broadcast('server:status', { serverId: server.id, status, server: this.publicServer(server) });
     this.broadcastServers();
+    if (status === STATUS.RUNNING) this.runReadyCommands(server);
+  }
+
+  /** Console commands a template wants sent once the server is up, e.g. Rust's gather rates (a plugin command, not a launch option). */
+  runReadyCommands(server) {
+    const commands = this.template(server)?.readyCommands;
+    if (!commands?.length) return;
+    const timer = setTimeout(async () => {
+      if (this.rt(server.id).status !== STATUS.RUNNING) return;
+      const vars = this.vars(server);
+      for (const raw of commands) {
+        const command = interpolate(raw, vars).trim();
+        if (!command) continue;
+        try {
+          await this.sendCommand(server.id, command);
+        } catch (err) {
+          this.pushConsole(server, `Could not send "${command}": ${err.message}`, 'system');
+        }
+      }
+    }, 8000);
+    timer.unref?.();
   }
 
   /** Long-running background job (update, Workshop download…) shown on the server. */

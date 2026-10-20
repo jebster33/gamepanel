@@ -76,6 +76,17 @@ that differ. These keys can be overridden per platform:
 On Windows the start command runs through `cmd.exe`, so no `./`, `export` or `$(…)`.
 `npm test` flags those.
 
+## Game settings (rules)
+
+Give a variable a `"group"` (for example `"Rules"`, `"Rates"`, `"World"`) and the panel treats it as an everyday
+game setting: it sits in a collapsed *More game settings* section when deploying, and in a *Game settings* card
+on the server's Settings tab, with its label, description and dropdown. `options` makes a dropdown and
+`"type": "number"` a number box. A server made before a variable existed uses its `default`.
+
+Wire the variable in wherever the game reads it: a start-command argument, `patchProperties` (re-applied on every
+start, so changes take effect on restart) or a `configFiles` entry with `"mode": "overwrite"`. For Source games,
+`presets` (`[{ "id", "label", "description", "vars": { NAME: value } }]`) add a Preset dropdown that fills in several settings at once, and `readyCommands` are console commands sent a few seconds after the server is up (Rust's gather rate). For Source games, write the cvars to a cfg and `+exec` it; a blank value leaves the game default alone (see `tf2.json`).
+
 ## Install steps
 
 | Step | Linux | Windows | What it does |
@@ -141,7 +152,8 @@ Games that only hand Workshop files to an account that owns them set `mods.works
 ## Other keys
 
 - `configFiles` writes files on install (`mode: "create"` keeps user edits, `"overwrite"` replaces).
-- `patchProperties` re-applies listed keys before every start (`properties`, `ini`, `json`). A missing file is
+- `patchProperties` re-applies listed keys before every start (`properties`, `ini`, `json`, and `tuple` for a single
+  `Key=(A=1,B=2)` line named by `key`, like Palworld's `OptionSettings`). A missing file is
   skipped unless `createIfMissing` is set or `seedFrom` names a default to start from (Eco's `Network.eco.template`).
 - `wizard`: `[{ "title", "description", "fields": ["VAR", …] }]` turns the create form into steps (see `fivem.json`).
 - `sidecars` start companion containers, such as a private MariaDB for FiveM.

@@ -29,6 +29,199 @@
       "label": "Java heap (MB)",
       "type": "number",
       "default": 4096
+    },
+    {
+      "name": "PVP",
+      "label": "PvP",
+      "default": "true",
+      "options": [
+        {
+          "value": "true",
+          "label": "Yes"
+        },
+        {
+          "value": "false",
+          "label": "No"
+        }
+      ],
+      "group": "Rules"
+    },
+    {
+      "name": "PAUSE_EMPTY",
+      "label": "Pause when nobody is online",
+      "default": "true",
+      "options": [
+        {
+          "value": "true",
+          "label": "Yes"
+        },
+        {
+          "value": "false",
+          "label": "No"
+        }
+      ],
+      "group": "Rules"
+    },
+    {
+      "name": "SAFETY_SYSTEM",
+      "label": "PvP safety toggle",
+      "default": "true",
+      "options": [
+        {
+          "value": "true",
+          "label": "Yes"
+        },
+        {
+          "value": "false",
+          "label": "No"
+        }
+      ],
+      "description": "Lets players switch their PvP flag on and off.",
+      "group": "Rules"
+    },
+    {
+      "name": "SLEEP_ALLOWED",
+      "label": "Players can sleep",
+      "default": "true",
+      "options": [
+        {
+          "value": "true",
+          "label": "Yes"
+        },
+        {
+          "value": "false",
+          "label": "No"
+        }
+      ],
+      "group": "Rules"
+    },
+    {
+      "name": "SLEEP_NEEDED",
+      "label": "Players must sleep",
+      "default": "false",
+      "options": [
+        {
+          "value": "true",
+          "label": "Yes"
+        },
+        {
+          "value": "false",
+          "label": "No"
+        }
+      ],
+      "group": "Rules"
+    },
+    {
+      "name": "NO_FIRE",
+      "label": "No fire",
+      "default": "false",
+      "options": [
+        {
+          "value": "true",
+          "label": "Yes"
+        },
+        {
+          "value": "false",
+          "label": "No"
+        }
+      ],
+      "description": "Turns off all fire, including from molotovs.",
+      "group": "Rules"
+    },
+    {
+      "name": "ANNOUNCE_DEATH",
+      "label": "Announce deaths in chat",
+      "default": "false",
+      "options": [
+        {
+          "value": "true",
+          "label": "Yes"
+        },
+        {
+          "value": "false",
+          "label": "No"
+        }
+      ],
+      "group": "Rules"
+    },
+    {
+      "name": "GLOBAL_CHAT",
+      "label": "Global chat",
+      "default": "true",
+      "options": [
+        {
+          "value": "true",
+          "label": "Yes"
+        },
+        {
+          "value": "false",
+          "label": "No"
+        }
+      ],
+      "group": "Rules"
+    },
+    {
+      "name": "SAFEHOUSE_ENABLED",
+      "label": "Players can claim safehouses",
+      "default": "true",
+      "options": [
+        {
+          "value": "true",
+          "label": "Yes"
+        },
+        {
+          "value": "false",
+          "label": "No"
+        }
+      ],
+      "group": "Rules"
+    },
+    {
+      "name": "SAVE_WORLD_MINUTES",
+      "label": "Save every (minutes)",
+      "type": "number",
+      "default": 0,
+      "description": "0 only saves when the server stops or the chunks unload.",
+      "group": "Rules"
+    },
+    {
+      "name": "PUBLIC_DESCRIPTION",
+      "label": "Description",
+      "default": "",
+      "description": "Shown in the server browser.",
+      "group": "Listing"
+    },
+    {
+      "name": "LIST_PUBLIC",
+      "label": "Show in the public server list",
+      "default": "false",
+      "options": [
+        {
+          "value": "true",
+          "label": "Yes"
+        },
+        {
+          "value": "false",
+          "label": "No"
+        }
+      ],
+      "group": "Listing"
+    },
+    {
+      "name": "OPEN",
+      "label": "Open to anyone (no whitelist)",
+      "default": "true",
+      "options": [
+        {
+          "value": "true",
+          "label": "Yes"
+        },
+        {
+          "value": "false",
+          "label": "No"
+        }
+      ],
+      "group": "Listing"
     }
   ],
   "ports": [
@@ -71,7 +264,20 @@
       "set": {
         "DefaultPort": "{{PORT}}",
         "UDPPort": "{{PORT_DIRECT}}",
-        "MaxPlayers": "{{MAX_PLAYERS}}"
+        "MaxPlayers": "{{MAX_PLAYERS}}",
+        "PVP": "{{PVP}}",
+        "PauseEmpty": "{{PAUSE_EMPTY}}",
+        "SafetySystem": "{{SAFETY_SYSTEM}}",
+        "SleepAllowed": "{{SLEEP_ALLOWED}}",
+        "SleepNeeded": "{{SLEEP_NEEDED}}",
+        "NoFire": "{{NO_FIRE}}",
+        "AnnounceDeath": "{{ANNOUNCE_DEATH}}",
+        "GlobalChat": "{{GLOBAL_CHAT}}",
+        "PlayerSafehouse": "{{SAFEHOUSE_ENABLED}}",
+        "SaveWorldEveryMinutes": "{{SAVE_WORLD_MINUTES}}",
+        "PublicDescription": "{{PUBLIC_DESCRIPTION}}",
+        "Public": "{{LIST_PUBLIC}}",
+        "Open": "{{OPEN}}"
       }
     }
   ],

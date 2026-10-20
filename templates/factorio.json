@@ -28,6 +28,80 @@
       "name": "SERVER_PASSWORD",
       "label": "Join password",
       "default": ""
+    },
+    {
+      "name": "AUTOSAVE_INTERVAL",
+      "label": "Autosave every (minutes)",
+      "type": "number",
+      "default": 10,
+      "group": "Saving"
+    },
+    {
+      "name": "AUTOSAVE_SLOTS",
+      "label": "Autosaves to keep",
+      "type": "number",
+      "default": 5,
+      "group": "Saving"
+    },
+    {
+      "name": "AFK_KICK",
+      "label": "Kick idle players after (minutes)",
+      "type": "number",
+      "default": 0,
+      "description": "0 never kicks.",
+      "group": "Rules"
+    },
+    {
+      "name": "AUTO_PAUSE",
+      "label": "Pause when nobody is online",
+      "default": "true",
+      "options": [
+        {
+          "value": "true",
+          "label": "Yes"
+        },
+        {
+          "value": "false",
+          "label": "No"
+        }
+      ],
+      "group": "Rules"
+    },
+    {
+      "name": "ALLOW_COMMANDS",
+      "label": "Console commands",
+      "default": "admins-only",
+      "options": [
+        {
+          "value": "true",
+          "label": "Everyone"
+        },
+        {
+          "value": "admins-only",
+          "label": "Admins only"
+        },
+        {
+          "value": "false",
+          "label": "Nobody"
+        }
+      ],
+      "group": "Rules"
+    },
+    {
+      "name": "ONLY_ADMINS_PAUSE",
+      "label": "Only admins can pause",
+      "default": "true",
+      "options": [
+        {
+          "value": "true",
+          "label": "Yes"
+        },
+        {
+          "value": "false",
+          "label": "No"
+        }
+      ],
+      "group": "Rules"
     }
   ],
   "ports": [
@@ -80,5 +154,19 @@
       "factorio"
     ],
     "dir": "mods"
-  }
+  },
+  "patchProperties": [
+    {
+      "path": "data/server-settings.json",
+      "format": "json",
+      "set": {
+        "autosave_interval": "{{AUTOSAVE_INTERVAL}}",
+        "autosave_slots": "{{AUTOSAVE_SLOTS}}",
+        "afk_autokick_interval": "{{AFK_KICK}}",
+        "auto_pause": "{{AUTO_PAUSE}}",
+        "allow_commands": "{{ALLOW_COMMANDS}}",
+        "only_admins_can_pause_the_game": "{{ONLY_ADMINS_PAUSE}}"
+      }
+    }
+  ]
 }

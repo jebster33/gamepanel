@@ -38,6 +38,63 @@
         "endless",
         "wilderness"
       ]
+    },
+    {
+      "name": "PVP",
+      "label": "PvP",
+      "default": "false",
+      "options": [
+        {
+          "value": "true",
+          "label": "Yes"
+        },
+        {
+          "value": "false",
+          "label": "No"
+        }
+      ],
+      "group": "Rules"
+    },
+    {
+      "name": "PAUSE_WHEN_EMPTY",
+      "label": "Pause when nobody is online",
+      "default": "true",
+      "options": [
+        {
+          "value": "true",
+          "label": "Yes"
+        },
+        {
+          "value": "false",
+          "label": "No"
+        }
+      ],
+      "group": "Rules"
+    },
+    {
+      "name": "INTENTION",
+      "label": "Server style",
+      "default": "cooperative",
+      "options": [
+        {
+          "value": "social",
+          "label": "social"
+        },
+        {
+          "value": "cooperative",
+          "label": "cooperative"
+        },
+        {
+          "value": "competitive",
+          "label": "competitive"
+        },
+        {
+          "value": "madness",
+          "label": "madness"
+        }
+      ],
+      "description": "Shown in the server browser.",
+      "group": "Listing"
     }
   ],
   "ports": [
@@ -129,5 +186,24 @@
         "dst/Cluster_1/Master/modoverrides.lua"
       ]
     }
-  }
+  },
+  "patchProperties": [
+    {
+      "path": "dst/Cluster_1/cluster.ini",
+      "format": "ini",
+      "section": "GAMEPLAY",
+      "set": {
+        "pvp": "{{PVP}}",
+        "pause_when_empty": "{{PAUSE_WHEN_EMPTY}}"
+      }
+    },
+    {
+      "path": "dst/Cluster_1/cluster.ini",
+      "format": "ini",
+      "section": "NETWORK",
+      "set": {
+        "cluster_intention": "{{INTENTION}}"
+      }
+    }
+  ]
 }

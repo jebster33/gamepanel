@@ -43,6 +43,20 @@
           "label": "PvP"
         }
       ]
+    },
+    {
+      "name": "SAVE_INTERVAL",
+      "label": "Save every (seconds)",
+      "type": "number",
+      "default": 600,
+      "group": "Saving"
+    },
+    {
+      "name": "BACKUP_INTERVAL",
+      "label": "Backup every (seconds)",
+      "type": "number",
+      "default": 900,
+      "group": "Saving"
     }
   ],
   "ports": [
@@ -77,7 +91,7 @@
       "mode": "+x"
     }
   ],
-  "startCommand": "./WSServer.sh Level01_Main -server -log -UTF8Output -MULTIHOME=0.0.0.0 -Port={{PORT}} -QueryPort={{PORT_QUERY}} -EchoPort={{PORT_ECHO}} -forcepassthrough -SteamServerName=\"{{SERVER_NAME}}\" -MaxPlayers={{MAX_PLAYERS}} -PSW=\"{{SERVER_PASSWORD}}\" -adminpsw=\"{{ADMIN_PASSWORD}}\" {{MODE}}",
+  "startCommand": "./WSServer.sh Level01_Main -server -log -UTF8Output -MULTIHOME=0.0.0.0 -Port={{PORT}} -QueryPort={{PORT_QUERY}} -EchoPort={{PORT_ECHO}} -forcepassthrough -SteamServerName=\"{{SERVER_NAME}}\" -MaxPlayers={{MAX_PLAYERS}} -PSW=\"{{SERVER_PASSWORD}}\" -adminpsw=\"{{ADMIN_PASSWORD}}\" {{MODE}} -saving={{SAVE_INTERVAL}} -backup={{BACKUP_INTERVAL}}",
   "windows": {
     "install": [
       {
@@ -94,7 +108,7 @@
         "label": "Install the DirectX runtime"
       }
     ],
-    "startCommand": "WS\\Binaries\\Win64\\WSServer-Win64-Shipping.exe Level01_Main -server -log -UTF8Output -MULTIHOME=0.0.0.0 -Port={{PORT}} -QueryPort={{PORT_QUERY}} -EchoPort={{PORT_ECHO}} -forcepassthrough -SteamServerName=\"{{SERVER_NAME}}\" -MaxPlayers={{MAX_PLAYERS}} -PSW=\"{{SERVER_PASSWORD}}\" -adminpsw=\"{{ADMIN_PASSWORD}}\" {{MODE}}",
+    "startCommand": "WS\\Binaries\\Win64\\WSServer-Win64-Shipping.exe Level01_Main -server -log -UTF8Output -MULTIHOME=0.0.0.0 -Port={{PORT}} -QueryPort={{PORT_QUERY}} -EchoPort={{PORT_ECHO}} -forcepassthrough -SteamServerName=\"{{SERVER_NAME}}\" -MaxPlayers={{MAX_PLAYERS}} -PSW=\"{{SERVER_PASSWORD}}\" -adminpsw=\"{{ADMIN_PASSWORD}}\" {{MODE}} -saving={{SAVE_INTERVAL}} -backup={{BACKUP_INTERVAL}}",
     "tailFiles": [
       "WS/Saved/Logs/WS.log"
     ],
