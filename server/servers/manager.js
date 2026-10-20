@@ -255,6 +255,8 @@ class ServerManager extends EventEmitter {
     if (!out.JAVA_VERSION) out.JAVA_VERSION = '21';
     // ARK clusters add -clusterid and -ClusterDirOverride (set by the panel, never by a user).
     if (this.store.state.arkClusters?.length) out.CLUSTER_ARGS = require('../features/ark-clusters').argsFor(this, this.store, server);
+    // ARK: Survival Ascended loads mods from -mods=, in the order of the MODS variable.
+    if (server.templateId === 'ark-survival-ascended') out.ARK_MODS_ARGS = require('../features/ark-mods').asaArgs(out.MODS);
     for (const [name, value] of Object.entries(ports)) out[`PORT_${name.toUpperCase()}`] = value;
     // Arma 3 and DayZ load mods through -mod=: the Workshop ones installed here, then any listed by hand.
     if (this.template(server)?.mods?.workshop?.strategy === 'bohemia') {
