@@ -405,6 +405,24 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
     return { discordFeed: server.discordFeed ? { ...server.discordFeed, webhook: undefined, channelId: undefined, connected: true } : null };
   });
 
+  /** Discord posts before and after a wipe (administrators: it holds a webhook). */
+  const wipeAnnounce = require('../../features/wipe-announce');
+  const announceServer = (user, id) => {
+    requireAdmin(user);
+    const server = manager.require(id);
+    if (!manager.template(server)?.wipe) fail(400, 'This game has no wipes');
+    return server;
+  };
+  router.get('/api/servers/:id/wipe-announce', ({ user, params }) => ({ wipeAnnounce: wipeAnnounce.view(announceServer(user, params.id)) }));
+  router.put('/api/servers/:id/wipe-announce', ({ user, params, body }) => {
+    const server = announceServer(user, params.id);
+    const result = wipeAnnounce.update(server, body || {});
+    store.save();
+    store.addEvent('server.settings', `${user.username} changed wipe announcements on ${server.name}`, { serverId: server.id });
+    return { wipeAnnounce: result };
+  });
+  router.post('/api/servers/:id/wipe-announce/test', async ({ user, params }) => wipeAnnounce.test(manager, store, announceServer(user, params.id)));
+
   /** The whole server as one archive another panel can import. */
   router.get('/api/servers/:id/export', async ({ user, params, res, url, req }) => {
     requireAdmin(user);

@@ -3,6 +3,7 @@ import { $, esc, fmtTime, icon, toast } from '../../core/util.js';
 import { confirmModal, openModal } from '../../ui/modal.js';
 import { renderEventsCard } from './events.js';
 import { skeleton } from '../../ui/skeleton.js';
+import { state } from '../../core/state.js';
 import { renderMapCard } from './rust-map.js';
 
 /* ------------------------------------------------------------ schedules */
@@ -33,10 +34,12 @@ const PRESETS = [
 ];
 
 const isArk = (server) => String(server.templateId || '').startsWith('ark-survival');
-const actionsFor = (server) => [...ACTIONS, ...(server.canWipe ? [['wipe', 'Wipe the map']] : []), ...(isArk(server) ? [['dinowipe', 'Wipe wild dinos']] : [])];
+const presetsOf = (server) => state.templates.find((t) => t.id === server.templateId)?.presets || [];
+const actionsFor = (server) => [...ACTIONS, ...(presetsOf(server).length && state.user?.role === 'admin' ? [['preset', 'Switch settings preset (like 2x)']] : []), ...(server.canWipe ? [['wipe', 'Wipe the map']] : []), ...(isArk(server) ? [['dinowipe', 'Wipe wild dinos']] : [])];
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-const actionLabel = (id) => (id === 'wipe' ? 'Wipe the map' : id === 'dinowipe' ? 'Wipe wild dinos' : ACTIONS.find(([a]) => a === id)?.[1] || id);
+const actionLabel = (id) => (id === 'preset' ? 'Switch preset' : actionLabelBase(id));
+const actionLabelBase = (id) => (id === 'wipe' ? 'Wipe the map' : id === 'dinowipe' ? 'Wipe wild dinos' : ACTIONS.find(([a]) => a === id)?.[1] || id);
 const whenLabel = (cron, firstOfMonth) => {
   const [min, hour, , , dow] = cron.split(/\s+/);
   if (firstOfMonth && /^\d+$/.test(min) && /^\d+$/.test(hour) && /^[0-6]$/.test(dow)) return `First ${WEEKDAYS[dow]} of the month at ${hour.padStart(2, '0')}:${min.padStart(2, '0')}`;
@@ -59,6 +62,7 @@ export async function renderSchedulesTab(host, server) {
       <div class="card-head">
         <h4>Scheduled tasks</h4>
         <div class="spacer"></div>
+        ${presetsOf(server).length && state.user?.role === 'admin' ? `<button class="btn btn-sm" id="sch-event">${icon('clock', 12)} Preset event…</button>` : ''}
         <button class="btn btn-sm btn-primary" id="sch-add">${icon('plus', 12)} Add task</button>
       </div>
       ${
@@ -85,6 +89,7 @@ export async function renderSchedulesTab(host, server) {
         ${server.lastWipe ? `Last wiped ${fmtTime(server.lastWipe.at)}${server.lastWipe.blueprints ? ' (full wipe)' : ' (map wipe)'}.` : ''}
         A map wipe keeps blueprints; a full wipe removes them too. "Every force-wipe day" adds a full wipe on the first Thursday of the month with a chat countdown and a new seed.</p>
     </div>
+    <div id="announce-card"></div>
     <div id="map-card"></div>`
         : ''
     }
@@ -138,6 +143,7 @@ export async function renderSchedulesTab(host, server) {
   renderEventsCard($('#events-card'), server);
 
   if (server.canWipe && server.templateId === 'rust') renderMapCard($('#map-card'), server);
+  if (server.canWipe && state.user?.role === 'admin') renderAnnounceCard($('#announce-card'), server);
   const refresh = () => renderSchedulesTab(host, server);
   $('#wipe-now')?.addEventListener('click', () => openWipeModal(server, refresh));
   $('#wipe-force')?.addEventListener('click', async () => {
@@ -153,6 +159,7 @@ export async function renderSchedulesTab(host, server) {
     }
   });
   $('#sch-add').addEventListener('click', () => openScheduleModal(server, null, refresh));
+  $('#sch-event')?.addEventListener('click', () => openEventModal(server, refresh));
 
   host.querySelectorAll('[data-quick]').forEach((el) =>
     el.addEventListener('click', async () => {
@@ -209,7 +216,7 @@ function scheduleRow(s) {
       <label class="switch" title="${s.enabled ? 'On' : 'Off'}"><input type="checkbox" data-enable ${s.enabled ? 'checked' : ''} /><i></i></label>
       <div class="grow">
         <div class="title">${esc(s.name)}</div>
-        <div class="sub">${esc(whenLabel(s.cron, s.firstOfMonth))} · ${esc(actionLabel(s.action))}${s.action === 'wipe' ? (s.wipe?.blueprints ? ' (full wipe)' : ' (map wipe)') : ''}${s.command ? ` <span class="mono">${esc(s.command)}</span>` : ''}${s.warnMinutes ? ` · ${s.warnMinutes} min warning` : ''}${s.onlyWhenEmpty ? ' · only when empty' : ''}</div>
+        <div class="sub">${esc(whenLabel(s.cron, s.firstOfMonth))} · ${esc(actionLabel(s.action))}${s.action === 'wipe' ? (s.wipe?.blueprints ? ' (full wipe)' : ' (map wipe)') : ''}${s.command ? ` <span class="mono">${esc(s.command)}</span>` : ''}${s.presetId ? ` (${esc(s.presetId)})` : ''}${s.warnMinutes ? ` · ${s.warnMinutes} min warning` : ''}${s.onlyWhenEmpty ? ' · only when empty' : ''}</div>
       </div>
       <div class="hide-sm" style="text-align:right;font-size:12px">
         <div class="muted">${s.nextRun ? `Next ${fmtTime(s.nextRun)}` : 'Paused'}</div>
@@ -245,6 +252,12 @@ function openScheduleModal(server, schedule, onSaved) {
           .join('')}</select>
         <div class="hint">Posts "Server restarting in 5 minutes", then 1 minute, 30 and 10 seconds. The restart happens when the countdown ends.</div>
       </label>
+      <div id="sch-preset-wrap">
+        <label class="field"><span>Preset</span>
+          <select id="sch-preset-id">${presetsOf(server).map((p) => `<option value="${esc(p.id)}" ${schedule?.presetId === p.id ? 'selected' : ''}>${esc(p.label)} · ${esc(p.description)}</option>`).join('')}</select>
+        </label>
+        <div class="checkbox-row"><input type="checkbox" id="sch-preset-restart" ${schedule?.applyRestart === false ? '' : 'checked'} /><label for="sch-preset-restart">Restart the server to apply it now (otherwise it applies on the next restart)</label></div>
+      </div>
       <div id="sch-wipe-wrap">
         <div class="form-row"><label for="sch-wipe-bp">Wipe type</label>
           <select id="sch-wipe-bp"><option value="0" ${wipeOpts.blueprints ? '' : 'selected'}>Map wipe (keeps blueprints)</option><option value="1" ${wipeOpts.blueprints ? 'selected' : ''}>Full wipe (blueprints too)</option></select></div>
@@ -286,12 +299,14 @@ function openScheduleModal(server, schedule, onSaved) {
             action,
             cron,
             command: $('#sch-command').value,
-            name: $('#sch-name').value.trim() || actions.find(([a]) => a === action)[1],
+            name: $('#sch-name').value.trim() || (action === 'preset' ? '' : actions.find(([a]) => a === action)[1]),
             firstOfMonth: presetValue === 'monthly',
             wipe: { blueprints: $('#sch-wipe-bp').value === '1', newSeed: $('#sch-wipe-seed').checked, updateFirst: $('#sch-wipe-update').checked },
             onlyIfRunning: $('#sch-only-running').checked,
             onlyWhenEmpty: $('#sch-only-empty').checked,
             warnMinutes: Number($('#sch-warn').value),
+            presetId: $('#sch-preset-id')?.value,
+            applyRestart: $('#sch-preset-restart').checked,
           };
           btn.disabled = true;
           try {
@@ -311,8 +326,9 @@ function openScheduleModal(server, schedule, onSaved) {
 
   const sync = () => {
     $('#sch-command-wrap').classList.toggle('hidden', $('#sch-action').value !== 'command');
-    $('#sch-warn-wrap').classList.toggle('hidden', !['restart', 'stop', 'wipe', 'dinowipe'].includes($('#sch-action').value));
+    $('#sch-warn-wrap').classList.toggle('hidden', !['restart', 'stop', 'wipe', 'dinowipe', 'preset'].includes($('#sch-action').value));
     $('#sch-wipe-wrap').classList.toggle('hidden', $('#sch-action').value !== 'wipe');
+    $('#sch-preset-wrap').classList.toggle('hidden', $('#sch-action').value !== 'preset');
     $('#sch-monthly-wrap').classList.toggle('hidden', $('#sch-preset').value !== 'monthly');
     $('#sch-empty-wrap').classList.toggle('hidden', $('#sch-action').value === 'start');
     $('#sch-cron-wrap').classList.toggle('hidden', $('#sch-preset').value !== 'custom');
@@ -373,4 +389,119 @@ async function openWipeModal(server, onDone) {
   };
   $('#wn-bp').addEventListener('change', show);
   show();
+}
+
+/* ------------------------------------------------- preset events (2x weekend) */
+
+/** "2x from Friday 18:00 to Monday 06:00": two tasks, one that switches on and one that switches back. */
+function openEventModal(server, onSaved) {
+  const presets = presetsOf(server);
+  const options = (pick) => presets.map((p) => `<option value="${esc(p.id)}" ${p.id === pick ? 'selected' : ''}>${esc(p.label)} · ${esc(p.description)}</option>`).join('');
+  const days = (pick) => WEEKDAYS.map((d, i) => `<option value="${i}" ${i === pick ? 'selected' : ''}>${d}</option>`).join('');
+  const modal = openModal({
+    title: 'Preset event',
+    width: 480,
+    body: `
+      <p class="faint" style="margin-top:0">Switch to a preset on a day and switch back later, every week. The server restarts both times, after a countdown in chat.</p>
+      <label class="field"><span>Event preset</span><select id="ev-preset">${options(presets.find((p) => p.id === '2x')?.id || presets[1]?.id || presets[0]?.id)}</select></label>
+      <div class="row" style="gap:8px;margin-bottom:12px"><span class="faint">From</span>
+        <select id="ev-from-day" style="width:auto">${days(5)}</select><input id="ev-from-time" type="time" value="18:00" style="width:auto" /></div>
+      <div class="row" style="gap:8px;margin-bottom:12px"><span class="faint">Until</span>
+        <select id="ev-to-day" style="width:auto">${days(1)}</select><input id="ev-to-time" type="time" value="06:00" style="width:auto" /></div>
+      <label class="field"><span>Then go back to</span><select id="ev-back">${options(presets[0]?.id)}</select></label>
+      <label class="field"><span>Warn players first</span><select id="ev-warn">${[0, 5, 10, 15, 30].map((n) => `<option value="${n}" ${n === 10 ? 'selected' : ''}>${n ? `${n} minute countdown` : 'No warning'}</option>`).join('')}</select></label>`,
+    actions: [
+      { label: 'Cancel', close: true },
+      {
+        label: 'Add event',
+        primary: true,
+        onClick: async (btn) => {
+          const cronFor = (day, time) => {
+            const [hh, mm] = (time || '0:0').split(':').map(Number);
+            return `${mm} ${hh} * * ${day}`;
+          };
+          const warnMinutes = Number($('#ev-warn').value);
+          const on = presets.find((p) => p.id === $('#ev-preset').value);
+          const off = presets.find((p) => p.id === $('#ev-back').value);
+          if (on.id === off.id) return toast('Pick a different preset to go back to', 'error');
+          btn.disabled = true;
+          try {
+            for (const [preset, cron] of [[on, cronFor($('#ev-from-day').value, $('#ev-from-time').value)], [off, cronFor($('#ev-to-day').value, $('#ev-to-time').value)]]) {
+              await api(`/api/servers/${server.id}/schedules`, { method: 'POST', body: { name: `Switch to ${preset.label}`, action: 'preset', presetId: preset.id, cron, warnMinutes, onlyIfRunning: false } });
+            }
+            modal.close();
+            toast(`Added: ${on.label} on, then back to ${off.label}`);
+            onSaved();
+          } catch (err) {
+            toast(err.message, 'error');
+            btn.disabled = false;
+          }
+        },
+      },
+    ],
+  });
+}
+
+/* ------------------------------------------------------ wipe announcements */
+
+async function renderAnnounceCard(host, server) {
+  let c;
+  try {
+    ({ wipeAnnounce: c } = await api(`/api/servers/${server.id}/wipe-announce`));
+  } catch {
+    return;
+  }
+  if (!host.isConnected) return;
+  host.innerHTML = `
+    <div class="card mt-16">
+      <div class="card-head"><h4>Wipe announcements</h4></div>
+      <p class="faint" style="margin:0 0 10px">Posts to Discord when a scheduled wipe starts and when any wipe is done, with the map size, seed, a map preview and how to connect.
+        ${c.usesFeed ? 'Using this server\'s Discord channel.' : 'Paste a Discord webhook (channel settings, Integrations, Webhooks) or connect the server\'s Discord channel in Settings.'}</p>
+      <input id="wa-url" class="mono" placeholder="${c.hasWebhook ? 'Webhook saved. Paste a new URL to change it.' : 'https://discord.com/api/webhooks/… (optional)'}" spellcheck="false" />
+      <div class="row" style="gap:16px;flex-wrap:wrap;margin-top:10px">
+        <div class="checkbox-row" style="margin:0"><input type="checkbox" id="wa-before" ${c.before ? 'checked' : ''} /><label for="wa-before">Before the wipe</label></div>
+        <div class="checkbox-row" style="margin:0"><input type="checkbox" id="wa-after" ${c.after ? 'checked' : ''} /><label for="wa-after">When it is done</label></div>
+        <select id="wa-ahead" style="width:auto">${[[0, 'No early notice'], [1, '1 hour ahead'], [6, '6 hours ahead'], [24, '1 day ahead'], [72, '3 days ahead'], [168, '1 week ahead']].map(([n, l]) => `<option value="${n}" ${c.ahead === n ? 'selected' : ''}>${l}</option>`).join('')}</select>
+        <select id="wa-mention" style="width:auto">${[['none', 'No ping'], ['here', '@here'], ['everyone', '@everyone']].map(([v, l]) => `<option value="${v}" ${c.mention === v ? 'selected' : ''}>${l}</option>`).join('')}</select>
+      </div>
+      <label class="field mt-16"><span>Address players connect to</span><input id="wa-connect" maxlength="100" value="${esc(c.connect)}" placeholder="play.example.com:28015 (shown in the post)" /></label>
+      <label class="field"><span>Message before</span><textarea id="wa-bmsg" rows="2" maxlength="1000" placeholder="⚠️ **{server}** wipes {when}. This is a {type}.">${esc(c.beforeMessage)}</textarea></label>
+      <label class="field"><span>Message after</span><textarea id="wa-amsg" rows="2" maxlength="1000" placeholder="✅ **{server}** has wiped and is starting on a fresh map. Join in a few minutes.">${esc(c.afterMessage)}</textarea>
+        <div class="hint">Placeholders: <span class="mono">{server} {when} {type} {size} {seed} {map} {connect}</span>. The post also lists size, seed, wipe type and connect as fields.</div></label>
+      <div class="row mt-16" style="gap:8px">
+        <button class="btn" id="wa-save">Save</button>
+        <button class="btn btn-ghost" id="wa-test">Send a sample</button>
+        ${c.hasWebhook ? '<button class="btn btn-ghost" id="wa-clear">Remove webhook</button>' : ''}
+      </div>
+    </div>`;
+  const save = async (extra = {}) => {
+    try {
+      await api(`/api/servers/${server.id}/wipe-announce`, {
+        method: 'PUT',
+        body: { webhook: $('#wa-url').value.trim(), before: $('#wa-before').checked, after: $('#wa-after').checked, ahead: Number($('#wa-ahead').value), mention: $('#wa-mention').value, connect: $('#wa-connect').value, beforeMessage: $('#wa-bmsg').value, afterMessage: $('#wa-amsg').value, ...extra },
+      });
+      return true;
+    } catch (err) {
+      toast(err.message, 'error');
+      return false;
+    }
+  };
+  $('#wa-save').addEventListener('click', async () => {
+    if (await save()) {
+      toast('Wipe announcements saved');
+      renderAnnounceCard(host, server);
+    }
+  });
+  $('#wa-test').addEventListener('click', async () => {
+    if (!(await save())) return;
+    try {
+      await api(`/api/servers/${server.id}/wipe-announce/test`, { method: 'POST', body: {} });
+      toast('Sample sent. Check the channel.');
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+  });
+  $('#wa-clear')?.addEventListener('click', async () => {
+    if (await save({ webhook: '', clearWebhook: true })) renderAnnounceCard(host, server);
+  });
 }

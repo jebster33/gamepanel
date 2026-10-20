@@ -288,6 +288,7 @@ class ServerManager extends EventEmitter {
       // Secret variables never leave the panel: only whether one is set.
       vars: Object.fromEntries(Object.entries(server.vars || {}).map(([k, v]) => [k, hidden.has(k) || secrets.isSealed(v) ? '' : v])),
       secretVars: Object.fromEntries([...hidden].map((k) => [k, Boolean(server.vars?.[k])])),
+      wipeAnnounce: server.wipeAnnounce ? { ...server.wipeAnnounce, webhook: undefined, sent: undefined, hasWebhook: Boolean(server.wipeAnnounce.webhook) } : undefined, // the webhook URL lets anyone post to that channel
       map: server.map ? { ...server.map, token: undefined } : undefined, // the token is the key to an uploaded map's download
       status: rt.status,
       wake: server.wakeOnJoin ? require('../features/wake-on-join').view(server.id) : undefined,

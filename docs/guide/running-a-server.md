@@ -78,9 +78,14 @@ of a file also keeps what was there before, and the last 50 versions of each fil
 | Start the server | |
 | Update the game | While it's stopped |
 | Update mods and plugins | Only compatible updates |
+| Switch settings preset | Applies one of the game's presets (Rust 2x to 10x, ARK rates…), restarting after an optional countdown. Admins only |
 
 Tick **only when empty** to skip a run while people are playing. **Chat announcements** on the same tab
 rotate messages in game chat, and can send new players a first-join welcome.
+
+### Preset events (a 2x weekend)
+
+The **Preset event** button on the Schedules tab (games with presets) adds two tasks at once: switch to a preset on a day and time, and switch back on another. For example 2x from Friday 18:00 to Monday 06:00, with a 10 minute chat countdown before each restart. They are ordinary **Switch settings preset** tasks, so edit, pause or delete them like any other. A task that finds the server already on its preset does nothing, and each switch shows in the Game settings history.
 
 ### Rust wipes and maps
 
@@ -91,6 +96,7 @@ Rust servers get a **Wipe** card on the Schedules tab.
 - The **Map** card picks what the server loads on its next start: a generated map (size and seed from Settings), one of the game's own maps (Barren, Hapis Island, Craggy Island, Savas Island), a link to a hosted `.map` file, or a `.map` you upload (the panel serves it to the game itself). Pick the map, then wipe so the save matches it. A fixed map keeps its layout, so "new seed" does nothing for it.
 - **RustMaps** (inside the Map card): a **Preview** button opens the generated map for your size and seed on rustmaps.com, and **Random seed** sets a new seed so you can browse a few before you wipe.
 - **Leaving monuments out:** vanilla maps cannot drop monuments, so the panel asks RustMaps to generate a custom map. Add your RustMaps API key under **Settings → Integrations** (it needs a RustMaps subscription with custom map access; each map counts against your allowance), then **Choose monuments to leave out**, tick them and generate. The map is downloaded to the server's `custom-maps` folder and selected; wipe to load it. A combined Outpost and Bandit Town is not something ticks can do: save it as a config on your RustMaps dashboard and pick it from **saved config** in the same panel. Ticking Bandit Town just removes it.
+- **Wipe announcements** (Wipe announcements card, administrators): posts to a Discord webhook, or the server's own Discord channel if it has one. A scheduled wipe posts when it starts (with the chat countdown time) and optionally ahead of time, from an hour to a week before; any wipe, scheduled or manual, posts again when it is done. Posts list the map size, seed, wipe type and how to connect, with a RustMaps preview picture when a RustMaps key is set (otherwise a link). Edit the message text with `{server} {when} {type} {size} {seed} {map} {connect}`, choose whether to ping `@here` or `@everyone`, and use **Send a sample** to check it.
 - **Oxide stays current:** a game update puts uMod/Oxide back right after the Rust files are replaced, and the panel checks for new Oxide releases every half hour. When one is out it updates as soon as nobody is playing (automatic updates also cover the game itself, see Panel settings). On force-wipe day Oxide can lag the game by a few hours; plugins load again when its release arrives. Carbon is not installed by the Rust template.
 
 ### ARK wild dinos

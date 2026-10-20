@@ -80,7 +80,9 @@ async function wipe(manager, server, { blueprints = false, newSeed = false, upda
     startError = await manager.start(server.id).then(() => null, (err) => err.message);
     if (startError) log(`Could not start it again: ${startError}`);
   }
-  return { deleted: files.length, blueprints: Boolean(blueprints), seed, startError: startError || null };
+  const result = { deleted: files.length, blueprints: Boolean(blueprints), seed, startError: startError || null };
+  await require('./wipe-announce').announceAfter(manager, manager.store, server, result);
+  return result;
 }
 
 /** The first given weekday of a month: day 1 to 7. */

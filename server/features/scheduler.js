@@ -6,13 +6,14 @@
  * ("minute hour day month weekday") in the panel host's local time.
  *
  * A schedule: { id, name, cron, action, command?, enabled, lastRun, lastResult }
- * Actions: restart, start, stop, backup, command, update, mods (update mods/plugins).
+ * Actions: restart, start, stop, backup, command, update, mods (update mods/plugins),
+ * wipe, dinowipe, preset (switch to one of the game's settings presets, e.g. a 2x weekend).
  */
 
 const { logger, uid, fail } = require('../core/util');
 const backups = require('./backups');
 
-const ACTIONS = ['restart', 'start', 'stop', 'backup', 'command', 'update', 'mods', 'wipe', 'dinowipe'];
+const ACTIONS = ['restart', 'start', 'stop', 'backup', 'command', 'update', 'mods', 'wipe', 'dinowipe', 'preset'];
 
 const FIELDS = [
   { name: 'minute', min: 0, max: 59 },
@@ -71,7 +72,7 @@ function nextRun(expr, from = new Date(), { firstOfMonth = false } = {}) {
   return null;
 }
 
-function validate(input) {
+function validate(input, template) {
   const action = String(input.action || '');
   if (!ACTIONS.includes(action)) fail(400, `Action must be one of: ${ACTIONS.join(', ')}`);
   try {
@@ -80,19 +81,24 @@ function validate(input) {
     fail(400, err.message);
   }
   if (action === 'command' && !String(input.command || '').trim()) fail(400, 'Enter the console command to run');
+  const preset = action === 'preset' ? (template?.presets || []).find((p) => p.id === input.presetId) : null;
+  if (action === 'preset' && !preset) fail(400, 'Pick one of this game\'s presets');
   if (String(input.cron).length > 100) fail(400, 'That schedule is too long');
   if (String(input.command || '').length > 500) fail(400, 'That console command is too long (500 characters at most)');
   return {
-    name: String(input.name || '').trim().slice(0, 60) || `${action[0].toUpperCase()}${action.slice(1)}`,
+    name: String(input.name || '').trim().slice(0, 60) || (preset ? `Switch to ${preset.label}` : `${action[0].toUpperCase()}${action.slice(1)}`),
     cron: String(input.cron).trim(),
     action,
     command: action === 'command' ? String(input.command).trim() : undefined,
+    presetId: preset?.id,
+    // A preset takes effect on a restart; leave this off to wait for the next one.
+    applyRestart: action === 'preset' ? input.applyRestart !== false : undefined,
     onlyIfRunning: input.onlyIfRunning !== false,
     // "Restart at 5am, but not while people are playing."
     onlyWhenEmpty: action !== 'start' && Boolean(input.onlyWhenEmpty),
     enabled: input.enabled !== false,
     // Minutes of in-game countdown before a restart, stop or wipe.
-    warnMinutes: ['restart', 'stop', 'wipe', 'dinowipe'].includes(action) ? Math.max(0, Math.min(60, Math.round(Number(input.warnMinutes) || 0))) : 0,
+    warnMinutes: ['restart', 'stop', 'wipe', 'dinowipe', 'preset'].includes(action) ? Math.max(0, Math.min(60, Math.round(Number(input.warnMinutes) || 0))) : 0,
     // "The first Thursday of the month": the weekday in the cron, in days 1 to 7 only.
     firstOfMonth: Boolean(input.firstOfMonth),
     wipe: action === 'wipe' ? { blueprints: Boolean(input.wipe?.blueprints), newSeed: input.wipe?.newSeed !== false, updateFirst: input.wipe?.updateFirst !== false } : undefined,
@@ -143,6 +149,7 @@ class Scheduler {
     require('./chat-moderation').tick(this.manager, now.getTime()).catch(() => {});
     require('./bans').tick(this.manager, this.store, now.getTime()).catch(() => {});
     require('./discord-roles').tick(this.manager, this.store, now.getTime()).catch(() => {});
+    require('./wipe-announce').tick(this.manager, this.store, now.getTime()).catch(() => {});
     for (const server of this.manager.servers) {
       this.announce(server, minute).catch(() => {});
       for (const schedule of server.schedules || []) {
@@ -237,10 +244,28 @@ class Scheduler {
             break;
           }
           case 'wipe': {
+            const wipeOpts = schedule.wipe || {};
+            await require('./wipe-announce').announceBefore(m, this.store, server, { minutes: running ? schedule.warnMinutes : 0, blueprints: wipeOpts.blueprints, newSeed: wipeOpts.newSeed });
             if (running && schedule.warnMinutes) await countdown(m, server, schedule.warnMinutes, 'wiping');
             const r = await require('./wipe').wipe(m, server, schedule.wipe || {}, (line) => m.pushConsole(server, `Wipe: ${line}`, 'system'));
             result = `wiped ${r.deleted} file(s)${r.blueprints ? ' and blueprints' : ''}${r.seed ? `, seed ${r.seed}` : ''}`;
             this.store.addEvent('server.wiped', `${server.name} was wiped (${result})`, { serverId: server.id });
+            break;
+          }
+          case 'preset': {
+            const preset = (m.template(server)?.presets || []).find((p) => p.id === schedule.presetId);
+            if (!preset) throw new Error('That preset is not in this game any more');
+            const vars = m.vars(server);
+            if (Object.entries(preset.vars).every(([k, v]) => String(vars[k] ?? '') === String(v))) {
+              result = `skipped (already on ${preset.label})`;
+              break;
+            }
+            const restart = running && schedule.applyRestart !== false;
+            if (restart && schedule.warnMinutes) await countdown(m, server, schedule.warnMinutes, `restarting with ${preset.label}`);
+            m.update(server.id, { vars: preset.vars }, { actor: 'a schedule', source: 'schedule', note: `${schedule.name}: ${preset.label}` });
+            if (restart && m.isActive(server.id)) await m.restart(server.id);
+            result = restart ? `switched to ${preset.label} and restarted` : `switched to ${preset.label}${running ? ' (applies on the next restart)' : ''}`;
+            this.store.addEvent('server.preset', `${server.name} switched to the ${preset.label} preset (${schedule.name})`, { serverId: server.id });
             break;
           }
           case 'dinowipe':
@@ -285,7 +310,7 @@ class Scheduler {
 
   add(server, input) {
     if ((server.schedules || []).length >= 50) fail(400, 'A server can have 50 schedules at most');
-    const schedule = { id: uid(6), ...validate(input), createdAt: Date.now(), lastRun: null };
+    const schedule = { id: uid(6), ...validate(input, this.manager.template(server)), createdAt: Date.now(), lastRun: null };
     server.schedules = [...(server.schedules || []), schedule];
     this.store.save();
     return schedule;
@@ -294,7 +319,7 @@ class Scheduler {
   update(server, id, input) {
     const schedule = (server.schedules || []).find((s) => s.id === id);
     if (!schedule) fail(404, 'Schedule not found');
-    Object.assign(schedule, validate({ ...schedule, ...input }));
+    Object.assign(schedule, validate({ ...schedule, ...input }, this.manager.template(server)));
     this.store.save();
     return schedule;
   }

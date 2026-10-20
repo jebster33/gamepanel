@@ -22,6 +22,7 @@ const TITLES = {
   'server.hung': 'Frozen server restarted',
   'server.world_reset': 'World reset',
   'server.wiped': 'Server wiped',
+  'server.preset': 'Settings preset switched',
   'server.resource_alert': 'Resource alert',
   'player.watched': 'Watched player joined',
   'player.moderated': 'Chat moderation acted',
