@@ -3,6 +3,7 @@ import { $, can, esc, fmtBytes, icon, toast } from '../../core/util.js';
 import { confirmModal, openModal } from '../../ui/modal.js';
 import { sideBadge } from './modpacks.js';
 import { renderWorkshopPacks } from './workshop-packs.js';
+import { renderModShare } from './mod-share.js';
 import { skeleton } from '../../ui/skeleton.js';
 
 /* ------------------------------------------------------------------ mods */
@@ -99,8 +100,11 @@ export async function renderModsTab(host, server) {
         <div id="mod-results" class="grid-cards"></div>
       </div>
 
-      <div class="card" id="mod-installed">
-        ${installedHtml(info)}
+      <div class="stack">
+        <div class="card" id="mod-installed">
+          ${installedHtml(info)}
+        </div>
+        <div id="mod-share"></div>
       </div>
     </div>`;
 
@@ -154,6 +158,7 @@ export async function renderModsTab(host, server) {
   });
 
   wireInstalled(server, info, refresh);
+  renderModShare($('#mod-share'), server);
   if ($('#ws-packs')) renderWorkshopPacks($('#ws-packs'), server, refresh);
 
   // Show popular mods straight away, unless searching needs a key we lack.

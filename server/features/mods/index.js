@@ -268,6 +268,7 @@ async function install(server, template, { provider: providerId, projectId, vers
         name: project.name,
         icon: project.icon,
         url: project.url,
+        clientSide: project.clientSide,
         version: version.version,
         versionId: version.id,
         channel: version.channel,

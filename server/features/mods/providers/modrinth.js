@@ -98,6 +98,7 @@ const modrinth = {
       icon: p.icon_url || null,
       url: `https://modrinth.com/${p.project_type}/${p.slug}`,
       serverSupported: p.server_side !== 'unsupported',
+      clientSide: p.client_side,
     };
     projectCache.set(id, { at: Date.now(), value });
     projectCache.set(p.id, { at: Date.now(), value });

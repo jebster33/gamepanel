@@ -91,6 +91,10 @@ GET    /api/servers/:id/world-map        Rust, Valheim and Terraria map links
 GET    /api/servers/:id/workshop-packs   saved Workshop packs for this game
 POST   /api/servers/:id/workshop-packs   {"name","input"} or {"name","fromServer":true}
 POST   /api/servers/:id/workshop-packs/:pid/apply   add a pack's items
+GET    /api/servers/:id/mods/share        the player mod page settings
+PATCH  /api/servers/:id/mods/share        {"enabled","notes","extras":[{"name","url","note"}],"newLink"}
+GET    /api/public/mods/:slug             mods players need (public, while sharing is on)
+GET    /api/public/mods/:slug/pack.mrpack Modrinth modpack of those mods (public)
 GET    /api/servers/:id/modpacks/diff    ?source=&project=&version= mods added, removed, updated
 GET    /api/auth/oauth/providers         sign-in buttons that are set up
 GET    /api/auth/oauth/:p/start          sign in with google|discord|github (?link=1 links instead)

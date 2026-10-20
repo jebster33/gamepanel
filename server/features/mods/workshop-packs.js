@@ -19,16 +19,19 @@ const all = (store) => store.state.settings.workshopPacks || [];
 /** Collections are opened up into their items; the result keeps the order given. */
 async function expand(input) {
   const ids = [];
+  const collections = [];
   for (const id of steam.parseIds(input)) {
     const children = await steam.collection(id).catch(() => null);
+    if (children) collections.push(id);
     ids.push(...(children || [id]));
   }
-  return [...new Set(ids)];
+  return Object.assign([...new Set(ids)], { collections });
 }
 
 /** Names and pictures for the items, checked against the game. */
 async function preview(input, appId) {
   const ids = await expand(input);
+  const collections = ids.collections;
   if (ids.length > MAX_ITEMS) fail(400, `A pack can hold up to ${MAX_ITEMS} items`);
   const items = [];
   for (let i = 0; i < ids.length; i += 100) items.push(...(await steam.details(ids.slice(i, i + 100))));
@@ -38,7 +41,7 @@ async function preview(input, appId) {
   const wrong = found.filter((i) => appId && i.appId && String(i.appId) !== String(appId));
   if (wrong.length) fail(400, `"${wrong[0].title}" is a Workshop item for a different game.`);
   if (!found.length) fail(404, 'None of those Workshop items exist or are public');
-  return { items: found.map((i) => ({ id: i.id, title: i.title, icon: i.icon, url: i.url })), skipped };
+  return { items: found.map((i) => ({ id: i.id, title: i.title, icon: i.icon, url: i.url })), skipped, collections };
 }
 
 function list(store, appId) {
@@ -50,6 +53,7 @@ async function create(store, { name, appId, input, fromServer }, user) {
   if (!label) fail(400, 'Give the pack a name');
   if (!appId) fail(400, 'This game has no Steam Workshop');
   let items;
+  let collections = [];
   if (fromServer) {
     items = manifest
       .load(fromServer)
@@ -57,10 +61,12 @@ async function create(store, { name, appId, input, fromServer }, user) {
       .map((m) => String(m.projectId));
     if (!items.length) fail(400, 'This server has no Workshop items yet');
   } else {
-    items = (await preview(input, appId)).items.map((i) => i.id);
+    const found = await preview(input, appId);
+    items = found.items.map((i) => i.id);
+    collections = found.collections;
   }
   if (!items.length) fail(400, 'The pack is empty');
-  const pack = { id: uid(8), name: label, appId: String(appId), items: items.slice(0, MAX_ITEMS), createdBy: user?.username || 'panel', createdAt: Date.now() };
+  const pack = { id: uid(8), name: label, appId: String(appId), items: items.slice(0, MAX_ITEMS), collections, createdBy: user?.username || 'panel', createdAt: Date.now() };
   store.state.settings.workshopPacks = [...all(store), pack];
   store.save();
   return pack;

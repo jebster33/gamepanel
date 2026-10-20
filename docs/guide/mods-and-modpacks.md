@@ -41,6 +41,26 @@ their own mod lists, Project Zomboid gets `WorkshopItems` and `Mods` written for
 the galaxy's modconfig.lua. Paste the
 Workshop link or item ID and press **Add item**.
 
+A **collection link** installs every item in the collection. The panel remembers the collection, so the
+player page below can offer a one-click **Subscribe** link to it.
+
+## Mods for players
+
+Players of modded games need some of the mods on their own computer. In the Mods tab, the **Mods for
+players** card turns on a public page (`/mods/<link>`) for that server. It shows only mod names, versions and
+links, and nothing about the server itself:
+
+- **Minecraft (Fabric, Quilt, Forge, NeoForge):** the mods players need, split into required and optional (server-only mods
+  are left out), and a **Download modpack (.mrpack)** that opens in the Modrinth app or Prism Launcher and
+  installs the right Minecraft, loader and mod versions. Only Modrinth mods go in the pack; CurseForge mods
+  are listed with links.
+- **Steam Workshop games:** the collections you added, with a **Subscribe** link, and every item with its Steam link.
+- **Any game:** a note for players and extra links (a resource pack, a launcher, a download), plus **Copy list**
+  and **Download list (.txt)** for sharing in Discord.
+
+**New link** (the refresh button) makes the old link stop working. Plugin-based servers such as Paper need nothing on
+the player's side, so their page says so.
+
 ## Datapacks
 
 Every Minecraft Java server (vanilla, Paper, Fabric, Forge and the rest) has a **Datapacks** card on

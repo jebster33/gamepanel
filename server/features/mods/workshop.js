@@ -330,8 +330,10 @@ function modArgument(server) {
  */
 async function resolveItems(input, ctx, apiKey) {
   const ids = [];
+  const collections = [];
   for (const id of steam.parseIds(input)) {
     const children = await steam.collection(id).catch(() => null);
+    if (children) collections.push(id);
     ids.push(...(children || [id]));
   }
   const required = await steam.requiredItems(ids, apiKey);
@@ -349,6 +351,7 @@ async function resolveItems(input, ctx, apiKey) {
     const parent = [...required].find(([, kids]) => kids.includes(item.id))?.[0];
     out.push({ ...item, auto: !ids.includes(item.id), requiredBy: parent ? [manifest.keyOf('workshop', parent)] : [] });
   }
+  out.collections = collections;
   return out;
 }
 
@@ -607,10 +610,11 @@ async function installWorkshop(server, template, manager, { input }, integration
   requireLogin(server, spec.login);
   const items = await resolveItems(input, ctx, integrations.steamApiKey);
   const names = items.map((i) => i.title);
+  const collections = items.collections || [];
 
   if (LISTED.has(spec.strategy)) {
     saveEntries(server, await strategy(server, ctx, spec, items, manager));
-    return { ok: true, queued: false, items: names, message: `Added ${names.length} item(s). The server downloads them the next time it starts.` };
+    return { ok: true, queued: false, items: names, collections, message: `Added ${names.length} item(s). The server downloads them the next time it starts.` };
   }
 
   strategy(server, ctx, spec, items, manager)
@@ -624,7 +628,7 @@ async function installWorkshop(server, template, manager, { input }, integration
       manager.pushConsole(server, `Workshop install failed: ${err.message}`, 'system');
       logger.warn(`Workshop install on ${server.name} failed: ${err.message}`);
     });
-  return { ok: true, queued: true, items: names, message: 'Downloading with SteamCMD. Watch the console for progress.' };
+  return { ok: true, queued: true, items: names, collections, message: 'Downloading with SteamCMD. Watch the console for progress.' };
 }
 
 /** Take an item off the game's list (used by remove and disable). */
