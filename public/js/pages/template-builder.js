@@ -81,7 +81,20 @@ export async function renderTemplateBuilder(view) {
       view.innerHTML = `<div class="card">${esc(err.message)}</div>`;
       return;
     }
-  } else t = STARTERS.blank();
+  } else {
+    t = STARTERS.blank();
+    // A draft handed over by "Import egg" on the Games page.
+    try {
+      const draft = sessionStorage.getItem('gp-template-draft');
+      if (draft) {
+        sessionStorage.removeItem('gp-template-draft');
+        t = JSON.parse(draft);
+        idTouched = true;
+      }
+    } catch {
+      // No storage, or an unreadable draft: start from nothing.
+    }
+  }
   t.ports ||= [];
   t.variables ||= [];
   t.install ||= [];

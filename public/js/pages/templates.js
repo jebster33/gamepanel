@@ -5,6 +5,7 @@ import { $, can, esc, gameArt, icon, toast } from '../core/util.js';
 import { openCreateServerModal } from './deploy.js';
 import { renderSetups } from './setups.js';
 import { revealChildren } from '../ui/fx.js';
+import { openModal } from '../ui/modal.js';
 
 /* ------------------------------------------------------------- templates */
 
@@ -57,6 +58,7 @@ export function renderTemplates(view) {
       <div><h1>Games</h1><div class="lede">Pick one and the panel installs it, gives it ports and starts it.</div></div>
       <div class="spacer"></div>
       <input class="search-input" id="tpl-search" placeholder="Search games…" value="${esc(templateFilter.search)}" />
+ ${state.user.role === 'admin' ? '<button class="btn" id="egg-import" title="Turn a Pterodactyl egg into a game">Import egg</button>' : ''}
       ${state.user.role === 'admin' ? '<a class="btn" href="#/templates/new" title="Add a game the panel does not ship">Build a game</a>' : ''}
     </div>
     <div id="quota-note"></div>
@@ -104,6 +106,7 @@ export function renderTemplates(view) {
   renderSetups($('#setups'));
   if (state.user.role !== 'admin' && can('deploy')) showQuota();
 
+  $('#egg-import')?.addEventListener('click', openEggImport);
   $('#tpl-search').addEventListener('input', (event) => {
     templateFilter.search = event.target.value;
     render();
@@ -123,4 +126,55 @@ export function renderTemplates(view) {
       openCreateServerModal(el.dataset.template);
     })
   );
+}
+
+/** Import a Pterodactyl egg (file, address or pasted JSON) as a draft game and open it in the builder. */
+function openEggImport() {
+  let draft = null;
+  const modal = openModal({
+    title: 'Import a Pterodactyl egg',
+    width: 680,
+    body: `<p class="faint" style="margin-top:0">Eggs from the <a href="https://github.com/pelican-eggs/eggs" target="_blank" rel="noopener">community egg repository</a> become a game you can review and edit before it is added. Imported games are administrator-only and run the egg's install script, so only import eggs you trust.</p>
+      <label class="field"><span>Egg file</span><input type="file" id="egg-file" accept=".json,application/json" /></label>
+      <label class="field"><span>Or an address</span><input id="egg-url" placeholder="https://raw.githubusercontent.com/…/egg-paper.json" /></label>
+      <label class="field"><span>Or paste the JSON</span><textarea id="egg-text" class="mono" rows="6" spellcheck="false"></textarea></label>
+      <div id="egg-report"></div>`,
+    actions: [
+      { label: 'Cancel', close: true },
+      {
+        label: 'Convert',
+        primary: true,
+        onClick: async (btn) => {
+          if (draft) {
+            try {
+              sessionStorage.setItem('gp-template-draft', JSON.stringify(draft));
+            } catch {
+              return toast('This browser blocked saving the draft', 'error');
+            }
+            modal.close();
+            location.hash = '#/templates/new';
+            return;
+          }
+          const file = $('#egg-file').files[0];
+          const url = $('#egg-url').value.trim();
+          const text = $('#egg-text').value.trim();
+          const body = file ? { egg: await file.text() } : text ? { egg: text } : url ? { url } : null;
+          if (!body) return toast('Choose a file, an address or paste the egg', 'error');
+          btn.disabled = true;
+          try {
+            const r = await api('/api/templates/import-egg', { method: 'POST', body });
+            const list = (title, items, cls) => (items.length ? `<div class="mt-8"><b>${title}</b><ul class="${cls}" style="margin:4px 0 0 18px">${items.map((i) => `<li>${esc(i)}</li>`).join('')}</ul></div>` : '');
+            $('#egg-report').innerHTML = `<div class="card" style="margin-top:12px"><b>${esc(r.template.name)}</b> converted: ${r.template.variables.length} settings, ${r.template.install.length ? 'an install script' : 'no install script'}, image ${esc(r.template.image || 'default')}.
+              ${list('Cannot be imported', r.unsupported, 'bad')}${list('Changed or assumed', r.notes, '')}${list('Needs fixing before it can be added', r.errors, 'bad')}${list('Check', r.warnings, '')}</div>`;
+            draft = r.template;
+            btn.textContent = 'Open in the builder';
+            btn.disabled = false;
+          } catch (err) {
+            btn.disabled = false;
+            toast(err.message, 'error');
+          }
+        },
+      },
+    ],
+  });
 }

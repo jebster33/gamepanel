@@ -18,6 +18,28 @@ types, missing fields, bad ports, regexes that do not compile, `{{PLACEHOLDERS}}
 shows the install script it would run. **Edit as JSON** covers everything else on this page. Saved games
 go to the data directory's `templates` folder and get an **Edit** button on the Games page.
 
+## Import a Pterodactyl egg
+
+**Games → Import egg** (administrators) turns a Pterodactyl or Pelican egg into a game. Choose the egg's `.json` file, paste a link
+to it (an `https://` address; GitHub page links work) or paste the JSON. The panel converts it, lists what it changed and what it
+could not carry over, and opens the result in the template builder so you can review and **Add game**. Imported games are marked
+*Imported*, sit in the **Imported** category and are administrator-only: the egg's install script and start command run as code,
+so only import eggs you trust.
+
+| Egg | Becomes |
+|---|---|
+| Startup command | `startCommand`. `{{SERVER_MEMORY}}` / `${SERVER_MEMORY}` become `{{MEMORY_MB}}`, `SERVER_PORT` becomes `{{PORT}}`, `SERVER_IP` becomes `{{IP}}` |
+| Variables | Settings. `in:a,b` rules become a dropdown, `numeric`/`integer` a number box. A name the panel uses itself gets an `EGG_` prefix |
+| Docker image | `image` (the first one if the egg lists several) |
+| Install script | A `script` install step, with `/mnt/server` replaced by the server folder. It runs in the game's image with bash |
+| `config.startup.done` | The "ready" console line |
+| `config.stop` | `^C` becomes SIGINT, other text becomes the stop command |
+| `config.files` (properties, ini, json) | `patchProperties`, re-applied on every start |
+
+Not carried over, and shown in the import report: egg features (such as `eula`), the file denylist, yaml/xml/line-replace config
+parsers, `STARTUP`-style variables, Alpine (`apk`) install scripts, a second install image, and extra ports (an egg only has one
+allocation, so the game gets one `game` port, default 25565; add others in the builder).
+
 ## The shape
 
 ```json
