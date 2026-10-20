@@ -31,6 +31,9 @@ CloseApplications=no
 [Files]
 Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion
 
+[Registry]
+Root: HKLM; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: expandsz; ValueName: "Path"; ValueData: "{olddata};{app}"; Check: NeedsPathEntry
+
 [INI]
 Filename: "{app}\GamePanel.url"; Section: "InternetShortcut"; Key: "URL"; String: "http://localhost:8420"
 
@@ -62,6 +65,15 @@ ConfirmUninstall=This removes GamePanel and ALL of its data: every game server a
 function ServiceExists: Boolean;
 begin
   Result := RegKeyExists(HKLM, 'SYSTEM\CurrentControlSet\Services\GamePanel');
+end;
+
+function NeedsPathEntry: Boolean;
+var
+  Paths: String;
+begin
+  if not RegQueryStringValue(HKLM, 'SYSTEM\CurrentControlSet\Control\Session Manager\Environment', 'Path', Paths) then
+    Paths := '';
+  Result := Pos(';' + Uppercase(ExpandConstant('{app}')) + ';', ';' + Uppercase(Paths) + ';') = 0;
 end;
 
 { Uninstalling removes everything, data included (see ConfirmUninstall). }
