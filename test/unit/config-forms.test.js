@@ -139,3 +139,36 @@ test('finds plugin and mod configs, and refuses a file changed meanwhile', () =>
   assert.throws(() => cf.form(server, '../../etc/passwd.yml'), /outside|not allowed|escape|found/i);
   fs.rmSync(dir, { recursive: true, force: true });
 });
+
+test('plugin schemas: labels, groups and units; unknown keys land under Other settings', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'gp-cfs-'));
+  fs.mkdirSync(path.join(dir, 'plugins/Essentials'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'plugins/Essentials/config.yml'), ['teleport-cooldown: 5', 'auto-afk: 300', 'starting-balance: 100', 'brand-new-option: true', ''].join('\n'));
+  const form = cf.form({ dir }, 'plugins/Essentials/config.yml');
+  assert.strictEqual(form.plugin.id, 'essentialsx');
+  const f = byId(form.fields);
+  assert.strictEqual(f['teleport-cooldown'].label, 'Teleport cooldown');
+  assert.strictEqual(f['teleport-cooldown'].unit, 'seconds');
+  assert.deepStrictEqual(f['teleport-cooldown'].crumbs, ['Teleporting']);
+  assert.deepStrictEqual(f['brand-new-option'].crumbs, ['Other settings']);
+  assert.deepStrictEqual(form.groups.map((g) => g.name), ['Economy', 'Teleporting', 'AFK', 'Other settings']);
+  // Saving through a curated form still rewrites only the changed line.
+  const out = cf.apply(fs.readFileSync(path.join(dir, 'plugins/Essentials/config.yml'), 'utf8'), 'yaml', { 'teleport-cooldown': 10 });
+  assert.match(out, /^teleport-cooldown: 10$/m);
+  assert.match(out, /^auto-afk: 300$/m);
+});
+
+test('wildcards in schemas reach per-world keys, and labels read keys like "Cooldown (seconds)"', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'gp-cfs-'));
+  fs.writeFileSync(path.join(dir, 'spigot.yml'), 'world-settings:\n  default:\n    view-distance: default\n    merge-radius:\n      item: 2.5\n');
+  const f = byId(cf.form({ dir }, 'spigot.yml').fields);
+  assert.deepStrictEqual(f['world-settings.default.view-distance'].crumbs, ['Distances']);
+  assert.deepStrictEqual(f['world-settings.default.merge-radius.item'].crumbs, ['Item and XP merging']);
+  fs.mkdirSync(path.join(dir, 'oxide/config'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'oxide/config/Thing.json'), JSON.stringify({ 'Home cooldown (seconds)': 30, 'Starting money (0 to disable)': 5, Color: '#ff8800' }));
+  const g = byId(cf.form({ dir }, 'oxide/config/Thing.json').fields);
+  assert.strictEqual(g['Home cooldown (seconds)'].label, 'Home cooldown');
+  assert.strictEqual(g['Home cooldown (seconds)'].unit, 'seconds');
+  assert.strictEqual(g['Starting money (0 to disable)'].help, '0 to disable');
+  assert.strictEqual(g.Color.color, true);
+});

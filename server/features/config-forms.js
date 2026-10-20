@@ -18,6 +18,7 @@ const path = require('path');
 const crypto = require('crypto');
 const { fail } = require('../core/util');
 const { containedPath } = require('./files');
+const schemas = require('./config-schemas');
 
 const MAX_BYTES = 512 * 1024;
 const FORMATS = { '.yml': 'yaml', '.yaml': 'yaml', '.toml': 'toml', '.cfg': 'ini', '.ini': 'ini', '.properties': 'properties', '.json': 'json' };
@@ -25,6 +26,20 @@ const FORMATS = { '.yml': 'yaml', '.yaml': 'yaml', '.toml': 'toml', '.cfg': 'ini
 const formatOf = (file) => FORMATS[path.extname(file).toLowerCase()] || null;
 const versionOf = (text) => crypto.createHash('sha1').update(text).digest('hex').slice(0, 16);
 const humanize = (key) => String(key).replace(/[_-]+/g, ' ').replace(/([a-z])([A-Z])/g, '$1 $2').replace(/^\w/, (c) => c.toUpperCase());
+
+/**
+ * A readable label for a key. Keys that already read as words ("Starting
+ * money (0 to disable)") keep them; a trailing "(…)" becomes a unit when it
+ * names one, else help text.
+ */
+function labelOf(key) {
+  const m = String(key).match(/^(.*?)\s*\(([^)]*)\)\s*$/);
+  if (!m || !m[1]) return { label: humanize(key) };
+  const note = m[2].trim();
+  const label = /\s/.test(m[1]) || /[A-Z]/.test(m[1]) ? m[1] : humanize(m[1]);
+  if (/^(seconds?|secs?|s|minutes?|mins?|hours?|days?|ms|milliseconds|ticks|blocks|chunks|%|percent|percentage)$/i.test(note)) return { label, unit: note.toLowerCase() === 's' ? 'seconds' : note.toLowerCase() };
+  return { label, note: note[0].toUpperCase() + note.slice(1) };
+}
 
 /* ---------------------------------------------------------------- values -- */
 
@@ -127,7 +142,10 @@ function makeField(fields, p, info, comments, section) {
   if (type === 'string' && hints.options?.length) type = 'select';
   let id = p.join('.');
   if (fields.some((f) => f.id === id)) id += `#${fields.length}`;
-  fields.push({ id, path: p, label: humanize(p[p.length - 1]), type, value: info.value, help: hints.help || undefined, options: type === 'select' ? hints.options : undefined, min: hints.min, max: hints.max, section, quote: info.quote, decimal: info.decimal, loc: info.loc, itemType: info.itemType });
+  const { label, unit, note } = labelOf(p[p.length - 1]);
+  const color = type === 'string' && /^#(?:[0-9a-f]{6}|[0-9a-f]{8})$/i.test(info.value || '');
+  const help = [hints.help, note].filter(Boolean).join(' ') || undefined;
+  fields.push({ id, path: p, label, unit, color: color || undefined, multiline: type === 'string' && /\n|\\n/.test(String(info.value)) || String(info.value).length > 90 ? true : undefined, type, value: info.value, help, options: type === 'select' ? hints.options : undefined, min: hints.min, max: hints.max, section, quote: info.quote, decimal: info.decimal, loc: info.loc, itemType: info.itemType });
 }
 
 /* ------------------------------------------------------------------ YAML -- */
@@ -500,7 +518,8 @@ function form(server, rel) {
   } catch (err) {
     return { path: rel, format, version: versionOf(text), fields: [], error: `The file could not be read as ${format.toUpperCase()}: ${err.message}` };
   }
-  return { path: rel, format, version: versionOf(text), fields: fields.map(({ loc, quote, decimal, ...f }) => f) };
+  const layout = schemas.decorate(rel, fields);
+  return { path: rel, format, version: versionOf(text), ...layout, fields: fields.map(({ loc, quote, decimal, ...f }) => f) };
 }
 
 /** Save changed values. `version` is what the form was built from; a file changed since is refused. */

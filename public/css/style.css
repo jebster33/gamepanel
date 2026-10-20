@@ -2548,6 +2548,94 @@ tbody tr:hover {
   font-family: var(--mono);
   font-size: 12.5px;
 }
+/* Config forms: collapsible nested sections. */
+.cf-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 8px;
+  flex-wrap: wrap;
+}
+.cf-toolbar .spacer {
+  flex: 1;
+}
+.cf-sec {
+  margin-top: 6px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--raised);
+}
+.cf-sec .cf-sec {
+  margin: 6px 10px 10px;
+  background: transparent;
+}
+.cf-sec > .gs-list {
+  padding: 0 14px;
+}
+.cf-sec .gs-field {
+  padding: 9px 0;
+}
+.cf-sec > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+.cf-sec > summary::-webkit-details-marker {
+  display: none;
+}
+.cf-chev {
+  width: 7px;
+  height: 7px;
+  border-right: 2px solid var(--faint);
+  border-bottom: 2px solid var(--faint);
+  transform: rotate(-45deg);
+  transition: transform 0.15s var(--ease);
+}
+.cf-sec[open] > summary > .cf-chev {
+  transform: rotate(45deg);
+}
+.cf-sec-name {
+  font-weight: 600;
+}
+.cf-count {
+  font-size: 11px;
+}
+.cf-dirty {
+  margin-left: auto;
+  padding: 1px 8px;
+  font-size: 11px;
+  border-radius: 999px;
+  color: var(--amber);
+  background: var(--amber-soft);
+}
+.cf-sec-help {
+  margin: 0 14px 4px;
+}
+.gs-with-unit {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.gs-with-unit input[type="color"] {
+  flex: none;
+  width: 34px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: none;
+}
+.gs-unit {
+  flex: none;
+  font-size: 12px;
+}
+.gs-field.is-list textarea {
+  width: 100%;
+}
 @media (max-width: 860px) {
   .cfg-layout {
     grid-template-columns: 1fr;
