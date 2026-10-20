@@ -10,7 +10,7 @@ const crypto = require('crypto');
 const fs = require('fs');
 const { fail } = require('../core/util');
 
-const DEFAULTS = { enabled: false, slug: '', title: '', description: '', servers: [], showPlayers: true, showAddress: true, showMotd: true, host: '', links: { discord: '', vote: '', website: '' }, blurbs: {}, accent: '', hideBadge: false, logo: null };
+const DEFAULTS = { enabled: false, slug: '', title: '', description: '', servers: [], showPlayers: true, showAddress: true, showMotd: true, showFeed: false, showBoards: true, host: '', links: { discord: '', vote: '', website: '' }, blurbs: {}, accent: '', hideBadge: false, logo: null };
 
 // Games the Steam client can join straight from a link (steam://connect/host:port).
 const STEAM_CONNECT = new Set(['cs2', 'tf2', 'left4dead', 'left4dead2', 'garrysmod', 'rust', 'counter-strike-source', 'day-of-defeat-source', 'half-life-2-deathmatch', 'no-more-room-in-hell', 'insurgency-2014', 'day-of-infamy']);
@@ -61,6 +61,8 @@ function update(store, body) {
   if (body.showPlayers !== undefined) s.showPlayers = Boolean(body.showPlayers);
   if (body.showAddress !== undefined) s.showAddress = Boolean(body.showAddress);
   if (body.showMotd !== undefined) s.showMotd = Boolean(body.showMotd);
+  if (body.showFeed !== undefined) s.showFeed = Boolean(body.showFeed);
+  if (body.showBoards !== undefined) s.showBoards = Boolean(body.showBoards);
   if (body.accent !== undefined) {
     const accent = String(body.accent || '').trim();
     if (accent && !/^#[0-9a-f]{6}$/i.test(accent)) fail(400, 'The accent colour looks like #c6f432');
@@ -80,6 +82,35 @@ function update(store, body) {
   store.state.settings.statusPage = s;
   store.save();
   return s;
+}
+
+/**
+ * Recent joins and leaves across the page's servers: names, the server and the
+ * time, nothing else. Off unless the admin turned it on (and players are shown).
+ */
+function joinFeed(store, manager, limit = 30) {
+  const s = settings(store);
+  if (!s.showFeed || !s.showPlayers) return undefined;
+  const out = [];
+  for (const id of s.servers) {
+    const server = manager.servers.find((x) => x.id === id);
+    if (!server) continue;
+    const log = manager.history(id).log;
+    for (let i = log.length - 1, n = 0; i >= 0 && n < limit; i--) {
+      const e = log[i];
+      if (e.type !== 'join' && e.type !== 'leave') continue;
+      n++;
+      out.push({ t: Math.floor(e.t / 60_000) * 60_000, type: e.type, name: String(e.name || '').slice(0, 32), server: server.name });
+    }
+  }
+  return out.sort((a, b) => b.t - a.t).slice(0, limit);
+}
+
+/** The servers on the public page, for the public leaderboards. Null when the page is off or the slug is wrong. */
+function publicServers(store, manager, slug) {
+  const s = settings(store);
+  if (!s.enabled || !s.slug || slug !== s.slug || !s.showPlayers || s.showBoards === false) return null;
+  return s.servers.map((id) => manager.servers.find((x) => x.id === id)).filter(Boolean);
 }
 
 /** What the public page gets. Nothing here may identify more than the admin chose to show. */
@@ -129,6 +160,8 @@ function publicView(store, manager, slug) {
     hideBadge: Boolean(s.hideBadge),
     logo: s.logo ? `/api/public/status/${encodeURIComponent(s.slug)}/logo?v=${s.logo.v}` : null,
     servers,
+    feed: joinFeed(store, manager),
+    boards: s.showPlayers && s.showBoards !== false,
     appeals: Boolean(store.state.settings.appeals?.enabled),
     updatedAt: Date.now(),
   };
@@ -180,4 +213,4 @@ function readLogo(store, slug) {
   }
 }
 
-module.exports = { settings, update, publicView, readMotd, joinUrl, setLogo, removeLogo, readLogo };
+module.exports = { joinFeed, publicServers, settings, update, publicView, readMotd, joinUrl, setLogo, removeLogo, readLogo };

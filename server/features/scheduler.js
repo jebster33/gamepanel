@@ -143,6 +143,7 @@ class Scheduler {
     require('./chat-moderation').tick(this.manager, now.getTime()).catch(() => {});
     require('./bans').tick(this.manager, this.store, now.getTime()).catch(() => {});
     require('./discord-roles').tick(this.manager, this.store, now.getTime()).catch(() => {});
+    require('./welcome').tick(this.manager, now.getTime());
     for (const server of this.manager.servers) {
       this.announce(server, minute).catch(() => {});
       for (const schedule of server.schedules || []) {
@@ -174,7 +175,8 @@ class Scheduler {
     if (!command) return;
     const i = (a.next || 0) % a.messages.length;
     a.next = i + 1;
-    await m.sendCommand(server.id, require('../games/players').fillBroadcast(command, a.messages[i]));
+    const text = require('./welcome').expand(a.messages[i], { server: server.name, online: rt.players ?? rt.playerList?.length ?? 0 });
+    await m.sendCommand(server.id, require('../games/players').fillBroadcast(command, text));
   }
 
   async run(server, schedule) {

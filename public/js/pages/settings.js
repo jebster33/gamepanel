@@ -529,9 +529,12 @@ async function renderOauthForm() {
         </div>`
       )
       .join('')}
+    <div class="oauth-provider">
+      <div class="checkbox-row"><input type="checkbox" id="oa-steam" ${data.steam?.enabled ? 'checked' : ''} /><label for="oa-steam"><b>Steam</b> (no keys needed, but the panel address above must be filled in)</label></div>
+    </div>
     <button class="btn btn-primary mt-16" id="oa-save">Save sign-in providers</button>`;
   $('#oa-save').addEventListener('click', async () => {
-    const body = { publicUrl: $('#oa-url').value };
+    const body = { publicUrl: $('#oa-url').value, steam: { enabled: $('#oa-steam').checked } };
     for (const p of data.providers) {
       const clientId = $(`[data-oa-id="${p.id}"]`).value.trim();
       const clientSecret = $(`[data-oa-secret="${p.id}"]`).value.trim();
