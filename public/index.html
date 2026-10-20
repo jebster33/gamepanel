@@ -172,6 +172,9 @@
           </button>
           <div class="crumbs" id="crumbs"></div>
           <div class="topbar-actions">
+            <button class="icon-btn" id="palette-btn" title="Search and commands (Ctrl+K)" aria-label="Search and commands" aria-keyshortcuts="Control+K Meta+K">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4-4"/></svg>
+            </button>
             <span class="conn-dot" id="ws-status" title="Live connection"></span>
             <div class="bell-wrap">
               <button class="icon-btn" id="bell-btn" title="Notifications" aria-haspopup="true" aria-expanded="false">
@@ -198,6 +201,13 @@
     </div>
 
     <div id="modal-root"></div>
+    <div id="palette-root" class="palette-backdrop hidden">
+      <div class="palette" role="dialog" aria-modal="true" aria-label="Search and commands">
+        <input id="palette-input" type="text" role="combobox" aria-expanded="true" aria-controls="palette-list" aria-autocomplete="list" aria-label="Search servers, pages, players and actions" placeholder="Search servers, pages, players, actions…" autocomplete="off" spellcheck="false" />
+        <ul id="palette-list" role="listbox" aria-label="Results"></ul>
+        <div class="palette-foot"><span><kbd>↑</kbd> <kbd>↓</kbd> move</span><span><kbd>Enter</kbd> open</span><span><kbd>Esc</kbd> close</span><span id="palette-status" class="sr-only" aria-live="polite"></span></div>
+      </div>
+    </div>
     <div id="toasts" class="toasts"></div>
 
     <script src="/js/main.js?v=2.2.0" type="module"></script>

@@ -22,6 +22,9 @@ import { closeSidebar } from './ui/sidebar.js';
 import { fadeAway, shake } from './ui/fx.js';
 import { applyTheme, switchTheme } from './ui/theme.js';
 import { signInWithPasskey } from './core/passkey.js';
+import { initPalette } from './ui/palette.js';
+import { initServerGroups } from './ui/server-groups.js';
+import { initDashWidgets } from './ui/dash-widgets.js';
 
 /* ------------------------------------------------------- global handlers */
 
@@ -219,6 +222,10 @@ window.addEventListener('resize', () => {
   if (state.route.name === 'dashboard') drawHostCharts();
   if (state.route.name === 'server' && state.route.params.tab === 'metrics') drawServerCharts(state.route.params.id);
 });
+
+initPalette();
+initServerGroups();
+initDashWidgets();
 
 startTranslating();
 

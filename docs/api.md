@@ -61,6 +61,8 @@ PUT    /api/servers/:id/subdomain        {"name"} Cloudflare A (+ SRV) record (a
 POST   /api/players/ban-everywhere       {"name","reason","unban?"} every Minecraft server
 POST   /api/servers/broadcast        {"message"} say it in chat on every running server
 GET    /api/players/search?q=            players on any visible server (admins: also by address)
+GET    /api/me/prefs                     your saved UI preferences (pinned, folders, tags, widgets, recent)
+PUT    /api/me/prefs                     replace the sent keys (null resets one); validated, 32 KB max
 GET    /api/servers/:id/backups/:name/contents        files in a backup
 POST   /api/servers/:id/backups/:name/restore-files   {"paths"} put back single files or folders
 PUT    /api/servers/:id/announcements    {"enabled","every","messages","welcome?":{"enabled","message"}} rotating chat, first-join welcome

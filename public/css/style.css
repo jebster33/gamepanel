@@ -4585,3 +4585,36 @@ pre.code-block {
 .cap-legend { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 8px; font-size: 12px; color: var(--muted); }
 .cap-key { display: inline-block; width: 9px; height: 9px; margin-right: 6px; border-radius: 2px; background: var(--c); }
 .cap-key.hatch { background: repeating-linear-gradient(135deg, var(--c) 0 2px, transparent 2px 4px); }
+
+/* ux: command palette, folders and tags, pinned servers, dashboard layout */
+.palette-backdrop { position: fixed; inset: 0; z-index: 110; display: flex; justify-content: center; align-items: flex-start; padding: 12vh 16px 16px; background: rgba(8, 9, 7, 0.72); backdrop-filter: blur(3px); }
+.palette { width: min(620px, 100%); max-height: 70vh; display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--border-strong); border-radius: 10px; box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5); overflow: hidden; }
+.palette input { width: 100%; height: 48px; padding: 0 16px; font-size: 15px; border: 0; border-bottom: 1px solid var(--border); border-radius: 0; background: transparent; color: var(--text); outline: none; }
+.palette input:focus-visible { box-shadow: inset 0 -2px 0 var(--lime); }
+#palette-list { list-style: none; margin: 0; padding: 6px; overflow-y: auto; }
+.palette-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 12px; border-radius: 6px; cursor: pointer; }
+.palette-item.active { background: var(--lime-soft); outline: 1px solid var(--lime); }
+.palette-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-flex; align-items: center; gap: 8px; }
+.palette-sub { flex: none; font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.palette-empty { padding: 18px; text-align: center; color: var(--muted); }
+.palette-foot { display: flex; gap: 16px; padding: 8px 14px; font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); border-top: 1px solid var(--border); }
+.palette kbd { padding: 1px 5px; border: 1px solid var(--border-strong); border-radius: 4px; font: inherit; }
+
+.ux-star.on { color: var(--lime-text); }
+.ux-pin { margin-left: auto; padding-left: 6px; color: var(--lime-text); font-size: 11px; }
+.ux-tags { display: inline-flex; flex-wrap: wrap; gap: 4px; margin-left: 6px; }
+.ux-tag { padding: 0 6px; font-family: var(--mono); font-size: 10.5px; color: var(--muted); border: 1px solid var(--border); border-radius: 99px; }
+.ux-filter { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.ux-folder-head { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: var(--raised); border-bottom: 1px solid var(--border); }
+.ux-folder-toggle { display: inline-flex; align-items: center; gap: 10px; flex: 1; min-width: 0; padding: 4px 0; background: none; border: 0; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.ux-folder-toggle:focus-visible, .ux-star:focus-visible { outline: 2px solid var(--lime); outline-offset: 2px; }
+.ux-caret { width: 12px; color: var(--muted); }
+
+.ux-bar { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; }
+.ux-widget, #ux-widgets > section { margin-bottom: 4px; }
+#ux-widgets > .ux-hidden { display: none; }
+#ux-widgets > .ux-editing { border: 1px dashed var(--border-strong); border-radius: 8px; padding: 10px; margin-bottom: 12px; }
+#ux-widgets > .ux-off { opacity: 0.55; }
+#ux-widgets > .ux-dragging { opacity: 0.4; }
+.ux-wctl { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; }
+.ux-grip { cursor: grab; color: var(--muted); font-size: 16px; }
