@@ -16,6 +16,16 @@
 | **General** | Panel name, port range for new servers, crash auto-restart and how often, automatic Steam game updates, sign-in locations |
 | **System** | Version and host details, **Reload templates**, **Back up panel settings** |
 
+## Capacity
+
+<img src="../screenshots/capacity.png" alt="The Capacity card on the Overview" width="800" />
+
+Administrators see a **Capacity** card on the Overview, one per machine (each node too). Three stacked bars show the machine's memory, CPU and disk, with a segment for every running server: the full segment is what the server **reserves** (its memory limit, or its CPU cap) and the bright part inside is what it **actually uses**. The hatched segment is the system and other programs, the empty part is free. Hover a segment for the numbers.
+
+- Memory also says how many more servers like the average one still fit. A red marker and **Over-committed** appear when the running servers' limits add up to more than the machine has; stopped servers are not counted until they start.
+- A server with no CPU cap counts as what it uses right now.
+- Disk has no reservation, it shows what each server's folder takes.
+
 ## HTTPS
 
 **Settings → HTTPS** gets a free Let's Encrypt certificate so the panel opens at `https://your.domain` with no reverse proxy (passkeys and the phone app away from home need this). Point the domain at the machine, enter it, and press **Get a certificate**. Let's Encrypt checks the domain over port 80, which has to reach this machine while the certificate is issued; if it cannot, pick **Cloudflare DNS** and add a Cloudflare token under Integrations. The certificate renews itself. Plain-HTTP visits to the domain are sent to HTTPS, while the IP address and the usual port keep working.

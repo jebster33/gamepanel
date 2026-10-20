@@ -32,6 +32,12 @@ module.exports = (router, { store, auth, manager, hostMetrics, notifier, bridge 
     dataDir: user.role === 'admin' ? config.dataDir : undefined,
   }));
 
+  /** Memory, CPU and disk per machine, with what each server reserves and uses. */
+  router.get('/api/system/capacity', ({ user }) => {
+    requireAdmin(user);
+    return require('../../features/capacity').build({ manager, nodes: manager.nodes, hostMetrics });
+  });
+
   router.get('/api/events', ({ user, url }) => {
     requireCap(user, 'activity');
     const limit = clamp(url.searchParams.get('limit') || 100, 1, 500);

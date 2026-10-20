@@ -4573,3 +4573,15 @@ pre.code-block {
   margin-left: 26px;
   color: var(--warning, #f5a524);
 }
+
+/* Capacity: stacked bars of what each server reserves. */
+.cap-row + .cap-row { margin-top: 18px; }
+.cap-bar { position: relative; display: flex; height: 22px; border-radius: 5px; overflow: hidden; background: var(--inset); gap: 2px; }
+.cap-seg { position: relative; display: block; min-width: 2px; background: color-mix(in srgb, var(--c, var(--border-strong)) 28%, transparent); overflow: hidden; }
+.cap-seg > i { display: block; height: 100%; background: var(--c); }
+.cap-seg.free { background: var(--raised); }
+.cap-seg.hatch { background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--c) 40%, transparent) 0 4px, transparent 4px 8px); }
+.cap-limit { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--red); box-shadow: 0 0 6px var(--red); }
+.cap-legend { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 8px; font-size: 12px; color: var(--muted); }
+.cap-key { display: inline-block; width: 9px; height: 9px; margin-right: 6px; border-radius: 2px; background: var(--c); }
+.cap-key.hatch { background: repeating-linear-gradient(135deg, var(--c) 0 2px, transparent 2px 4px); }

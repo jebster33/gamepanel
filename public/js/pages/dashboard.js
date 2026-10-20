@@ -3,6 +3,7 @@ import { drawChart } from '../core/charts.js';
 import { setCrumbs } from '../core/router.js';
 import { state } from '../core/state.js';
 import { $, esc, fmtBytes, fmtDuration, fmtRate, icon } from '../core/util.js';
+import { renderCapacity } from './capacity.js';
 import { renderServerCards } from './servers.js';
 import { countUp, flash, revealChildren } from '../ui/fx.js';
 
@@ -73,6 +74,8 @@ export function renderDashboard(view) {
       </div>
     </div>
 
+    <div id="capacity"></div>
+
     <div class="row" style="margin-bottom:10px">
       <h2 class="section-title" style="margin:0">Servers</h2>
       <div class="spacer" style="flex:1"></div>
@@ -81,7 +84,10 @@ export function renderDashboard(view) {
     ${renderServerCards()}`;
 
   drawHostCharts();
-  if (state.user?.role === 'admin') renderChecklist();
+  if (state.user?.role === 'admin') {
+    renderChecklist();
+    renderCapacity($('#capacity'), true);
+  }
   revealChildren(view);
   view.querySelectorAll('[data-countup]').forEach((el) => countUp(el, el.dataset.countup));
 }
@@ -122,6 +128,7 @@ export function patchDashboard() {
     set('[data-ov="crashes"]', String(overview.crashes));
   }
   drawHostCharts();
+  if (state.user?.role === 'admin') renderCapacity($('#capacity'));
 }
 
 /* ----------------------------------------------------------- checklist */

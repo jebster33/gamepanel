@@ -166,6 +166,7 @@ GET    /api/servers/:id/staging/diff     what a push from this staging copy woul
 POST   /api/servers/:id/staging/push     {"entries":[folders],"properties","version"}
 PATCH  /api/servers/:id                  … {"wakeOnJoin":true} turns on wake on join (Minecraft Java)
 GET    /api/system                       host metrics
+GET    /api/system/capacity              memory, CPU, disk per machine and per server (admins)
 GET    /api/system/runtime               Docker status
 GET    /api/system/update                pending panel updates
 POST   /api/system/update                update and restart
