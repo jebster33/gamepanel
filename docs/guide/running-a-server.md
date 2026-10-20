@@ -82,6 +82,14 @@ of a file also keeps what was there before, and the last 50 versions of each fil
 Tick **only when empty** to skip a run while people are playing. **Chat announcements** on the same tab
 rotate messages in game chat, and can send new players a first-join welcome.
 
+### Rust events and teams
+
+Rust's **Game settings** card has an **Events** group and a **Team size** setting.
+
+- **Patrol helicopter, cargo ship, Chinook:** *Vanilla* leaves Rust's own timing alone, *Off* stops them, and a set time (every 30 minutes to every 4 hours) blocks the random spawns and starts one that often instead. These use a small plugin the panel adds to `oxide/plugins` (GamePanelEvents.cs), so they need Oxide. The panel sends the timers each time the server starts. Servers made before this update get the plugin the next time you run **Update**.
+- **Bradley APC:** turn it off, or pick how long it takes to return. This uses Rust's own `bradley.enabled` and `bradley.respawndelayminutes`, no plugin.
+- **Team size:** Solo, Duo, Trio and Quad set the team limit (1 to 4); *Custom* uses **Max team size**. Turn on **Show team size in server name** to get a tag like `[2x | Duo] My Server` in the server list.
+
 ### Rust wipes and maps
 
 Rust servers get a **Wipe** card on the Schedules tab.

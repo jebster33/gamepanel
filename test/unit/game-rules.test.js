@@ -119,3 +119,15 @@ test('Rust sends its gather rate once the server is up', () => {
   assert.deepStrictEqual(tpl.readyCommands[0], 'gather.rate dispenser * {{GATHER_RATE}}');
   assert.ok(tpl.variables.some((v) => v.name === 'GATHER_RATE'));
 });
+
+test('Rust team presets set the team limit and tag the server name', () => {
+  const { teamLimit, hostname } = require('../../server/features/rust-events');
+  assert.strictEqual(teamLimit({ TEAM_SIZE: 'duo', MAX_TEAM: 8 }), 2);
+  assert.strictEqual(teamLimit({ TEAM_SIZE: 'custom', MAX_TEAM: 5 }), 5);
+  assert.strictEqual(hostname({ SERVER_HOSTNAME: 'My "Rust"', TEAM_SIZE: 'duo', TEAM_TAG: 'true', GATHER_RATE: '2' }), '[2x | Duo] My Rust');
+  assert.strictEqual(hostname({ SERVER_HOSTNAME: 'Plain', TEAM_SIZE: 'quad', TEAM_TAG: 'true', GATHER_RATE: '1' }), '[Quad] Plain');
+  assert.strictEqual(hostname({ SERVER_HOSTNAME: 'Plain', TEAM_SIZE: 'quad', TEAM_TAG: 'false' }), 'Plain');
+  const tpl = template('rust');
+  assert.ok(tpl.startCommand.includes('{{TEAM_LIMIT}}') && tpl.startCommand.includes('{{HOSTNAME_FULL}}'));
+  assert.ok(tpl.readyCommands.includes('gpevents.set heli {{HELI_EVENT}}'));
+});
