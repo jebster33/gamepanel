@@ -4585,3 +4585,9 @@ pre.code-block {
 .cap-legend { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 8px; font-size: 12px; color: var(--muted); }
 .cap-key { display: inline-block; width: 9px; height: 9px; margin-right: 6px; border-radius: 2px; background: var(--c); }
 .cap-key.hatch { background: repeating-linear-gradient(135deg, var(--c) 0 2px, transparent 2px 4px); }
+
+/* staff */
+.staff-bars { display: flex; align-items: flex-end; gap: 2px; height: 60px; }
+.staff-bars span { flex: 1; background: var(--accent, #c6f432); border-radius: 1px; min-height: 2px; opacity: 0.85; }
+.staff-actions { max-height: 260px; overflow: auto; }
+.staff-role-pick { width: auto; max-width: 120px; padding: 4px 6px; font-size: 12px; }

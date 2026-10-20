@@ -118,6 +118,16 @@ GET    /api/bans                         shared ban list, appeals, servers (admi
 POST   /api/bans                         {"name","reason","hours?"} ban on every server
 DELETE /api/bans/:id                     lift it everywhere
 POST   /api/bans/appeals/:id             {"decision":"accept|deny","reply"}
+GET    /api/staff/activity               per-staff moderation counts per day/week, last active, recent actions (admins)
+GET    /api/staff/reasons                ban/kick reason templates (any signed-in user)
+POST   /api/staff/reasons                {"name","reason","hours","appeal"} (admins); PUT/DELETE …/:id
+                                         ban/kick routes (POST /api/bans, /api/players/ban-everywhere, /api/servers/:id/players/action, …/player-lists) also take {"template": id}
+GET    /api/staff/roles                  role templates and the permissions they can hold (admins)
+POST   /api/staff/roles                  {"name","description","permissions"} (admins); PUT/DELETE …/:id (delete resets a built-in)
+POST   /api/servers/:id/access/:userId/role   {"role": id} apply a role template to a sub-user (admins)
+GET    /api/servers/:id/access-grants    active time-limited grants (admins)
+POST   /api/servers/:id/access-grants    {"userId","role" or "permissions","hours" or "until"} (admins)
+DELETE /api/servers/:id/access-grants/:grantId   end one early
 POST   /api/public/appeals               {"name","message","contact"} (public; returns a code)
 GET    /api/public/appeals/:code         an appeal's status (public)
 GET    /api/servers/:id/discord-whitelist     whitelist from Discord roles

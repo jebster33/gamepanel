@@ -12,6 +12,7 @@ import { renderSettings } from '../pages/settings.js';
 import { renderTemplates } from '../pages/templates.js';
 import { renderTemplateBuilder } from '../pages/template-builder.js';
 import { renderAudit } from '../pages/audit.js';
+import { renderStaff } from '../pages/staff.js';
 import { renderBans } from '../pages/bans.js';
 import { renderNetworks } from '../pages/networks.js';
 import { renderClusters } from '../pages/clusters.js';
@@ -34,6 +35,7 @@ const ROUTES = [
   { pattern: /^\/templates\/(new|edit)(?:\/([^/]+))?$/, name: 'template-builder', keys: ['mode', 'id'], page: renderTemplateBuilder },
   { pattern: /^\/activity$/, name: 'activity', page: renderActivity },
   { pattern: /^\/audit$/, name: 'audit', page: renderAudit },
+  { pattern: /^\/staff$/, name: 'staff', page: renderStaff },
   { pattern: /^\/bans$/, name: 'bans', page: renderBans },
   { pattern: /^\/networks$/, name: 'networks', page: renderNetworks },
   { pattern: /^\/clusters$/, name: 'clusters', page: renderClusters },

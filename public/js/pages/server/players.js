@@ -1,6 +1,7 @@
+import { loadReasonTemplates, reasonDialog } from '../staff-reasons.js';
 import { api } from '../../core/api.js';
 import { can, esc, fmtDuration, fmtTime, toast, icon } from '../../core/util.js';
-import { confirmModal, openModal, promptModal } from '../../ui/modal.js';
+import { confirmModal, openModal } from '../../ui/modal.js';
 import { skeleton } from '../../ui/skeleton.js';
 
 /* --------------------------------------------------------------- players */
@@ -134,10 +135,15 @@ async function onAction(event) {
   if (!btn) return;
   const serverId = current.server;
   const { playerAction: action, player } = btn.dataset;
-  if (action === 'ban' && !(await confirmModal(`Ban ${esc(player)}`, `${player} is removed and cannot join again until unbanned.`, 'Ban'))) return;
+  let extra = {};
+  if (action === 'ban' || (action === 'kick' && (await loadReasonTemplates()).length)) {
+    const picked = await reasonDialog({ title: `${ACTION_LABELS[action]} ${player}`, message: action === 'ban' ? `${player} is removed and cannot join again until unbanned.` : `${player} is removed from the server.`, confirmLabel: ACTION_LABELS[action] });
+    if (!picked) return;
+    extra = { reason: picked.reason || undefined, template: picked.template };
+  }
   btn.disabled = true;
   try {
-    await api(`/api/servers/${serverId}/players/action`, { method: 'POST', body: { action, name: player } });
+    await api(`/api/servers/${serverId}/players/action`, { method: 'POST', body: { action, name: player, ...extra } });
     toast(`${ACTION_LABELS[action] || action}: ${player}`);
   } catch (err) {
     toast(err.message, 'error');
@@ -422,12 +428,15 @@ function statsHtml(st) {
 /** BattleMetrics-style network ban: every Minecraft server this account moderates. */
 async function banEverywhere(name, unban) {
   let reason = '';
+  let template;
   if (!unban) {
-    reason = await promptModal(`Ban ${esc(name)} on every server`, 'Reason players see', 'Banned from the network');
-    if (reason === null) return;
+    const picked = await reasonDialog({ title: `Ban ${name} on every server`, message: 'The reason is shown to the player.', confirmLabel: 'Ban everywhere' });
+    if (!picked) return;
+    reason = picked.reason || 'Banned from the network';
+    template = picked.template;
   }
   try {
-    const { results } = await api('/api/players/ban-everywhere', { method: 'POST', body: { name, reason, unban } });
+    const { results } = await api('/api/players/ban-everywhere', { method: 'POST', body: { name, reason, unban, template } });
     const ok = results.filter((r) => r.ok).length;
     const failed = results.filter((r) => !r.ok);
     toast(`${unban ? 'Unbanned' : 'Banned'} ${name} on ${ok} server${ok === 1 ? '' : 's'}${failed.length ? `. Failed on ${failed.map((r) => r.server).join(', ')}: ${failed[0].error}` : ''}`, failed.length ? 'warn' : 'info', 7000);
