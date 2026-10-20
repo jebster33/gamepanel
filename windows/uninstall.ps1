@@ -45,6 +45,10 @@ if (Get-Service -Name GamePanel -ErrorAction SilentlyContinue) {
 # Game servers started by the panel run as their own processes (or containers); stop them too.
 & (Join-Path $PSScriptRoot 'stop-servers.ps1')
 
+$machinePath = [Environment]::GetEnvironmentVariable('Path', 'Machine')
+if ($machinePath) {
+  [Environment]::SetEnvironmentVariable('Path', (($machinePath -split ';' | Where-Object { $_ -and $_ -ne $InstallDir }) -join ';'), 'Machine')
+}
 Write-Host "==> Removing $InstallDir"
 Set-Location $env:TEMP
 Remove-Item $InstallDir -Recurse -Force -ErrorAction SilentlyContinue

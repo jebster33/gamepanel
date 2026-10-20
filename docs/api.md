@@ -10,6 +10,8 @@ Signed-in accounts (and their keys) get 1200 requests a minute; anything anonymo
 
 Create one on the Account page (or `POST /api/auth/api-keys {"name","readOnly"}`; the key is shown once). Send it as `Authorization: Bearer gp_…`. A key acts as your account, with two limits: read-only keys can only `GET`, and no key can change accounts (passwords, two-factor, keys, users). Keys are stored hashed.
 
+The [`gamepanel` command](guide/cli.md) wraps the common calls.
+
 ```
 curl -H "Authorization: Bearer gp_…" http://panel:8420/api/servers
 curl -H "Authorization: Bearer gp_…" -H "Content-Type: application/json" \

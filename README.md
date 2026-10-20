@@ -101,6 +101,7 @@ too (after asking), along with users, bridge connections and the containers Game
 | **Two-factor sign-in and passkeys** | Codes from any authenticator app, passkeys (fingerprint, face or security key), and an option to require two-factor for admins. |
 | **Built-in HTTPS** | A free Let's Encrypt certificate for your domain, renewed by itself. No reverse proxy needed. |
 | **Multiple machines** | Add other GamePanel installs as [nodes](docs/guide/nodes.md) and run their servers from one panel; move a server from one machine to another. |
+| **Command line** | `gamepanel` lists servers, starts/stops them, sends console commands, makes backups and runs updates, on this machine or a remote panel. [Guide](docs/guide/cli.md) |
 | **Limits** | Caps on total memory, CPU per server and storage. [Guide](docs/guide/panel-settings.md#limits) |
 | **Audit log** | Every change anyone makes, with who, what, which server and from where. |
 | **Reachability** | Opens ports in the firewall and on your router (UPnP), or tells you exactly what to forward. |
