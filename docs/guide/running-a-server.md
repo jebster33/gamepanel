@@ -38,6 +38,14 @@ CPU, memory, players and ping, with a range picker from the last hour up to 30 d
 per minute for a day and per 15 minutes for 30 days, and survives panel restarts. 100% CPU is one full
 core. Paper and Purpur servers also show TPS on the server page.
 
+**Lag report** above the advice finds out what slows the server down:
+
+- **Minecraft** (Paper, Purpur, Folia, Fabric, Quilt, Forge, NeoForge): runs the [spark](https://spark.lucko.me) profiler on the live server for 30 seconds to 5 minutes and shows the link to its report, which breaks the time down by plugin, mod and method. **Quick health report** skips profiling and gives a link to a summary of memory, disk and tick times. If spark is not installed, **Install spark** adds it from Modrinth (restart once to load it). Profile while the lag is happening for the clearest answer.
+- **Rust**: asks the server for its frame rate and sets it beside the plugin count and how the machine has been doing. Rust and Oxide have no profiler that can trace a single plugin, so this points at suspects rather than naming one.
+- **Other games**: a snapshot of CPU, memory, players and what the console says.
+
+Every report keeps a snapshot of the last 15 minutes (CPU, memory, players, TPS, "can't keep up" lines) with a plain-language reading, so an old spark link can be judged against how the server was doing. Reports are kept in the server's `.gamepanel` folder and travel with backups. Taking one needs the permission to send console commands.
+
 **Advice** under the graphs looks at the memory and player history, crashes, the console, the number of
 mods or plugins, TPS and `server.properties`, and says what to change and why: too little memory (or an
 out-of-memory crash), more than it needs, more memory promised than the machine has, Aikar's Java flags for

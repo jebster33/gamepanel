@@ -97,7 +97,7 @@ POST   /api/servers/:id/save-as-setup    {"name","description"} keep it as a rea
 POST   /api/servers/:id/backups/:name/verify          test-restore one backup
 PUT    /api/servers/:id/backup-mode      {"mode":"archive|incremental","encrypt"}
 PUT    /api/settings/backup-passphrase   {"passphrase"} for encrypted backups (admins)
-GET    /api/servers/:id/mods/check       mod check: wrong loader, missing dependencies, clashes
+GET    /api/servers/:id/mods/check       mod check: wrong loader, missing dependencies, clashes (Minecraft, Rust, Factorio, the panel's record)
 GET    /api/servers/:id/configs          plugin and mod config files
 GET    /api/servers/:id/configs/form     ?path= one file as a form
 PUT    /api/servers/:id/configs/form     ?path= {"version","changes":{id:value}}
@@ -144,6 +144,9 @@ GET    /api/node-backups                 copies-on-a-node settings (admins)
 PATCH  /api/node-backups                 {"enabled","nodeId","keep"}
 GET    /api/servers/:id/backups/node     copies on the node; POST …/node/:name/send|fetch, DELETE …/node/:name
 PUT    /api/backup-store/:panel/:server/:name    the receiving node's store (admin API key; body: the .tar.gz)
+GET    /api/servers/:id/lag              lag reports and the one running (console)
+POST   /api/servers/:id/lag              take one: {mode: profile|health, seconds} (command)
+DELETE /api/servers/:id/lag/:reportId    delete a report (command)
 GET    /api/servers/:id/advice           memory and settings advice
 POST   /api/servers/:id/advice/:id/apply apply one piece of advice (admins)
 POST   /api/servers/:id/staging          {"name","withWorld"} make a staging copy (admins)

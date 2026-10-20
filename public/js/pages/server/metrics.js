@@ -4,6 +4,7 @@ import { state } from '../../core/state.js';
 import { $, esc, fmtBytes, fmtTime, toast, icon } from '../../core/util.js';
 import { themeColor } from '../dashboard.js';
 import { skeleton } from '../../ui/skeleton.js';
+import { renderLagCard } from './lag.js';
 
 /* -------------------------------------------------------------- metrics */
 
@@ -30,6 +31,7 @@ export function renderMetricsTab(host, server) {
       <div class="chart-card"><h4>Players online</h4><div class="chart-value" id="mv-players">—</div><canvas id="chart-players"></canvas></div>
       <div class="chart-card"><h4>Ping</h4><div class="chart-value" id="mv-ping">—</div><canvas id="chart-ping"></canvas></div>
     </div>
+    <div class="card mt-16" id="mv-lag"></div>
     <div class="card mt-16" id="mv-advice"><h4 style="margin:0 0 12px">Advice</h4>${skeleton('lines', 'Looking at how it runs…')}</div>
     <div class="card mt-16">
       <h4 style="margin:0 0 12px">Details</h4>
@@ -57,6 +59,7 @@ export function renderMetricsTab(host, server) {
     })
   );
 
+  renderLagCard(host.querySelector('#mv-lag'), server);
   renderAdvice(host.querySelector('#mv-advice'), server);
 
   if (range !== 'live') {

@@ -64,8 +64,24 @@ module.exports = {
 
     rt.startedAt = Date.now();
     this.openLogStream(server);
+    if (template.mods) setImmediate(() => this.warnAboutMods(server, template));
     this.store.addEvent('server.started', `${server.name} started`, { serverId: id });
     return this.publicServer(server);
+  },
+
+  /** Tell the console what is wrong with the installed mods. Only warns: the owner may know better. */
+  warnAboutMods(server, template) {
+    try {
+      const { issues } = require('../features/mods/check').run(server, template);
+      if (!issues.length) return;
+      const errors = issues.filter((i) => i.severity === 'error').length;
+      this.pushConsole(server, `Mod check: ${errors ? `${errors} problem${errors === 1 ? '' : 's'}` : `${issues.length} warning${issues.length === 1 ? '' : 's'}`} found. The server starts anyway; see the Mods tab.`, 'system');
+      for (const i of issues.slice(0, 6)) this.pushConsole(server, `Mod check: ${i.message}`, 'system');
+      if (issues.length > 6) this.pushConsole(server, `Mod check: and ${issues.length - 6} more.`, 'system');
+      this.store.addEvent('mods.warning', `${server.name} started with ${issues.length} mod issue${issues.length === 1 ? '' : 's'}`, { serverId: server.id });
+    } catch (err) {
+      logger.warn(`Mod check failed for ${server.name}: ${err.message}`);
+    }
   },
 
   /**

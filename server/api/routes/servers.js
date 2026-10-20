@@ -667,6 +667,22 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
     return { history: manager.getHistory(server.id, url.searchParams.get('range')) };
   });
 
+  /* Lag reports: spark for Minecraft, an fps check for Rust, a snapshot for the rest. */
+  router.get('/api/servers/:id/lag', ({ user, params }) => require('../../features/lag').status(manager, serverFor(user, params.id, 'console')));
+
+  router.post('/api/servers/:id/lag', async ({ user, params, body }) => {
+    const server = serverFor(user, params.id, 'command');
+    const result = await require('../../features/lag').start(manager, server, { mode: body?.mode, seconds: body?.seconds }, user.username);
+    store.addEvent('lag.started', `${user.username} started a lag report on ${server.name}`, { serverId: server.id });
+    return result;
+  });
+
+  router.delete('/api/servers/:id/lag/:reportId', ({ user, params }) => {
+    const server = serverFor(user, params.id, 'command');
+    require('../../features/lag').remove(server, params.reportId);
+    return { ok: true };
+  });
+
   router.get('/api/servers/:id/query', async ({ user, params }) => {
     const server = serverFor(user, params.id);
     const q = manager.template(server)?.query;

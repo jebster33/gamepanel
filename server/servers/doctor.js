@@ -44,7 +44,7 @@ module.exports = {
     // Modded Minecraft: look inside the jars for what the log may not say plainly.
     if (ctx.code !== undefined && this.template(server)?.mods && findings.length < 3) {
       try {
-        const { issues = [] } = require('../features/mods/conflicts').check(server, this.template(server));
+        const { issues = [] } = require('../features/mods/check').run(server, this.template(server));
         const errors = issues.filter((i) => i.severity === 'error');
         if (errors.length) {
           findings.push({
