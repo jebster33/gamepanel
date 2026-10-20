@@ -26,6 +26,7 @@ export function showAuth(setupRequired = false) {
   $('#auth-form').dataset.mode = setupRequired ? 'setup' : 'login';
   $('#auth-username').focus();
   showOauthButtons(!setupRequired);
+  if (!setupRequired) document.dispatchEvent(new CustomEvent('gp:auth-shown'));
 }
 
 /** "Sign in with Discord" and friends, for the providers an administrator set up. */

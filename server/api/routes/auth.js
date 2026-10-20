@@ -66,7 +66,7 @@ module.exports = (router, app) => {
     { public: true }
   );
 
-  router.post('/api/auth/passkeys/options', ({ user, req, body }) => passkeys.registerOptions(auth, store, user, req, body?.password));
+  router.post('/api/auth/passkeys/options', ({ user, req, body }) => passkeys.registerOptions(auth, store, user, req, body?.password, body?.kind || 'any'));
 
   router.post('/api/auth/passkeys', ({ user, req, body }) => {
     const passkey = passkeys.register(auth, store, user, req, body || {});

@@ -21,7 +21,7 @@ import { wireOtp } from './ui/otp.js';
 import { closeSidebar } from './ui/sidebar.js';
 import { fadeAway, shake } from './ui/fx.js';
 import { applyTheme, switchTheme } from './ui/theme.js';
-import { signInWithPasskey } from './core/passkey.js';
+import { conditionalPasskeySignIn, signInWithPasskey } from './core/passkey.js';
 
 /* ------------------------------------------------------- global handlers */
 
@@ -47,6 +47,22 @@ document.addEventListener('click', async (event) => {
   if (copy) copyToClipboard(copy.dataset.copy, copy);
 });
 
+
+// Autofill: the browser lists this site's passkeys under the username box.
+document.addEventListener('gp:auth-shown', async () => {
+  try {
+    const data = await conditionalPasskeySignIn();
+    if (!data) return;
+    if (data.twoFactor) return showOtpStep(data.ticket);
+    state.user = data.user;
+    await leaveAuth();
+    await enterApp();
+  } catch (err) {
+    const error = $('#auth-error');
+    error.textContent = err.message;
+    error.classList.remove('hidden');
+  }
+});
 
 document.addEventListener('click', async (event) => {
   const btn = event.target.closest('[data-passkey-signin]');

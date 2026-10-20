@@ -30,7 +30,16 @@ const safeDecode = (v) => {
     return v;
   }
 };
-const ROUTES = ['auth', 'system', 'templates', 'servers', 'files', 'mods', 'network', 'backups', 'users', 'bridge', 'bans'];
+// Core files first (their order matters for route matching), then every other file in routes/ (feature routes).
+const CORE_ROUTES = ['auth', 'system', 'templates', 'servers', 'files', 'mods', 'network', 'backups', 'users', 'bridge', 'bans'];
+const ROUTES = [
+  ...CORE_ROUTES,
+  ...require('fs')
+    .readdirSync(require('path').join(__dirname, 'routes'))
+    .filter((f) => f.endsWith('.js') && !CORE_ROUTES.includes(f.slice(0, -3)))
+    .map((f) => f.slice(0, -3))
+    .sort(),
+];
 
 /** @param {{store, auth, manager, templates, hostMetrics, scheduler, notifier, bridge}} app */
 function createApi(app) {
