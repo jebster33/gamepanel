@@ -2,7 +2,7 @@ import { api } from '../../core/api.js';
 import { loadServers } from '../../core/boot.js';
 import { render } from '../../core/router.js';
 import { state } from '../../core/state.js';
-import { variableField } from '../deploy.js';
+import { presetField, variableField } from '../deploy.js';
 import { stagingCard, wireStagingCard } from './staging.js';
 import { $, can, esc, toast } from '../../core/util.js';
 import { confirmModal, openModal } from '../../ui/modal.js';
@@ -19,8 +19,11 @@ function gameRulesCard(server, isAdmin) {
   const rules = ruleVariables(server);
   if (!rules.length) return '';
   const groups = [...new Set(rules.map((v) => v.group))];
+  const template = state.templates.find((t) => t.id === server.templateId);
+  const presetsHtml = isAdmin && template.presets?.length ? `<div class="form-grid mb-16">${presetField(template, server.vars)}</div>` : '';
   return `<div class="card mb-16" id="rules-card">
       <h4 style="margin:0 0 14px">Game settings</h4>
+      ${presetsHtml}
       ${groups
         .map(
           (group) => `<h5 class="section-title">${esc(group)}</h5>

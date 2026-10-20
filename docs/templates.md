@@ -85,7 +85,7 @@ on the server's Settings tab, with its label, description and dropdown. `options
 
 Wire the variable in wherever the game reads it: a start-command argument, `patchProperties` (re-applied on every
 start, so changes take effect on restart) or a `configFiles` entry with `"mode": "overwrite"`. For Source games,
-write the cvars to a cfg and `+exec` it; a blank value leaves the game default alone (see `tf2.json`).
+`presets` (`[{ "id", "label", "description", "vars": { NAME: value } }]`) add a Preset dropdown that fills in several settings at once, and `readyCommands` are console commands sent a few seconds after the server is up (Rust's gather rate). For Source games, write the cvars to a cfg and `+exec` it; a blank value leaves the game default alone (see `tf2.json`).
 
 ## Install steps
 

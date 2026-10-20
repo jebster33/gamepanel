@@ -230,5 +230,47 @@
       "strategy": "modlist",
       "file": "ConanSandbox/Mods/modlist.txt"
     }
-  }
+  },
+  "presets": [
+    {
+      "id": "normal",
+      "label": "Normal",
+      "description": "standard rates",
+      "vars": {
+        "HARVEST_MULTIPLIER": 1,
+        "XP_RATE": 1,
+        "NPC_RESPAWN": 1
+      }
+    },
+    {
+      "id": "2x",
+      "label": "2x",
+      "description": "double harvest and XP",
+      "vars": {
+        "HARVEST_MULTIPLIER": 2,
+        "XP_RATE": 2,
+        "NPC_RESPAWN": 1
+      }
+    },
+    {
+      "id": "5x",
+      "label": "5x",
+      "description": "five times harvest and XP",
+      "vars": {
+        "HARVEST_MULTIPLIER": 5,
+        "XP_RATE": 5,
+        "NPC_RESPAWN": 0.8
+      }
+    },
+    {
+      "id": "pve",
+      "label": "PvE",
+      "description": "no player damage or raiding",
+      "vars": {
+        "PVP_ENABLED": "False",
+        "DAMAGE_PLAYER_STRUCTURES": "False",
+        "DROP_EQUIPMENT": "False"
+      }
+    }
+  ]
 }

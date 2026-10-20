@@ -172,6 +172,57 @@
         }
       ],
       "group": "Rules"
+    },
+    {
+      "name": "COLLECTION_DROP_RATE",
+      "label": "Gather rate (trees, ore, plants)",
+      "type": "number",
+      "default": 1,
+      "description": "2 doubles what you get from gathering.",
+      "group": "Rates"
+    },
+    {
+      "name": "ENEMY_DROP_RATE",
+      "label": "Enemy drop rate",
+      "type": "number",
+      "default": 1,
+      "group": "Rates"
+    },
+    {
+      "name": "WORK_SPEED",
+      "label": "Pal work speed",
+      "type": "number",
+      "default": 1,
+      "group": "Rates"
+    },
+    {
+      "name": "PLAYER_HUNGER",
+      "label": "Player hunger rate",
+      "type": "number",
+      "default": 1,
+      "description": "Lower is slower.",
+      "group": "Survival"
+    },
+    {
+      "name": "PAL_HUNGER",
+      "label": "Pal hunger rate",
+      "type": "number",
+      "default": 1,
+      "group": "Survival"
+    },
+    {
+      "name": "GUILD_MAX",
+      "label": "Max players per guild",
+      "type": "number",
+      "default": 20,
+      "group": "Rules"
+    },
+    {
+      "name": "BASE_CAMP_MAX",
+      "label": "Max bases on the server",
+      "type": "number",
+      "default": 128,
+      "group": "Rules"
     }
   ],
   "ports": [
@@ -266,7 +317,14 @@
           "DeathPenalty": "{{DEATH_PENALTY}}",
           "bIsPvP": "{{PVP}}",
           "bEnableInvaderEnemy": "{{RAIDS}}",
-          "bHardcore": "{{HARDCORE}}"
+          "bHardcore": "{{HARDCORE}}",
+          "CollectionDropRate": "{{COLLECTION_DROP_RATE}}",
+          "EnemyDropItemRate": "{{ENEMY_DROP_RATE}}",
+          "WorkSpeedRate": "{{WORK_SPEED}}",
+          "PlayerStomachDecreaceRate": "{{PLAYER_HUNGER}}",
+          "PalStomachDecreaceRate": "{{PAL_HUNGER}}",
+          "GuildPlayerMaxNum": "{{GUILD_MAX}}",
+          "BaseCampMaxNum": "{{BASE_CAMP_MAX}}"
         }
       }
     ]
@@ -289,7 +347,88 @@
         "DeathPenalty": "{{DEATH_PENALTY}}",
         "bIsPvP": "{{PVP}}",
         "bEnableInvaderEnemy": "{{RAIDS}}",
-        "bHardcore": "{{HARDCORE}}"
+        "bHardcore": "{{HARDCORE}}",
+        "CollectionDropRate": "{{COLLECTION_DROP_RATE}}",
+        "EnemyDropItemRate": "{{ENEMY_DROP_RATE}}",
+        "WorkSpeedRate": "{{WORK_SPEED}}",
+        "PlayerStomachDecreaceRate": "{{PLAYER_HUNGER}}",
+        "PalStomachDecreaceRate": "{{PAL_HUNGER}}",
+        "GuildPlayerMaxNum": "{{GUILD_MAX}}",
+        "BaseCampMaxNum": "{{BASE_CAMP_MAX}}"
+      }
+    }
+  ],
+  "presets": [
+    {
+      "id": "normal",
+      "label": "Normal",
+      "description": "standard rates",
+      "vars": {
+        "EXP_RATE": 1,
+        "CAPTURE_RATE": 1,
+        "EGG_HATCH_HOURS": 72,
+        "COLLECTION_DROP_RATE": 1,
+        "ENEMY_DROP_RATE": 1,
+        "WORK_SPEED": 1,
+        "PLAYER_HUNGER": 1,
+        "PAL_HUNGER": 1
+      }
+    },
+    {
+      "id": "2x",
+      "label": "2x",
+      "description": "double rates",
+      "vars": {
+        "EXP_RATE": 2,
+        "CAPTURE_RATE": 1.5,
+        "EGG_HATCH_HOURS": 24,
+        "COLLECTION_DROP_RATE": 2,
+        "ENEMY_DROP_RATE": 2,
+        "WORK_SPEED": 2,
+        "PLAYER_HUNGER": 0.75,
+        "PAL_HUNGER": 0.75
+      }
+    },
+    {
+      "id": "5x",
+      "label": "5x",
+      "description": "five times the rates",
+      "vars": {
+        "EXP_RATE": 5,
+        "CAPTURE_RATE": 2,
+        "EGG_HATCH_HOURS": 6,
+        "COLLECTION_DROP_RATE": 5,
+        "ENEMY_DROP_RATE": 3,
+        "WORK_SPEED": 4,
+        "PLAYER_HUNGER": 0.5,
+        "PAL_HUNGER": 0.5
+      }
+    },
+    {
+      "id": "relaxed",
+      "label": "Relaxed",
+      "description": "low pressure, easy captures",
+      "vars": {
+        "PAL_DIFFICULTY": "Casual",
+        "DEATH_PENALTY": "None",
+        "EXP_RATE": 2,
+        "CAPTURE_RATE": 2,
+        "PLAYER_HUNGER": 0.5,
+        "PAL_HUNGER": 0.5,
+        "HARDCORE": "False",
+        "PVP": "False"
+      }
+    },
+    {
+      "id": "hardcore",
+      "label": "Hardcore",
+      "description": "permanent death, drop everything",
+      "vars": {
+        "PAL_DIFFICULTY": "Hard",
+        "DEATH_PENALTY": "All",
+        "HARDCORE": "True",
+        "EXP_RATE": 1,
+        "CAPTURE_RATE": 1
       }
     }
   ]

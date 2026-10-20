@@ -35,6 +35,7 @@ const OVERRIDABLE = [
   'stopTimeout',
   'configFiles',
   'patchProperties',
+  'readyCommands',
   'logPatterns',
   'resolve',
   'image',

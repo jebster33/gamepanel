@@ -219,6 +219,32 @@ function memoryField(defaultMb) {
     </label>`;
 }
 
+/** A dropdown of the template's presets (2x, 3x, softcore…). Picking one fills in the fields below it. */
+export function presetField(template, current = {}) {
+  if (!template.presets?.length) return '';
+  const matches = (p) => Object.entries(p.vars).every(([k, v]) => String(current[k] ?? template.variables?.find((x) => x.name === k)?.default ?? '') === String(v));
+  const active = template.presets.find(matches);
+  return `<label class="preset-picker"><span>Preset</span>
+    <select data-preset>
+      <option value="">Custom</option>
+      ${template.presets
+        .map((p) => `<option value="${esc(p.id)}" data-vars="${esc(JSON.stringify(p.vars))}" ${active?.id === p.id ? 'selected' : ''}>${esc(p.label)} · ${esc(p.description)}</option>`)
+        .join('')}
+    </select>
+    <div class="hint">Fills in the settings below. You can still change any of them before saving.</div></label>`;
+}
+
+// Choosing a preset sets the fields it names; the person can still change any of them before saving.
+document.addEventListener('change', (e) => {
+  const select = e.target.closest?.('[data-preset]');
+  if (!select) return;
+  const vars = JSON.parse(select.selectedOptions[0]?.dataset.vars || '{}');
+  for (const [name, value] of Object.entries(vars)) {
+    const field = document.querySelector(`[data-var="${CSS.escape(name)}"]`);
+    if (field) field.value = String(value);
+  }
+});
+
 export function variableField(v) {
   const id = `var-${v.name}`;
 
@@ -298,7 +324,7 @@ export function openCreateServerModal(templateId) {
           .join('')}</div>`
     )
     .join('');
-  const ruleFields = ruleGroups ? `<details class="mt-16"><summary>More game settings</summary>${ruleGroups}</details>` : '';
+  const ruleFields = ruleGroups ? `<details class="mt-16"><summary>More game settings</summary><div class="form-grid mt-16">${presetField(template)}</div>${ruleGroups}</details>` : '';
 
   const portFields = (template.ports || [])
     .map(

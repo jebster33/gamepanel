@@ -189,6 +189,80 @@
         }
       ],
       "group": "Rules"
+    },
+    {
+      "name": "PLAYER_DAMAGE",
+      "label": "Player damage multiplier",
+      "type": "number",
+      "default": 1,
+      "group": "Combat"
+    },
+    {
+      "name": "DINO_DAMAGE",
+      "label": "Wild creature damage multiplier",
+      "type": "number",
+      "default": 1,
+      "group": "Combat"
+    },
+    {
+      "name": "STRUCTURE_RESISTANCE",
+      "label": "Structure resistance multiplier",
+      "type": "number",
+      "default": 1,
+      "description": "Higher means buildings take less damage.",
+      "group": "Combat"
+    },
+    {
+      "name": "PLAYER_FOOD_DRAIN",
+      "label": "Player food drain multiplier",
+      "type": "number",
+      "default": 1,
+      "group": "Survival"
+    },
+    {
+      "name": "PLAYER_WATER_DRAIN",
+      "label": "Player water drain multiplier",
+      "type": "number",
+      "default": 1,
+      "group": "Survival"
+    },
+    {
+      "name": "DINO_FOOD_DRAIN",
+      "label": "Creature food drain multiplier",
+      "type": "number",
+      "default": 1,
+      "group": "Survival"
+    },
+    {
+      "name": "RESOURCE_RESPAWN",
+      "label": "Resource respawn time multiplier",
+      "type": "number",
+      "default": 1,
+      "description": "Lower is faster. 0.5 halves the wait.",
+      "group": "Rates"
+    },
+    {
+      "name": "DINO_COUNT",
+      "label": "Wild creature count multiplier",
+      "type": "number",
+      "default": 1,
+      "description": "Lower it if the server lags.",
+      "group": "World"
+    },
+    {
+      "name": "AUTOSAVE_MINUTES",
+      "label": "Save every (minutes)",
+      "type": "number",
+      "default": 15,
+      "group": "Saving"
+    },
+    {
+      "name": "IDLE_KICK",
+      "label": "Kick idle players after (seconds)",
+      "type": "number",
+      "default": 3600,
+      "description": "0 never kicks.",
+      "group": "Rules"
     }
   ],
   "ports": [
@@ -339,7 +413,16 @@
           "ServerHardcore": "{{SERVER_HARDCORE}}",
           "AllowThirdPersonPlayer": "{{THIRD_PERSON}}",
           "ShowMapPlayerLocation": "{{MAP_PLAYER_LOCATION}}",
-          "ServerCrosshair": "{{CROSSHAIR}}"
+          "ServerCrosshair": "{{CROSSHAIR}}",
+          "PlayerDamageMultiplier": "{{PLAYER_DAMAGE}}",
+          "DinoDamageMultiplier": "{{DINO_DAMAGE}}",
+          "StructureResistanceMultiplier": "{{STRUCTURE_RESISTANCE}}",
+          "PlayerCharacterFoodDrainMultiplier": "{{PLAYER_FOOD_DRAIN}}",
+          "PlayerCharacterWaterDrainMultiplier": "{{PLAYER_WATER_DRAIN}}",
+          "DinoCharacterFoodDrainMultiplier": "{{DINO_FOOD_DRAIN}}",
+          "ResourcesRespawnPeriodMultiplier": "{{RESOURCE_RESPAWN}}",
+          "AutoSavePeriodMinutes": "{{AUTOSAVE_MINUTES}}",
+          "KickIdlePlayersPeriod": "{{IDLE_KICK}}"
         }
       }
     ]
@@ -369,7 +452,88 @@
         "ServerHardcore": "{{SERVER_HARDCORE}}",
         "AllowThirdPersonPlayer": "{{THIRD_PERSON}}",
         "ShowMapPlayerLocation": "{{MAP_PLAYER_LOCATION}}",
-        "ServerCrosshair": "{{CROSSHAIR}}"
+        "ServerCrosshair": "{{CROSSHAIR}}",
+        "PlayerDamageMultiplier": "{{PLAYER_DAMAGE}}",
+        "DinoDamageMultiplier": "{{DINO_DAMAGE}}",
+        "StructureResistanceMultiplier": "{{STRUCTURE_RESISTANCE}}",
+        "PlayerCharacterFoodDrainMultiplier": "{{PLAYER_FOOD_DRAIN}}",
+        "PlayerCharacterWaterDrainMultiplier": "{{PLAYER_WATER_DRAIN}}",
+        "DinoCharacterFoodDrainMultiplier": "{{DINO_FOOD_DRAIN}}",
+        "ResourcesRespawnPeriodMultiplier": "{{RESOURCE_RESPAWN}}",
+        "AutoSavePeriodMinutes": "{{AUTOSAVE_MINUTES}}",
+        "KickIdlePlayersPeriod": "{{IDLE_KICK}}"
+      }
+    }
+  ],
+  "presets": [
+    {
+      "id": "1x",
+      "label": "1x (official rates)",
+      "description": "standard rates",
+      "vars": {
+        "XP_MULTIPLIER": 1,
+        "HARVEST_MULTIPLIER": 1,
+        "TAMING_MULTIPLIER": 1,
+        "MATING_INTERVAL_MULTIPLIER": 1,
+        "EGG_HATCH_MULTIPLIER": 1,
+        "BABY_MATURE_MULTIPLIER": 1,
+        "RESOURCE_RESPAWN": 1
+      }
+    },
+    {
+      "id": "2x",
+      "label": "2x",
+      "description": "double rates",
+      "vars": {
+        "XP_MULTIPLIER": 2,
+        "HARVEST_MULTIPLIER": 2,
+        "TAMING_MULTIPLIER": 2,
+        "MATING_INTERVAL_MULTIPLIER": 0.5,
+        "EGG_HATCH_MULTIPLIER": 2,
+        "BABY_MATURE_MULTIPLIER": 2,
+        "RESOURCE_RESPAWN": 0.75
+      }
+    },
+    {
+      "id": "3x",
+      "label": "3x",
+      "description": "triple rates",
+      "vars": {
+        "XP_MULTIPLIER": 3,
+        "HARVEST_MULTIPLIER": 3,
+        "TAMING_MULTIPLIER": 3,
+        "MATING_INTERVAL_MULTIPLIER": 0.4,
+        "EGG_HATCH_MULTIPLIER": 3,
+        "BABY_MATURE_MULTIPLIER": 3,
+        "RESOURCE_RESPAWN": 0.6
+      }
+    },
+    {
+      "id": "5x",
+      "label": "5x",
+      "description": "five times the rates",
+      "vars": {
+        "XP_MULTIPLIER": 5,
+        "HARVEST_MULTIPLIER": 5,
+        "TAMING_MULTIPLIER": 5,
+        "MATING_INTERVAL_MULTIPLIER": 0.25,
+        "EGG_HATCH_MULTIPLIER": 5,
+        "BABY_MATURE_MULTIPLIER": 5,
+        "RESOURCE_RESPAWN": 0.5
+      }
+    },
+    {
+      "id": "10x",
+      "label": "10x",
+      "description": "ten times the rates",
+      "vars": {
+        "XP_MULTIPLIER": 10,
+        "HARVEST_MULTIPLIER": 10,
+        "TAMING_MULTIPLIER": 10,
+        "MATING_INTERVAL_MULTIPLIER": 0.1,
+        "EGG_HATCH_MULTIPLIER": 10,
+        "BABY_MATURE_MULTIPLIER": 10,
+        "RESOURCE_RESPAWN": 0.4
       }
     }
   ]

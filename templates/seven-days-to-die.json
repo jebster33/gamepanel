@@ -454,5 +454,64 @@
     "tailFiles": [
       "logs/server.log"
     ]
-  }
+  },
+  "presets": [
+    {
+      "id": "default",
+      "label": "Default",
+      "description": "the usual game",
+      "vars": {
+        "ZOMBIE_MOVE": "0",
+        "ZOMBIE_MOVE_NIGHT": "3",
+        "ENEMY_DIFFICULTY": "0",
+        "DROP_ON_DEATH": "1",
+        "PLAYER_KILLING": "3",
+        "LOOT_ABUNDANCE": 100,
+        "XP_MULTIPLIER": 100,
+        "BLOOD_MOON_FREQUENCY": 7
+      }
+    },
+    {
+      "id": "easy",
+      "label": "Easy",
+      "description": "slower zombies, keep your gear",
+      "vars": {
+        "ZOMBIE_MOVE": "0",
+        "ZOMBIE_MOVE_NIGHT": "1",
+        "ENEMY_DIFFICULTY": "0",
+        "DROP_ON_DEATH": "0",
+        "PLAYER_KILLING": "0",
+        "LOOT_ABUNDANCE": 150,
+        "XP_MULTIPLIER": 150,
+        "BLOOD_MOON_FREQUENCY": 7
+      }
+    },
+    {
+      "id": "pve",
+      "label": "Friendly PvE",
+      "description": "no player killing, longer days",
+      "vars": {
+        "PLAYER_KILLING": "0",
+        "DAY_LENGTH": 90,
+        "DAYLIGHT_HOURS": 20,
+        "DROP_ON_DEATH": "3",
+        "LOOT_ABUNDANCE": 125
+      }
+    },
+    {
+      "id": "hardcore",
+      "label": "Hardcore",
+      "description": "feral nightmare zombies, lose everything",
+      "vars": {
+        "ZOMBIE_MOVE": "3",
+        "ZOMBIE_MOVE_NIGHT": "4",
+        "ENEMY_DIFFICULTY": "1",
+        "DROP_ON_DEATH": "4",
+        "PLAYER_KILLING": "3",
+        "LOOT_ABUNDANCE": 50,
+        "XP_MULTIPLIER": 75,
+        "BLOOD_MOON_FREQUENCY": 5
+      }
+    }
+  ]
 }

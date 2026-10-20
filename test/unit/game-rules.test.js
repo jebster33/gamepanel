@@ -99,3 +99,23 @@ test('every grouped setting has a label and a default that is one of its options
     }
   }
 });
+
+test('presets only set settings the template declares, with values its dropdowns allow', () => {
+  for (const file of fs.readdirSync(path.join(__dirname, '../../templates'))) {
+    const tpl = JSON.parse(fs.readFileSync(path.join(__dirname, '../../templates', file), 'utf8'));
+    const byName = new Map((tpl.variables || []).map((v) => [v.name, v]));
+    for (const preset of tpl.presets || []) {
+      for (const [name, value] of Object.entries(preset.vars)) {
+        const v = byName.get(name);
+        assert.ok(v, `${tpl.id}: preset ${preset.id} sets unknown ${name}`);
+        if (v.options) assert.ok(v.options.some((o) => String(o.value) === String(value)), `${tpl.id}: preset ${preset.id} sets ${name} to ${value}`);
+      }
+    }
+  }
+});
+
+test('Rust sends its gather rate once the server is up', () => {
+  const tpl = template('rust');
+  assert.deepStrictEqual(tpl.readyCommands[0], 'gather.rate dispenser * {{GATHER_RATE}}');
+  assert.ok(tpl.variables.some((v) => v.name === 'GATHER_RATE'));
+});
