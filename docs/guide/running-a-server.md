@@ -121,6 +121,7 @@ each option does. **Restart now** applies changes that need a restart. Minecraft
 | **Alerts** | CPU, memory, folder size and TPS thresholds, posted to your alert webhook |
 | **Address** | A name like `play.example.com` through Cloudflare, when it's set up under Settings → Integrations |
 | **Discord channel** | Chat, joins and status into a channel, and messages typed there show up in game |
+| **Steam server list** | Steam games: checks the server is in the in-game browser and alerts when it drops off. [More](alerts-and-discord.md#steam-server-list-check) |
 | **Reachability** | Open the ports in the firewall and on the router. [More](../troubleshooting.md#making-a-server-reachable) |
 | **Ports** | Changes apply on the next start |
 | **Wake on join** | Minecraft Java, optional: while the server is stopped the panel answers on its port. The server list shows it as asleep, and joining starts it; the player is told to join again in about 30 seconds. Banned players never wake it, and with the whitelist on only whitelisted players do. Goes well with **stop when empty**. |

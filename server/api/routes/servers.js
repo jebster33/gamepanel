@@ -681,6 +681,12 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
     return manager.playerHistory(server.id);
   });
 
+  /** Per wipe: new and returning players, peak and how the population fell off. */
+  router.get('/api/servers/:id/wipe-stats', ({ user, params }) => {
+    const server = serverFor(user, params.id, 'console');
+    return manager.wipeStats(server);
+  });
+
   router.get('/api/servers/:id/player-history/:name', ({ user, params }) => {
     const server = serverFor(user, params.id, 'console');
     // Addresses are personal data: administrators only.
