@@ -87,6 +87,14 @@ rotate messages in game chat, and can send new players a first-join welcome.
 
 The **Preset event** button on the Schedules tab (games with presets) adds two tasks at once: switch to a preset on a day and time, and switch back on another. For example 2x from Friday 18:00 to Monday 06:00, with a 10 minute chat countdown before each restart. They are ordinary **Switch settings preset** tasks, so edit, pause or delete them like any other. A task that finds the server already on its preset does nothing, and each switch shows in the Game settings history.
 
+### Rust events and teams
+
+Rust's **Game settings** card has an **Events** group and a **Team size** setting.
+
+- **Patrol helicopter, cargo ship, Chinook:** *Vanilla* leaves Rust's own timing alone, *Off* stops them, and a set time (every 30 minutes to every 4 hours) blocks the random spawns and starts one that often instead. These use a small plugin the panel adds to `oxide/plugins` (GamePanelEvents.cs), so they need Oxide. The panel sends the timers each time the server starts. Servers made before this update get the plugin the next time you run **Update**.
+- **Bradley APC:** turn it off, or pick how long it takes to return. This uses Rust's own `bradley.enabled` and `bradley.respawndelayminutes`, no plugin.
+- **Team size:** Solo, Duo, Trio and Quad set the team limit (1 to 4); *Custom* uses **Max team size**. Turn on **Show team size in server name** to get a tag like `[2x | Duo] My Server` in the server list.
+
 ### Rust wipes and maps
 
 Rust servers get a **Wipe** card on the Schedules tab.
