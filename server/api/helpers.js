@@ -84,9 +84,12 @@ function sameOrigin(req) {
 function clientIp(req) {
   if (config.behindProxy) {
     const fwd = req.headers['x-forwarded-for'];
-    // The last hop is the one our proxy added; earlier entries are whatever
-    // the client sent and could be forged to dodge the sign-in lockout.
-    if (fwd) return String(fwd).split(',').pop().trim();
+    // Counted from the right: those hops were added by our own proxies. Earlier
+    // entries are whatever the client sent and could be forged to dodge the sign-in lockout.
+    if (fwd) {
+      const hops = String(fwd).split(',').map((h) => h.trim()).filter(Boolean);
+      if (hops.length) return hops[Math.max(0, hops.length - config.proxyHops)];
+    }
   }
   return req.socket.remoteAddress || 'unknown';
 }

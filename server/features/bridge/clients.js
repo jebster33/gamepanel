@@ -77,6 +77,29 @@ async function baseBinary(platform) {
   return inflight.get(platform);
 }
 
+/**
+ * The release carries "<asset>.sha256". When it is there, the download must match it
+ * (a tampered mirror or release asset is refused); a release from before checksums
+ * were published only logs a warning. GP_BRIDGE_CLIENT_SHA256 pins a value by hand.
+ */
+async function verifyChecksum(url, asset, data) {
+  const actual = require('crypto').createHash('sha256').update(data).digest('hex');
+  let expected = String(process.env.GP_BRIDGE_CLIENT_SHA256 || '').trim().toLowerCase();
+  if (!expected) {
+    try {
+      const res = await fetch(`${url}.sha256`, { headers: { 'User-Agent': 'GamePanel' }, redirect: 'follow', signal: AbortSignal.timeout(30_000) });
+      if (res.ok) expected = (await res.text()).trim().split(/\s+/)[0].toLowerCase();
+    } catch {
+      /* treated as no checksum published */
+    }
+  }
+  if (!expected) {
+    logger.warn(`No SHA-256 published for ${asset}; using the download as it is`);
+    return;
+  }
+  if (expected !== actual) fail(502, `The downloaded bridge client does not match its published SHA-256 (${asset}). Refusing to use it.`);
+}
+
 async function download(platform) {
   const { asset } = PLATFORMS[platform];
   const base = process.env.GP_BRIDGE_CLIENT_URL || `https://github.com/${REPO}/releases/download/bridge-v${CLIENT_VERSION}`;
@@ -94,6 +117,7 @@ async function download(platform) {
   }
   if (!res.ok) fail(502, `Could not download the bridge client: GitHub answered ${res.status} for ${url}. Put ${asset} in ${dir} to use a copy you have.`);
   const data = Buffer.from(await res.arrayBuffer());
+  await verifyChecksum(url, asset, data);
   fs.writeFileSync(tmp, data, { mode: 0o644 });
   if (!looksRight(tmp, platform)) {
     fs.rmSync(tmp, { force: true });
