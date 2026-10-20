@@ -95,6 +95,13 @@ module.exports = {
     return `${hostUid()}:${hostGid()}`;
   },
 
+  /** The shared folder of the ARK cluster this server is in, mounted into its container. */
+  clusterBinds(server) {
+    if (!this.store.state.arkClusters?.length) return [];
+    const mount = require('../../features/ark-clusters').mountFor(this, this.store, server);
+    return mount ? [`${bindSource(mount.host)}:${mount.container}:rw`] : [];
+  },
+
   containerEnv(server, vars, extra = {}) {
     const env = {
       GP_SERVER_ID: server.id,
@@ -245,7 +252,7 @@ module.exports = {
       ExposedPorts: exposed,
       Labels: { 'gamepanel.managed': 'true', 'gamepanel.server': server.id, 'gamepanel.role': 'game' },
       HostConfig: {
-        Binds: [`${bindSource(server.dir)}:${CONTAINER_DIR}:rw`],
+        Binds: [`${bindSource(server.dir)}:${CONTAINER_DIR}:rw`, ...this.clusterBinds(server)],
         PortBindings: bindings,
         Memory: memoryBytes,
         MemorySwap: memoryBytes, // no swap: a leaking server cannot drag the host down

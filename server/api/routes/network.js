@@ -14,6 +14,7 @@ module.exports = (router, { store, manager }, { serverFor }) => {
       firewall,
       upnp,
       lanIp: lan,
+      autoPorts: Boolean(server.autoPorts),
       manual: {
         firewall: network.manualSteps(ports),
         ufw: network.manualSteps(ports),

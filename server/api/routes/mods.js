@@ -111,6 +111,11 @@ module.exports = (router, { store, manager }, { serverFor, requireCap, integrati
       keys = updates.filter((u) => !u.fromPack).map((u) => u.key);
     }
     if (!keys.length) return { updated: [], failed: [] };
+    // "Update safely": a backup first, and a manual way back from the Backups tab.
+    if (body.safe) {
+      requireCap(user, 'backups', server.id);
+      await require('../../features/safe-update').snapshot(manager, server, 'mods', user.username);
+    }
     const result = await mods.update(server, template, keys, integrations(), { liveVersion, manager, integrations: integrations() });
     if (result.updated.length) store.addEvent('mod.updated', `${result.updated.length} mod(s) updated on ${server.name}`, { serverId: server.id });
     return { ...result, restartNeeded: manager.isActive(server.id) };

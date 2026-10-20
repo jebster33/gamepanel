@@ -75,6 +75,11 @@ GET    /api/servers/:id/config-history   files with saved versions
 GET    /api/servers/:id/config-history/versions?path=        versions of one file
 GET    /api/servers/:id/config-history/version?path=&version= one version's content
 POST   /api/servers/:id/config-history/revert                {"path","version"} put it back
+                                                              path "@server-settings" is the server's own settings (needs "settings", not "files")
+GET    /api/servers/:id/safe-update      the safe-update snapshot, if any
+POST   /api/servers/:id/safe-update      back up, then update the game files (server stopped)
+POST   /api/servers/:id/safe-update/rollback  restore the snapshot by hand (server stopped)
+POST   /api/servers/:id/mods/update      add "safe": true to back up first
 GET    /api/quota                        your quota and what you use of it (self-service accounts)
 GET    /api/setups                       ready-made setups
 POST   /api/setups/:id/deploy            {"name","memory"} create a server from one
@@ -117,6 +122,9 @@ POST   /api/import/inspect               {"path"} which game a folder holds
 POST   /api/move                         {"serverId","to":"local|<node id>","keepSource"} move to another node
 GET    /api/networks                     Velocity networks (admins)
 POST   /api/networks                     {"name","proxyId","servers":[{"serverId","name"}]}
+GET    /api/clusters                     ARK clusters (admins)
+POST   /api/clusters                     {"name","servers":[serverId],"options":{"uploadDinos","downloadDinos","survivorExpirySeconds",…}}
+PUT    /api/clusters/:id                 same body; DELETE removes the cluster
 GET    /api/settings/https               HTTPS settings and certificate (admins)
 PUT    /api/settings/https               {"enabled","domain","email","method":"http|cloudflare","port","redirect","staging"}
 POST   /api/settings/https/issue         get or renew the certificate now

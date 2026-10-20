@@ -32,10 +32,20 @@ module.exports = {
 
     // Wake on join may be holding the game port while the server sleeps.
     await require('../features/wake-on-join').release(id);
+    if (server.autoPorts) {
+      require('../features/network').autoOpen(this, server).then(
+        (r) => {
+          const failed = [...r.firewall, ...(r.upnp || [])].filter((x) => !x.ok);
+          if (failed.length) this.pushConsole(server, `Port helper: ${failed.length} rule(s) could not be opened (${failed[0].error}). See Settings → Reachability.`, 'system');
+        },
+        (err) => this.pushConsole(server, `Port helper: ${err.message}`, 'system')
+      );
+    }
     this.writeConfigFiles(server, template);
     this.applyPropertyPatches(server, template);
     // In a Velocity network: the proxy's server list and the forwarding secret follow port changes.
     if (this.store.state.networks?.length) require('../features/networks').reapplyFor(this, this.store, server.id);
+    if (this.store.state.arkClusters?.length) require('../features/ark-clusters').prepare(this, this.store, server.id);
     this.patchCrossplay(server);
     this.patchMap(server);
 

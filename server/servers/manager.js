@@ -48,7 +48,7 @@ const { STATUS, CONTAINER_DIR } = require('./constants');
 const secrets = require('../core/secrets');
 
 /** Fields a PATCH may change. Anything else on a server is managed by the panel. */
-const EDITABLE = ['name', 'memory', 'cpuLimit', 'maxPlayers', 'autoStart', 'autoRestart', 'updateOnStart', 'autoUpdate', 'startCommand', 'notes', 'ip', 'backupRetention', 'idleStopMinutes', 'hangRestartMinutes', 'alerts', 'wakeOnJoin'];
+const EDITABLE = ['name', 'memory', 'cpuLimit', 'maxPlayers', 'autoStart', 'autoRestart', 'updateOnStart', 'autoUpdate', 'startCommand', 'notes', 'ip', 'backupRetention', 'idleStopMinutes', 'hangRestartMinutes', 'alerts', 'wakeOnJoin', 'autoPorts'];
 
 class ServerManager extends EventEmitter {
   /**
@@ -249,6 +249,8 @@ class ServerManager extends EventEmitter {
       ...Object.fromEntries(Object.entries(server.vars || {}).map(([k, v]) => [k, secrets.open(v)])),
     };
     if (!out.JAVA_VERSION) out.JAVA_VERSION = '21';
+    // ARK clusters add -clusterid and -ClusterDirOverride (set by the panel, never by a user).
+    if (this.store.state.arkClusters?.length) out.CLUSTER_ARGS = require('../features/ark-clusters').argsFor(this, this.store, server);
     for (const [name, value] of Object.entries(ports)) out[`PORT_${name.toUpperCase()}`] = value;
     // Arma 3 and DayZ load mods through -mod=: the Workshop ones installed here, then any listed by hand.
     if (this.template(server)?.mods?.workshop?.strategy === 'bohemia') {
@@ -442,9 +444,10 @@ class ServerManager extends EventEmitter {
   }
 
   /** `trusted` is false for changes a non-administrator asked for (see untrusted.js). */
-  update(id, patch, { trusted = true } = {}) {
+  update(id, patch, { trusted = true, actor = 'panel', source = 'settings', note = '' } = {}) {
     const server = this.require(id);
     if (!trusted) checkPatch(this.template(server), patch, server);
+    const beforeSettings = this.settingsText(server);
     for (const key of EDITABLE) if (patch[key] !== undefined) server[key] = patch[key];
     if (typeof server.notes !== 'string') server.notes = '';
     server.notes = server.notes.slice(0, 4000);
@@ -493,8 +496,43 @@ class ServerManager extends EventEmitter {
       }
     }
     this.store.save();
+    const afterSettings = this.settingsText(server);
+    if (afterSettings !== beforeSettings) {
+      const history = require('../features/config-history');
+      history.record(server.id, history.SETTINGS, { before: beforeSettings, after: afterSettings, by: actor, source, note });
+    }
     this.broadcastServers();
     return server;
+  }
+
+  /** The editable settings of a server as text, for its history. Secret variables are left out. */
+  settingsText(server) {
+    const hidden = secrets.secretNames(this.template(server));
+    const vars = Object.fromEntries(
+      Object.entries(server.vars || {})
+        .filter(([k, v]) => !hidden.has(k) && !secrets.isSealed(v))
+        .sort(([a], [b]) => a.localeCompare(b))
+    );
+    const out = {};
+    for (const key of EDITABLE) out[key] = server[key] ?? null;
+    return JSON.stringify({ ...out, ports: server.ports || {}, vars }, null, 2) + '\n';
+  }
+
+  /** Put a version of the settings (from config history) back. Variables not in it, like secrets, stay. */
+  restoreSettings(id, text, opts) {
+    let saved;
+    try {
+      saved = JSON.parse(text);
+    } catch {
+      fail(400, 'That version is not a server settings snapshot');
+    }
+    const patch = {};
+    for (const key of EDITABLE) if (saved[key] !== undefined && saved[key] !== null) patch[key] = saved[key];
+    if (saved.startCommand === null) patch.startCommand = '';
+    if (saved.autoUpdate === null) patch.autoUpdate = null;
+    if (saved.vars && typeof saved.vars === 'object') patch.vars = saved.vars;
+    if (saved.ports && typeof saved.ports === 'object') patch.ports = saved.ports;
+    return this.update(id, patch, opts);
   }
 
   /**
@@ -527,6 +565,8 @@ class ServerManager extends EventEmitter {
     const at = this.servers.indexOf(server);
     if (at !== -1) this.servers.splice(at, 1);
     this.runtime.delete(id);
+    // Take back the firewall rules and router mappings the panel opened for it.
+    if (server.portsOpened?.length) await require('../features/network').autoClose(this, server).catch(() => {});
     this.deleteHistory(id);
     this.dropMetricHistory(id);
     require('../features/config-history').forget(id);
