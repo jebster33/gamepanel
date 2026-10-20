@@ -41,6 +41,145 @@
       "label": "Admin and RCON password",
       "default": "",
       "generate": "password"
+    },
+    {
+      "name": "XP_MULTIPLIER",
+      "label": "XP multiplier",
+      "type": "number",
+      "default": 1,
+      "group": "Rates"
+    },
+    {
+      "name": "HARVEST_MULTIPLIER",
+      "label": "Harvest amount multiplier",
+      "type": "number",
+      "default": 1,
+      "description": "How much each hit on a tree or rock gives.",
+      "group": "Rates"
+    },
+    {
+      "name": "TAMING_MULTIPLIER",
+      "label": "Taming speed multiplier",
+      "type": "number",
+      "default": 1,
+      "group": "Rates"
+    },
+    {
+      "name": "MATING_INTERVAL_MULTIPLIER",
+      "label": "Mating interval multiplier",
+      "type": "number",
+      "default": 1,
+      "description": "Lower is faster. 0.5 halves the wait.",
+      "group": "Rates"
+    },
+    {
+      "name": "EGG_HATCH_MULTIPLIER",
+      "label": "Egg hatch speed multiplier",
+      "type": "number",
+      "default": 1,
+      "group": "Rates"
+    },
+    {
+      "name": "BABY_MATURE_MULTIPLIER",
+      "label": "Baby growth speed multiplier",
+      "type": "number",
+      "default": 1,
+      "group": "Rates"
+    },
+    {
+      "name": "DAY_CYCLE_SCALE",
+      "label": "Day cycle speed",
+      "type": "number",
+      "default": 1,
+      "group": "Rates"
+    },
+    {
+      "name": "DIFFICULTY_OFFSET",
+      "label": "Difficulty (0 to 1)",
+      "type": "number",
+      "default": 1,
+      "description": "1 spawns the highest-level wild creatures.",
+      "group": "Rules"
+    },
+    {
+      "name": "SERVER_PVE",
+      "label": "PvE (players cannot hurt each other)",
+      "default": "False",
+      "options": [
+        {
+          "value": "True",
+          "label": "Yes"
+        },
+        {
+          "value": "False",
+          "label": "No"
+        }
+      ],
+      "group": "Rules"
+    },
+    {
+      "name": "SERVER_HARDCORE",
+      "label": "Hardcore (lose your character on death)",
+      "default": "False",
+      "options": [
+        {
+          "value": "True",
+          "label": "Yes"
+        },
+        {
+          "value": "False",
+          "label": "No"
+        }
+      ],
+      "group": "Rules"
+    },
+    {
+      "name": "THIRD_PERSON",
+      "label": "Third person",
+      "default": "True",
+      "options": [
+        {
+          "value": "True",
+          "label": "Yes"
+        },
+        {
+          "value": "False",
+          "label": "No"
+        }
+      ],
+      "group": "Rules"
+    },
+    {
+      "name": "MAP_PLAYER_LOCATION",
+      "label": "Show your position on the map",
+      "default": "False",
+      "options": [
+        {
+          "value": "True",
+          "label": "Yes"
+        },
+        {
+          "value": "False",
+          "label": "No"
+        }
+      ],
+      "group": "Rules"
+    },
+    {
+      "name": "CROSSHAIR",
+      "label": "Crosshair",
+      "default": "True",
+      "options": [
+        {
+          "value": "True",
+          "label": "Yes"
+        },
+        {
+          "value": "False",
+          "label": "No"
+        }
+      ],
+      "group": "Rules"
     }
   ],
   "ports": [
@@ -95,5 +234,28 @@
   },
   "ci": {
     "bootTimeout": 1800
-  }
+  },
+  "patchProperties": [
+    {
+      "path": "ShooterGame/Saved/Config/WindowsServer/GameUserSettings.ini",
+      "format": "ini",
+      "section": "ServerSettings",
+      "createIfMissing": true,
+      "set": {
+        "XPMultiplier": "{{XP_MULTIPLIER}}",
+        "HarvestAmountMultiplier": "{{HARVEST_MULTIPLIER}}",
+        "TamingSpeedMultiplier": "{{TAMING_MULTIPLIER}}",
+        "MatingIntervalMultiplier": "{{MATING_INTERVAL_MULTIPLIER}}",
+        "EggHatchSpeedMultiplier": "{{EGG_HATCH_MULTIPLIER}}",
+        "BabyMatureSpeedMultiplier": "{{BABY_MATURE_MULTIPLIER}}",
+        "DayCycleSpeedScale": "{{DAY_CYCLE_SCALE}}",
+        "DifficultyOffset": "{{DIFFICULTY_OFFSET}}",
+        "ServerPVE": "{{SERVER_PVE}}",
+        "ServerHardcore": "{{SERVER_HARDCORE}}",
+        "AllowThirdPersonPlayer": "{{THIRD_PERSON}}",
+        "ShowMapPlayerLocation": "{{MAP_PLAYER_LOCATION}}",
+        "ServerCrosshair": "{{CROSSHAIR}}"
+      }
+    }
+  ]
 }

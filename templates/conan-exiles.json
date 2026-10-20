@@ -33,6 +33,97 @@
       "label": "RCON password",
       "default": "",
       "generate": "password"
+    },
+    {
+      "name": "PVP_ENABLED",
+      "label": "PvP",
+      "default": "True",
+      "options": [
+        {
+          "value": "True",
+          "label": "Yes"
+        },
+        {
+          "value": "False",
+          "label": "No"
+        }
+      ],
+      "description": "Turn it off for a PvE server.",
+      "group": "Rules"
+    },
+    {
+      "name": "DAMAGE_PLAYER_STRUCTURES",
+      "label": "Raiding (damage other players' buildings)",
+      "default": "True",
+      "options": [
+        {
+          "value": "True",
+          "label": "Yes"
+        },
+        {
+          "value": "False",
+          "label": "No"
+        }
+      ],
+      "group": "Rules"
+    },
+    {
+      "name": "DROP_EQUIPMENT",
+      "label": "Drop equipment on death",
+      "default": "True",
+      "options": [
+        {
+          "value": "True",
+          "label": "Yes"
+        },
+        {
+          "value": "False",
+          "label": "No"
+        }
+      ],
+      "group": "Rules"
+    },
+    {
+      "name": "NUDITY",
+      "label": "Nudity",
+      "default": "0",
+      "options": [
+        {
+          "value": "0",
+          "label": "None"
+        },
+        {
+          "value": "1",
+          "label": "Partial"
+        },
+        {
+          "value": "2",
+          "label": "Full"
+        }
+      ],
+      "group": "Rules"
+    },
+    {
+      "name": "HARVEST_MULTIPLIER",
+      "label": "Harvest amount multiplier",
+      "type": "number",
+      "default": 1,
+      "group": "Rates"
+    },
+    {
+      "name": "XP_RATE",
+      "label": "Player XP multiplier",
+      "type": "number",
+      "default": 1,
+      "group": "Rates"
+    },
+    {
+      "name": "NPC_RESPAWN",
+      "label": "NPC respawn multiplier",
+      "type": "number",
+      "default": 1,
+      "description": "Lower is slower.",
+      "group": "Rates"
     }
   ],
   "ports": [
@@ -100,7 +191,13 @@
       "createIfMissing": true,
       "set": {
         "AdminPassword": "{{ADMIN_PASSWORD}}",
-        "MaxNudity": "0"
+        "MaxNudity": "{{NUDITY}}",
+        "PVPEnabled": "{{PVP_ENABLED}}",
+        "CanDamagePlayerOwnedStructures": "{{DAMAGE_PLAYER_STRUCTURES}}",
+        "DropEquipmentOnDeath": "{{DROP_EQUIPMENT}}",
+        "HarvestAmountMultiplier": "{{HARVEST_MULTIPLIER}}",
+        "PlayerXPRateMultiplier": "{{XP_RATE}}",
+        "NPCRespawnMultiplier": "{{NPC_RESPAWN}}"
       }
     }
   ],

@@ -82,6 +82,54 @@
       "label": "Extra -mod folders",
       "default": "",
       "description": "Optional, for mods you copied in yourself. Workshop mods are added automatically."
+    },
+    {
+      "name": "TIME_ACCEL",
+      "label": "Daytime speed",
+      "type": "number",
+      "default": 12,
+      "description": "1 is real time, 12 makes a day last two hours.",
+      "group": "Time"
+    },
+    {
+      "name": "NIGHT_ACCEL",
+      "label": "Night speed",
+      "type": "number",
+      "default": 4,
+      "description": "Multiplied on top of the daytime speed.",
+      "group": "Time"
+    },
+    {
+      "name": "TIME_PERSISTENT",
+      "label": "Keep the time of day between restarts",
+      "default": "0",
+      "options": [
+        {
+          "value": "1",
+          "label": "Yes"
+        },
+        {
+          "value": "0",
+          "label": "No"
+        }
+      ],
+      "group": "Time"
+    },
+    {
+      "name": "DISABLE_CROSSHAIR",
+      "label": "Hide the crosshair",
+      "default": "0",
+      "options": [
+        {
+          "value": "1",
+          "label": "Yes"
+        },
+        {
+          "value": "0",
+          "label": "No"
+        }
+      ],
+      "group": "Rules"
     }
   ],
   "ports": [
@@ -184,5 +232,17 @@
   },
   "ci": {
     "skip": "needs a Steam account to download"
-  }
+  },
+  "patchProperties": [
+    {
+      "path": "gamepanel.cfg",
+      "format": "properties",
+      "set": {
+        "serverTimeAcceleration": "{{TIME_ACCEL}};",
+        "serverNightTimeAcceleration": "{{NIGHT_ACCEL}};",
+        "serverTimePersistent": "{{TIME_PERSISTENT}};",
+        "disableCrosshair": "{{DISABLE_CROSSHAIR}};"
+      }
+    }
+  ]
 }

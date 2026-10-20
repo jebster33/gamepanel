@@ -2,11 +2,37 @@ import { api } from '../../core/api.js';
 import { loadServers } from '../../core/boot.js';
 import { render } from '../../core/router.js';
 import { state } from '../../core/state.js';
+import { variableField } from '../deploy.js';
 import { stagingCard, wireStagingCard } from './staging.js';
 import { $, can, esc, toast } from '../../core/util.js';
 import { confirmModal, openModal } from '../../ui/modal.js';
 
 /* ------------------------------------------------- server settings tab -- */
+
+/** The template's everyday game rules (difficulty, PvP, rates…), declared with a `group`. */
+function ruleVariables(server) {
+  const template = state.templates.find((t) => t.id === server.templateId);
+  return (template?.variables || []).filter((v) => v.group);
+}
+
+function gameRulesCard(server, isAdmin) {
+  const rules = ruleVariables(server);
+  if (!rules.length) return '';
+  const groups = [...new Set(rules.map((v) => v.group))];
+  return `<div class="card mb-16" id="rules-card">
+      <h4 style="margin:0 0 14px">Game settings</h4>
+      ${groups
+        .map(
+          (group) => `<h5 class="section-title">${esc(group)}</h5>
+        <div class="form-grid">${rules
+          .filter((v) => v.group === group)
+          .map((v) => variableField({ ...v, default: server.vars?.[v.name] ?? v.default }).replace(/<(input|select|textarea) /g, isAdmin ? '<$1 ' : '<$1 disabled '))
+          .join('')}</div>`
+        )
+        .join('')}
+      <div class="hint">Applied the next time the server starts.</div>
+    </div>`;
+}
 
 export function renderServerSettingsTab(host, server) {
   // Editing follows the "settings" capability; the danger zone stays admin-only.
@@ -137,10 +163,12 @@ export function renderServerSettingsTab(host, server) {
       <div class="hint">Changing a port takes effect on the next start. Remember to open it in your firewall.</div>
     </div>
 
+    ${gameRulesCard(server, isAdmin)}
     <div class="card mb-16">
       <h4 style="margin:0 0 14px">Template variables</h4>
       <div class="form-grid">
         ${Object.entries(server.vars || {})
+          .filter(([name]) => !ruleVariables(server).some((v) => v.name === name))
           .map(
             ([name, value]) =>
               name in (server.secretVars || {})
@@ -208,7 +236,8 @@ export function renderServerSettingsTab(host, server) {
     const vars = {};
     // Only what changed: some variables (scripts, launch commands) are administrator-only.
     host.querySelectorAll('[data-var]').forEach((el) => {
-      if (el.value !== String(server.vars?.[el.dataset.var] ?? '')) vars[el.dataset.var] = el.value;
+      const rule = ruleVariables(server).find((v) => v.name === el.dataset.var);
+      if (el.value !== String(server.vars?.[el.dataset.var] ?? rule?.default ?? '')) vars[el.dataset.var] = el.value;
     });
     try {
       await api(`/api/servers/${server.id}`, {

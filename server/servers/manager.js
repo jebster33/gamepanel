@@ -248,6 +248,8 @@ class ServerManager extends EventEmitter {
       MAX_PLAYERS: server.maxPlayers || 20,
       ...Object.fromEntries(Object.entries(server.vars || {}).map(([k, v]) => [k, secrets.open(v)])),
     };
+    // Settings a template gained after this server was created still get their default.
+    for (const v of this.template(server)?.variables || []) if (!(v.name in out) && v.default !== undefined) out[v.name] = v.default;
     if (!out.JAVA_VERSION) out.JAVA_VERSION = '21';
     for (const [name, value] of Object.entries(ports)) out[`PORT_${name.toUpperCase()}`] = value;
     // Arma 3 and DayZ load mods through -mod=: the Workshop ones installed here, then any listed by hand.

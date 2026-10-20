@@ -52,6 +52,62 @@
           "label": "Game Master: Arland"
         }
       ]
+    },
+    {
+      "name": "VIEW_DISTANCE",
+      "label": "Max view distance (m)",
+      "type": "number",
+      "default": 2500,
+      "description": "Lower it if the server struggles.",
+      "group": "Performance"
+    },
+    {
+      "name": "DISABLE_THIRD_PERSON",
+      "label": "First person only",
+      "default": "false",
+      "options": [
+        {
+          "value": "true",
+          "label": "Yes"
+        },
+        {
+          "value": "false",
+          "label": "No"
+        }
+      ],
+      "group": "Rules"
+    },
+    {
+      "name": "BATTLEYE",
+      "label": "BattlEye anti-cheat",
+      "default": "true",
+      "options": [
+        {
+          "value": "true",
+          "label": "Yes"
+        },
+        {
+          "value": "false",
+          "label": "No"
+        }
+      ],
+      "group": "Rules"
+    },
+    {
+      "name": "CROSS_PLATFORM",
+      "label": "Allow Xbox and PlayStation players",
+      "default": "true",
+      "options": [
+        {
+          "value": "true",
+          "label": "Yes"
+        },
+        {
+          "value": "false",
+          "label": "No"
+        }
+      ],
+      "group": "Rules"
     }
   ],
   "ports": [
@@ -88,7 +144,7 @@
     {
       "path": "config.json",
       "mode": "overwrite",
-      "content": "{\n  \"bindAddress\": \"0.0.0.0\",\n  \"bindPort\": {{PORT}},\n  \"publicPort\": {{PORT}},\n  \"a2s\": { \"address\": \"0.0.0.0\", \"port\": {{PORT_QUERY}} },\n  \"game\": {\n    \"name\": \"{{SERVER_NAME}}\",\n    \"password\": \"{{SERVER_PASSWORD}}\",\n    \"passwordAdmin\": \"{{ADMIN_PASSWORD}}\",\n    \"admins\": [],\n    \"scenarioId\": \"{{SCENARIO}}\",\n    \"maxPlayers\": {{MAX_PLAYERS}},\n    \"visible\": true,\n    \"crossPlatform\": true,\n    \"gameProperties\": { \"serverMaxViewDistance\": 2500, \"networkViewDistance\": 1000, \"disableThirdPerson\": false, \"fastValidation\": true, \"battlEye\": true },\n    \"mods\": []\n  }\n}\n"
+      "content": "{\n  \"bindAddress\": \"0.0.0.0\",\n  \"bindPort\": {{PORT}},\n  \"publicPort\": {{PORT}},\n  \"a2s\": { \"address\": \"0.0.0.0\", \"port\": {{PORT_QUERY}} },\n  \"game\": {\n    \"name\": \"{{SERVER_NAME}}\",\n    \"password\": \"{{SERVER_PASSWORD}}\",\n    \"passwordAdmin\": \"{{ADMIN_PASSWORD}}\",\n    \"admins\": [],\n    \"scenarioId\": \"{{SCENARIO}}\",\n    \"maxPlayers\": {{MAX_PLAYERS}},\n    \"visible\": true,\n    \"crossPlatform\": {{CROSS_PLATFORM}},\n    \"gameProperties\": { \"serverMaxViewDistance\": {{VIEW_DISTANCE}}, \"networkViewDistance\": 1000, \"disableThirdPerson\": {{DISABLE_THIRD_PERSON}}, \"fastValidation\": true, \"battlEye\": {{BATTLEYE}} },\n    \"mods\": []\n  }\n}\n"
     }
   ],
   "startCommand": "./ArmaReforgerServer -config ./config.json -profile ./profile -maxFPS 60",

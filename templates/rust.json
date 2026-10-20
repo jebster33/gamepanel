@@ -56,6 +56,136 @@
         }
       ],
       "description": "Required for the plugin browser. Note that Oxide/uMod servers cannot join the official server list."
+    },
+    {
+      "name": "GAME_MODE",
+      "label": "Game mode",
+      "default": "vanilla",
+      "options": [
+        {
+          "value": "vanilla",
+          "label": "Normal (vanilla)"
+        },
+        {
+          "value": "softcore",
+          "label": "Softcore"
+        },
+        {
+          "value": "hardcore",
+          "label": "Hardcore"
+        }
+      ],
+      "description": "Vanilla is the standard game. Softcore is gentler on death and progression, hardcore is harsher.",
+      "group": "Rules"
+    },
+    {
+      "name": "SERVER_PVE",
+      "label": "PvE (players cannot hurt each other)",
+      "default": "false",
+      "options": [
+        {
+          "value": "true",
+          "label": "Yes"
+        },
+        {
+          "value": "false",
+          "label": "No"
+        }
+      ],
+      "group": "Rules"
+    },
+    {
+      "name": "MAP_LEVEL",
+      "label": "Map",
+      "default": "Procedural Map",
+      "options": [
+        {
+          "value": "Procedural Map",
+          "label": "Procedural Map"
+        },
+        {
+          "value": "Barren",
+          "label": "Barren"
+        },
+        {
+          "value": "HapisIsland",
+          "label": "HapisIsland"
+        },
+        {
+          "value": "CraggyIsland",
+          "label": "CraggyIsland"
+        },
+        {
+          "value": "SavasIsland",
+          "label": "SavasIsland"
+        },
+        {
+          "value": "SavasIsland_koth",
+          "label": "SavasIsland_koth"
+        }
+      ],
+      "description": "Procedural uses the world size and seed above. The others are the fixed maps that ship with the game.",
+      "group": "World"
+    },
+    {
+      "name": "DECAY_SCALE",
+      "label": "Base decay speed",
+      "type": "number",
+      "default": 1,
+      "description": "1 is normal, 0 turns decay off, 2 doubles it.",
+      "group": "Rules"
+    },
+    {
+      "name": "RADIATION",
+      "label": "Radiation",
+      "default": "true",
+      "options": [
+        {
+          "value": "true",
+          "label": "Yes"
+        },
+        {
+          "value": "false",
+          "label": "No"
+        }
+      ],
+      "group": "Rules"
+    },
+    {
+      "name": "MAX_TEAM",
+      "label": "Max team size",
+      "type": "number",
+      "default": 8,
+      "description": "0 lets teams be any size.",
+      "group": "Rules"
+    },
+    {
+      "name": "SAVE_INTERVAL",
+      "label": "Save every (seconds)",
+      "type": "number",
+      "default": 300,
+      "group": "Rules"
+    },
+    {
+      "name": "SERVER_TAGS",
+      "label": "Server tags",
+      "default": "",
+      "description": "Comma separated, e.g. monthly,vanilla,EU. Helps players find the server in the browser.",
+      "group": "Listing"
+    },
+    {
+      "name": "SERVER_URL",
+      "label": "Website link",
+      "default": "",
+      "description": "Shown on the server page in the game.",
+      "group": "Listing"
+    },
+    {
+      "name": "HEADER_IMAGE",
+      "label": "Header image URL",
+      "default": "",
+      "description": "A 512x256 image shown on the server page.",
+      "group": "Listing"
     }
   ],
   "ports": [
@@ -99,7 +229,7 @@
       "run": "if [ \"{{INSTALL_OXIDE}}\" = \"true\" ]; then\n  gp_fetch \"https://github.com/OxideMod/Oxide.Rust/releases/latest/download/Oxide.Rust-linux.zip\" oxide.zip\n  gp_extract oxide.zip .\n  rm -f oxide.zip\n  mkdir -p oxide/plugins oxide/config oxide/data\n  gp_log \"Oxide installed — plugins go in oxide/plugins\"\nelse\n  gp_log \"Skipping Oxide (vanilla Rust)\"\nfi"
     }
   ],
-  "startCommand": "./RustDedicated -batchmode -nographics +server.identity gamepanel +server.ip 0.0.0.0 +server.port {{PORT}} +server.queryport {{PORT_QUERY}} +rcon.ip 0.0.0.0 +rcon.port {{PORT_RCON}} +rcon.password \"{{RCON_PASSWORD}}\" +rcon.web 1 +app.port {{PORT_APP}} +server.maxplayers {{MAX_PLAYERS}} +server.hostname \"{{SERVER_HOSTNAME}}\" +server.description \"{{SERVER_DESCRIPTION}}\" +server.worldsize {{WORLD_SIZE}} +server.seed {{WORLD_SEED}} +server.saveinterval 300",
+  "startCommand": "./RustDedicated -batchmode -nographics +server.identity gamepanel +server.ip 0.0.0.0 +server.port {{PORT}} +server.queryport {{PORT_QUERY}} +rcon.ip 0.0.0.0 +rcon.port {{PORT_RCON}} +rcon.password \"{{RCON_PASSWORD}}\" +rcon.web 1 +app.port {{PORT_APP}} +server.maxplayers {{MAX_PLAYERS}} +server.hostname \"{{SERVER_HOSTNAME}}\" +server.description \"{{SERVER_DESCRIPTION}}\" +server.worldsize {{WORLD_SIZE}} +server.seed {{WORLD_SEED}} +server.saveinterval {{SAVE_INTERVAL}} +server.gamemode {{GAME_MODE}} +server.pve {{SERVER_PVE}} +server.level \"{{MAP_LEVEL}}\" +decay.scale {{DECAY_SCALE}} +server.radiation {{RADIATION}} +relationshipmanager.maxteamsize {{MAX_TEAM}} +server.tags \"{{SERVER_TAGS}}\" +server.url \"{{SERVER_URL}}\" +server.headerimage \"{{HEADER_IMAGE}}\"",
   "stopCommand": "quit",
   "stopTimeout": 120,
   "query": {
@@ -148,7 +278,7 @@
         "run": "if ('{{INSTALL_OXIDE}}' -eq 'true') {\n  GP-Fetch 'https://github.com/OxideMod/Oxide.Rust/releases/latest/download/Oxide.Rust.zip' 'oxide.zip'\n  GP-Extract 'oxide.zip' '.'\n  Remove-Item oxide.zip\n  foreach ($d in 'oxide/plugins','oxide/config','oxide/data') { New-Item -ItemType Directory -Force $d | Out-Null }\n  GP-Log 'Oxide installed. Plugins go in oxide/plugins'\n} else { GP-Log 'Skipping Oxide (vanilla Rust)' }"
       }
     ],
-    "startCommand": "RustDedicated.exe -batchmode -nographics +server.identity gamepanel +server.ip 0.0.0.0 +server.port {{PORT}} +server.queryport {{PORT_QUERY}} +rcon.ip 0.0.0.0 +rcon.port {{PORT_RCON}} +rcon.password \"{{RCON_PASSWORD}}\" +rcon.web 1 +app.port {{PORT_APP}} +server.maxplayers {{MAX_PLAYERS}} +server.hostname \"{{SERVER_HOSTNAME}}\" +server.description \"{{SERVER_DESCRIPTION}}\" +server.worldsize {{WORLD_SIZE}} +server.seed {{WORLD_SEED}} +server.saveinterval 300 -logfile \"logs/rust.log\"",
+    "startCommand": "RustDedicated.exe -batchmode -nographics +server.identity gamepanel +server.ip 0.0.0.0 +server.port {{PORT}} +server.queryport {{PORT_QUERY}} +rcon.ip 0.0.0.0 +rcon.port {{PORT_RCON}} +rcon.password \"{{RCON_PASSWORD}}\" +rcon.web 1 +app.port {{PORT_APP}} +server.maxplayers {{MAX_PLAYERS}} +server.hostname \"{{SERVER_HOSTNAME}}\" +server.description \"{{SERVER_DESCRIPTION}}\" +server.worldsize {{WORLD_SIZE}} +server.seed {{WORLD_SEED}} +server.saveinterval {{SAVE_INTERVAL}} +server.gamemode {{GAME_MODE}} +server.pve {{SERVER_PVE}} +server.level \"{{MAP_LEVEL}}\" +decay.scale {{DECAY_SCALE}} +server.radiation {{RADIATION}} +relationshipmanager.maxteamsize {{MAX_TEAM}} +server.tags \"{{SERVER_TAGS}}\" +server.url \"{{SERVER_URL}}\" +server.headerimage \"{{HEADER_IMAGE}}\" -logfile \"logs/rust.log\"",
     "tailFiles": [
       "logs/rust.log"
     ],

@@ -22,6 +22,46 @@
       "name": "SAVE_DIR",
       "label": "Save directory",
       "default": "./savegame"
+    },
+    {
+      "name": "GAME_PRESET",
+      "label": "Game rules preset",
+      "default": "Default",
+      "options": [
+        {
+          "value": "Default",
+          "label": "Default"
+        },
+        {
+          "value": "Relaxed",
+          "label": "Relaxed"
+        },
+        {
+          "value": "Hard",
+          "label": "Hard"
+        },
+        {
+          "value": "Survival",
+          "label": "Survival"
+        }
+      ],
+      "group": "Rules"
+    },
+    {
+      "name": "VOICE_CHAT",
+      "label": "Voice chat",
+      "default": "Proximity",
+      "options": [
+        {
+          "value": "Proximity",
+          "label": "Nearby players"
+        },
+        {
+          "value": "Disabled",
+          "label": "Off"
+        }
+      ],
+      "group": "Rules"
     }
   ],
   "ports": [
@@ -70,7 +110,9 @@
       "set": {
         "gamePort": "{{PORT}}",
         "queryPort": "{{PORT_QUERY}}",
-        "slotCount": "{{MAX_PLAYERS}}"
+        "slotCount": "{{MAX_PLAYERS}}",
+        "gameSettingsPreset": "{{GAME_PRESET}}",
+        "voiceChatMode": "{{VOICE_CHAT}}"
       }
     }
   ],

@@ -219,7 +219,7 @@ function memoryField(defaultMb) {
     </label>`;
 }
 
-function variableField(v) {
+export function variableField(v) {
   const id = `var-${v.name}`;
 
   // Choices fetched live from the panel (game versions, modpacks, channels…).
@@ -287,7 +287,18 @@ export function openCreateServerModal(templateId) {
   if (!template) return toast('No templates available', 'error');
   if (template.wizard?.length) return openWizardModal(template);
 
-  const variableFields = (template.variables || []).map(variableField).join('');
+  const variableFields = (template.variables || []).filter((v) => !v.group).map(variableField).join('');
+  // Everyday game rules (difficulty, PvP, PvE…) sit in a collapsed section so the form stays short.
+  const ruleGroups = [...new Set((template.variables || []).filter((v) => v.group).map((v) => v.group))]
+    .map(
+      (group) =>
+        `<h5 class="section-title mt-16">${esc(group)}</h5><div class="form-grid">${(template.variables || [])
+          .filter((v) => v.group === group)
+          .map(variableField)
+          .join('')}</div>`
+    )
+    .join('');
+  const ruleFields = ruleGroups ? `<details class="mt-16"><summary>More game settings</summary>${ruleGroups}</details>` : '';
 
   const portFields = (template.ports || [])
     .map(
@@ -309,6 +320,7 @@ export function openCreateServerModal(templateId) {
       </div>
       ${portFields ? `<h4 class="section-title mt-16">Ports</h4><div class="form-grid">${portFields}</div>` : ''}
       ${variableFields ? `<h4 class="section-title mt-16">Game settings</h4><div class="form-grid">${variableFields}</div>` : ''}
+      ${ruleFields}
       <div class="checkbox-row mt-16"><input type="checkbox" id="new-autostart" checked /><label for="new-autostart">Start with the panel</label></div>
       <div class="checkbox-row"><input type="checkbox" id="new-autorestart" checked /><label for="new-autorestart">Restart after crashes</label></div>
       <div class="hint">Installation starts immediately and streams to the server console. Large games can take a while.</div>`,

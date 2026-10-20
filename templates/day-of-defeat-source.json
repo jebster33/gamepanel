@@ -45,6 +45,56 @@
       "label": "RCON password",
       "default": "",
       "generate": "password"
+    },
+    {
+      "name": "FRIENDLY_FIRE",
+      "label": "Friendly fire",
+      "default": "",
+      "options": [
+        {
+          "value": "",
+          "label": "Game default"
+        },
+        {
+          "value": "1",
+          "label": "On"
+        },
+        {
+          "value": "0",
+          "label": "Off"
+        }
+      ],
+      "description": "Teammates can hurt each other.",
+      "group": "Rules"
+    },
+    {
+      "name": "TIME_LIMIT",
+      "label": "Time limit per map (minutes)",
+      "type": "number",
+      "default": "",
+      "description": "0 means no limit. Blank keeps the game default.",
+      "group": "Rules"
+    },
+    {
+      "name": "ALLTALK",
+      "label": "Everyone can hear everyone",
+      "default": "",
+      "options": [
+        {
+          "value": "",
+          "label": "Game default"
+        },
+        {
+          "value": "1",
+          "label": "On"
+        },
+        {
+          "value": "0",
+          "label": "Off"
+        }
+      ],
+      "description": "Dead players and the other team hear voice chat too.",
+      "group": "Rules"
     }
   ],
   "ports": [
@@ -78,9 +128,14 @@
       "path": "dod/cfg/server.cfg",
       "mode": "create",
       "content": "hostname \"{{SERVER_NAME}}\"\nrcon_password \"{{RCON_PASSWORD}}\"\nsv_lan 0\n"
+    },
+    {
+      "path": "dod/cfg/gamepanel-rules.cfg",
+      "mode": "overwrite",
+      "content": "// Written by GamePanel from the game settings. A blank value leaves the game default alone.\nmp_friendlyfire {{FRIENDLY_FIRE}}\nmp_timelimit {{TIME_LIMIT}}\nsv_alltalk {{ALLTALK}}\n"
     }
   ],
-  "startCommand": "./srcds_run -console -norestart -game dod -port {{PORT}} +maxplayers {{MAX_PLAYERS}} +tv_port {{PORT_TV}} +map {{MAP}} +sv_setsteamaccount \"{{GSLT}}\"",
+  "startCommand": "./srcds_run -console -norestart -game dod -port {{PORT}} +maxplayers {{MAX_PLAYERS}} +tv_port {{PORT_TV}} +map {{MAP}} +sv_setsteamaccount \"{{GSLT}}\" +exec gamepanel-rules.cfg",
   "stopCommand": "quit",
   "stopTimeout": 45,
   "query": {
@@ -108,7 +163,7 @@
         "label": "Install the Visual C++ runtime"
       }
     ],
-    "startCommand": "srcds.exe -console -nocrashdialog -condebug -game dod -port {{PORT}} +maxplayers {{MAX_PLAYERS}} +tv_port {{PORT_TV}} +map {{MAP}} +sv_setsteamaccount \"{{GSLT}}\"",
+    "startCommand": "srcds.exe -console -nocrashdialog -condebug -game dod -port {{PORT}} +maxplayers {{MAX_PLAYERS}} +tv_port {{PORT_TV}} +map {{MAP}} +sv_setsteamaccount \"{{GSLT}}\" +exec gamepanel-rules.cfg",
     "tailFiles": [
       "dod/console.log"
     ],

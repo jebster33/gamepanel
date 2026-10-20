@@ -22,6 +22,77 @@
       "name": "SAVE_NAME",
       "label": "World name",
       "default": "world1"
+    },
+    {
+      "name": "GAME_PRESET",
+      "label": "Game rules preset",
+      "default": "StandardPvP",
+      "options": [
+        {
+          "value": "StandardPvP",
+          "label": "Standard PvP"
+        },
+        {
+          "value": "StandardPvE",
+          "label": "Standard PvE"
+        },
+        {
+          "value": "SoftcorePvP",
+          "label": "Softcore PvP"
+        },
+        {
+          "value": "HardcorePvP",
+          "label": "Hardcore PvP"
+        }
+      ],
+      "description": "Standard is the normal game. Softcore is easier on death, hardcore is harsher. PvE removes player damage.",
+      "group": "Rules"
+    },
+    {
+      "name": "LIST_ON_STEAM",
+      "label": "Show in the Steam server list",
+      "default": "true",
+      "options": [
+        {
+          "value": "true",
+          "label": "Yes"
+        },
+        {
+          "value": "false",
+          "label": "No"
+        }
+      ],
+      "group": "Listing"
+    },
+    {
+      "name": "SECURE",
+      "label": "Anti-cheat (EAC)",
+      "default": "true",
+      "options": [
+        {
+          "value": "true",
+          "label": "Yes"
+        },
+        {
+          "value": "false",
+          "label": "No"
+        }
+      ],
+      "group": "Listing"
+    },
+    {
+      "name": "AUTOSAVE_COUNT",
+      "label": "Autosaves to keep",
+      "type": "number",
+      "default": 20,
+      "group": "Saving"
+    },
+    {
+      "name": "AUTOSAVE_INTERVAL",
+      "label": "Autosave every (seconds)",
+      "type": "number",
+      "default": 600,
+      "group": "Saving"
     }
   ],
   "ports": [
@@ -72,7 +143,12 @@
       "set": {
         "Port": "{{PORT}}",
         "QueryPort": "{{PORT_QUERY}}",
-        "MaxConnectedUsers": "{{MAX_PLAYERS}}"
+        "MaxConnectedUsers": "{{MAX_PLAYERS}}",
+        "GameSettingsPreset": "{{GAME_PRESET}}",
+        "ListOnSteam": "{{LIST_ON_STEAM}}",
+        "Secure": "{{SECURE}}",
+        "AutoSaveCount": "{{AUTOSAVE_COUNT}}",
+        "AutoSaveInterval": "{{AUTOSAVE_INTERVAL}}"
       }
     }
   ],
