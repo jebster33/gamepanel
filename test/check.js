@@ -130,6 +130,7 @@ const BUILTIN_VARS = new Set([
   'MAX_PLAYERS',
   'JAVA_VERSION',
   'WORKSHOP_MODS',
+  'MAP_ARGS',
   // Supplied by resolvers
   'DOWNLOAD_URL',
   'RESOLVED_VERSION',

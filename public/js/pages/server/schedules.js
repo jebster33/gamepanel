@@ -3,6 +3,7 @@ import { $, esc, fmtTime, icon, toast } from '../../core/util.js';
 import { confirmModal, openModal } from '../../ui/modal.js';
 import { renderEventsCard } from './events.js';
 import { skeleton } from '../../ui/skeleton.js';
+import { renderMapCard } from './rust-map.js';
 
 /* ------------------------------------------------------------ schedules */
 
@@ -76,12 +77,14 @@ export async function renderSchedulesTab(host, server) {
       <div class="card-head">
         <h4>Wipe</h4>
         <div class="spacer"></div>
+        <button class="btn btn-sm" id="wipe-force">${icon('clock', 12)} Every force-wipe day</button>
         <button class="btn btn-sm btn-danger" id="wipe-now">${icon('trash', 12)} Wipe now…</button>
       </div>
       <p class="faint" style="margin:0">Starts the map over: deletes the save, keeps configs, plugins and settings.
-        ${server.lastWipe ? `Last wiped ${fmtTime(server.lastWipe.at)}${server.lastWipe.blueprints ? ' (blueprints too)' : ''}.` : ''}
-        To wipe on a cycle, add a task with "Wipe the map" and "First weekday of the month".</p>
-    </div>`
+        ${server.lastWipe ? `Last wiped ${fmtTime(server.lastWipe.at)}${server.lastWipe.blueprints ? ' (full wipe)' : ' (map wipe)'}.` : ''}
+        A map wipe keeps blueprints; a full wipe removes them too. "Every force-wipe day" adds a full wipe on the first Thursday of the month with a chat countdown and a new seed.</p>
+    </div>
+    <div id="map-card"></div>`
         : ''
     }
     ${
@@ -133,8 +136,21 @@ export async function renderSchedulesTab(host, server) {
   host.insertAdjacentHTML('beforeend', '<div id="events-card"></div>');
   renderEventsCard($('#events-card'), server);
 
+  if (server.canWipe && server.templateId === 'rust') renderMapCard($('#map-card'), server);
   const refresh = () => renderSchedulesTab(host, server);
   $('#wipe-now')?.addEventListener('click', () => openWipeModal(server, refresh));
+  $('#wipe-force')?.addEventListener('click', async () => {
+    try {
+      await api(`/api/servers/${server.id}/schedules`, {
+        method: 'POST',
+        body: { name: 'Force wipe', action: 'wipe', cron: '0 19 * * 4', firstOfMonth: true, warnMinutes: 10, wipe: { blueprints: true, newSeed: true, updateFirst: true } },
+      });
+      toast('Added: full wipe on the first Thursday of the month at 19:00 (the panel machine\'s clock). Edit it below to change the time.');
+      refresh();
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+  });
   $('#sch-add').addEventListener('click', () => openScheduleModal(server, null, refresh));
 
   host.querySelectorAll('[data-quick]').forEach((el) =>
@@ -192,7 +208,7 @@ function scheduleRow(s) {
       <label class="switch" title="${s.enabled ? 'On' : 'Off'}"><input type="checkbox" data-enable ${s.enabled ? 'checked' : ''} /><i></i></label>
       <div class="grow">
         <div class="title">${esc(s.name)}</div>
-        <div class="sub">${esc(whenLabel(s.cron, s.firstOfMonth))} · ${esc(actionLabel(s.action))}${s.wipe?.blueprints ? ' (blueprints too)' : ''}${s.command ? ` <span class="mono">${esc(s.command)}</span>` : ''}${s.warnMinutes ? ` · ${s.warnMinutes} min warning` : ''}${s.onlyWhenEmpty ? ' · only when empty' : ''}</div>
+        <div class="sub">${esc(whenLabel(s.cron, s.firstOfMonth))} · ${esc(actionLabel(s.action))}${s.action === 'wipe' ? (s.wipe?.blueprints ? ' (full wipe)' : ' (map wipe)') : ''}${s.command ? ` <span class="mono">${esc(s.command)}</span>` : ''}${s.warnMinutes ? ` · ${s.warnMinutes} min warning` : ''}${s.onlyWhenEmpty ? ' · only when empty' : ''}</div>
       </div>
       <div class="hide-sm" style="text-align:right;font-size:12px">
         <div class="muted">${s.nextRun ? `Next ${fmtTime(s.nextRun)}` : 'Paused'}</div>
@@ -229,7 +245,8 @@ function openScheduleModal(server, schedule, onSaved) {
         <div class="hint">Posts "Server restarting in 5 minutes", then 1 minute, 30 and 10 seconds. The restart happens when the countdown ends.</div>
       </label>
       <div id="sch-wipe-wrap">
-        <div class="checkbox-row"><input type="checkbox" id="sch-wipe-bp" ${wipeOpts.blueprints ? 'checked' : ''} /><label for="sch-wipe-bp">Wipe blueprints too</label></div>
+        <div class="form-row"><label for="sch-wipe-bp">Wipe type</label>
+          <select id="sch-wipe-bp"><option value="0" ${wipeOpts.blueprints ? '' : 'selected'}>Map wipe (keeps blueprints)</option><option value="1" ${wipeOpts.blueprints ? 'selected' : ''}>Full wipe (blueprints too)</option></select></div>
         <div class="checkbox-row"><input type="checkbox" id="sch-wipe-seed" ${wipeOpts.newSeed ? 'checked' : ''} /><label for="sch-wipe-seed">Pick a new random map seed</label></div>
         <div class="checkbox-row"><input type="checkbox" id="sch-wipe-update" ${wipeOpts.updateFirst ? 'checked' : ''} /><label for="sch-wipe-update">Update the game first</label></div>
       </div>
@@ -270,7 +287,7 @@ function openScheduleModal(server, schedule, onSaved) {
             command: $('#sch-command').value,
             name: $('#sch-name').value.trim() || actions.find(([a]) => a === action)[1],
             firstOfMonth: presetValue === 'monthly',
-            wipe: { blueprints: $('#sch-wipe-bp').checked, newSeed: $('#sch-wipe-seed').checked, updateFirst: $('#sch-wipe-update').checked },
+            wipe: { blueprints: $('#sch-wipe-bp').value === '1', newSeed: $('#sch-wipe-seed').checked, updateFirst: $('#sch-wipe-update').checked },
             onlyIfRunning: $('#sch-only-running').checked,
             onlyWhenEmpty: $('#sch-only-empty').checked,
             warnMinutes: Number($('#sch-warn').value),
@@ -320,7 +337,8 @@ async function openWipeModal(server, onDone) {
     width: 480,
     body: `
       <p class="faint" style="margin-top:0">The server stops, the map is deleted and it starts again on a fresh one. Make a backup first if you might want this map back.</p>
-      <div class="checkbox-row"><input type="checkbox" id="wn-bp" /><label for="wn-bp">Wipe blueprints too</label></div>
+      <div class="form-row"><label for="wn-bp">Wipe type</label>
+        <select id="wn-bp"><option value="0">Map wipe (keeps blueprints)</option><option value="1">Full wipe (blueprints too)</option></select></div>
       <div class="checkbox-row"><input type="checkbox" id="wn-seed" checked /><label for="wn-seed">Pick a new random map seed</label></div>
       <div class="checkbox-row"><input type="checkbox" id="wn-update" /><label for="wn-update">Update the game first</label></div>
       <div class="hint" id="wn-preview"><span class="spinner"></span></div>`,
@@ -335,7 +353,7 @@ async function openWipeModal(server, onDone) {
           try {
             const r = await api(`/api/servers/${server.id}/wipe`, {
               method: 'POST',
-              body: { blueprints: $('#wn-bp').checked, newSeed: $('#wn-seed').checked, updateFirst: $('#wn-update').checked },
+              body: { blueprints: $('#wn-bp').value === '1', newSeed: $('#wn-seed').checked, updateFirst: $('#wn-update').checked },
             });
             modal.close();
             toast(`Wiped: ${r.deleted} file${r.deleted === 1 ? '' : 's'} deleted${r.seed ? `, new seed ${r.seed}` : ''}${r.startError ? `. It did not start again: ${r.startError}` : ''}`, r.startError ? 'warn' : 'info');
@@ -350,7 +368,7 @@ async function openWipeModal(server, onDone) {
     ],
   });
   const show = async () => {
-    $('#wn-preview').innerHTML = await preview($('#wn-bp').checked);
+    $('#wn-preview').innerHTML = await preview($('#wn-bp').value === '1');
   };
   $('#wn-bp').addEventListener('change', show);
   show();

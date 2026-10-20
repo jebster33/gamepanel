@@ -99,7 +99,7 @@
       "run": "if [ \"{{INSTALL_OXIDE}}\" = \"true\" ]; then\n  gp_fetch \"https://github.com/OxideMod/Oxide.Rust/releases/latest/download/Oxide.Rust-linux.zip\" oxide.zip\n  gp_extract oxide.zip .\n  rm -f oxide.zip\n  mkdir -p oxide/plugins oxide/config oxide/data\n  gp_log \"Oxide installed — plugins go in oxide/plugins\"\nelse\n  gp_log \"Skipping Oxide (vanilla Rust)\"\nfi"
     }
   ],
-  "startCommand": "./RustDedicated -batchmode -nographics +server.identity gamepanel +server.ip 0.0.0.0 +server.port {{PORT}} +server.queryport {{PORT_QUERY}} +rcon.ip 0.0.0.0 +rcon.port {{PORT_RCON}} +rcon.password \"{{RCON_PASSWORD}}\" +rcon.web 1 +app.port {{PORT_APP}} +server.maxplayers {{MAX_PLAYERS}} +server.hostname \"{{SERVER_HOSTNAME}}\" +server.description \"{{SERVER_DESCRIPTION}}\" +server.worldsize {{WORLD_SIZE}} +server.seed {{WORLD_SEED}} +server.saveinterval 300",
+  "startCommand": "./RustDedicated -batchmode -nographics +server.identity gamepanel +server.ip 0.0.0.0 +server.port {{PORT}} +server.queryport {{PORT_QUERY}} +rcon.ip 0.0.0.0 +rcon.port {{PORT_RCON}} +rcon.password \"{{RCON_PASSWORD}}\" +rcon.web 1 +app.port {{PORT_APP}} +server.maxplayers {{MAX_PLAYERS}} +server.hostname \"{{SERVER_HOSTNAME}}\" +server.description \"{{SERVER_DESCRIPTION}}\" +server.worldsize {{WORLD_SIZE}} +server.seed {{WORLD_SEED}} +server.saveinterval 300 {{MAP_ARGS}}",
   "stopCommand": "quit",
   "stopTimeout": 120,
   "query": {
@@ -148,7 +148,7 @@
         "run": "if ('{{INSTALL_OXIDE}}' -eq 'true') {\n  GP-Fetch 'https://github.com/OxideMod/Oxide.Rust/releases/latest/download/Oxide.Rust.zip' 'oxide.zip'\n  GP-Extract 'oxide.zip' '.'\n  Remove-Item oxide.zip\n  foreach ($d in 'oxide/plugins','oxide/config','oxide/data') { New-Item -ItemType Directory -Force $d | Out-Null }\n  GP-Log 'Oxide installed. Plugins go in oxide/plugins'\n} else { GP-Log 'Skipping Oxide (vanilla Rust)' }"
       }
     ],
-    "startCommand": "RustDedicated.exe -batchmode -nographics +server.identity gamepanel +server.ip 0.0.0.0 +server.port {{PORT}} +server.queryport {{PORT_QUERY}} +rcon.ip 0.0.0.0 +rcon.port {{PORT_RCON}} +rcon.password \"{{RCON_PASSWORD}}\" +rcon.web 1 +app.port {{PORT_APP}} +server.maxplayers {{MAX_PLAYERS}} +server.hostname \"{{SERVER_HOSTNAME}}\" +server.description \"{{SERVER_DESCRIPTION}}\" +server.worldsize {{WORLD_SIZE}} +server.seed {{WORLD_SEED}} +server.saveinterval 300 -logfile \"logs/rust.log\"",
+    "startCommand": "RustDedicated.exe -batchmode -nographics +server.identity gamepanel +server.ip 0.0.0.0 +server.port {{PORT}} +server.queryport {{PORT_QUERY}} +rcon.ip 0.0.0.0 +rcon.port {{PORT_RCON}} +rcon.password \"{{RCON_PASSWORD}}\" +rcon.web 1 +app.port {{PORT_APP}} +server.maxplayers {{MAX_PLAYERS}} +server.hostname \"{{SERVER_HOSTNAME}}\" +server.description \"{{SERVER_DESCRIPTION}}\" +server.worldsize {{WORLD_SIZE}} +server.seed {{WORLD_SEED}} +server.saveinterval 300 {{MAP_ARGS}} -logfile \"logs/rust.log\"",
     "tailFiles": [
       "logs/rust.log"
     ],
