@@ -49,6 +49,25 @@ module.exports = (router, { templates, manager, auth }, { requireAdmin, requireC
     return require('../../games/template-builder').check(body?.template, templates);
   });
 
+  /** Pterodactyl eggs: convert an uploaded/pasted egg or one fetched from an https address. Nothing is saved; the result is a draft for the builder. */
+  router.post('/api/templates/import-egg', async ({ user, body }) => {
+    requireAdmin(user);
+    const egg = require('../../games/egg-import');
+    let source = body?.egg;
+    if (typeof source === 'string') {
+      try {
+        source = JSON.parse(source);
+      } catch {
+        fail(400, 'That is not valid JSON');
+      }
+    }
+    if (!source && body?.url) source = await egg.fetchEgg(body.url);
+    const { template, notes, unsupported } = egg.convert(source);
+    if (templates.get(template.id) && !templates.get(template.id).custom) template.id = `${template.id}-imported`;
+    const checked = require('../../games/template-builder').check(template, templates);
+    return { template: checked.template || template, errors: checked.errors, warnings: checked.warnings, notes, unsupported, exists: Boolean(templates.get(template.id)) };
+  });
+
   router.post('/api/templates', ({ user, body }) => {
     requireAdmin(user);
     // The builder sends { template, replace }; older callers send the template itself.

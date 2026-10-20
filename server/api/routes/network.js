@@ -1,6 +1,7 @@
 'use strict';
 
 const network = require('../../features/network');
+const { fail } = require('../../core/util');
 
 module.exports = (router, { store, manager }, { serverFor }) => {
   /** What stands between this server's ports and the players. */
@@ -28,6 +29,25 @@ module.exports = (router, { store, manager }, { serverFor }) => {
     const server = serverFor(user, params.id, 'settings');
     const host = body?.host || require('../../features/dns').playerAddress(server)?.replace(/:\d+$/, '') || store.state.settings.statusPage?.host || '';
     return require('../../features/reachability').check(manager, server, { host });
+  });
+
+  /** Is the server on the Steam server list? (Steam games with a query port.) */
+  router.get('/api/servers/:id/server-list', ({ user, params }) => {
+    const server = serverFor(user, params.id, 'settings');
+    return require('../../features/server-list').view(manager, server, store.state.settings.integrations?.steamApiKey);
+  });
+
+  router.put('/api/servers/:id/server-list', async ({ user, params, body }) => {
+    const server = serverFor(user, params.id, 'settings');
+    const list = require('../../features/server-list');
+    const ip = String(body?.ip || '').trim();
+    if (ip && !/^(\d{1,3}\.){3}\d{1,3}$/.test(ip)) fail(400, 'Enter the public IPv4 address Steam should find the server at, or leave it empty');
+    server.serverList = { enabled: Boolean(body?.enabled), ip };
+    store.save();
+    const key = store.state.settings.integrations?.steamApiKey;
+    // Turning it on (or asking) answers straight away instead of in five minutes.
+    if (body?.check !== false && server.serverList.enabled && key && list.supports(manager, server) && manager.rt(server.id).status === 'running') await list.check(manager, server, key);
+    return list.view(manager, server, key);
   });
 
   router.post('/api/servers/:id/network', async ({ user, params, body }) => {

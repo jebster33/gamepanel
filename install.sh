@@ -125,7 +125,7 @@ fi
 
 # Belt and braces: the exec bit is set in git, but repair it anyway so an
 # older checkout (or a copy over a filesystem that drops modes) still works.
-chmod +x "$INSTALL_DIR"/*.sh 2>/dev/null || true
+chmod +x "$INSTALL_DIR"/*.sh "$INSTALL_DIR"/cli/gamepanel.js 2>/dev/null || true
 
 info "Preparing data directory $DATA_DIR"
 mkdir -p "$DATA_DIR"/{servers,backups,logs,cache,templates,run}
@@ -162,6 +162,12 @@ apt-get update -qq || true
 apt-get install -y -qq --no-install-recommends lib32gcc-s1 lib32stdc++6 >/dev/null 2>&1 \
   && ok "SteamCMD runtime libraries installed" \
   || warn "Could not preinstall 32-bit libraries — SteamCMD templates will retry at install time"
+
+# --------------------------------------------------------------------- cli --
+
+# `gamepanel` on the PATH: a small client for scripting the panel's API.
+ln -sf "$INSTALL_DIR/cli/gamepanel.js" /usr/local/bin/gamepanel
+ok "Command-line tool installed (run: gamepanel help)"
 
 # ----------------------------------------------------------------- systemd --
 

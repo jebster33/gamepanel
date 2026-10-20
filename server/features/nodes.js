@@ -150,7 +150,7 @@ class Nodes {
     try {
       const [servers, system] = await Promise.all([this.request(node, 'GET', '/api/servers?local=1'), this.request(node, 'GET', '/api/system').catch(() => null)]);
       live.servers = servers.data?.servers || [];
-      live.host = system?.data?.host ? { cpu: system.data.host.cpu?.percent, memory: system.data.host.memory, platform: system.data.host.platform } : live.host;
+      live.host = system?.data?.host ? { cpu: system.data.host.cpu?.percent, cores: system.data.host.cpu?.cores, memory: system.data.host.memory, disk: system.data.host.disk, platform: system.data.host.platform } : live.host;
       live.version = system?.data?.version || live.version;
       if (!live.online) logger.info(`Node ${node.name} is online`);
       live.online = true;

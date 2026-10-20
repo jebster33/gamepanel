@@ -29,6 +29,10 @@ Players outside your network also need the ports open: see
 - **Custom server (any game):** your own start command, for a jar or launch script you upload.
 - Or write a [template](../templates.md) so it gets a proper form, ports and mod support.
 
+## Add a game from a Pterodactyl egg
+
+Missing a game? Administrators can open **Games → Import egg**, choose an egg file (or paste its link), review the report of what was converted, and add it as a new game. Imported games are administrator-only and run the egg's install script, so only use eggs you trust. Details in [Writing a template](../templates.md#import-a-pterodactyl-egg).
+
 ## Import a server you already have
 
 **Servers → Import existing.** Pick the game, give it a name and point it at the folder on this

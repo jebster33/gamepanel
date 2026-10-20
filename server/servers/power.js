@@ -47,6 +47,11 @@ module.exports = {
     // In a Velocity network: the proxy's server list and the forwarding secret follow port changes.
     if (this.store.state.networks?.length) require('../features/networks').reapplyFor(this, this.store, server.id);
     if (this.store.state.arkClusters?.length) require('../features/ark-clusters').prepare(this, this.store, server.id);
+    try {
+      require('../features/resource-pack').reapply(this, this.store, server);
+    } catch (err) {
+      logger.warn(`Resource pack on ${server.name}: ${err.message}`);
+    }
     this.patchCrossplay(server);
     this.patchMap(server);
 

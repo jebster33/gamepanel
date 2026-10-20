@@ -26,7 +26,7 @@ $Branch     = $env:GP_BRANCH
 $NodeMajor  = 22
 $WinSwUrl   = 'https://github.com/winsw/winsw/releases/download/v2.12.0/WinSW-x64.exe'
 $DataDir    = Join-Path $env:ProgramData 'GamePanel'
-$AppPaths   = 'server', 'public', 'templates', 'windows', 'package.json', 'README.md', 'LICENSE'
+$AppPaths   = 'server', 'public', 'templates', 'windows', 'cli', 'package.json', 'README.md', 'LICENSE'
 
 function Step($text) { Write-Host "==> $text" -ForegroundColor Cyan }
 function Ok($text)   { Write-Host " ok $text" -ForegroundColor Green }
@@ -116,6 +116,14 @@ try {
   $xml = $xml -replace 'name="GP_PORT" value="\d+"', "name=`"GP_PORT`" value=`"$Port`"" -replace 'localhost:\d+', "localhost:$Port"
   Set-Content (Join-Path $InstallDir 'GamePanel-Service.xml') $xml -Encoding UTF8
   Ok 'Files in place'
+
+  # `gamepanel` command: a shim next to the bundled Node, with the install folder on the machine PATH.
+  $shim = "@echo off`r`n`"%~dp0node\node.exe`" `"%~dp0cli\gamepanel.js`" %*`r`n"
+  Set-Content (Join-Path $InstallDir 'gamepanel.cmd') $shim -Encoding ASCII
+  $machinePath = [Environment]::GetEnvironmentVariable('Path', 'Machine')
+  if (($machinePath -split ';') -notcontains $InstallDir) {
+    [Environment]::SetEnvironmentVariable('Path', ($machinePath.TrimEnd(';') + ';' + $InstallDir), 'Machine')
+  }
 
   # ------------------------------------------------------------ service --
 

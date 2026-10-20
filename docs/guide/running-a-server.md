@@ -93,6 +93,14 @@ of a file also keeps what was there before, and the last 50 versions of each fil
 Tick **only when empty** to skip a run while people are playing. **Chat announcements** on the same tab
 rotate messages in game chat, and can send new players a first-join welcome.
 
+### Rust events and teams
+
+Rust's **Game settings** card has an **Events** group and a **Team size** setting.
+
+- **Patrol helicopter, cargo ship, Chinook:** *Vanilla* leaves Rust's own timing alone, *Off* stops them, and a set time (every 30 minutes to every 4 hours) blocks the random spawns and starts one that often instead. These use a small plugin the panel adds to `oxide/plugins` (GamePanelEvents.cs), so they need Oxide. The panel sends the timers each time the server starts. Servers made before this update get the plugin the next time you run **Update**.
+- **Bradley APC:** turn it off, or pick how long it takes to return. This uses Rust's own `bradley.enabled` and `bradley.respawndelayminutes`, no plugin.
+- **Team size:** Solo, Duo, Trio and Quad set the team limit (1 to 4); *Custom* uses **Max team size**. Turn on **Show team size in server name** to get a tag like `[2x | Duo] My Server` in the server list.
+
 ### Rust wipes and maps
 
 Rust servers get a **Wipe** card on the Schedules tab.
@@ -102,6 +110,7 @@ Rust servers get a **Wipe** card on the Schedules tab.
 - The **Map** card picks what the server loads on its next start: a generated map (size and seed from Settings), one of the game's own maps (Barren, Hapis Island, Craggy Island, Savas Island), a link to a hosted `.map` file, or a `.map` you upload (the panel serves it to the game itself). Pick the map, then wipe so the save matches it. A fixed map keeps its layout, so "new seed" does nothing for it.
 - **RustMaps** (inside the Map card): a **Preview** button opens the generated map for your size and seed on rustmaps.com, and **Random seed** sets a new seed so you can browse a few before you wipe.
 - **Leaving monuments out:** vanilla maps cannot drop monuments, so the panel asks RustMaps to generate a custom map. Add your RustMaps API key under **Settings → Integrations** (it needs a RustMaps subscription with custom map access; each map counts against your allowance), then **Choose monuments to leave out**, tick them and generate. The map is downloaded to the server's `custom-maps` folder and selected; wipe to load it. A combined Outpost and Bandit Town is not something ticks can do: save it as a config on your RustMaps dashboard and pick it from **saved config** in the same panel. Ticking Bandit Town just removes it.
+- **Live map** (Rust, needs uMod/Oxide; ![Live map](../screenshots/rust-live-map.png)): see online players, monuments, cargo ship, patrol helicopter, Chinook, Bradley, air drops, locked crates and (optionally) bases on the map, refreshed every few seconds. Open the **Live map** tab, click **Install map plugin** (Oxide loads it at once, no restart) and the dots appear. The panel asks the plugin over RCON, so nothing is exposed to the internet. Scroll to zoom, drag to pan, click a name in the list to jump to a player. The picture comes from RustMaps when a RustMaps key is set (Settings → Integrations), from a custom map the panel generated, or from a PNG/JPEG you upload there; without one you still get a grid with monuments. Positions are sensitive, so only admins and users with that server's console permission can open it; installing the plugin needs file-write permission.
 - **Oxide stays current:** a game update puts uMod/Oxide back right after the Rust files are replaced, and the panel checks for new Oxide releases every half hour. When one is out it updates as soon as nobody is playing (automatic updates also cover the game itself, see Panel settings). On force-wipe day Oxide can lag the game by a few hours; plugins load again when its release arrives. Carbon is not installed by the Rust template.
 
 ### ARK wild dinos
@@ -132,6 +141,7 @@ each option does. **Restart now** applies changes that need a restart. Minecraft
 | **Alerts** | CPU, memory, folder size and TPS thresholds, posted to your alert webhook |
 | **Address** | A name like `play.example.com` through Cloudflare, when it's set up under Settings → Integrations |
 | **Discord channel** | Chat, joins and status into a channel, and messages typed there show up in game |
+| **Steam server list** | Steam games: checks the server is in the in-game browser and alerts when it drops off. [More](alerts-and-discord.md#steam-server-list-check) |
 | **Reachability** | Open the ports in the firewall and on the router. [More](../troubleshooting.md#making-a-server-reachable) |
 | **Ports** | Changes apply on the next start |
 | **Wake on join** | Minecraft Java, optional: while the server is stopped the panel answers on its port. The server list shows it as asleep, and joining starts it; the player is told to join again in about 30 seconds. Banned players never wake it, and with the whitelist on only whitelisted players do. Goes well with **stop when empty**. |

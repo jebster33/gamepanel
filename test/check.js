@@ -132,6 +132,8 @@ const BUILTIN_VARS = new Set([
   'JAVA_VERSION',
   'WORKSHOP_MODS',
   'MAP_ARGS',
+  'TEAM_LIMIT',
+  'HOSTNAME_FULL',
   // Supplied by resolvers
   'DOWNLOAD_URL',
   'RESOLVED_VERSION',

@@ -312,6 +312,7 @@ async function main() {
   await httpsFeature.start(store, handleRequest, handleUpgrade);
   require('./features/status-bots').start({ store, manager });
   require('./features/wake-on-join').start({ store, manager });
+  require('./features/server-list').start({ store, manager });
   require('./features/sftp')
     .start({ store, auth, manager })
     .catch((err) => logger.warn(`SFTP did not start: ${err.message}`));

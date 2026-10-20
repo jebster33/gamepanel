@@ -64,7 +64,7 @@ fi
 
 echo "==> Removing the program"
 rm -rf "$INSTALL_DIR"
-rm -f /etc/sudoers.d/gamepanel
+rm -f /etc/sudoers.d/gamepanel /usr/local/bin/gamepanel
 
 if [ "$KEEP_DATA" = "1" ]; then
   echo

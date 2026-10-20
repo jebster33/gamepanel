@@ -10,6 +10,8 @@ Signed-in accounts (and their keys) get 1200 requests a minute; anything anonymo
 
 Create one on the Account page (or `POST /api/auth/api-keys {"name","readOnly"}`; the key is shown once). Send it as `Authorization: Bearer gp_…`. A key acts as your account, with two limits: read-only keys can only `GET`, and no key can change accounts (passwords, two-factor, keys, users). Keys are stored hashed.
 
+The [`gamepanel` command](guide/cli.md) wraps the common calls.
+
 ```
 curl -H "Authorization: Bearer gp_…" http://panel:8420/api/servers
 curl -H "Authorization: Bearer gp_…" -H "Content-Type: application/json" \
@@ -147,6 +149,11 @@ POST   /api/servers/:id/datapacks/install          {"projectId","versionId?"}
 POST   /api/servers/:id/datapacks/upload           ?name=pack.zip (body: the zip)
 POST   /api/servers/:id/datapacks/:name/toggle     {"on"}
 DELETE /api/servers/:id/datapacks/:name
+GET    /api/servers/:id/resource-pack    the hosted resource pack (Minecraft Java) and its public address
+POST   /api/servers/:id/resource-pack    ?name=pack.zip (body: the zip) host it and set server.properties
+PATCH  /api/servers/:id/resource-pack    {"require","prompt","baseUrl","newLink"}
+DELETE /api/servers/:id/resource-pack
+GET    /api/public/resource-pack/:slug/pack.zip   public: the pack itself, nothing else
 GET    /api/servers/:id/backups/:name/preview      what a full restore would change
 POST   /api/servers/:id/backups/:name/restore      {"backupFirst","exact"}
 POST   /api/templates/check              {"template"} errors, warnings and the install script (admins)
@@ -166,6 +173,7 @@ GET    /api/servers/:id/staging/diff     what a push from this staging copy woul
 POST   /api/servers/:id/staging/push     {"entries":[folders],"properties","version"}
 PATCH  /api/servers/:id                  … {"wakeOnJoin":true} turns on wake on join (Minecraft Java)
 GET    /api/system                       host metrics
+GET    /api/system/capacity              memory, CPU, disk per machine and per server (admins)
 GET    /api/system/runtime               Docker status
 GET    /api/system/update                pending panel updates
 POST   /api/system/update                update and restart
