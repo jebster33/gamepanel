@@ -58,7 +58,13 @@ On Minecraft servers, the Mods tab looks inside the jars (also ones you uploaded
 
 ## Config files as forms
 
-The **Configs** tab lists the config files of your plugins and mods (`plugins/…`, `config/…`, BepInEx, Oxide) and shows them as forms: toggles, numbers, lists, and choices where the file lists the allowed values. Only what you change is rewritten, so comments and layout stay. Every save is kept in config history.
+The **Configs** tab lists the config files of your plugins and mods (`plugins/…`, `config/…`, BepInEx, Oxide) and shows them as forms: toggles, numbers with their unit, colour pickers, lists, and choices where the file lists the allowed values. Only what you change is rewritten, so comments and layout stay. Every save is kept in config history.
+
+- **Sections** fold open and shut, nested the way the file is. **Expand all** and **Collapse all** are above the list, and a section shows how many of its settings you changed.
+- **Find a setting** searches labels, keys and help text, and opens the sections that match.
+- **Open as text** takes you to the raw file on the Files tab.
+
+Popular configs get a hand-made layout with plain names, help text and groups: Paper (`paper-global.yml`, `paper-world-defaults.yml`), `bukkit.yml`, `spigot.yml`, EssentialsX, WorldGuard, CoreProtect, Geyser and Rust's Gather Manager. A setting the layout does not know still shows up, under **Other settings**, so a newer plugin version never hides anything.
 
 ## Minecraft networks
 
