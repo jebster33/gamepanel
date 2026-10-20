@@ -130,6 +130,9 @@ async function run(manager, store, server, { blocked, savedConfig }, job) {
     throw err;
   }
   rustMaps.set(manager, store, server, { mode: 'file', file: name });
+  // The picture for the live map; the map works without it.
+  const picture = map.imageIconUrl || map.imageUrl;
+  if (picture) await require('./rust-livemap').saveFromUrl(manager, server, picture, name).catch((err) => logger.debug(`Live map picture: ${err.message}`));
   return name;
 }
 

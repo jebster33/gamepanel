@@ -9,7 +9,7 @@
 
 const { logger } = require('../core/util');
 
-const COLORS = { lockout: 0xff5f57, '2fa_disabled': 0xffb340, crashed: 0xff5f57, failed: 0xff5f57, install_failed: 0xff5f57, ready: 0xc6f432, installed: 0xc6f432, created: 0xc6f432, uploaded: 0xc6f432, upload_failed: 0xff5f57, verify_failed: 0xff5f57, updated: 0xffb340, resource_alert: 0xffb340, disk_low: 0xff5f57, watched: 0xffb340 };
+const COLORS = { lockout: 0xff5f57, '2fa_disabled': 0xffb340, crashed: 0xff5f57, failed: 0xff5f57, install_failed: 0xff5f57, ready: 0xc6f432, installed: 0xc6f432, created: 0xc6f432, uploaded: 0xc6f432, upload_failed: 0xff5f57, verify_failed: 0xff5f57, updated: 0xffb340, resource_alert: 0xffb340, disk_low: 0xff5f57, watched: 0xffb340, unlisted: 0xff5f57, relisted: 0xc6f432 };
 
 const TITLES = {
   'server.crashed': 'Server crashed',
@@ -24,6 +24,8 @@ const TITLES = {
   'server.wiped': 'Server wiped',
   'server.preset': 'Settings preset switched',
   'server.resource_alert': 'Resource alert',
+  'server.unlisted': 'Dropped off the Steam server list',
+  'server.relisted': 'Back on the Steam server list',
   'player.watched': 'Watched player joined',
   'player.moderated': 'Chat moderation acted',
   'ban.appeal': 'New ban appeal',

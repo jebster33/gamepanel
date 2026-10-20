@@ -200,6 +200,7 @@ async function renderHistory(box, server) {
       <div id="pl-chart" class="pl-chart"></div>
     </div>
     ${popularTimes(data.samples)}
+    <div id="pl-wipes"></div>
     <div class="card card-flush players-card">
       <div class="players-head">
         <div><b class="players-count">${s.unique}</b><span class="faint"> player${s.unique === 1 ? '' : 's'} seen</span></div>
@@ -237,6 +238,7 @@ async function renderHistory(box, server) {
       : `<tr><td colspan="5" class="faint" style="padding:22px 18px">${data.players.length ? 'Nobody matches.' : 'Nobody has played yet. Players show up here the first time they join.'}</td></tr>`;
   };
   drawRows();
+  renderWipeStats(box.querySelector('#pl-wipes'), server);
   box.querySelector('#pl-chart').innerHTML = areaChart(data.samples, range, server.maxPlayers);
 
   box.querySelector('#pl-search').addEventListener('input', (e) => {
@@ -565,6 +567,68 @@ function renderActivity(box, server) {
     if (!box.isConnected) return clearInterval(current.timer);
     if (entries.length <= 150 && document.visibilityState === 'visible') reload();
   }, 10_000);
+}
+
+/**
+ * Wipe stats (games with wipes): new and returning players per wipe, the peak
+ * and how fast the daily crowd falls off. One line per wipe, newest in lime.
+ */
+async function renderWipeStats(host, server) {
+  if (!host) return;
+  let data;
+  try {
+    data = await api(`/api/servers/${server.id}/wipe-stats`);
+  } catch {
+    return;
+  }
+  if (!data.enabled || !data.wipes.length || !host.isConnected) return;
+  const shown = data.wipes.slice(0, 5);
+  const longest = Math.max(7, ...shown.map((w) => w.days.length));
+  const top = Math.max(1, ...shown.flatMap((w) => w.days));
+  const W = 800;
+  const H = 160;
+  const x = (d) => (d / (longest - 1)) * W;
+  const y = (n) => H - (n / top) * (H - 12);
+  const lines = shown
+    .map((w, i) => {
+      const pts = w.days.map((n, d) => `${x(d).toFixed(1)},${y(n).toFixed(1)}`);
+      const stroke = i === 0 ? 'var(--lime)' : 'var(--text-3, #a19f96)';
+      const label = `${new Date(w.at).toLocaleDateString([], { month: 'short', day: 'numeric' })}${w.seed != null ? `, seed ${w.seed}` : ''}`;
+      return `<path d="M${pts.join('L')}" fill="none" stroke="${stroke}" stroke-width="${i === 0 ? 2.5 : 1.5}" stroke-opacity="${i === 0 ? 1 : Math.max(0.25, 0.7 - i * 0.12)}" vector-effect="non-scaling-stroke" stroke-linejoin="round"><title>${esc(label)}</title></path>`;
+    })
+    .reverse()
+    .join('');
+  const ticks = [0, 0.25, 0.5, 0.75, 1].map((f) => `<span class="${f === 0.25 || f === 0.75 ? 'hide-sm' : ''}" style="left:${f * 100}%">Day ${Math.round(f * (longest - 1)) + 1}</span>`);
+  const pct = (n, of) => (of ? ` <span class="faint">${Math.round((n / of) * 100)}%</span>` : '');
+  host.innerHTML = `
+    <div class="card mb-16">
+      <h4 style="margin:0 0 10px">Wipe stats <span class="faint" style="font-weight:400;font-size:12px">active players per day since each wipe</span></h4>
+      <div class="pl-chart-wrap">
+        <span class="pl-chart-top mono faint">${top}</span>
+        <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" class="pl-svg">
+          <line x1="0" x2="${W}" y1="${y(top / 2)}" y2="${y(top / 2)}" class="pl-grid"/>
+          ${lines}
+        </svg>
+        <div class="pl-ticks faint">${ticks.join('')}</div>
+      </div>
+      <div class="table-wrap" style="margin-top:22px"><table>
+        <thead><tr><th>Wipe</th><th>Players</th><th>New</th><th>Returning</th><th class="hide-sm">Peak online</th><th class="hide-sm" title="Of the players on in the first two days, the share seen again on days 7 to 9">Still around, day 7</th><th class="hide-sm" title="First day the daily crowd is down to half of its best day">Half gone</th></tr></thead>
+        <tbody>${data.wipes
+          .map(
+            (w) => `<tr>
+              <td class="nowrap">${esc(new Date(w.at).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }))}${w.end ? '' : ' <span class="lime">current</span>'}${w.seed != null ? `<div class="faint mono" style="font-size:11px">seed ${esc(w.seed)}</div>` : ''}${w.baseline ? '<div class="faint" style="font-size:11px">since tracking began</div>' : ''}</td>
+              <td class="mono">${w.unique}</td>
+              <td class="mono">${w.baseline ? '<span class="faint">—</span>' : `${w.new}${pct(w.new, w.unique)}`}</td>
+              <td class="mono">${w.baseline ? '<span class="faint">—</span>' : `${w.returning}${pct(w.returning, w.unique)}`}</td>
+              <td class="mono hide-sm">${w.peak}</td>
+              <td class="mono hide-sm">${w.retention7 != null ? `${w.retention7}%` : '<span class="faint">—</span>'}</td>
+              <td class="mono hide-sm">${w.halfDay != null ? `day ${w.halfDay + 1}` : '<span class="faint">—</span>'}</td>
+            </tr>`
+          )
+          .join('')}</tbody>
+      </table></div>
+      <div class="hint">New means their first time on this server; returning means they had played before that wipe. Counted from when the panel started tracking.</div>
+    </div>`;
 }
 
 /**

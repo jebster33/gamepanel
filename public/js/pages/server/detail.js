@@ -8,6 +8,7 @@ import { patchDoctor, renderConsoleTab } from './console.js';
 import { renderFilesTab } from './files.js';
 import { renderGameTab } from './game.js';
 import { drawServerCharts, renderMetricsTab } from './metrics.js';
+import { renderLiveMapTab } from './livemap.js';
 import { renderModpacksTab } from './modpacks.js';
 import { renderModsTab } from './mods.js';
 import { patchPlayersTab, renderPlayersTab } from './players.js';
@@ -23,6 +24,7 @@ function serverTabs(server) {
     can('console') && ['console', 'Console'],
     ['players', 'Players'],
     ['metrics', 'Metrics'],
+    server.templateId === 'rust' && can('console') && ['livemap', 'Live map'],
     can('files') && ['files', 'Files'],
     server.hasModpacks && can('mods') && ['modpacks', 'Modpack'],
     server.hasMods && can('mods') && ['mods', 'Mods'],
@@ -168,6 +170,9 @@ function renderServerTab(server, tab) {
       break;
     case 'players':
       renderPlayersTab(host, server);
+      break;
+    case 'livemap':
+      renderLiveMapTab(host, server);
       break;
     case 'game':
       renderGameTab(host, server);
