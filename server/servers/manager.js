@@ -254,6 +254,8 @@ class ServerManager extends EventEmitter {
     if (this.template(server)?.mods?.workshop?.strategy === 'bohemia') {
       out.WORKSHOP_MODS = [require('../features/mods/workshop').modArgument(server), out.EXTRA_MODS].filter(Boolean).join(';');
     }
+    // Rust's map choice (official, hosted or uploaded) becomes launch arguments.
+    if (server.templateId === 'rust') out.MAP_ARGS = require('../features/rust-maps').args(this, server);
     return out;
   }
 
@@ -280,6 +282,7 @@ class ServerManager extends EventEmitter {
       // Secret variables never leave the panel: only whether one is set.
       vars: Object.fromEntries(Object.entries(server.vars || {}).map(([k, v]) => [k, hidden.has(k) || secrets.isSealed(v) ? '' : v])),
       secretVars: Object.fromEntries([...hidden].map((k) => [k, Boolean(server.vars?.[k])])),
+      map: server.map ? { ...server.map, token: undefined } : undefined, // the token is the key to an uploaded map's download
       status: rt.status,
       wake: server.wakeOnJoin ? require('../features/wake-on-join').view(server.id) : undefined,
       startedAt: rt.startedAt,
