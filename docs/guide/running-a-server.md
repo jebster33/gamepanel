@@ -25,6 +25,17 @@ Output is colour-coded and live. Type a command and press Enter; where the game 
 it. **↑ / ↓** walks through your command history and **Tab** completes commands and online player
 names. Click a player name in the output to open their profile.
 
+**Quick commands** sit above the command line: buttons for the common commands of the game (save, say,
+kick, time, weather and so on; Minecraft, Bedrock, Rust, ARK, Palworld, 7 Days to Die, Project Zomboid,
+Terraria, Factorio, Unturned, Squad and the Source games such as CS2, TF2 and Garry's Mod). Buttons that
+need a player or a message ask for it first, and the panel builds the command itself, so nothing typed
+there can add a second command. **＋ Macros** saves your own buttons for this server: each macro is one or
+more console commands, one per line, and `@say text` posts to game chat. Running them needs the same
+permission as typing a command.
+
+**Autocomplete** suggests commands and their arguments as you type (online player names where the game
+needs one), with the command's usage shown underneath. Tab takes the first suggestion; ↑ / ↓ pick another.
+
 **When a server crashes** the console shows the **Crash doctor**: what went wrong in plain words (wrong
 Java version, out of memory, EULA not accepted, a broken mod or plugin) with a button that fixes it.
 **Share log** uploads the log to mclo.gs so you can send someone a link. Crashed servers restart on

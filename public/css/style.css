@@ -4573,3 +4573,67 @@ pre.code-block {
   margin-left: 26px;
   color: var(--warning, #f5a524);
 }
+
+/* Console quick commands and autocomplete */
+.quick-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border-top: 1px solid #22231f;
+}
+.quick-bar:empty {
+  display: none;
+}
+.quick-sep {
+  width: 1px;
+  height: 16px;
+  background: #33342f;
+  margin: 0 2px;
+}
+.chip.macro {
+  border-style: dashed;
+}
+.suggest-box {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  padding: 6px 10px;
+  border-top: 1px solid #22231f;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+.suggest-box.hidden {
+  display: none;
+}
+.suggest-item {
+  background: transparent;
+  border: 1px solid #33342f;
+  border-radius: 4px;
+  color: #ecebe6;
+  font: inherit;
+  padding: 1px 8px;
+  cursor: pointer;
+}
+.suggest-item.on,
+.suggest-item:hover {
+  border-color: #c6f432;
+  color: #c6f432;
+}
+.suggest-hint {
+  flex-basis: 100%;
+  color: #8a8b84;
+}
+.macro-row {
+  display: grid;
+  grid-template-columns: 160px 1fr auto;
+  gap: 8px;
+  margin-bottom: 8px;
+  align-items: start;
+}
+@media (max-width: 600px) {
+  .macro-row {
+    grid-template-columns: 1fr;
+  }
+}
