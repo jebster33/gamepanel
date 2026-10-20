@@ -54,7 +54,14 @@ format from the server jar itself. On a running server changes apply at once thr
 
 ## The mod check
 
-On Minecraft servers, the Mods tab looks inside the jars (also ones you uploaded by hand) and says when a mod is made for another loader or Minecraft version, needs a mod that is missing, breaks another mod, is installed twice, or is client-only. It runs whenever you open the tab, on demand with **Check**, and after a modded server crashes.
+The Mods tab reads what your mods say about themselves and flags what will stop the server or leave a mod unloaded. It runs whenever you open the tab, on demand with **Check**, after a modded server crashes, and **every time the server starts**. A start only warns in the console and the activity log; it is never blocked, because the check can be wrong about a mod it does not understand and you know your server better.
+
+| Game | What it looks at |
+|---|---|
+| Minecraft | Inside the jars, also ones you uploaded by hand: made for another loader or Minecraft version, a required mod missing or too old, mods that break each other, the same mod twice, client-only mods. |
+| Rust | The uMod plugins: a plugin that `// Requires:` another that is not installed, the same plugin twice, and plugins with no Oxide or Carbon underneath. |
+| Factorio | Each mod zip's `info.json`: missing or too-old dependencies, incompatible mods, a mod made for another Factorio version, duplicates. Mods switched off in `mod-list.json` are left out. |
+| Every game | What the panel installed against what is on disk: a mod whose file is gone, and a mod you switched off that another one needs. |
 
 ## Config files as forms
 
