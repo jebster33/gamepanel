@@ -286,7 +286,7 @@
       }
     ]
   },
-  "startCommand": "ShooterGame\\Binaries\\Win64\\ArkAscendedServer.exe {{MAP}}?listen?SessionName=\"{{SERVER_NAME}}\"?Port={{PORT}}?RCONEnabled=True?RCONPort={{PORT_RCON}}?ServerPassword={{SERVER_PASSWORD}}?ServerAdminPassword={{RCON_PASSWORD}} -WinLiveMaxPlayers={{MAX_PLAYERS}} -log",
+  "startCommand": "ShooterGame\\Binaries\\Win64\\ArkAscendedServer.exe {{MAP}}?listen?SessionName=\"{{SERVER_NAME}}\"?Port={{PORT}}?RCONEnabled=True?RCONPort={{PORT_RCON}}?ServerPassword={{SERVER_PASSWORD}}?ServerAdminPassword={{RCON_PASSWORD}} -WinLiveMaxPlayers={{MAX_PLAYERS}} -log {{CLUSTER_ARGS}}",
   "tailFiles": [
     "ShooterGame/Saved/Logs/ShooterGame.log"
   ],

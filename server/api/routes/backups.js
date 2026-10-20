@@ -69,7 +69,7 @@ module.exports = (router, { store, manager }, { requireAdmin, requireCap, server
     } catch {
       mayDelete = false;
     }
-    const pruned = mayDelete ? backups.prune(server.id, server.backupRetention) : [];
+    const pruned = mayDelete ? backups.prune(server.id, server.backupRetention, [server.safeUpdate?.backup]) : [];
     store.addEvent('backup.created', `Backup created for ${server.name}`, { serverId: server.id, backup: backup.name });
     return { backup, pruned };
   });
@@ -104,6 +104,33 @@ module.exports = (router, { store, manager }, { requireAdmin, requireCap, server
     if (result.safety) store.addEvent('backup.created', `Backup ${result.safety} of ${server.name} made before a restore`, { serverId: server.id, backup: result.safety });
     store.addEvent('backup.restored', `Backup ${params.name} restored to ${server.name}${result.removed ? ` (${result.removed} newer files removed)` : ''}`, { serverId: server.id });
     return result;
+  });
+
+  /* ------------------------------------------------------ safe updates -- */
+
+  const safe = require('../../features/safe-update');
+
+  router.get('/api/servers/:id/safe-update', ({ user, params }) => {
+    const server = serverFor(user, params.id, 'backups');
+    return { snapshot: safe.view(server), canUpdate: manager.publicServer(server).canUpdate, lastRollback: server.lastRollback || null };
+  });
+
+  /** Back up, then update the game files. Rolling back is a separate, manual step. */
+  router.post('/api/servers/:id/safe-update', async ({ user, params }) => {
+    const server = serverFor(user, params.id, 'power');
+    requireCap(user, 'backups', server.id);
+    // Fails early (stopped server, nothing to update); the backup and update run in the background.
+    const template = manager.template(server);
+    if (manager.isActive(server.id)) fail(409, 'Stop the server before updating it');
+    if (!manager.publicServer(server).canUpdate || !template) fail(400, 'This game is updated by reinstalling it');
+    safe.updateGame(manager, server, user.username).catch((err) => manager.pushConsole(server, `Safe update failed: ${err.message}`, 'system'));
+    return { ok: true, started: true };
+  });
+
+  router.post('/api/servers/:id/safe-update/rollback', async ({ user, params }) => {
+    const server = serverFor(user, params.id, 'power');
+    requireCap(user, 'backups.restore', server.id);
+    return safe.rollback(manager, server, user.username);
   });
 
   /** What a full restore would change, before doing it. */

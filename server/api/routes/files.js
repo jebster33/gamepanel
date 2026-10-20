@@ -51,27 +51,42 @@ module.exports = (router, app, { serverFor }) => {
 
   /* ------------------------------------------------------ config history -- */
 
+  // A server's own settings are in the history too (pseudo path history.SETTINGS); they need the "settings" permission instead of "files".
+  const historyCap = (rel) => (history.normal(rel) === history.SETTINGS ? 'settings' : 'files');
+
   router.get('/api/servers/:id/config-history', ({ user, params }) => {
     serverFor(user, params.id, 'files');
-    return { files: history.files(params.id) };
+    return { files: history.files(params.id), settings: Boolean(app.auth.can(user, 'settings', params.id)) && history.versions(params.id, history.SETTINGS).versions.length > 0 };
   });
 
   router.get('/api/servers/:id/config-history/versions', ({ user, params, url }) => {
-    serverFor(user, params.id, 'files');
-    return history.versions(params.id, url.searchParams.get('path'));
+    const rel = url.searchParams.get('path');
+    const server = serverFor(user, params.id, historyCap(rel));
+    const out = history.versions(params.id, rel);
+    // The settings are not a file: the current text comes from here.
+    if (out.path === history.SETTINGS) out.current = app.manager.settingsText(server);
+    return out;
   });
 
   router.get('/api/servers/:id/config-history/version', ({ user, params, url }) => {
-    serverFor(user, params.id, 'files');
+    serverFor(user, params.id, historyCap(url.searchParams.get('path')));
     return history.content(params.id, url.searchParams.get('path'), url.searchParams.get('version'));
   });
 
   router.post('/api/servers/:id/config-history/revert', async ({ user, params, body }) => {
+    const label = (version) => `Back to the version from ${new Date(version.at).toISOString().slice(0, 16).replace('T', ' ')}`;
+    if (history.normal(body?.path) === history.SETTINGS) {
+      const server = serverFor(user, params.id, 'settings');
+      const version = history.content(params.id, body?.path, body?.version);
+      app.manager.restoreSettings(server.id, version.content, { trusted: user.role === 'admin', actor: user.username, source: 'revert', note: label(version) });
+      app.store.addEvent('server.config_reverted', `${user.username} reverted the settings of ${server.name}`, { serverId: server.id });
+      return { ok: true, path: version.path };
+    }
     const root = rootOf(user, params.id, 'files.write');
     const version = history.content(params.id, body?.path, body?.version);
     const before = readIfSmall(files.containedPath(root, version.path));
     await files.write(root, version.path, version.content);
-    history.record(params.id, version.path, { before, after: version.content, by: user.username, source: 'revert', note: `Back to the version from ${new Date(version.at).toISOString().slice(0, 16).replace('T', ' ')}` });
+    history.record(params.id, version.path, { before, after: version.content, by: user.username, source: 'revert', note: label(version) });
     app.store.addEvent('server.config_reverted', `${user.username} reverted ${version.path} on ${serverFor(user, params.id).name}`, { serverId: params.id });
     return { ok: true, path: version.path };
   });
@@ -95,7 +110,8 @@ module.exports = (router, app, { serverFor }) => {
       res.writeHead(200, {
         'Content-Type': 'application/octet-stream',
         'Content-Length': size,
-        'Content-Disposition': `attachment; filename="${name.replace(/"/g, '')}"`,
+        // An ASCII fallback for old clients plus the real name (RFC 6266); a raw name with line breaks or non-Latin-1 characters would make writeHead throw.
+        'Content-Disposition': `attachment; filename="${name.replace(/[^\x20-\x7e]|["\\]/g, '_')}"; filename*=UTF-8''${encodeURIComponent(name).replace(/['()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`)}`,
       });
       fs.createReadStream(file).pipe(res);
       return undefined;

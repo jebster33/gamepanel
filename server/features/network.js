@@ -4,7 +4,7 @@
  * Getting a server reachable, without hunting through two firewalls.
  *
  * Two layers usually stand between a player and a game server:
- *   1. the host firewall (ufw on Ubuntu) — opened here directly
+ *   1. the host firewall (ufw or firewalld on Linux, Windows Firewall) — opened here directly
  *   2. the router, when the box is on a home LAN — offered over UPnP IGD,
  *      which most consumer routers speak, with copy-paste instructions as the
  *      fallback for the ones that do not
@@ -72,6 +72,51 @@ async function ufwSet(ports, open = true) {
   return done;
 }
 
+async function firewalldAvailable() {
+  try {
+    await sh('command -v firewall-cmd', { timeout: 4000 });
+    const { stdout } = await sh('firewall-cmd --state 2>/dev/null || sudo -n firewall-cmd --state 2>/dev/null', { timeout: 6000 });
+    return /running/.test(stdout);
+  } catch {
+    return false;
+  }
+}
+
+async function firewalldStatus() {
+  try {
+    const { stdout } = await sh('sudo -n firewall-cmd --list-ports 2>/dev/null || firewall-cmd --list-ports 2>/dev/null', { timeout: 8000 });
+    const rules = stdout
+      .split(/\s+/)
+      .map((t) => t.match(/^(\d+)(?:-(\d+))?\/(tcp|udp)$/))
+      .filter(Boolean)
+      .map((m) => ({ from: Number(m[1]), to: Number(m[2] || m[1]), protocol: m[3] }));
+    return { available: true, active: true, rules };
+  } catch (err) {
+    return { available: true, active: true, rules: [], error: err.message };
+  }
+}
+
+async function firewalldSet(ports, open = true) {
+  const done = [];
+  for (const { port, protocol } of ports) {
+    try {
+      // --permanent so the rule survives a reload, then apply it to the running config too.
+      await sh(`sudo -n firewall-cmd --permanent ${open ? '--add-port' : '--remove-port'}=${port}/${protocol}`, { timeout: 15000 });
+      await sh(`sudo -n firewall-cmd ${open ? '--add-port' : '--remove-port'}=${port}/${protocol}`, { timeout: 15000 });
+      done.push({ port, protocol, ok: true });
+    } catch (err) {
+      const message = String(err.stderr || err.message || '').trim();
+      done.push({
+        port,
+        protocol,
+        ok: false,
+        error: /sudo/i.test(message) ? 'The panel is not allowed to run firewall-cmd — re-run install.sh to grant it' : message.split('\n')[0],
+      });
+    }
+  }
+  return done;
+}
+
 /* ------------------------------------------------------ Windows firewall -- */
 
 const isWindows = process.platform === 'win32';
@@ -122,17 +167,61 @@ async function windowsFirewallSet(ports, open) {
 /** The host firewall, whichever one this OS has. */
 async function firewallStatus() {
   if (isWindows) return windowsFirewallStatus();
-  return { kind: 'ufw', ...(await ufwStatus()) };
+  const ufw = await ufwStatus();
+  if (!ufw.active && (await firewalldAvailable())) return { kind: 'firewalld', ...(await firewalldStatus()) };
+  return { kind: 'ufw', ...ufw };
 }
 
 async function firewallSet(ports, open = true) {
-  return isWindows ? windowsFirewallSet(ports, open) : ufwSet(ports, open);
+  if (isWindows) return windowsFirewallSet(ports, open);
+  if (!(await ufwStatus()).active && (await firewalldAvailable())) return firewalldSet(ports, open);
+  return ufwSet(ports, open);
 }
 
 function manualSteps(ports) {
   return isWindows
     ? ports.map((p) => `netsh advfirewall firewall add rule name="${ruleName(p.port, p.protocol)}" dir=in action=allow protocol=${p.protocol.toUpperCase()} localport=${p.port}`)
     : ports.map((p) => `sudo ufw allow ${p.port}/${p.protocol}`);
+}
+
+/**
+ * Opt-in per server (`autoPorts`): the ports open when the server starts and
+ * close when it is deleted. RCON is left out: remote admin should not be
+ * exposed to the internet by default (the manual buttons can still open it).
+ * What was opened is remembered, so a changed port does not leave the old one open.
+ */
+function autoPortList(server, template) {
+  return serverPorts(server, template).filter((p) => p.name !== 'rcon');
+}
+
+const key = (p) => `${p.port}/${p.protocol}`;
+
+async function autoOpen(manager, server) {
+  const template = manager.template(server);
+  const wanted = autoPortList(server, template);
+  const stale = (server.portsOpened || []).filter((o) => !wanted.some((w) => key(w) === key(o)));
+  if (stale.length) {
+    await firewallSet(stale, false).catch(() => {});
+    await upnpSet(stale, false).catch(() => {});
+  }
+  const results = { firewall: await firewallSet(wanted, true) };
+  try {
+    results.upnp = (await upnpSet(wanted, true, `GamePanel ${server.name}`)).mappings;
+  } catch (err) {
+    results.upnp = [{ ok: false, error: err.message }];
+  }
+  const okPorts = wanted.filter((p) => results.firewall.find((r) => key(r) === key(p) && r.ok) || results.upnp.find((r) => r.port === p.port && r.protocol === p.protocol && r.ok));
+  server.portsOpened = okPorts.map(({ port, protocol }) => ({ port, protocol }));
+  manager.store.save();
+  return results;
+}
+
+async function autoClose(manager, server) {
+  const ports = server.portsOpened || [];
+  if (!ports.length) return;
+  await firewallSet(ports, false).catch(() => {});
+  await upnpSet(ports, false).catch(() => {});
+  server.portsOpened = [];
 }
 
 /* ------------------------------------------------------------------ UPnP -- */
@@ -328,4 +417,4 @@ function serverPorts(server, template) {
   return out;
 }
 
-module.exports = { ufwStatus, ufwSet, isOpenInUfw, isOpen: isOpenInUfw, firewallStatus, firewallSet, manualSteps, upnpStatus, upnpSet, serverPorts, lanAddress };
+module.exports = { ufwStatus, ufwSet, isOpenInUfw, isOpen: isOpenInUfw, firewallStatus, firewallSet, manualSteps, upnpStatus, upnpSet, serverPorts, lanAddress, autoOpen, autoClose };

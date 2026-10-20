@@ -88,6 +88,25 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
     return networks.remove(manager, store, params.id);
   });
 
+  /** ARK clusters: servers that share characters, items and dinos. */
+  const arkClusters = require('../../features/ark-clusters');
+  router.get('/api/clusters', ({ user }) => {
+    requireAdmin(user);
+    return arkClusters.list(manager, store);
+  });
+  router.post('/api/clusters', ({ user, body }) => {
+    requireAdmin(user);
+    return arkClusters.create(manager, store, body || {}, user);
+  });
+  router.put('/api/clusters/:id', ({ user, params, body }) => {
+    requireAdmin(user);
+    return arkClusters.update(manager, store, params.id, body || {});
+  });
+  router.delete('/api/clusters/:id', ({ user, params }) => {
+    requireAdmin(user);
+    return arkClusters.remove(manager, store, params.id);
+  });
+
   /** Servers other panels (Pterodactyl, AMP, LinuxGSM) left on this machine, ready to import. */
   router.get('/api/import/scan', ({ user }) => {
     requireAdmin(user);
@@ -120,7 +139,7 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
       if (body.memory !== undefined) quotas.checkMemory(manager, user, target, Math.max(256, Number(body.memory) || 0));
       if (body.cpuLimit !== undefined) quotas.checkCpu(user, target, body.cpuLimit);
     }
-    return { server: manager.publicServer(manager.update(params.id, body, { trusted: admin })) };
+    return { server: manager.publicServer(manager.update(params.id, body, { trusted: admin, actor: user.username })) };
   });
 
   router.delete('/api/servers/:id', async ({ user, params, url }) => {
@@ -179,6 +198,36 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
     store.addEvent('server.wiped', `${server.name} was wiped by ${user.username}${opts.blueprints ? ' (blueprints too)' : ''}`, { serverId: server.id });
     return { ok: true, ...result };
   });
+
+  /** Which map a Rust server loads: procedural, an official one, a hosted .map link or an uploaded file. */
+  const rustMaps = require('../../features/rust-maps');
+  const mapServer = (user, id, cap) => {
+    const server = serverFor(user, id, cap);
+    if (server.templateId !== 'rust') fail(400, 'Map choice is only for Rust servers');
+    return server;
+  };
+  router.get('/api/servers/:id/map', ({ user, params }) => rustMaps.describe(mapServer(user, params.id, 'settings')));
+  router.put('/api/servers/:id/map', ({ user, params, body }) => {
+    const server = mapServer(user, params.id, 'settings');
+    // A link or file is something the game downloads and runs as its world: file access, like uploading it by hand.
+    if (['url', 'file'].includes(body?.mode)) requireCap(user, 'files.write', server.id);
+    const result = rustMaps.set(manager, store, server, body);
+    store.addEvent('server.map', `${server.name} map set to ${result.map.mode}${result.map.level ? ` (${result.map.level})` : ''} by ${user.username}`, { serverId: server.id });
+    return result;
+  });
+  // The game downloads an uploaded map from here; the unguessable token in the address is the key.
+  router.get(
+    '/api/public/rust-map/:id/:token/:name',
+    ({ params, res }) => {
+      const server = manager.servers.find((s) => s.id === params.id);
+      const found = server && rustMaps.openFile(server, params.token, params.name);
+      if (!found) fail(404, 'Not found');
+      res.writeHead(200, { 'Content-Type': 'application/octet-stream', 'Content-Length': found.size });
+      require('fs').createReadStream(found.file).pipe(res);
+      return undefined;
+    },
+    { raw: true, public: true }
+  );
 
   router.get('/api/servers/:id/console', ({ user, params }) => {
     const server = serverFor(user, params.id, 'console');

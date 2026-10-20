@@ -1,5 +1,5 @@
 import { api } from '../../core/api.js';
-import { $, esc, fmtBytes, icon, toast } from '../../core/util.js';
+import { $, can, esc, fmtBytes, icon, toast } from '../../core/util.js';
 import { confirmModal, openModal } from '../../ui/modal.js';
 import { sideBadge } from './modpacks.js';
 import { renderWorkshopPacks } from './workshop-packs.js';
@@ -115,17 +115,19 @@ export async function renderModsTab(host, server) {
     })
   );
 
-  const search = async () => {
+  const search = async (page = 0) => {
     const results = $('#mod-results');
-    results.innerHTML = skeleton('list', 'Searching…', 5);
+    if (page === 0) results.innerHTML = skeleton('list', 'Searching…', 5);
     try {
       const data = await api(
-        `/api/servers/${server.id}/mods/search?provider=${encodeURIComponent(provider.id)}&query=${encodeURIComponent(modState.query)}`
+        `/api/servers/${server.id}/mods/search?provider=${encodeURIComponent(provider.id)}&query=${encodeURIComponent(modState.query)}&page=${page}`
       );
-      modState.results = data.items;
-      renderResults(server, data.items, refresh);
+      modState.results = page === 0 ? data.items : [...modState.results, ...data.items];
+      const more = data.items.length && data.total > modState.results.length ? () => search(page + 1) : null;
+      renderResults(server, modState.results, refresh, more, data.total);
     } catch (err) {
-      results.innerHTML = `<div class="card faint">${esc(err.message)}</div>`;
+      if (page === 0) results.innerHTML = `<div class="card faint">${esc(err.message)}</div>`;
+      else toast(err.message, 'error');
     }
   };
   $('#mod-search-btn').addEventListener('click', () => {
@@ -161,7 +163,7 @@ export async function renderModsTab(host, server) {
 
 /* ------------------------------------------------------------ results -- */
 
-function renderResults(server, items, refresh) {
+function renderResults(server, items, refresh, more = null, total = 0) {
   const results = $('#mod-results');
   if (!results) return;
   if (!items.length) {
@@ -189,11 +191,19 @@ function renderResults(server, items, refresh) {
         </div>
       </div>`
     )
-    .join('');
+    .join('') +
+    (more
+      ? `<div style="grid-column:1/-1;text-align:center"><button class="btn" id="mod-more">Load more <span class="faint">(${items.length} of ${compact(total)})</span></button></div>`
+      : '');
 
   results.querySelectorAll('[data-install]').forEach((el) =>
     el.addEventListener('click', () => openInstallModal(server, items[Number(el.dataset.install)], refresh))
   );
+  $('#mod-more')?.addEventListener('click', (event) => {
+    event.currentTarget.disabled = true;
+    event.currentTarget.textContent = 'Loading…';
+    more();
+  });
 }
 
 const compact = (n) => Intl.NumberFormat('en', { notation: 'compact' }).format(Number(n) || 0);
@@ -416,6 +426,7 @@ function wireInstalled(server, info, refresh) {
         <div class="share-box mb-16">
           <div class="row mb-16"><b>${updates.length} update${updates.length > 1 ? 's' : ''}</b><div class="spacer"></div>
             <button class="btn btn-sm btn-primary" id="mod-update-all">Update all</button></div>
+          ${can('backups', server.id) ? '<label class="checkbox-row" style="margin:0 0 8px"><input type="checkbox" id="mod-update-safe" checked /><span>Back up first, so Backups can roll the server back (the backup can be large)</span></label>' : ''}
           ${updates
             .map(
               (u) => `<div class="row" style="justify-content:space-between;padding:3px 0">
@@ -427,7 +438,8 @@ function wireInstalled(server, info, refresh) {
       const run = async (body, el) => {
         el.disabled = true;
         try {
-          const res = await api(`/api/servers/${server.id}/mods/update`, { method: 'POST', body });
+          const safe = Boolean($('#mod-update-safe')?.checked);
+          const res = await api(`/api/servers/${server.id}/mods/update`, { method: 'POST', body: { ...body, safe } });
           toast(`Updated ${res.updated.length}${res.failed.length ? `, ${res.failed.length} failed` : ''}${res.restartNeeded ? '. Restart to load them.' : ''}`, res.failed.length ? 'warn' : 'info');
           refresh();
         } catch (err) {

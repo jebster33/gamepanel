@@ -141,39 +141,6 @@
       "group": "Rules"
     },
     {
-      "name": "MAP_LEVEL",
-      "label": "Map",
-      "default": "Procedural Map",
-      "options": [
-        {
-          "value": "Procedural Map",
-          "label": "Procedural Map"
-        },
-        {
-          "value": "Barren",
-          "label": "Barren"
-        },
-        {
-          "value": "HapisIsland",
-          "label": "HapisIsland"
-        },
-        {
-          "value": "CraggyIsland",
-          "label": "CraggyIsland"
-        },
-        {
-          "value": "SavasIsland",
-          "label": "SavasIsland"
-        },
-        {
-          "value": "SavasIsland_koth",
-          "label": "SavasIsland_koth"
-        }
-      ],
-      "description": "Procedural uses the world size and seed above. The others are the fixed maps that ship with the game.",
-      "group": "World"
-    },
-    {
       "name": "DECAY_SCALE",
       "label": "Base decay speed",
       "type": "number",
@@ -275,7 +242,7 @@
       "run": "if [ \"{{INSTALL_OXIDE}}\" = \"true\" ]; then\n  gp_fetch \"https://github.com/OxideMod/Oxide.Rust/releases/latest/download/Oxide.Rust-linux.zip\" oxide.zip\n  gp_extract oxide.zip .\n  rm -f oxide.zip\n  mkdir -p oxide/plugins oxide/config oxide/data\n  ( gp_fetch \"https://umod.org/plugins/GatherManager.cs\" oxide/plugins/GatherManager.cs ) || gp_log \"Could not download GatherManager; install it from the Mods tab to use gather rates\"\n  gp_log \"Oxide installed — plugins go in oxide/plugins\"\nelse\n  gp_log \"Skipping Oxide (vanilla Rust)\"\nfi"
     }
   ],
-  "startCommand": "./RustDedicated -batchmode -nographics +server.identity gamepanel +server.ip 0.0.0.0 +server.port {{PORT}} +server.queryport {{PORT_QUERY}} +rcon.ip 0.0.0.0 +rcon.port {{PORT_RCON}} +rcon.password \"{{RCON_PASSWORD}}\" +rcon.web 1 +app.port {{PORT_APP}} +server.maxplayers {{MAX_PLAYERS}} +server.hostname \"{{SERVER_HOSTNAME}}\" +server.description \"{{SERVER_DESCRIPTION}}\" +server.worldsize {{WORLD_SIZE}} +server.seed {{WORLD_SEED}} +server.saveinterval {{SAVE_INTERVAL}} +server.gamemode {{GAME_MODE}} +server.pve {{SERVER_PVE}} +server.level \"{{MAP_LEVEL}}\" +decay.scale {{DECAY_SCALE}} +craft.instant {{INSTANT_CRAFT}} +server.radiation {{RADIATION}} +relationshipmanager.maxteamsize {{MAX_TEAM}} +server.tags \"{{SERVER_TAGS}}\" +server.url \"{{SERVER_URL}}\" +server.headerimage \"{{HEADER_IMAGE}}\"",
+  "startCommand": "./RustDedicated -batchmode -nographics +server.identity gamepanel +server.ip 0.0.0.0 +server.port {{PORT}} +server.queryport {{PORT_QUERY}} +rcon.ip 0.0.0.0 +rcon.port {{PORT_RCON}} +rcon.password \"{{RCON_PASSWORD}}\" +rcon.web 1 +app.port {{PORT_APP}} +server.maxplayers {{MAX_PLAYERS}} +server.hostname \"{{SERVER_HOSTNAME}}\" +server.description \"{{SERVER_DESCRIPTION}}\" +server.worldsize {{WORLD_SIZE}} +server.seed {{WORLD_SEED}} +server.saveinterval {{SAVE_INTERVAL}} +server.gamemode {{GAME_MODE}} +server.pve {{SERVER_PVE}} +decay.scale {{DECAY_SCALE}} +craft.instant {{INSTANT_CRAFT}} +server.radiation {{RADIATION}} +relationshipmanager.maxteamsize {{MAX_TEAM}} +server.tags \"{{SERVER_TAGS}}\" +server.url \"{{SERVER_URL}}\" +server.headerimage \"{{HEADER_IMAGE}}\" {{MAP_ARGS}}",
   "stopCommand": "quit",
   "stopTimeout": 120,
   "query": {
@@ -324,7 +291,7 @@
         "run": "if ('{{INSTALL_OXIDE}}' -eq 'true') {\n  GP-Fetch 'https://github.com/OxideMod/Oxide.Rust/releases/latest/download/Oxide.Rust.zip' 'oxide.zip'\n  GP-Extract 'oxide.zip' '.'\n  Remove-Item oxide.zip\n  foreach ($d in 'oxide/plugins','oxide/config','oxide/data') { New-Item -ItemType Directory -Force $d | Out-Null }\n  try { GP-Fetch 'https://umod.org/plugins/GatherManager.cs' 'oxide/plugins/GatherManager.cs' } catch { GP-Log 'Could not download GatherManager; install it from the Mods tab to use gather rates' }\n  GP-Log 'Oxide installed. Plugins go in oxide/plugins'\n} else { GP-Log 'Skipping Oxide (vanilla Rust)' }"
       }
     ],
-    "startCommand": "RustDedicated.exe -batchmode -nographics +server.identity gamepanel +server.ip 0.0.0.0 +server.port {{PORT}} +server.queryport {{PORT_QUERY}} +rcon.ip 0.0.0.0 +rcon.port {{PORT_RCON}} +rcon.password \"{{RCON_PASSWORD}}\" +rcon.web 1 +app.port {{PORT_APP}} +server.maxplayers {{MAX_PLAYERS}} +server.hostname \"{{SERVER_HOSTNAME}}\" +server.description \"{{SERVER_DESCRIPTION}}\" +server.worldsize {{WORLD_SIZE}} +server.seed {{WORLD_SEED}} +server.saveinterval {{SAVE_INTERVAL}} +server.gamemode {{GAME_MODE}} +server.pve {{SERVER_PVE}} +server.level \"{{MAP_LEVEL}}\" +decay.scale {{DECAY_SCALE}} +craft.instant {{INSTANT_CRAFT}} +server.radiation {{RADIATION}} +relationshipmanager.maxteamsize {{MAX_TEAM}} +server.tags \"{{SERVER_TAGS}}\" +server.url \"{{SERVER_URL}}\" +server.headerimage \"{{HEADER_IMAGE}}\" -logfile \"logs/rust.log\"",
+    "startCommand": "RustDedicated.exe -batchmode -nographics +server.identity gamepanel +server.ip 0.0.0.0 +server.port {{PORT}} +server.queryport {{PORT_QUERY}} +rcon.ip 0.0.0.0 +rcon.port {{PORT_RCON}} +rcon.password \"{{RCON_PASSWORD}}\" +rcon.web 1 +app.port {{PORT_APP}} +server.maxplayers {{MAX_PLAYERS}} +server.hostname \"{{SERVER_HOSTNAME}}\" +server.description \"{{SERVER_DESCRIPTION}}\" +server.worldsize {{WORLD_SIZE}} +server.seed {{WORLD_SEED}} +server.saveinterval {{SAVE_INTERVAL}} +server.gamemode {{GAME_MODE}} +server.pve {{SERVER_PVE}} +decay.scale {{DECAY_SCALE}} +craft.instant {{INSTANT_CRAFT}} +server.radiation {{RADIATION}} +relationshipmanager.maxteamsize {{MAX_TEAM}} +server.tags \"{{SERVER_TAGS}}\" +server.url \"{{SERVER_URL}}\" +server.headerimage \"{{HEADER_IMAGE}}\" {{MAP_ARGS}} -logfile \"logs/rust.log\"",
     "tailFiles": [
       "logs/rust.log"
     ],

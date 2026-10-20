@@ -52,13 +52,21 @@ Two things usually sit between a player and your server, and each server's
 **Settings → Reachability** card handles both:
 
 - **The host firewall** — one click opens exactly that server's ports in `ufw`
-  (the installer grants the panel a narrow sudo rule for it). The card shows
+  or `firewalld` on Linux, or Windows Firewall on Windows (the Linux installer
+  grants the panel a narrow sudo rule for it; re-run `install.sh` after updating
+  to get the `firewalld` rule). The card shows
   each port as open, closed, or unfiltered.
 - **Your router** — if it speaks UPnP, one click forwards the same ports to this
   machine and shows your public IP. If it does not, the card prints the exact
   rules to enter by hand, including the LAN address to forward to.
 
 Nothing is opened unless you ask, and the same buttons close it all again.
+
+Tick **Open ports automatically** on the card to have the panel do this every
+time the server starts (firewall and UPnP). Those rules are removed when you
+delete the server. RCON is never opened automatically. **Test from the
+internet** asks mcsrvstat.us (Minecraft) or portchecker.io (any TCP port) to
+connect from outside; plain UDP ports cannot be tested that way.
 
 ## Locked out by two-factor sign-in
 

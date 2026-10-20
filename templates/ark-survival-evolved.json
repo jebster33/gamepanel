@@ -320,7 +320,7 @@
       "deleteArchive": true
     }
   ],
-  "startCommand": "./ShooterGame/Binaries/Linux/ShooterGameServer \"{{MAP}}?listen?SessionName={{SERVER_NAME}}?MaxPlayers={{MAX_PLAYERS}}?ServerPassword={{SERVER_PASSWORD}}?ServerAdminPassword={{ADMIN_PASSWORD}}?Port={{PORT}}?QueryPort={{PORT_QUERY}}?RCONEnabled=True?RCONPort={{PORT_RCON}}\" -server -log -NoBattlEye -automanagedmods",
+  "startCommand": "./ShooterGame/Binaries/Linux/ShooterGameServer \"{{MAP}}?listen?SessionName={{SERVER_NAME}}?MaxPlayers={{MAX_PLAYERS}}?ServerPassword={{SERVER_PASSWORD}}?ServerAdminPassword={{ADMIN_PASSWORD}}?Port={{PORT}}?QueryPort={{PORT_QUERY}}?RCONEnabled=True?RCONPort={{PORT_RCON}}\" -server -log -NoBattlEye -automanagedmods {{CLUSTER_ARGS}}",
   "stopTimeout": 120,
   "query": {
     "type": "a2s",
@@ -382,7 +382,7 @@
         "deleteArchive": true
       }
     ],
-    "startCommand": "ShooterGame\\Binaries\\Win64\\ShooterGameServer.exe \"{{MAP}}?listen?SessionName={{SERVER_NAME}}?MaxPlayers={{MAX_PLAYERS}}?ServerPassword={{SERVER_PASSWORD}}?ServerAdminPassword={{ADMIN_PASSWORD}}?Port={{PORT}}?QueryPort={{PORT_QUERY}}?RCONEnabled=True?RCONPort={{PORT_RCON}}\" -server -log -automanagedmods -NoBattlEye",
+    "startCommand": "ShooterGame\\Binaries\\Win64\\ShooterGameServer.exe \"{{MAP}}?listen?SessionName={{SERVER_NAME}}?MaxPlayers={{MAX_PLAYERS}}?ServerPassword={{SERVER_PASSWORD}}?ServerAdminPassword={{ADMIN_PASSWORD}}?Port={{PORT}}?QueryPort={{PORT_QUERY}}?RCONEnabled=True?RCONPort={{PORT_RCON}}\" -server -log -automanagedmods -NoBattlEye {{CLUSTER_ARGS}}",
     "tailFiles": [
       "ShooterGame/Saved/Logs/ShooterGame.log"
     ],

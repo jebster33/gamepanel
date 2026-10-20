@@ -91,7 +91,7 @@ export function renderServerSettingsTab(host, server) {
   )}</textarea><div class="hint">${
     isOwner ? 'Runs inside the server directory. Placeholders like {{PORT}} and {{MEMORY}} are substituted at launch.' : 'Only administrators can change the start command.'
   }</div></label>
-      ${isAdmin ? '<button class="btn btn-primary mt-16" id="set-save">Save changes</button>' : ''}
+      ${isAdmin ? '<div class="row mt-16"><button class="btn btn-primary" id="set-save">Save changes</button><button class="btn btn-ghost" id="set-history" title="Earlier versions of these settings, with one-click undo">History</button></div>' : ''}
     </div>
 
     <div class="card mb-16">
@@ -267,6 +267,11 @@ export function renderServerSettingsTab(host, server) {
     } catch (err) {
       toast(err.message, 'error');
     }
+  });
+
+  $('#set-history')?.addEventListener('click', async () => {
+    const { openConfigHistory, SETTINGS_PATH } = await import('./config-history.js');
+    openConfigHistory(server, SETTINGS_PATH, () => loadServers().then(render));
   });
 
   $('#al-save').addEventListener('click', async () => {
@@ -446,7 +451,7 @@ async function renderNetworkCard(server) {
   const fw = data.firewall;
   const fwAllOpen = data.ports.every((p) => p.openInFirewall);
   const fwLine = !fw.available
-    ? dot(true, 'No host firewall', 'ufw is not installed, so nothing is blocking locally')
+    ? dot(true, 'No host firewall', 'No firewall was found, so nothing is blocking locally')
     : !fw.active
       ? dot(true, 'Firewall inactive', 'ufw is installed but not enabled — nothing is blocked')
       : fwAllOpen
@@ -497,6 +502,8 @@ async function renderNetworkCard(server) {
       <button class="btn btn-ghost" id="net-manual">Do it manually</button>
       <button class="btn" id="net-test" title="Asks mcsrvstat.us (Minecraft) or portchecker.io (TCP ports) to connect from outside your network">Test from the internet</button>
     </div>
+    <div class="checkbox-row mt-16"><input type="checkbox" id="net-auto" ${data.autoPorts ? 'checked' : ''} /><label for="net-auto">Open ports automatically</label></div>
+    <div class="hint">When this server starts, its game and query ports are opened in the firewall and forwarded on the router (UPnP, if available). They are closed again if you delete the server. The RCON port is never opened automatically.</div>
     <div id="net-result" class="hint"></div>
     <div id="net-test-result" class="hint"></div>
 
@@ -575,6 +582,15 @@ async function renderNetworkCard(server) {
   $('#net-close').addEventListener('click', (e) =>
     act(e.currentTarget, { open: false, firewall: true, upnp: data.upnp.available }, 'Ports closed')
   );
+  $('#net-auto').addEventListener('change', async (e) => {
+    try {
+      await api(`/api/servers/${server.id}`, { method: 'PATCH', body: { autoPorts: e.target.checked } });
+      toast(e.target.checked ? 'Ports will open when the server starts' : 'Automatic port opening is off', 'info');
+    } catch (err) {
+      e.target.checked = !e.target.checked;
+      toast(err.message, 'error');
+    }
+  });
   $('#net-manual').addEventListener('click', () => $('#net-manual-box').classList.toggle('hidden'));
 }
 

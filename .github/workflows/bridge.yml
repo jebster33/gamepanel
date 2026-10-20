@@ -101,6 +101,11 @@ jobs:
         with:
           name: gamepanel-bridge
           path: dist
+      - name: Checksums
+        run: |
+          cd dist
+          for f in gamepanel-bridge-*; do sha256sum "$f" | cut -d' ' -f1 > "$f.sha256"; done
+          ls -la
       - name: Is this version already published?
         id: exists
         env:
