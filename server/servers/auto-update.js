@@ -70,11 +70,54 @@ module.exports = {
           if (info.pending) this.pushConsole(server, `Auto update: a new build (${info.latest}) is out. Updating as soon as nobody is playing.`, 'system');
         }
         if (info.pending) await this.applyAutoUpdate(server, rt, info);
+        else await this.checkOxideUpdate(server, rt, info);
       } catch (err) {
         info.error = err.message;
         logger.warn(`Auto update check for ${server.name} failed: ${err.message}`);
       }
     }
+  },
+
+  /**
+   * Rust only: Oxide has its own releases, usually a few hours after a game
+   * update. A newer one is installed as soon as the server is empty.
+   */
+  async checkOxideUpdate(server, rt, info) {
+    const oxide = require('../features/oxide');
+    if (!oxide.enabled(this, server)) return;
+    if (!info.oxidePending) {
+      if (info.oxideCheckedAt && Date.now() - info.oxideCheckedAt < CHECK_EVERY_MS) return;
+      info.oxideCheckedAt = Date.now();
+      const latest = await oxide.latestTag();
+      if (!server.oxideTag) {
+        server.oxideTag = latest; // first look: assume what is installed is current
+        this.store.save();
+        return;
+      }
+      if (latest === server.oxideTag) return;
+      info.oxidePending = latest;
+      this.pushConsole(server, `Auto update: Oxide ${latest} is out. Updating as soon as nobody is playing.`, 'system');
+    }
+    if (rt.task || [STATUS.INSTALLING, STATUS.STARTING, STATUS.STOPPING].includes(rt.status)) return;
+    const running = this.isActive(server.id);
+    if (running && (rt.players ?? rt.playerList?.length ?? 0) > 0) return;
+    const oxideStep = oxide.step(this, server);
+    const tag = info.oxidePending;
+    info.oxidePending = null;
+    if (!oxideStep) return;
+    if (running) {
+      this.pushConsole(server, 'Auto update: the server is empty, stopping it to update Oxide.', 'system');
+      await this.stop(server.id);
+    }
+    const result = await this.runTask(server, { label: 'Updating Oxide', steps: [oxideStep] }).catch((err) => ({ code: 1, error: err.message }));
+    if (result.code === 0) {
+      server.oxideTag = tag;
+      this.store.save();
+      this.store.addEvent('server.oxide_updated', `${server.name} updated to Oxide ${tag}`, { serverId: server.id });
+    } else {
+      info.error = `Oxide update failed${result.error ? `: ${result.error}` : ''}`;
+    }
+    if (running) await this.start(server.id).catch((err) => this.pushConsole(server, `Auto update: could not start again: ${err.message}`, 'system'));
   },
 
   async applyAutoUpdate(server, rt, info) {
@@ -91,6 +134,7 @@ module.exports = {
     const app = this.steamApp(server);
     info.installed = app ? installedBuild(server.dir, app.appid) : info.installed;
     if (result.ok) {
+      info.oxidePending = null;
       info.updatedAt = Date.now();
       this.store.addEvent('server.auto_updated', `${server.name} was updated to build ${info.latest}`, { serverId: server.id });
     } else {

@@ -179,6 +179,7 @@ export async function renderSettings(view) {
         <label><span>Factorio token</span><input id="i-factorio-token" type="password" value="${esc(
           integrations.factorio?.token || ''
         )}" /></label>
+        <label><span>RustMaps API key</span><input id="i-rustmaps" type="password" value="" autocomplete="off" placeholder="${integrations.rustmapsKeySet ? 'Saved. Leave empty to keep it' : 'rustmaps.com/dashboard, API'}" /></label>
         <label><span>Cloudflare API token</span><input id="i-cf-token" type="password" value="" autocomplete="off" placeholder="${integrations.cloudflare?.tokenSet ? 'Saved. Leave empty to keep it' : 'Zone, DNS, Edit'}" /></label>
         <label><span>Cloudflare domain</span><input id="i-cf-domain" value="${esc(integrations.cloudflare?.domain || '')}" placeholder="example.com" /></label>
       </div>
@@ -409,6 +410,7 @@ export async function renderSettings(view) {
             curseforgeKey: $('#i-curseforge').value,
             steamApiKey: $('#i-steam').value,
             factorio: { username: $('#i-factorio-user').value, token: $('#i-factorio-token').value },
+            rustmapsKey: $('#i-rustmaps').value,
             cloudflare: { token: $('#i-cf-token').value, domain: $('#i-cf-domain').value },
           },
         },

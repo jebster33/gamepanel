@@ -64,6 +64,7 @@ function sealSettings(settings) {
   };
   put(settings.integrations?.discordBot, 'token');
   put(settings.integrations?.cloudflare, 'token');
+  put(settings.integrations, 'rustmapsKey');
   for (const node of settings.nodes || []) put(node, 'key');
   put(settings.cloudBackups, 'secretAccessKey');
   for (const [p, fields] of Object.entries({ gdrive: ['clientSecret', 'refreshToken'], dropbox: ['clientSecret', 'refreshToken'], sftp: ['password', 'privateKey', 'passphrase'] })) {

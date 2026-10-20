@@ -36,7 +36,9 @@ export async function renderMapCard(host, server) {
         <div class="row mt-8"><button class="btn btn-sm" id="map-upload">${icon('upload', 12)} Upload a .map…</button><input type="file" id="map-input" accept=".map" class="hidden" /></div>
         <div class="hint">The panel serves it to the game itself, so no hosting is needed. Files live in <span class="mono">${esc(info.dir)}/</span>.</div></div>
       <div class="row mt-16"><button class="btn btn-sm btn-primary" id="map-save">Save map</button></div>
+      <div id="rm-box" class="mt-16"></div>
     </div>`;
+  renderRustMaps($('#rm-box'), server, () => renderMapCard(host, server));
   const sync = () => host.querySelectorAll('.map-opt').forEach((el) => el.classList.toggle('hidden', el.dataset.for !== $('#map-mode').value));
   $('#map-mode').addEventListener('change', sync);
   sync();
@@ -66,6 +68,77 @@ export async function renderMapCard(host, server) {
       toast('Map saved. It loads on the next start; wipe first so the save matches.');
       renderMapCard(host, server);
     } catch (err) {
+      toast(err.message, 'error');
+    }
+  });
+}
+
+/** RustMaps: preview link for the seed, a random seed, and a custom map with monuments left out. */
+async function renderRustMaps(box, server, reload) {
+  let info;
+  try {
+    info = await api(`/api/servers/${server.id}/rustmaps`);
+  } catch {
+    return;
+  }
+  const job = info.job;
+  box.innerHTML = `
+    <h4 style="margin:0 0 8px">RustMaps</h4>
+    <div class="row" style="gap:8px;flex-wrap:wrap">
+      ${info.preview ? `<a class="btn btn-sm" href="${esc(info.preview.url)}" target="_blank" rel="noopener noreferrer">Preview size ${info.preview.size}, seed ${info.preview.seed}</a>` : ''}
+      <button class="btn btn-sm" id="rm-seed">Random seed</button>
+    </div>
+    <div class="hint">The preview shows the generated map for the size and seed in Settings. Pick a seed you like, then wipe.</div>
+    ${
+      info.keySet
+        ? `<div class="mt-16"><button class="btn btn-sm" id="rm-load">Choose monuments to leave out…</button></div>
+           <div id="rm-picker" class="mt-8"></div>`
+        : '<div class="hint mt-8">Add a RustMaps API key under Settings, Integrations to leave monuments out (needs a RustMaps subscription with custom maps).</div>'
+    }
+    ${job ? `<div class="hint mt-8" id="rm-job">${esc(job.state === 'failed' ? `Failed: ${job.error}` : job.message)}</div>` : ''}`;
+  $('#rm-seed').addEventListener('click', async () => {
+    try {
+      await api(`/api/servers/${server.id}/rustmaps/seed`, { method: 'POST', body: {} });
+      toast('New seed set. Wipe to use it.');
+      reload();
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+  });
+  if (job?.state === 'running') setTimeout(() => $('#rm-box') === box && renderRustMaps(box, server, reload), 5000);
+  $('#rm-load')?.addEventListener('click', async () => {
+    const picker = $('#rm-picker');
+    picker.textContent = 'Loading monuments…';
+    try {
+      const data = await api(`/api/servers/${server.id}/rustmaps/monuments`);
+      picker.innerHTML = `
+        ${data.savedConfigs.length ? `<div class="form-row"><label for="rm-saved">Or use a saved config from your RustMaps dashboard</label>
+          <select id="rm-saved"><option value="">None, use the ticks below</option>${data.savedConfigs.map((n) => `<option>${esc(n)}</option>`).join('')}</select>
+          <div class="hint">A saved config can do things ticks cannot, such as a combined Outpost and Bandit Town.</div></div>` : ''}
+        <div class="hint">Tick what to leave out of the map.</div>
+        ${data.groups
+          .map(
+            (g) => `<details class="mt-8"><summary>${esc(g.label)}</summary><div class="row" style="flex-wrap:wrap;gap:4px 16px">${g.types
+              .map((t) => `<label class="checkbox-row"><input type="checkbox" class="rm-block" value="${esc(t.type)}" ${t.blocked ? 'checked' : ''} /> ${esc(t.type)}</label>`)
+              .join('')}</div></details>`
+          )
+          .join('')}
+        <div class="row mt-16"><button class="btn btn-sm btn-primary" id="rm-go">Generate with RustMaps</button></div>
+        <div class="hint">Uses one custom map from your RustMaps allowance. The map is downloaded here and selected; wipe to load it.</div>`;
+      $('#rm-go').addEventListener('click', async () => {
+        try {
+          await api(`/api/servers/${server.id}/rustmaps/generate`, {
+            method: 'POST',
+            body: { savedConfig: $('#rm-saved')?.value || '', blocked: [...picker.querySelectorAll('.rm-block:checked')].map((c) => c.value) },
+          });
+          toast('Generating. This can take a few minutes.');
+          renderRustMaps(box, server, reload);
+        } catch (err) {
+          toast(err.message, 'error');
+        }
+      });
+    } catch (err) {
+      picker.textContent = '';
       toast(err.message, 'error');
     }
   });

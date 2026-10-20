@@ -215,6 +215,24 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
     store.addEvent('server.map', `${server.name} map set to ${result.map.mode}${result.map.level ? ` (${result.map.level})` : ''} by ${user.username}`, { serverId: server.id });
     return result;
   });
+  // RustMaps: a preview link for the seed, and custom maps with chosen monuments left out (the owner's own key).
+  const rustmaps = require('../../features/rustmaps');
+  router.get('/api/servers/:id/rustmaps', ({ user, params }) => rustmaps.describe(manager, store, mapServer(user, params.id, 'settings')));
+  router.get('/api/servers/:id/rustmaps/monuments', async ({ user, params }) => {
+    mapServer(user, params.id, 'settings');
+    return rustmaps.monuments(store);
+  });
+  router.post('/api/servers/:id/rustmaps/seed', ({ user, params }) => {
+    const server = mapServer(user, params.id, 'settings');
+    rustmaps.randomSeed(manager, server);
+    return rustmaps.describe(manager, store, server);
+  });
+  router.post('/api/servers/:id/rustmaps/generate', ({ user, params, body }) => {
+    const server = mapServer(user, params.id, 'settings');
+    requireCap(user, 'files.write', server.id); // the game runs the downloaded map, like an upload
+    rustmaps.generate(manager, store, server, body);
+    return rustmaps.describe(manager, store, server);
+  });
   // The game downloads an uploaded map from here; the unguessable token in the address is the key.
   router.get(
     '/api/public/rust-map/:id/:token/:name',
