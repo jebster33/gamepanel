@@ -7,6 +7,7 @@ const os = require('os');
 const path = require('path');
 
 process.env.GP_DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'gp-ark-data-'));
+const SIDE = process.platform === 'win32' ? 'WindowsServer' : 'LinuxServer';
 const clusters = require('../../server/features/ark-clusters');
 
 function setup({ docker = false } = {}) {
@@ -29,12 +30,12 @@ test('a cluster gives its servers one cluster id and folder, and writes transfer
   assert.match(a, /-clusterid=gp\w+ -ClusterDirOverride="[^"]*clusters[\\/]\w+" -NoTransferFromFiltering/);
   assert.equal(a, clusters.argsFor(t.manager, t.store, t.servers[1]));
   assert.equal(clusters.argsFor(t.manager, t.store, t.servers[2]), '');
-  const ini = fs.readFileSync(path.join(t.servers[0].dir, 'ShooterGame/Saved/Config/LinuxServer/GameUserSettings.ini'), 'utf8');
+  const ini = fs.readFileSync(path.join(t.servers[0].dir, `ShooterGame/Saved/Config/${SIDE}/GameUserSettings.ini`), 'utf8');
   assert.match(ini, /\[ServerSettings\]/);
   assert.match(ini, /PreventDownloadDinos=True/);
   assert.match(ini, /PreventUploadDinos=False/);
   clusters.remove(t.manager, t.store, c.id);
-  assert.match(fs.readFileSync(path.join(t.servers[0].dir, 'ShooterGame/Saved/Config/LinuxServer/GameUserSettings.ini'), 'utf8'), /PreventDownloadDinos=False/);
+  assert.match(fs.readFileSync(path.join(t.servers[0].dir, `ShooterGame/Saved/Config/${SIDE}/GameUserSettings.ini`), 'utf8'), /PreventDownloadDinos=False/);
   assert.equal(clusters.argsFor(t.manager, t.store, t.servers[0]), '');
 });
 
