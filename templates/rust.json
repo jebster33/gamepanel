@@ -297,7 +297,24 @@
     ],
     "consoleInput": false,
     "stopCommand": null,
-    "stopRconCommand": "quit"
+    "stopRconCommand": "quit",
+    "update": [
+      {
+        "type": "steamcmd",
+        "appid": "258550",
+        "label": "Install Rust dedicated server (this takes a while)"
+      },
+      {
+        "type": "vcredist",
+        "label": "Install the Visual C++ runtime"
+      },
+      {
+        "type": "powershell",
+        "id": "oxide",
+        "label": "Update uMod / Oxide",
+        "run": "if ('{{INSTALL_OXIDE}}' -eq 'true') {\n  GP-Fetch 'https://github.com/OxideMod/Oxide.Rust/releases/latest/download/Oxide.Rust.zip' 'oxide.zip'\n  GP-Extract 'oxide.zip' '.'\n  Remove-Item oxide.zip\n  foreach ($d in 'oxide/plugins','oxide/config','oxide/data') { New-Item -ItemType Directory -Force $d | Out-Null }\n  GP-Log 'Oxide is up to date'\n}"
+      }
+    ]
   },
   "wipe": {
     "dir": "server/gamepanel",
@@ -393,6 +410,19 @@
         "INSTANT_CRAFT": "true",
         "DECAY_SCALE": "0.5"
       }
+    }
+  ],
+  "update": [
+    {
+      "type": "steamcmd",
+      "appid": "258550",
+      "label": "Install Rust dedicated server (this takes a while)"
+    },
+    {
+      "type": "script",
+      "id": "oxide",
+      "label": "Update uMod / Oxide",
+      "run": "if [ \"{{INSTALL_OXIDE}}\" = \"true\" ]; then\n  gp_fetch \"https://github.com/OxideMod/Oxide.Rust/releases/latest/download/Oxide.Rust-linux.zip\" oxide.zip\n  gp_extract oxide.zip .\n  rm -f oxide.zip\n  mkdir -p oxide/plugins oxide/config oxide/data\n  gp_log \"Oxide is up to date\"\nfi"
     }
   ]
 }

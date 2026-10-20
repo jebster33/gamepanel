@@ -121,6 +121,7 @@ module.exports = (router, { store, auth, manager, hostMetrics, notifier, bridge 
   const settingsView = () => {
     const s = store.state.settings;
     const view = secrets.maskSealed({ ...s, nodes: undefined, oauth: undefined, backupPassphrase: undefined, backupPassphraseSet: Boolean(s.backupPassphrase) });
+    if (view.integrations) view.integrations.rustmapsKeySet = Boolean(s.integrations?.rustmapsKey);
     if (view.integrations?.cloudflare) view.integrations.cloudflare = { ...view.integrations.cloudflare, tokenSet: Boolean(s.integrations?.cloudflare?.token) };
     return view;
   };
@@ -172,6 +173,10 @@ module.exports = (router, { store, auth, manager, hostMetrics, notifier, bridge 
       const { curseforgeKey, steamApiKey, factorio } = body.integrations;
       if (curseforgeKey !== undefined) s.integrations.curseforgeKey = String(curseforgeKey).trim();
       if (steamApiKey !== undefined) s.integrations.steamApiKey = String(steamApiKey).trim();
+      // Like the Cloudflare token: never shown again, so an empty box keeps it and `clearRustmapsKey` removes it.
+      const typedRustmaps = String(body.integrations.rustmapsKey || '').trim();
+      if (body.integrations.clearRustmapsKey) s.integrations.rustmapsKey = '';
+      else if (typedRustmaps) s.integrations.rustmapsKey = secrets.seal(typedRustmaps);
       const { cloudflare } = body.integrations;
       if (cloudflare !== undefined) {
         const domain = String(cloudflare.domain || '').trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '');

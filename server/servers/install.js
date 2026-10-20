@@ -164,6 +164,7 @@ module.exports = {
     }
     server.installedAt = Date.now();
     this.store.save();
+    if (require('../features/oxide').enabled(this, server)) require('../features/oxide').record(this, server).catch(() => {});
     this.writeConfigFiles(server, template, { overwrite: reinstall });
 
     // Modpack overrides can smuggle in client-only mods, which take a
@@ -202,6 +203,8 @@ module.exports = {
     }
     server.updatedAt = Date.now();
     this.store.save();
+    const oxide = require('../features/oxide');
+    if (oxide.enabled(this, server)) await oxide.record(this, server).catch(() => {});
     this.pushConsole(server, 'Game files are up to date.', 'system');
     this.store.addEvent('server.updated', `${server.name} game files updated`, { serverId: server.id });
     return { ok: true };
