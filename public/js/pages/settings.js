@@ -189,8 +189,8 @@ export async function renderSettings(view) {
     <div class="card mb-16" id="cloud">
       <h4>Cloud backups</h4>
       <p class="faint" style="margin:0 0 14px;line-height:1.6">
-        Optional. Copies every backup (by hand or scheduled) to an S3-compatible bucket, so a dead disk does not take your worlds with it.
-        Works with Backblaze B2, Cloudflare R2, Amazon S3, Wasabi and MinIO. Use a key that can only reach this one bucket.
+        Optional. Copies every backup (by hand or scheduled) off this machine, so a dead disk does not take your worlds with it.
+        Works with S3-compatible buckets (Backblaze B2, Cloudflare R2, Amazon S3, Wasabi, MinIO), Google Drive, Dropbox and SFTP.
       </p>
       <div id="cloud-form" class="faint">${skeleton('lines')}</div>
     </div>
@@ -714,12 +714,16 @@ async function renderNodeCopiesForm() {
   });
 }
 
+const CLOUD_TARGETS = { s3: 'S3 bucket', gdrive: 'Google Drive', dropbox: 'Dropbox', sftp: 'SFTP server' };
+
 async function renderCloudForm() {
   const host = $('#cloud-form');
   if (!host) return;
   let c;
+  let oauth = {};
   try {
     c = (await api('/api/cloud-backups')).settings;
+    oauth = await api('/api/cloud-backups/oauth/redirect-uri');
   } catch (err) {
     host.textContent = err.message;
     return;
@@ -727,38 +731,103 @@ async function renderCloudForm() {
   if (!host.isConnected) return;
   const preset = Object.entries(CLOUD_PRESETS).find(([, p]) => c.endpoint && c.endpoint.includes(p.endpoint.split('.').slice(-2).join('.')))?.[0] || (c.endpoint ? 'other' : 'b2');
   host.classList.remove('faint');
+  const oauthBox = (id, label, steps) => `
+    <div class="target-box" data-target="${id}">
+      <div class="hint" style="line-height:1.6">${steps}</div>
+      <div class="form-grid mt-8">
+        <label><span>${label} client ID</span><input id="${id}-client" value="${esc(c[id].clientId)}" autocomplete="off" /></label>
+        <label><span>${label} client secret</span><input id="${id}-secret" type="password" autocomplete="new-password" placeholder="${c[id].clientSecretSet ? 'Saved. Type to replace' : ''}" /></label>
+      </div>
+      <div class="row mt-8">
+        <button class="btn" id="${id}-connect">${c[id].connected ? 'Reconnect' : 'Connect'} ${label}</button>
+        ${c[id].connected ? `<button class="btn btn-ghost" id="${id}-disconnect">Disconnect</button><span class="faint">Connected</span>` : '<span class="faint">Not connected yet. Save, then connect.</span>'}
+      </div>
+    </div>`;
   host.innerHTML = `
     <div class="form-grid">
-      <label><span>Provider</span><select id="c-preset">${Object.entries(CLOUD_PRESETS)
-        .map(([k, p]) => `<option value="${k}" ${k === preset ? 'selected' : ''}>${esc(p.label)}</option>`)
+      <label><span>Copy backups to</span><select id="c-provider">${Object.entries(CLOUD_TARGETS)
+        .map(([k, label]) => `<option value="${k}" ${k === c.provider ? 'selected' : ''}>${label}</option>`)
         .join('')}</select></label>
-      <label><span>Endpoint</span><input id="c-endpoint" value="${esc(c.endpoint)}" placeholder="${esc(CLOUD_PRESETS[preset].endpoint)}" /></label>
-      <label><span>Bucket</span><input id="c-bucket" value="${esc(c.bucket)}" /></label>
-      <label><span>Region</span><input id="c-region" value="${esc(c.region)}" placeholder="${esc(c.regionGuess || 'from the endpoint')}" /></label>
-      <label><span>Access key ID</span><input id="c-key" value="${esc(c.accessKeyId)}" autocomplete="off" /></label>
-      <label><span>Secret access key</span><input id="c-secret" type="password" autocomplete="new-password" placeholder="${c.hasSecret ? 'Saved. Type to replace' : ''}" /></label>
-      <label><span>Folder in the bucket</span><input id="c-prefix" value="${esc(c.prefix)}" placeholder="gamepanel/" /></label>
-      <label><span>Copies to keep per server</span><input id="c-keep" type="number" min="0" value="${Number(c.keep) || 0}" /><div class="hint">0 keeps every copy (or let a bucket lifecycle rule expire them).</div></label>
+      <label><span>Folder to keep them in</span><input id="c-prefix" value="${esc(c.prefix)}" placeholder="gamepanel/" /></label>
+      <label><span>Copies to keep per server</span><input id="c-keep" type="number" min="0" value="${Number(c.keep) || 0}" /><div class="hint">0 keeps every copy.</div></label>
     </div>
-    <div class="hint" id="c-hint">${esc(CLOUD_PRESETS[preset].hint)}</div>
-    <div class="checkbox-row mt-16"><input type="checkbox" id="c-path" ${c.pathStyle ? 'checked' : ''} /><label for="c-path">Path-style addresses (leave on unless your provider says otherwise)</label></div>
-    <div class="checkbox-row"><input type="checkbox" id="c-enabled" ${c.enabled ? 'checked' : ''} /><label for="c-enabled">Copy new backups to this bucket</label></div>
+
+    <div data-for="s3">
+      <div class="form-grid mt-16">
+        <label><span>Provider</span><select id="c-preset">${Object.entries(CLOUD_PRESETS)
+          .map(([k, p]) => `<option value="${k}" ${k === preset ? 'selected' : ''}>${esc(p.label)}</option>`)
+          .join('')}</select></label>
+        <label><span>Endpoint</span><input id="c-endpoint" value="${esc(c.endpoint)}" placeholder="${esc(CLOUD_PRESETS[preset].endpoint)}" /></label>
+        <label><span>Bucket</span><input id="c-bucket" value="${esc(c.bucket)}" /></label>
+        <label><span>Region</span><input id="c-region" value="${esc(c.region)}" placeholder="${esc(c.regionGuess || 'from the endpoint')}" /></label>
+        <label><span>Access key ID</span><input id="c-key" value="${esc(c.accessKeyId)}" autocomplete="off" /></label>
+        <label><span>Secret access key</span><input id="c-secret" type="password" autocomplete="new-password" placeholder="${c.hasSecret ? 'Saved. Type to replace' : ''}" /></label>
+      </div>
+      <div class="hint" id="c-hint">${esc(CLOUD_PRESETS[preset].hint)} Use a key that can only reach this one bucket.</div>
+      <div class="checkbox-row mt-16"><input type="checkbox" id="c-path" ${c.pathStyle ? 'checked' : ''} /><label for="c-path">Path-style addresses (leave on unless your provider says otherwise)</label></div>
+    </div>
+
+    <div data-for="gdrive" class="mt-16">
+      ${oauthBox(
+        'gdrive',
+        'Google Drive',
+        `Uses your own Google app, so nothing is shared with anyone else. In the <a href="${esc(oauth.consoles?.gdrive)}" target="_blank" rel="noopener">Google Cloud console</a>: enable the Drive API,
+         create an OAuth client of type <b>Web application</b>, and add <code>${esc(oauth.redirectUri)}</code> as an authorised redirect URI. Paste its client ID and secret here.
+         The panel can only see the files and folders it makes itself.`
+      )}
+    </div>
+
+    <div data-for="dropbox" class="mt-16">
+      ${oauthBox(
+        'dropbox',
+        'Dropbox',
+        `Uses your own Dropbox app. In the <a href="${esc(oauth.consoles?.dropbox)}" target="_blank" rel="noopener">Dropbox app console</a>: create an app with <b>Scoped access</b> and <b>App folder</b>,
+         turn on <code>files.content.write</code> and <code>files.content.read</code> under Permissions, and add <code>${esc(oauth.redirectUri)}</code> as a redirect URI. Paste the app key and secret here.
+         Backups land in Apps/&lt;your app&gt;/.`
+      )}
+    </div>
+
+    <div data-for="sftp" class="mt-16">
+      <div class="form-grid">
+        <label><span>Host</span><input id="f-host" value="${esc(c.sftp.host)}" placeholder="backup.example.com" /></label>
+        <label><span>Port</span><input id="f-port" type="number" min="1" max="65535" value="${Number(c.sftp.port) || 22}" /></label>
+        <label><span>User name</span><input id="f-user" value="${esc(c.sftp.username)}" autocomplete="off" /></label>
+        <label><span>Password</span><input id="f-pass" type="password" autocomplete="new-password" placeholder="${c.sftp.passwordSet ? 'Saved. Type to replace' : 'Or use a key below'}" /></label>
+        <label><span>Private key (optional)</span><textarea id="f-key" rows="4" autocomplete="off" spellcheck="false" placeholder="${c.sftp.privateKeySet ? 'Saved. Paste to replace' : '-----BEGIN OPENSSH PRIVATE KEY-----'}"></textarea></label>
+        <label><span>Key passphrase</span><input id="f-phrase" type="password" autocomplete="new-password" placeholder="${c.sftp.passphraseSet ? 'Saved. Type to replace' : 'Only if the key has one'}" /></label>
+      </div>
+      <div class="hint">Needs the OpenSSH client (<code>sftp</code>) on this machine. The server's key is remembered the first time and a changed key is refused. The folder above is relative to the login's home folder.</div>
+      ${c.sftp.privateKeySet ? '<button class="btn btn-ghost mt-8" id="f-clearkey">Forget the saved key</button>' : ''}
+    </div>
+
+    <div class="checkbox-row mt-16"><input type="checkbox" id="c-enabled" ${c.enabled ? 'checked' : ''} /><label for="c-enabled">Copy new backups there</label></div>
     <div class="row mt-16">
       <button class="btn" id="c-test">Test connection</button>
       <button class="btn btn-primary" id="c-save">Save cloud backups</button>
       <span class="faint" id="c-status"></span>
     </div>`;
 
+  const val = (id) => $(id).value.trim();
   const values = () => ({
-    endpoint: $('#c-endpoint').value.trim(),
-    bucket: $('#c-bucket').value.trim(),
-    region: $('#c-region').value.trim(),
-    accessKeyId: $('#c-key').value.trim(),
-    secretAccessKey: $('#c-secret').value.trim(),
-    prefix: $('#c-prefix').value.trim(),
+    provider: $('#c-provider').value,
+    prefix: val('#c-prefix'),
     keep: Number($('#c-keep').value) || 0,
+    endpoint: val('#c-endpoint'),
+    bucket: val('#c-bucket'),
+    region: val('#c-region'),
+    accessKeyId: val('#c-key'),
+    secretAccessKey: val('#c-secret'),
     pathStyle: $('#c-path').checked,
+    gdrive: { clientId: val('#gdrive-client'), clientSecret: val('#gdrive-secret') },
+    dropbox: { clientId: val('#dropbox-client'), clientSecret: val('#dropbox-secret') },
+    sftp: { host: val('#f-host'), port: Number($('#f-port').value) || 22, username: val('#f-user'), password: $('#f-pass').value, privateKey: $('#f-key').value.trim(), passphrase: $('#f-phrase').value },
   });
+  const showTarget = () => {
+    const now = $('#c-provider').value;
+    host.querySelectorAll('[data-for]').forEach((el) => el.classList.toggle('hidden', el.dataset.for !== now));
+  };
+  showTarget();
+  $('#c-provider').addEventListener('change', showTarget);
 
   $('#c-preset').addEventListener('change', (event) => {
     const p = CLOUD_PRESETS[event.target.value];
@@ -766,13 +835,45 @@ async function renderCloudForm() {
     $('#c-hint').textContent = p.hint;
     $('#c-path').checked = event.target.value !== 's3';
   });
+  const save = async (extra = {}) => {
+    const { settings } = await api('/api/cloud-backups', { method: 'PATCH', body: { ...values(), enabled: $('#c-enabled').checked, ...extra } });
+    return settings;
+  };
+  for (const id of ['gdrive', 'dropbox']) {
+    $(`#${id}-connect`).addEventListener('click', async () => {
+      try {
+        await save({ enabled: false });
+        location.href = `/api/cloud-backups/oauth/${id}/start`;
+      } catch (err) {
+        toast(err.message, 'error');
+      }
+    });
+    $(`#${id}-disconnect`)?.addEventListener('click', async () => {
+      try {
+        await save({ enabled: false, [id]: { disconnect: true } });
+        toast('Disconnected');
+        renderCloudForm();
+      } catch (err) {
+        toast(err.message, 'error');
+      }
+    });
+  }
+  $('#f-clearkey')?.addEventListener('click', async () => {
+    try {
+      await save({ sftp: { clearKey: true } });
+      toast('Key removed');
+      renderCloudForm();
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+  });
   $('#c-test').addEventListener('click', async (event) => {
     const btn = event.currentTarget;
     btn.disabled = true;
     $('#c-status').innerHTML = '<span class="spinner"></span> Writing a test file…';
     try {
       const result = await api('/api/cloud-backups/test', { method: 'POST', body: values() });
-      $('#c-status').textContent = `Works (region ${result.region}).`;
+      $('#c-status').textContent = `Works (${result.detail}).`;
     } catch (err) {
       $('#c-status').textContent = err.message;
     } finally {
@@ -781,10 +882,9 @@ async function renderCloudForm() {
   });
   $('#c-save').addEventListener('click', async () => {
     try {
-      const { settings } = await api('/api/cloud-backups', { method: 'PATCH', body: { ...values(), enabled: $('#c-enabled').checked } });
-      toast(settings.enabled ? 'Cloud backups on. New backups are copied to the bucket.' : 'Cloud backup settings saved');
-      $('#c-secret').value = '';
-      $('#c-secret').placeholder = settings.hasSecret ? 'Saved. Type to replace' : '';
+      const settings = await save();
+      toast(settings.enabled ? 'Cloud backups on. New backups are copied there.' : 'Cloud backup settings saved');
+      renderCloudForm();
     } catch (err) {
       toast(err.message, 'error');
     }

@@ -87,9 +87,12 @@ function enabled(store) {
 }
 
 /** Where the provider sends people back to. */
+function baseUrl(store, req) {
+  return String(settings(store).publicUrl || '').replace(/\/+$/, '') || origin(req);
+}
+
 function redirectUri(store, req, id) {
-  const base = String(settings(store).publicUrl || '').replace(/\/+$/, '') || origin(req);
-  return `${base}/api/auth/oauth/${id}/callback`;
+  return `${baseUrl(store, req)}/api/auth/oauth/${id}/callback`;
 }
 
 function origin(req) {
@@ -204,4 +207,4 @@ function update(store, body) {
   return s;
 }
 
-module.exports = { PROVIDERS, STATE_COOKIE, enabled, start, finish, findUser, link, unlink, adminView, update, redirectUri };
+module.exports = { PROVIDERS, STATE_COOKIE, enabled, start, finish, findUser, link, unlink, adminView, update, redirectUri, baseUrl };

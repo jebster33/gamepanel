@@ -5,7 +5,7 @@ const { fail } = require('../../core/util');
 const backups = require('../../features/backups');
 const { cloudBackups } = require('../../features/cloud');
 
-module.exports = (router, { store, manager }, { requireAdmin, requireCap, serverFor }) => {
+module.exports = (router, { store, manager, auth }, { requireAdmin, requireCap, serverFor }) => {
   // Listens for new backups and copies them off-site when turned on.
   const cloud = cloudBackups(store, manager);
   const secrets = require('../../core/secrets');
@@ -263,7 +263,7 @@ module.exports = (router, { store, manager }, { requireAdmin, requireCap, server
     try {
       return { enabled: true, backups: await cloud.list(server.id), uploads: cloud.statusFor(server.id) };
     } catch (err) {
-      return { enabled: true, backups: [], uploads: cloud.statusFor(server.id), error: `Could not reach the bucket: ${err.message}` };
+      return { enabled: true, backups: [], uploads: cloud.statusFor(server.id), error: `Could not reach the backup target: ${err.message}` };
     }
   });
 
@@ -303,12 +303,73 @@ module.exports = (router, { store, manager }, { requireAdmin, requireCap, server
     return { settings };
   });
 
+  /* Google Drive and Dropbox sign-in: the administrator's own app, redirected back here. */
+  const OAUTH_COOKIE = 'gp_cloud_oauth';
+  const OAUTH_PATH = '/api/cloud-backups/oauth';
+  const targets = require('../../features/cloud-targets');
+  const oauth = require('../../features/oauth');
+  const { isSecure } = require('../helpers');
+  const callbackUrl = (req) => `${oauth.baseUrl(store, req)}${OAUTH_PATH}/callback`;
+  const clearCookie = `${OAUTH_COOKIE}=; Path=${OAUTH_PATH}; HttpOnly; SameSite=Lax; Max-Age=0`;
+  const back = (res, query) => {
+    res.writeHead(302, { Location: `/?${query}#/settings/cloud`, 'Set-Cookie': clearCookie, 'Cache-Control': 'no-store' });
+    res.end();
+  };
+
+  router.get('/api/cloud-backups/oauth/redirect-uri', ({ user, req }) => {
+    requireAdmin(user);
+    return { redirectUri: callbackUrl(req), consoles: { gdrive: targets.OAUTH.gdrive.console, dropbox: targets.OAUTH.dropbox.console } };
+  });
+
+  router.get(`${OAUTH_PATH}/:provider/start`, ({ user, req, res, params }) => {
+    requireAdmin(user);
+    if (req.gpApiKey) fail(403, 'Connect a backup target while signed in, not with an API key');
+    const spec = targets.OAUTH[params.provider];
+    if (!spec) fail(404, 'Unknown backup target');
+    const cfg = cloud.settings[params.provider];
+    if (!cfg.clientId || !cfg.clientSecret) fail(400, `Save the ${spec.label} client ID and secret first`);
+    const nonce = require('crypto').randomBytes(16).toString('base64url');
+    const state = auth.sign({ purpose: 'cloud-oauth', p: params.provider, n: nonce, u: user.id, exp: Date.now() + 10 * 60_000 });
+    const query = new URLSearchParams({ client_id: cfg.clientId, redirect_uri: callbackUrl(req), response_type: 'code', state, ...spec.extra });
+    res.writeHead(302, {
+      Location: `${spec.authorize}?${query}`,
+      'Set-Cookie': `${OAUTH_COOKIE}=${nonce}; Path=${OAUTH_PATH}; HttpOnly; SameSite=Lax; Max-Age=600${isSecure(req) ? '; Secure' : ''}`,
+      'Cache-Control': 'no-store',
+    });
+    res.end();
+    return undefined;
+  });
+
+  router.get(
+    `${OAUTH_PATH}/callback`,
+    async ({ req, res, url }) => {
+      try {
+        const q = url.searchParams;
+        if (q.get('error')) throw new Error(q.get('error_description') || q.get('error'));
+        const state = auth.verify(String(q.get('state') || ''));
+        const cookies = Object.fromEntries(String(req.headers.cookie || '').split(';').map((c) => c.trim().split('=')).filter((c) => c.length === 2));
+        if (!state || state.purpose !== 'cloud-oauth' || !cookies[OAUTH_COOKIE] || cookies[OAUTH_COOKIE] !== state.n) throw new Error('That connect link expired or was started in another browser. Try again.');
+        const me = auth.userFromRequest(req);
+        if (!me || me.id !== state.u || me.role !== 'admin') throw new Error('Sign in as the administrator who started this, then try again.');
+        const spec = targets.OAUTH[state.p];
+        const { refreshToken } = await targets.exchangeCode(state.p, cloud.settings[state.p], String(q.get('code') || ''), callbackUrl(req));
+        cloud.connected(state.p, refreshToken);
+        store.addEvent('settings.cloud_backups', `${spec.label} connected for backups (${me.username})`);
+        back(res, `cloud_connected=${encodeURIComponent(spec.label)}`);
+      } catch (err) {
+        back(res, `cloud_error=${encodeURIComponent(err.message)}`);
+      }
+      return undefined;
+    },
+    { public: true }
+  );
+
   router.post('/api/cloud-backups/test', async ({ user, body }) => {
     requireAdmin(user);
     try {
       return await cloud.test(body || {});
     } catch (err) {
-      return fail(400, `The bucket said no: ${err.message}`);
+      return fail(400, `The backup target said no: ${err.message}`);
     }
   });
 };

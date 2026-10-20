@@ -122,7 +122,7 @@ export async function renderBackupsTab(host, server) {
 /* ------------------------------------------- copies in the cloud or on a node */
 
 const COPIES = {
-  cloud: { list: 'backups/cloud', status: 'uploads', send: (n) => `backups/${n}/upload`, item: (n) => `backups/cloud/${n}`, where: () => 'the cloud', bucket: 'the bucket' },
+  cloud: { list: 'backups/cloud', status: 'uploads', send: (n) => `backups/${n}/upload`, item: (n) => `backups/cloud/${n}`, where: () => 'the cloud', bucket: 'the cloud' },
   node: { list: 'backups/node', status: 'sends', send: (n) => `backups/node/${n}/send`, item: (n) => `backups/node/${n}`, where: (c) => c.node || 'the node', bucket: null },
 };
 

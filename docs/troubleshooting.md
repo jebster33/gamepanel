@@ -98,3 +98,10 @@ there is the bucket's own. The usual ones: `SignatureDoesNotMatch` (wrong secret
 match the endpoint), `NoSuchBucket` (bucket name typo), `AccessDenied` (the key is not allowed to write or
 list that bucket). Uploads that fail are retried with the **Copy** button on the server's Backups tab and are
 posted to Discord when that alert is ticked.
+
+Google Drive and Dropbox: `redirect_uri_mismatch` means the redirect address shown under Settings → Cloud backups
+is not listed in your app exactly as shown (set **Settings → Sign-in → Panel address** if the panel is behind a
+proxy). "refused the saved sign-in" means access was revoked; press **Reconnect**. SFTP: `sftp is not installed`
+means the OpenSSH client is missing (`apt install openssh-client`, or Windows' optional "OpenSSH Client");
+`Host key verification failed` means the server's key changed since the first connection, so remove that line
+from `sftp_known_hosts` in the panel's `run` folder if the change is expected.
