@@ -19,6 +19,7 @@ module.exports = {
     const rt = this.rt(id);
 
     if (this.isActive(id)) fail(409, 'The server is already running');
+    if (this.trimJobs?.get(id)?.state === 'running') fail(409, 'A world trim is running. Wait for it to finish.');
     if (rt.status === STATUS.INSTALLING) fail(409, 'The server is still installing');
     if (!server.installedAt) fail(409, 'The server is not installed yet');
     if (!require('fs').existsSync(server.dir)) fail(500, 'The server directory is missing — reinstall the server');

@@ -20,6 +20,8 @@
  *   crossplay.js       Bedrock players on Java servers (Geyser + Floodgate)
  *   livemap.js         a web map of the world (BlueMap)
  *   pregen.js          world pre-generation (Chunky)
+ *   dinowipe.js        ARK wild dino wipe
+ *   trim.js            Minecraft world trimming (unvisited chunks)
  *   tps.js             ticks per second over RCON (Paper, Purpur)
  *   watchers.js        tailing game log files, port-based readiness
  *   runtimes/container.js   running a server in Docker (Linux isolation)
@@ -722,6 +724,8 @@ Object.assign(
   require('./crossplay'),
   require('./livemap'),
   require('./pregen'),
+  require('./dinowipe'),
+  require('./trim'),
   require('./tps'),
   require('./gamerules'),
   require('./watchers'),

@@ -32,10 +32,11 @@ const PRESETS = [
   ['custom', 'Custom (cron)'],
 ];
 
-const actionsFor = (server) => (server.canWipe ? [...ACTIONS, ['wipe', 'Wipe the map']] : ACTIONS);
+const isArk = (server) => String(server.templateId || '').startsWith('ark-survival');
+const actionsFor = (server) => [...ACTIONS, ...(server.canWipe ? [['wipe', 'Wipe the map']] : []), ...(isArk(server) ? [['dinowipe', 'Wipe wild dinos']] : [])];
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-const actionLabel = (id) => (id === 'wipe' ? 'Wipe the map' : ACTIONS.find(([a]) => a === id)?.[1] || id);
+const actionLabel = (id) => (id === 'wipe' ? 'Wipe the map' : id === 'dinowipe' ? 'Wipe wild dinos' : ACTIONS.find(([a]) => a === id)?.[1] || id);
 const whenLabel = (cron, firstOfMonth) => {
   const [min, hour, , , dow] = cron.split(/\s+/);
   if (firstOfMonth && /^\d+$/.test(min) && /^\d+$/.test(hour) && /^[0-6]$/.test(dow)) return `First ${WEEKDAYS[dow]} of the month at ${hour.padStart(2, '0')}:${min.padStart(2, '0')}`;
@@ -310,7 +311,7 @@ function openScheduleModal(server, schedule, onSaved) {
 
   const sync = () => {
     $('#sch-command-wrap').classList.toggle('hidden', $('#sch-action').value !== 'command');
-    $('#sch-warn-wrap').classList.toggle('hidden', !['restart', 'stop', 'wipe'].includes($('#sch-action').value));
+    $('#sch-warn-wrap').classList.toggle('hidden', !['restart', 'stop', 'wipe', 'dinowipe'].includes($('#sch-action').value));
     $('#sch-wipe-wrap').classList.toggle('hidden', $('#sch-action').value !== 'wipe');
     $('#sch-monthly-wrap').classList.toggle('hidden', $('#sch-preset').value !== 'monthly');
     $('#sch-empty-wrap').classList.toggle('hidden', $('#sch-action').value === 'start');
