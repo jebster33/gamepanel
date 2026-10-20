@@ -249,6 +249,8 @@ class ServerManager extends EventEmitter {
       ...Object.fromEntries(Object.entries(server.vars || {}).map(([k, v]) => [k, secrets.open(v)])),
     };
     if (!out.JAVA_VERSION) out.JAVA_VERSION = '21';
+    // ARK clusters add -clusterid and -ClusterDirOverride (set by the panel, never by a user).
+    if (this.store.state.arkClusters?.length) out.CLUSTER_ARGS = require('../features/ark-clusters').argsFor(this, this.store, server);
     for (const [name, value] of Object.entries(ports)) out[`PORT_${name.toUpperCase()}`] = value;
     // Arma 3 and DayZ load mods through -mod=: the Workshop ones installed here, then any listed by hand.
     if (this.template(server)?.mods?.workshop?.strategy === 'bohemia') {

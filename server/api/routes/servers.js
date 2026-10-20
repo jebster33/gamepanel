@@ -88,6 +88,25 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
     return networks.remove(manager, store, params.id);
   });
 
+  /** ARK clusters: servers that share characters, items and dinos. */
+  const arkClusters = require('../../features/ark-clusters');
+  router.get('/api/clusters', ({ user }) => {
+    requireAdmin(user);
+    return arkClusters.list(manager, store);
+  });
+  router.post('/api/clusters', ({ user, body }) => {
+    requireAdmin(user);
+    return arkClusters.create(manager, store, body || {}, user);
+  });
+  router.put('/api/clusters/:id', ({ user, params, body }) => {
+    requireAdmin(user);
+    return arkClusters.update(manager, store, params.id, body || {});
+  });
+  router.delete('/api/clusters/:id', ({ user, params }) => {
+    requireAdmin(user);
+    return arkClusters.remove(manager, store, params.id);
+  });
+
   /** Servers other panels (Pterodactyl, AMP, LinuxGSM) left on this machine, ready to import. */
   router.get('/api/import/scan', ({ user }) => {
     requireAdmin(user);
