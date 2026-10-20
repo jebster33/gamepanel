@@ -261,7 +261,12 @@ class ServerManager extends EventEmitter {
       out.WORKSHOP_MODS = [require('../features/mods/workshop').modArgument(server), out.EXTRA_MODS].filter(Boolean).join(';');
     }
     // Rust's map choice (official, hosted or uploaded) becomes launch arguments.
-    if (server.templateId === 'rust') out.MAP_ARGS = require('../features/rust-maps').args(this, server);
+    if (server.templateId === 'rust') {
+      out.MAP_ARGS = require('../features/rust-maps').args(this, server);
+      const rust = require('../features/rust-events');
+      out.TEAM_LIMIT = rust.teamLimit(out);
+      out.HOSTNAME_FULL = rust.hostname(out);
+    }
     return out;
   }
 
@@ -553,6 +558,7 @@ class ServerManager extends EventEmitter {
       }
     }
     require('../features/mods/share').forget(this.store, id);
+    require('../features/resource-pack').forget(this.store, id);
     const page = this.store.state.settings.statusPage;
     if (page) {
       if (Array.isArray(page.servers)) page.servers = page.servers.filter((s) => s !== id);
@@ -716,6 +722,7 @@ Object.assign(
   require('./power'),
   require('./stats'),
   require('./history'),
+  require('./wipe-stats'),
   require('./metrics-history'),
   require('./auto-update'),
   require('./versions'),

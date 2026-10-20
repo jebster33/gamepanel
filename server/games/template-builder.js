@@ -173,4 +173,4 @@ function check(input, registry) {
   return { template: t, errors, warnings, script };
 }
 
-module.exports = { check, STEP_TYPES, QUERY_TYPES, BUILT_IN };
+module.exports = { check, STEP_TYPES, QUERY_TYPES, BUILT_IN, RESERVED };

@@ -23,6 +23,10 @@ fires.
 
 The [phone app](first-setup.md#phone-app) can push the same alerts to your phone.
 
+### Steam server list check
+
+For Steam games with a query port (Rust, ARK, Valheim, CS2 and so on), the **Steam server list** card on a server's Settings tab checks every 5 minutes that it is really in the in-game server browser, using Steam's Web API with the Steam Web API key from Settings, Integrations. Turn on *A server drops off the Steam server list* (and *is back*) in the panel's Settings, Alerts to hear about it. An alert needs two misses in a row and the server running for 10 minutes, since Steam lists a fresh server slowly. If the panel's public address is not the server's (a VPS or a bridge in front), type the public IP in the card.
+
 ## Discord bot
 
 **Settings → Discord bot** lets your Discord use `/status`, `/players`, `/whois`, `/start`, `/stop` and

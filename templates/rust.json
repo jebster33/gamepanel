@@ -169,7 +169,53 @@
       "label": "Max team size",
       "type": "number",
       "default": 8,
-      "description": "0 lets teams be any size.",
+      "description": "Used when Team size is Custom. 0 lets teams be any size.",
+      "group": "Rules"
+    },
+    {
+      "name": "TEAM_SIZE",
+      "label": "Team size",
+      "default": "custom",
+      "options": [
+        {
+          "value": "custom",
+          "label": "Custom (use Max team size)"
+        },
+        {
+          "value": "solo",
+          "label": "Solo (1)"
+        },
+        {
+          "value": "duo",
+          "label": "Duo (2)"
+        },
+        {
+          "value": "trio",
+          "label": "Trio (3)"
+        },
+        {
+          "value": "quad",
+          "label": "Quad (4)"
+        }
+      ],
+      "description": "Sets the team limit.",
+      "group": "Rules"
+    },
+    {
+      "name": "TEAM_TAG",
+      "label": "Show team size in server name",
+      "default": "false",
+      "options": [
+        {
+          "value": "true",
+          "label": "Yes, like [2x | Duo]"
+        },
+        {
+          "value": "false",
+          "label": "No"
+        }
+      ],
+      "description": "Puts the tag in front of the server name in the list. Ignored for Custom.",
       "group": "Rules"
     },
     {
@@ -178,6 +224,147 @@
       "type": "number",
       "default": 300,
       "group": "Rules"
+    },
+    {
+      "name": "HELI_EVENT",
+      "label": "Patrol helicopter",
+      "default": "0",
+      "options": [
+        {
+          "value": "0",
+          "label": "Vanilla"
+        },
+        {
+          "value": "-1",
+          "label": "Off"
+        },
+        {
+          "value": "30",
+          "label": "Every 30 minutes"
+        },
+        {
+          "value": "60",
+          "label": "Every hour"
+        },
+        {
+          "value": "120",
+          "label": "Every 2 hours"
+        },
+        {
+          "value": "240",
+          "label": "Every 4 hours"
+        }
+      ],
+      "description": "Needs Oxide. Vanilla leaves Rust's own timing alone. A set time blocks the random spawns and starts one that often instead.",
+      "group": "Events"
+    },
+    {
+      "name": "CARGO_EVENT",
+      "label": "Cargo ship",
+      "default": "0",
+      "options": [
+        {
+          "value": "0",
+          "label": "Vanilla"
+        },
+        {
+          "value": "-1",
+          "label": "Off"
+        },
+        {
+          "value": "30",
+          "label": "Every 30 minutes"
+        },
+        {
+          "value": "60",
+          "label": "Every hour"
+        },
+        {
+          "value": "120",
+          "label": "Every 2 hours"
+        },
+        {
+          "value": "240",
+          "label": "Every 4 hours"
+        }
+      ],
+      "description": "Needs Oxide. Vanilla leaves Rust's own timing alone. A set time blocks the random spawns and starts one that often instead.",
+      "group": "Events"
+    },
+    {
+      "name": "CHINOOK_EVENT",
+      "label": "Chinook (CH47)",
+      "default": "0",
+      "options": [
+        {
+          "value": "0",
+          "label": "Vanilla"
+        },
+        {
+          "value": "-1",
+          "label": "Off"
+        },
+        {
+          "value": "30",
+          "label": "Every 30 minutes"
+        },
+        {
+          "value": "60",
+          "label": "Every hour"
+        },
+        {
+          "value": "120",
+          "label": "Every 2 hours"
+        },
+        {
+          "value": "240",
+          "label": "Every 4 hours"
+        }
+      ],
+      "description": "Needs Oxide. Vanilla leaves Rust's own timing alone. A set time blocks the random spawns and starts one that often instead.",
+      "group": "Events"
+    },
+    {
+      "name": "BRADLEY_ENABLED",
+      "label": "Bradley APC",
+      "default": "true",
+      "options": [
+        {
+          "value": "true",
+          "label": "On"
+        },
+        {
+          "value": "false",
+          "label": "Off"
+        }
+      ],
+      "description": "Uses Rust's own bradley.enabled, no plugin needed.",
+      "group": "Events"
+    },
+    {
+      "name": "BRADLEY_RESPAWN",
+      "label": "Bradley respawn",
+      "default": "60",
+      "options": [
+        {
+          "value": "15",
+          "label": "15 minutes"
+        },
+        {
+          "value": "30",
+          "label": "30 minutes"
+        },
+        {
+          "value": "60",
+          "label": "60 minutes (vanilla)"
+        },
+        {
+          "value": "120",
+          "label": "2 hours"
+        }
+      ],
+      "description": "Time after it is destroyed before Bradley returns.",
+      "group": "Events"
     },
     {
       "name": "SERVER_TAGS",
@@ -240,9 +427,14 @@
       "type": "script",
       "label": "Install uMod / Oxide",
       "run": "if [ \"{{INSTALL_OXIDE}}\" = \"true\" ]; then\n  gp_fetch \"https://github.com/OxideMod/Oxide.Rust/releases/latest/download/Oxide.Rust-linux.zip\" oxide.zip\n  gp_extract oxide.zip .\n  rm -f oxide.zip\n  mkdir -p oxide/plugins oxide/config oxide/data\n  ( gp_fetch \"https://umod.org/plugins/GatherManager.cs\" oxide/plugins/GatherManager.cs ) || gp_log \"Could not download GatherManager; install it from the Mods tab to use gather rates\"\n  gp_log \"Oxide installed — plugins go in oxide/plugins\"\nelse\n  gp_log \"Skipping Oxide (vanilla Rust)\"\nfi"
+    },
+    {
+      "type": "writefile",
+      "path": "oxide/plugins/GamePanelEvents.cs",
+      "content": "using System.Collections.Generic;\nusing Oxide.Core.Plugins;\n\nnamespace Oxide.Plugins\n{\n    [Info(\"GamePanelEvents\", \"GamePanel\", \"1.0.0\")]\n    [Description(\"How often cargo ship, patrol helicopter and Chinook events run, set from the panel\")]\n    class GamePanelEvents : RustPlugin\n    {\n        // Minutes per event: 0 leaves Rust alone, -1 turns it off, anything else spawns it that often (vanilla spawns are blocked).\n        readonly Dictionary<string, int> minutes = new Dictionary<string, int> { { \"heli\", 0 }, { \"cargo\", 0 }, { \"chinook\", 0 } };\n        readonly Dictionary<string, Timer> timers = new Dictionary<string, Timer>();\n        bool spawning;\n\n        string KindOf(BaseNetworkable entity)\n        {\n            var name = entity.ShortPrefabName ?? \"\";\n            if (name == \"patrolhelicopter\") return \"heli\";\n            if (name == \"cargoshiptest\") return \"cargo\";\n            if (name.StartsWith(\"ch47scientists\")) return \"chinook\";\n            return null;\n        }\n\n        void OnEntitySpawned(BaseNetworkable entity)\n        {\n            if (spawning || entity == null) return;\n            var kind = KindOf(entity);\n            if (kind == null || minutes[kind] == 0) return;\n            NextTick(() => { if (entity != null && !entity.IsDestroyed) entity.Kill(); });\n        }\n\n        void Fire(string kind)\n        {\n            spawning = true;\n            try\n            {\n                if (kind == \"heli\") ConsoleSystem.Run(ConsoleSystem.Option.Server, \"heli.call\");\n                else if (kind == \"cargo\")\n                {\n                    var ship = GameManager.server.CreateEntity(\"assets/content/vehicles/boats/cargoship/cargoshiptest.prefab\") as CargoShip;\n                    if (ship != null) { ship.TriggeredEventSpawn(); ship.Spawn(); }\n                }\n                else\n                {\n                    var ch47 = GameManager.server.CreateEntity(\"assets/prefabs/npc/ch47/ch47scientists.entity.prefab\") as CH47HelicopterAIController;\n                    if (ch47 != null) { ch47.TriggeredEventSpawn(); ch47.Spawn(); }\n                }\n            }\n            finally { spawning = false; }\n        }\n\n        [ConsoleCommand(\"gpevents.set\")]\n        void CmdSet(ConsoleSystem.Arg arg)\n        {\n            if (arg.Connection != null) return; // the server console and RCON only\n            var kind = arg.GetString(0);\n            if (!minutes.ContainsKey(kind)) { arg.ReplyWith(\"Usage: gpevents.set heli|cargo|chinook <minutes, 0 = vanilla, -1 = off>\"); return; }\n            var value = arg.GetInt(1, 0);\n            minutes[kind] = value;\n            Timer old;\n            if (timers.TryGetValue(kind, out old)) old.Destroy();\n            timers.Remove(kind);\n            if (value > 0)\n            {\n                var k = kind;\n                timers[kind] = timer.Every(value * 60f, () => Fire(k));\n            }\n            arg.ReplyWith(\"GamePanelEvents: \" + kind + \" = \" + value);\n        }\n    }\n}\n"
     }
   ],
-  "startCommand": "./RustDedicated -batchmode -nographics +server.identity gamepanel +server.ip 0.0.0.0 +server.port {{PORT}} +server.queryport {{PORT_QUERY}} +rcon.ip 0.0.0.0 +rcon.port {{PORT_RCON}} +rcon.password \"{{RCON_PASSWORD}}\" +rcon.web 1 +app.port {{PORT_APP}} +server.maxplayers {{MAX_PLAYERS}} +server.hostname \"{{SERVER_HOSTNAME}}\" +server.description \"{{SERVER_DESCRIPTION}}\" +server.worldsize {{WORLD_SIZE}} +server.seed {{WORLD_SEED}} +server.saveinterval {{SAVE_INTERVAL}} +server.gamemode {{GAME_MODE}} +server.pve {{SERVER_PVE}} +decay.scale {{DECAY_SCALE}} +craft.instant {{INSTANT_CRAFT}} +server.radiation {{RADIATION}} +relationshipmanager.maxteamsize {{MAX_TEAM}} +server.tags \"{{SERVER_TAGS}}\" +server.url \"{{SERVER_URL}}\" +server.headerimage \"{{HEADER_IMAGE}}\" {{MAP_ARGS}}",
+  "startCommand": "./RustDedicated -batchmode -nographics +server.identity gamepanel +server.ip 0.0.0.0 +server.port {{PORT}} +server.queryport {{PORT_QUERY}} +rcon.ip 0.0.0.0 +rcon.port {{PORT_RCON}} +rcon.password \"{{RCON_PASSWORD}}\" +rcon.web 1 +app.port {{PORT_APP}} +server.maxplayers {{MAX_PLAYERS}} +server.hostname \"{{HOSTNAME_FULL}}\" +server.description \"{{SERVER_DESCRIPTION}}\" +server.worldsize {{WORLD_SIZE}} +server.seed {{WORLD_SEED}} +server.saveinterval {{SAVE_INTERVAL}} +server.gamemode {{GAME_MODE}} +server.pve {{SERVER_PVE}} +decay.scale {{DECAY_SCALE}} +craft.instant {{INSTANT_CRAFT}} +server.radiation {{RADIATION}} +relationshipmanager.maxteamsize {{TEAM_LIMIT}} +server.tags \"{{SERVER_TAGS}}\" +server.url \"{{SERVER_URL}}\" +server.headerimage \"{{HEADER_IMAGE}}\" {{MAP_ARGS}}",
   "stopCommand": "quit",
   "stopTimeout": 120,
   "query": {
@@ -289,9 +481,14 @@
         "type": "powershell",
         "label": "Install uMod / Oxide",
         "run": "if ('{{INSTALL_OXIDE}}' -eq 'true') {\n  GP-Fetch 'https://github.com/OxideMod/Oxide.Rust/releases/latest/download/Oxide.Rust.zip' 'oxide.zip'\n  GP-Extract 'oxide.zip' '.'\n  Remove-Item oxide.zip\n  foreach ($d in 'oxide/plugins','oxide/config','oxide/data') { New-Item -ItemType Directory -Force $d | Out-Null }\n  try { GP-Fetch 'https://umod.org/plugins/GatherManager.cs' 'oxide/plugins/GatherManager.cs' } catch { GP-Log 'Could not download GatherManager; install it from the Mods tab to use gather rates' }\n  GP-Log 'Oxide installed. Plugins go in oxide/plugins'\n} else { GP-Log 'Skipping Oxide (vanilla Rust)' }"
+      },
+      {
+        "type": "writefile",
+        "path": "oxide/plugins/GamePanelEvents.cs",
+        "content": "using System.Collections.Generic;\nusing Oxide.Core.Plugins;\n\nnamespace Oxide.Plugins\n{\n    [Info(\"GamePanelEvents\", \"GamePanel\", \"1.0.0\")]\n    [Description(\"How often cargo ship, patrol helicopter and Chinook events run, set from the panel\")]\n    class GamePanelEvents : RustPlugin\n    {\n        // Minutes per event: 0 leaves Rust alone, -1 turns it off, anything else spawns it that often (vanilla spawns are blocked).\n        readonly Dictionary<string, int> minutes = new Dictionary<string, int> { { \"heli\", 0 }, { \"cargo\", 0 }, { \"chinook\", 0 } };\n        readonly Dictionary<string, Timer> timers = new Dictionary<string, Timer>();\n        bool spawning;\n\n        string KindOf(BaseNetworkable entity)\n        {\n            var name = entity.ShortPrefabName ?? \"\";\n            if (name == \"patrolhelicopter\") return \"heli\";\n            if (name == \"cargoshiptest\") return \"cargo\";\n            if (name.StartsWith(\"ch47scientists\")) return \"chinook\";\n            return null;\n        }\n\n        void OnEntitySpawned(BaseNetworkable entity)\n        {\n            if (spawning || entity == null) return;\n            var kind = KindOf(entity);\n            if (kind == null || minutes[kind] == 0) return;\n            NextTick(() => { if (entity != null && !entity.IsDestroyed) entity.Kill(); });\n        }\n\n        void Fire(string kind)\n        {\n            spawning = true;\n            try\n            {\n                if (kind == \"heli\") ConsoleSystem.Run(ConsoleSystem.Option.Server, \"heli.call\");\n                else if (kind == \"cargo\")\n                {\n                    var ship = GameManager.server.CreateEntity(\"assets/content/vehicles/boats/cargoship/cargoshiptest.prefab\") as CargoShip;\n                    if (ship != null) { ship.TriggeredEventSpawn(); ship.Spawn(); }\n                }\n                else\n                {\n                    var ch47 = GameManager.server.CreateEntity(\"assets/prefabs/npc/ch47/ch47scientists.entity.prefab\") as CH47HelicopterAIController;\n                    if (ch47 != null) { ch47.TriggeredEventSpawn(); ch47.Spawn(); }\n                }\n            }\n            finally { spawning = false; }\n        }\n\n        [ConsoleCommand(\"gpevents.set\")]\n        void CmdSet(ConsoleSystem.Arg arg)\n        {\n            if (arg.Connection != null) return; // the server console and RCON only\n            var kind = arg.GetString(0);\n            if (!minutes.ContainsKey(kind)) { arg.ReplyWith(\"Usage: gpevents.set heli|cargo|chinook <minutes, 0 = vanilla, -1 = off>\"); return; }\n            var value = arg.GetInt(1, 0);\n            minutes[kind] = value;\n            Timer old;\n            if (timers.TryGetValue(kind, out old)) old.Destroy();\n            timers.Remove(kind);\n            if (value > 0)\n            {\n                var k = kind;\n                timers[kind] = timer.Every(value * 60f, () => Fire(k));\n            }\n            arg.ReplyWith(\"GamePanelEvents: \" + kind + \" = \" + value);\n        }\n    }\n}\n"
       }
     ],
-    "startCommand": "RustDedicated.exe -batchmode -nographics +server.identity gamepanel +server.ip 0.0.0.0 +server.port {{PORT}} +server.queryport {{PORT_QUERY}} +rcon.ip 0.0.0.0 +rcon.port {{PORT_RCON}} +rcon.password \"{{RCON_PASSWORD}}\" +rcon.web 1 +app.port {{PORT_APP}} +server.maxplayers {{MAX_PLAYERS}} +server.hostname \"{{SERVER_HOSTNAME}}\" +server.description \"{{SERVER_DESCRIPTION}}\" +server.worldsize {{WORLD_SIZE}} +server.seed {{WORLD_SEED}} +server.saveinterval {{SAVE_INTERVAL}} +server.gamemode {{GAME_MODE}} +server.pve {{SERVER_PVE}} +decay.scale {{DECAY_SCALE}} +craft.instant {{INSTANT_CRAFT}} +server.radiation {{RADIATION}} +relationshipmanager.maxteamsize {{MAX_TEAM}} +server.tags \"{{SERVER_TAGS}}\" +server.url \"{{SERVER_URL}}\" +server.headerimage \"{{HEADER_IMAGE}}\" {{MAP_ARGS}} -logfile \"logs/rust.log\"",
+    "startCommand": "RustDedicated.exe -batchmode -nographics +server.identity gamepanel +server.ip 0.0.0.0 +server.port {{PORT}} +server.queryport {{PORT_QUERY}} +rcon.ip 0.0.0.0 +rcon.port {{PORT_RCON}} +rcon.password \"{{RCON_PASSWORD}}\" +rcon.web 1 +app.port {{PORT_APP}} +server.maxplayers {{MAX_PLAYERS}} +server.hostname \"{{HOSTNAME_FULL}}\" +server.description \"{{SERVER_DESCRIPTION}}\" +server.worldsize {{WORLD_SIZE}} +server.seed {{WORLD_SEED}} +server.saveinterval {{SAVE_INTERVAL}} +server.gamemode {{GAME_MODE}} +server.pve {{SERVER_PVE}} +decay.scale {{DECAY_SCALE}} +craft.instant {{INSTANT_CRAFT}} +server.radiation {{RADIATION}} +relationshipmanager.maxteamsize {{TEAM_LIMIT}} +server.tags \"{{SERVER_TAGS}}\" +server.url \"{{SERVER_URL}}\" +server.headerimage \"{{HEADER_IMAGE}}\" {{MAP_ARGS}} -logfile \"logs/rust.log\"",
     "tailFiles": [
       "logs/rust.log"
     ],
@@ -313,6 +510,11 @@
         "id": "oxide",
         "label": "Update uMod / Oxide",
         "run": "if ('{{INSTALL_OXIDE}}' -eq 'true') {\n  GP-Fetch 'https://github.com/OxideMod/Oxide.Rust/releases/latest/download/Oxide.Rust.zip' 'oxide.zip'\n  GP-Extract 'oxide.zip' '.'\n  Remove-Item oxide.zip\n  foreach ($d in 'oxide/plugins','oxide/config','oxide/data') { New-Item -ItemType Directory -Force $d | Out-Null }\n  GP-Log 'Oxide is up to date'\n}"
+      },
+      {
+        "type": "writefile",
+        "path": "oxide/plugins/GamePanelEvents.cs",
+        "content": "using System.Collections.Generic;\nusing Oxide.Core.Plugins;\n\nnamespace Oxide.Plugins\n{\n    [Info(\"GamePanelEvents\", \"GamePanel\", \"1.0.0\")]\n    [Description(\"How often cargo ship, patrol helicopter and Chinook events run, set from the panel\")]\n    class GamePanelEvents : RustPlugin\n    {\n        // Minutes per event: 0 leaves Rust alone, -1 turns it off, anything else spawns it that often (vanilla spawns are blocked).\n        readonly Dictionary<string, int> minutes = new Dictionary<string, int> { { \"heli\", 0 }, { \"cargo\", 0 }, { \"chinook\", 0 } };\n        readonly Dictionary<string, Timer> timers = new Dictionary<string, Timer>();\n        bool spawning;\n\n        string KindOf(BaseNetworkable entity)\n        {\n            var name = entity.ShortPrefabName ?? \"\";\n            if (name == \"patrolhelicopter\") return \"heli\";\n            if (name == \"cargoshiptest\") return \"cargo\";\n            if (name.StartsWith(\"ch47scientists\")) return \"chinook\";\n            return null;\n        }\n\n        void OnEntitySpawned(BaseNetworkable entity)\n        {\n            if (spawning || entity == null) return;\n            var kind = KindOf(entity);\n            if (kind == null || minutes[kind] == 0) return;\n            NextTick(() => { if (entity != null && !entity.IsDestroyed) entity.Kill(); });\n        }\n\n        void Fire(string kind)\n        {\n            spawning = true;\n            try\n            {\n                if (kind == \"heli\") ConsoleSystem.Run(ConsoleSystem.Option.Server, \"heli.call\");\n                else if (kind == \"cargo\")\n                {\n                    var ship = GameManager.server.CreateEntity(\"assets/content/vehicles/boats/cargoship/cargoshiptest.prefab\") as CargoShip;\n                    if (ship != null) { ship.TriggeredEventSpawn(); ship.Spawn(); }\n                }\n                else\n                {\n                    var ch47 = GameManager.server.CreateEntity(\"assets/prefabs/npc/ch47/ch47scientists.entity.prefab\") as CH47HelicopterAIController;\n                    if (ch47 != null) { ch47.TriggeredEventSpawn(); ch47.Spawn(); }\n                }\n            }\n            finally { spawning = false; }\n        }\n\n        [ConsoleCommand(\"gpevents.set\")]\n        void CmdSet(ConsoleSystem.Arg arg)\n        {\n            if (arg.Connection != null) return; // the server console and RCON only\n            var kind = arg.GetString(0);\n            if (!minutes.ContainsKey(kind)) { arg.ReplyWith(\"Usage: gpevents.set heli|cargo|chinook <minutes, 0 = vanilla, -1 = off>\"); return; }\n            var value = arg.GetInt(1, 0);\n            minutes[kind] = value;\n            Timer old;\n            if (timers.TryGetValue(kind, out old)) old.Destroy();\n            timers.Remove(kind);\n            if (value > 0)\n            {\n                var k = kind;\n                timers[kind] = timer.Every(value * 60f, () => Fire(k));\n            }\n            arg.ReplyWith(\"GamePanelEvents: \" + kind + \" = \" + value);\n        }\n    }\n}\n"
       }
     ]
   },
@@ -334,7 +536,12 @@
     "gather.rate dispenser * {{GATHER_RATE}}",
     "gather.rate pickup * {{GATHER_RATE}}",
     "gather.rate quarry * {{GATHER_RATE}}",
-    "gather.rate survey * {{GATHER_RATE}}"
+    "gather.rate survey * {{GATHER_RATE}}",
+    "gpevents.set heli {{HELI_EVENT}}",
+    "gpevents.set cargo {{CARGO_EVENT}}",
+    "gpevents.set chinook {{CHINOOK_EVENT}}",
+    "bradley.enabled {{BRADLEY_ENABLED}}",
+    "bradley.respawndelayminutes {{BRADLEY_RESPAWN}}"
   ],
   "presets": [
     {
@@ -423,6 +630,11 @@
       "id": "oxide",
       "label": "Update uMod / Oxide",
       "run": "if [ \"{{INSTALL_OXIDE}}\" = \"true\" ]; then\n  gp_fetch \"https://github.com/OxideMod/Oxide.Rust/releases/latest/download/Oxide.Rust-linux.zip\" oxide.zip\n  gp_extract oxide.zip .\n  rm -f oxide.zip\n  mkdir -p oxide/plugins oxide/config oxide/data\n  gp_log \"Oxide is up to date\"\nfi"
+    },
+    {
+      "type": "writefile",
+      "path": "oxide/plugins/GamePanelEvents.cs",
+      "content": "using System.Collections.Generic;\nusing Oxide.Core.Plugins;\n\nnamespace Oxide.Plugins\n{\n    [Info(\"GamePanelEvents\", \"GamePanel\", \"1.0.0\")]\n    [Description(\"How often cargo ship, patrol helicopter and Chinook events run, set from the panel\")]\n    class GamePanelEvents : RustPlugin\n    {\n        // Minutes per event: 0 leaves Rust alone, -1 turns it off, anything else spawns it that often (vanilla spawns are blocked).\n        readonly Dictionary<string, int> minutes = new Dictionary<string, int> { { \"heli\", 0 }, { \"cargo\", 0 }, { \"chinook\", 0 } };\n        readonly Dictionary<string, Timer> timers = new Dictionary<string, Timer>();\n        bool spawning;\n\n        string KindOf(BaseNetworkable entity)\n        {\n            var name = entity.ShortPrefabName ?? \"\";\n            if (name == \"patrolhelicopter\") return \"heli\";\n            if (name == \"cargoshiptest\") return \"cargo\";\n            if (name.StartsWith(\"ch47scientists\")) return \"chinook\";\n            return null;\n        }\n\n        void OnEntitySpawned(BaseNetworkable entity)\n        {\n            if (spawning || entity == null) return;\n            var kind = KindOf(entity);\n            if (kind == null || minutes[kind] == 0) return;\n            NextTick(() => { if (entity != null && !entity.IsDestroyed) entity.Kill(); });\n        }\n\n        void Fire(string kind)\n        {\n            spawning = true;\n            try\n            {\n                if (kind == \"heli\") ConsoleSystem.Run(ConsoleSystem.Option.Server, \"heli.call\");\n                else if (kind == \"cargo\")\n                {\n                    var ship = GameManager.server.CreateEntity(\"assets/content/vehicles/boats/cargoship/cargoshiptest.prefab\") as CargoShip;\n                    if (ship != null) { ship.TriggeredEventSpawn(); ship.Spawn(); }\n                }\n                else\n                {\n                    var ch47 = GameManager.server.CreateEntity(\"assets/prefabs/npc/ch47/ch47scientists.entity.prefab\") as CH47HelicopterAIController;\n                    if (ch47 != null) { ch47.TriggeredEventSpawn(); ch47.Spawn(); }\n                }\n            }\n            finally { spawning = false; }\n        }\n\n        [ConsoleCommand(\"gpevents.set\")]\n        void CmdSet(ConsoleSystem.Arg arg)\n        {\n            if (arg.Connection != null) return; // the server console and RCON only\n            var kind = arg.GetString(0);\n            if (!minutes.ContainsKey(kind)) { arg.ReplyWith(\"Usage: gpevents.set heli|cargo|chinook <minutes, 0 = vanilla, -1 = off>\"); return; }\n            var value = arg.GetInt(1, 0);\n            minutes[kind] = value;\n            Timer old;\n            if (timers.TryGetValue(kind, out old)) old.Destroy();\n            timers.Remove(kind);\n            if (value > 0)\n            {\n                var k = kind;\n                timers[kind] = timer.Every(value * 60f, () => Fire(k));\n            }\n            arg.ReplyWith(\"GamePanelEvents: \" + kind + \" = \" + value);\n        }\n    }\n}\n"
     }
   ]
 }

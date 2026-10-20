@@ -255,6 +255,49 @@ module.exports = (router, { store, auth, manager, scheduler, bridge }, { require
     { raw: true, public: true }
   );
 
+  /* Rust live map: positions over RCON through a small Oxide plugin. Positions are sensitive, so console permission only. */
+  const liveMap = require('../../features/rust-livemap');
+  const liveMapServer = (user, id, cap = 'console') => {
+    const server = serverFor(user, id, cap);
+    if (server.templateId !== 'rust') fail(400, 'The live map is only for Rust servers');
+    return server;
+  };
+  router.get('/api/servers/:id/live-map', ({ user, params }) => liveMap.snapshot(manager, store, liveMapServer(user, params.id)));
+  router.post('/api/servers/:id/live-map/plugin', ({ user, params }) => {
+    const server = liveMapServer(user, params.id, 'files.write'); // a script the game runs, like uploading it by hand
+    return { plugin: liveMap.installPlugin(manager, server) };
+  });
+  router.get(
+    '/api/servers/:id/live-map/image',
+    ({ user, params, res }) => {
+      const found = liveMap.openImage(liveMapServer(user, params.id));
+      if (!found) fail(404, 'No map picture yet');
+      res.writeHead(200, { 'Content-Type': found.type, 'Content-Length': found.size, 'Cache-Control': 'private, max-age=60' });
+      require('fs').createReadStream(found.file).pipe(res);
+      return undefined;
+    },
+    { raw: true }
+  );
+  router.put(
+    '/api/servers/:id/live-map/image',
+    async ({ user, params, req }) => {
+      const server = liveMapServer(user, params.id, 'settings');
+      const chunks = [];
+      let size = 0;
+      for await (const chunk of req) {
+        size += chunk.length;
+        if (size > 25 * 1024 * 1024) fail(413, 'The picture is larger than 25 MB');
+        chunks.push(chunk);
+      }
+      return { image: liveMap.uploadImage(manager, server, Buffer.concat(chunks)) };
+    },
+    { rawBody: true }
+  );
+  router.delete('/api/servers/:id/live-map/image', ({ user, params }) => {
+    liveMap.clearUploaded(manager, liveMapServer(user, params.id, 'settings'));
+    return { ok: true };
+  });
+
   router.get('/api/servers/:id/console', ({ user, params }) => {
     const server = serverFor(user, params.id, 'console');
     return { lines: manager.getConsole(server.id) };
@@ -500,6 +543,30 @@ module.exports = (router, { store, auth, manager, scheduler, bridge }, { require
   router.post('/api/servers/:id/datapacks/:name/toggle', ({ user, params, body }) => datapacks.toggle(manager, serverFor(user, params.id, 'mods'), params.name, Boolean(body?.on), user.username));
   router.delete('/api/servers/:id/datapacks/:name', ({ user, params }) => datapacks.remove(manager, store, serverFor(user, params.id, 'mods'), params.name, user.username));
 
+  /** Resource pack hosting (Minecraft Java). */
+  const resourcePack = require('../../features/resource-pack');
+  router.get('/api/servers/:id/resource-pack', ({ user, params, req }) => resourcePack.view(manager, store, serverFor(user, params.id, 'mods'), req));
+  router.post(
+    '/api/servers/:id/resource-pack',
+    async ({ user, params, url, req }) => resourcePack.upload(manager, store, serverFor(user, params.id, 'mods'), url.searchParams.get('name'), await readBody(req, 251 * 1024 * 1024), req, user.username),
+    { rawBody: true }
+  );
+  router.patch('/api/servers/:id/resource-pack', ({ user, params, body, req }) => resourcePack.update(manager, store, serverFor(user, params.id, 'mods'), body || {}, req));
+  router.delete('/api/servers/:id/resource-pack', ({ user, params }) => resourcePack.remove(manager, store, serverFor(user, params.id, 'mods'), user.username));
+  router.get(
+    '/api/public/resource-pack/:slug/pack.zip',
+    ({ params, res }) => {
+      const hit = resourcePack.lookup(store, manager, params.slug);
+      if (!hit) fail(404, 'Not found');
+      res.writeHead(200, { 'Content-Type': 'application/zip', 'Content-Length': hit.size, 'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'public, max-age=300', ETag: `"${hit.sha1}"` });
+      const stream = require('fs').createReadStream(hit.file);
+      stream.on('error', () => res.destroy());
+      stream.pipe(res);
+      return undefined;
+    },
+    { public: true }
+  );
+
   /** ARK: despawn every wild dino. */
   router.post('/api/servers/:id/dino-wipe', async ({ user, params }) => manager.wipeWildDinos(serverFor(user, params.id, 'command').id, user));
 
@@ -663,6 +730,12 @@ module.exports = (router, { store, auth, manager, scheduler, bridge }, { require
   router.get('/api/servers/:id/player-history', ({ user, params }) => {
     const server = serverFor(user, params.id, 'console');
     return manager.playerHistory(server.id);
+  });
+
+  /** Per wipe: new and returning players, peak and how the population fell off. */
+  router.get('/api/servers/:id/wipe-stats', ({ user, params }) => {
+    const server = serverFor(user, params.id, 'console');
+    return manager.wipeStats(server);
   });
 
   router.get('/api/servers/:id/player-history/:name', ({ user, params }) => {

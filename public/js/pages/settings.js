@@ -19,6 +19,8 @@ const EVENT_LABELS = {
   'server.idle_stopped': 'A server stops because it is empty',
   'server.woken': 'A player wakes a sleeping server by joining',
   'server.resource_alert': 'A server goes over its CPU, memory or disk alert',
+  'server.unlisted': 'A server drops off the Steam server list',
+  'server.relisted': 'A server is back on the Steam server list',
   'panel.disk_low': "The panel's disk is almost full",
   'user.lockout': 'Repeated failed sign-ins',
   'user.new_ip': 'Someone signs in from a new address',
@@ -165,7 +167,7 @@ export async function renderSettings(view) {
 
     <div class="card mb-16" id="integrations">
       <h4>Integrations</h4>
-      <p class="faint" style="margin:0 0 14px">Optional keys for the mod browser and Cloudflare addresses. Modrinth, Hangar, SpigotMC and uMod work without any key.</p>
+      <p class="faint" style="margin:0 0 14px">Optional keys for the mod browser, the Steam server list check and Cloudflare addresses. Modrinth, Hangar, SpigotMC and uMod work without any key.</p>
       <div class="form-grid">
         <label><span>CurseForge API key</span><input id="i-curseforge" type="password" value="${esc(
           integrations.curseforgeKey || ''

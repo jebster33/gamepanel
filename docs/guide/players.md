@@ -29,6 +29,10 @@ profile:
 
 **Popular times** is a heatmap of the average number of players by day and hour over the last 30 days.
 
+<img src="../screenshots/wipe-stats.png" alt="Wipe stats" width="800" />
+
+**Wipe stats** (Rust, ARK and other games with wipes) shows, for each wipe, how many players showed up, how many were **new** (their first time on the server) and how many were **returning**, the peak online, how many of the first two days' players were still around on day 7, and the day the daily crowd fell to half of its best day. The chart draws active players per day since each wipe, newest wipe in lime. Counting starts when the panel first sees the server, so the first row says *since tracking began*; later wipes (from Schedules or the Wipe button) each start a new row.
+
 ## Activity
 
 A log like BattleMetrics: joins, leaves, chat, kicks, bans and restarts, with filters. **CSV** downloads

@@ -72,6 +72,18 @@ format from the server jar itself. On a running server changes apply at once thr
 `/reload` (`minecraft:reload` on Paper, so plugins are not reloaded); otherwise on the next start.
 **Updates** checks the Modrinth ones for newer releases.
 
+## Resource pack hosting
+
+The **Resource pack** card on the Game settings tab (Minecraft Java) hosts a pack for you. **Upload zip** (up to 250 MB,
+with `pack.mcmeta` at the top) and the panel serves it at a private link, then writes `resource-pack`,
+`resource-pack-sha1`, `require-resource-pack` and `resource-pack-prompt` into `server.properties`. Players get it on
+their next join after the server restarts. Tick **Players must accept** to kick those who decline, and add a message
+shown in Minecraft's download prompt. The link serves only that one file; the refresh button makes a new one.
+
+If you opened the panel on `localhost` or a LAN address, set **Panel address players reach** to the public one
+(for example `https://panel.example.com`), or players outside your network cannot download the pack.
+Replacing the zip updates the hash automatically. Removing the pack clears the keys again.
+
 ## The mod check
 
 The Mods tab reads what your mods say about themselves and flags what will stop the server or leave a mod unloaded. It runs whenever you open the tab, on demand with **Check**, after a modded server crashes, and **every time the server starts**. A start only warns in the console and the activity log; it is never blocked, because the check can be wrong about a mod it does not understand and you know your server better.

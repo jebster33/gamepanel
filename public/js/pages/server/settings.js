@@ -4,7 +4,7 @@ import { render } from '../../core/router.js';
 import { state } from '../../core/state.js';
 import { presetField, variableField } from '../deploy.js';
 import { stagingCard, wireStagingCard } from './staging.js';
-import { $, can, esc, toast } from '../../core/util.js';
+import { $, can, esc, fmtTime, toast } from '../../core/util.js';
 import { confirmModal, openModal } from '../../ui/modal.js';
 
 /* ------------------------------------------------- server settings tab -- */
@@ -146,6 +146,8 @@ export function renderServerSettingsTab(host, server) {
         : ''
     }
 
+    <div class="card mb-16" id="serverlist-card"></div>
+
     <div class="card mb-16" id="network-card">
       <h4 style="margin:0 0 6px">Reachability</h4>
       <p class="faint" style="margin:0 0 12px">Checking the firewall and your router…</p>
@@ -211,6 +213,7 @@ export function renderServerSettingsTab(host, server) {
           : ''
     }`;
 
+  renderServerListCard(server);
   renderNetworkCard(server);
 
   const saveFeed = async (webhook, btn) => {
@@ -420,6 +423,57 @@ export function renderServerSettingsTab(host, server) {
       location.hash = '#/servers';
     } catch (err) {
       toast(err.message, 'error');
+    }
+  });
+}
+
+/** Is the server in the Steam server browser? Opt-in, alerts when it drops off. */
+async function renderServerListCard(server) {
+  const card = $('#serverlist-card');
+  if (!card) return;
+  let d;
+  try {
+    d = await api(`/api/servers/${server.id}/server-list`);
+  } catch {
+    card.remove();
+    return;
+  }
+  if (!d.supported) {
+    card.remove();
+    return;
+  }
+  if (!card.isConnected) return;
+  const state = !d.enabled
+    ? '<span class="faint">Not checked</span>'
+    : d.error
+      ? `<span class="warning">${esc(d.error)}</span>`
+      : d.listed === true
+        ? `<span style="color:var(--success)">Listed${d.entry?.name ? ` as “${esc(d.entry.name)}”` : ''}${d.entry ? ` · ${d.entry.players}/${d.entry.maxPlayers} players` : ''}</span>`
+        : d.listed === false
+          ? '<span style="color:var(--danger)">Not on the Steam server list</span>'
+          : '<span class="faint">Waiting for the first check</span>';
+  card.innerHTML = `
+    <div class="row" style="margin-bottom:10px">
+      <h4 style="margin:0">Steam server list</h4>
+      <div style="flex:1"></div>
+      <span>${state}</span>
+    </div>
+    <p class="faint" style="margin:0 0 12px">Checks every 5 minutes that this server shows up in the in-game server browser, and alerts when it drops off (turn on <em>A server drops off the Steam server list</em> in Settings, Notifications).${
+      d.hasKey ? '' : ' <b>Add a Steam Web API key in Settings, Integrations first.</b>'
+    }${d.checkedAt ? ` Last checked ${esc(fmtTime(d.checkedAt))}.` : ''}</p>
+    <div class="checkbox-row"><input type="checkbox" id="sl-on" ${d.enabled ? 'checked' : ''} ${d.hasKey ? '' : 'disabled'} /><label for="sl-on">Check that this server is listed</label></div>
+    <div class="form-grid mt-16"><label><span>Public IP (optional)</span><input id="sl-ip" value="${esc(d.ip)}" placeholder="this network's public address" /></label></div>
+    <div class="row mt-16"><button class="btn" id="sl-save" ${d.hasKey ? '' : 'disabled'}>${d.enabled ? 'Save and check now' : 'Save'}</button></div>
+    <div class="hint">A fresh server can take about 10 minutes to appear. Needs the server running and its game and query ports forwarded.</div>`;
+  $('#sl-save').addEventListener('click', async (e) => {
+    const btn = e.currentTarget;
+    btn.disabled = true;
+    try {
+      await api(`/api/servers/${server.id}/server-list`, { method: 'PUT', body: { enabled: $('#sl-on').checked, ip: $('#sl-ip').value } });
+      renderServerListCard(server);
+    } catch (err) {
+      toast(err.message, 'error');
+      btn.disabled = false;
     }
   });
 }

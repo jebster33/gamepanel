@@ -25,7 +25,7 @@ Write-Host "==> Building GamePanel $Version for Windows"
 if (Test-Path (Join-Path $OutDir 'stage')) { Remove-Item (Join-Path $OutDir 'stage') -Recurse -Force }
 New-Item -ItemType Directory -Force -Path $Stage | Out-Null
 
-foreach ($rel in 'server', 'public', 'templates', 'windows', 'package.json', 'README.md', 'LICENSE') {
+foreach ($rel in 'server', 'public', 'templates', 'windows', 'cli', 'package.json', 'README.md', 'LICENSE') {
   Copy-Item (Join-Path $Root $rel) (Join-Path $Stage $rel) -Recurse -Force
 }
 Remove-Item (Join-Path $Stage 'windows\build.ps1'), (Join-Path $Stage 'windows\setup.iss') -ErrorAction SilentlyContinue
@@ -56,6 +56,7 @@ Remove-Item (Join-Path $Stage 'node\node_modules'), (Join-Path $Stage 'node\npm*
 
 Write-Host '==> Adding the service wrapper'
 Invoke-WebRequest $WinSwUrl -OutFile (Join-Path $Stage 'GamePanel-Service.exe') -UseBasicParsing
+Set-Content (Join-Path $Stage 'gamepanel.cmd') -Encoding ASCII -Value "@echo off`r`n`"%~dp0node\node.exe`" `"%~dp0cli\gamepanel.js`" %*"
 Copy-Item (Join-Path $Root 'windows\GamePanel-Service.xml') (Join-Path $Stage 'GamePanel-Service.xml')
 
 Set-Content (Join-Path $Stage 'start.cmd') -Encoding ASCII -Value @'
