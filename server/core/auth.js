@@ -8,6 +8,7 @@
 const crypto = require('crypto');
 const { uid, fail, timingSafeEqual } = require('./util');
 const totp = require('./totp');
+const { config } = require('./config');
 
 /**
  * What a non-admin account is allowed to do, on the servers assigned to it.
@@ -197,7 +198,9 @@ class Auth {
 
   checkSetupCode(req, code) {
     const addr = String(req.socket?.remoteAddress || '').replace(/^::ffff:/, '');
-    const local = ['127.0.0.1', '::1'].includes(addr) && !req.headers['x-forwarded-for'] && !req.headers['x-real-ip'];
+    // A proxy on this machine also connects from loopback, so any sign of one (or GP_BEHIND_PROXY) means the code is asked for.
+    const proxied = config.behindProxy || ['x-forwarded-for', 'x-real-ip', 'x-forwarded-host', 'x-forwarded-proto', 'forwarded', 'cf-connecting-ip', 'cf-ray'].some((h) => req.headers[h]);
+    const local = ['127.0.0.1', '::1'].includes(addr) && !proxied;
     if (local) return;
     const want = Buffer.from(this.setupCode() || '');
     const got = Buffer.from(String(code || '').trim().toLowerCase());

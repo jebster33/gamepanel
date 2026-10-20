@@ -80,5 +80,6 @@ For the service itself (Linux: `sudo systemctl edit gamepanel`):
 | `GP_HOST` | `0.0.0.0` | Address to listen on |
 | `GP_DATA_DIR` | `/var/lib/gamepanel`, `C:\ProgramData\GamePanel` | Where servers and settings live |
 | `GP_BEHIND_PROXY` | `0` | Trust `X-Forwarded-*` headers behind a reverse proxy |
+| `GP_PROXY_HOPS` | `1` | Proxies that each add to `X-Forwarded-For` (use `2` for Cloudflare in front of nginx) |
 | `GP_DOCKER_SOCKET` | `/var/run/docker.sock` | Docker socket |
 | `GP_LOG_LEVEL` | `info` | `debug`, `info`, `warn`, `error` |

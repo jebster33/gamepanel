@@ -61,6 +61,8 @@ const config = {
   host: process.env.GP_HOST || '0.0.0.0',
   port: Number(process.env.GP_PORT || 8420),
   behindProxy: ['1', 'true'].includes(String(process.env.GP_BEHIND_PROXY)),
+  // Proxies between the panel and the visitor that each append to X-Forwarded-For (2 for Cloudflare in front of nginx).
+  proxyHops: Math.max(1, Math.floor(Number(process.env.GP_PROXY_HOPS) || 1)),
   dockerSocket: process.env.GP_DOCKER_SOCKET || (isWindows ? '\\\\.\\pipe\\docker_engine' : '/var/run/docker.sock'),
 
   consoleBufferLines: Number(process.env.GP_CONSOLE_LINES || 500),

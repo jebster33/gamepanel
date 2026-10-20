@@ -95,7 +95,8 @@ module.exports = (router, app, { serverFor }) => {
       res.writeHead(200, {
         'Content-Type': 'application/octet-stream',
         'Content-Length': size,
-        'Content-Disposition': `attachment; filename="${name.replace(/"/g, '')}"`,
+        // An ASCII fallback for old clients plus the real name (RFC 6266); a raw name with line breaks or non-Latin-1 characters would make writeHead throw.
+        'Content-Disposition': `attachment; filename="${name.replace(/[^\x20-\x7e]|["\\]/g, '_')}"; filename*=UTF-8''${encodeURIComponent(name).replace(/['()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`)}`,
       });
       fs.createReadStream(file).pipe(res);
       return undefined;
