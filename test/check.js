@@ -119,6 +119,7 @@ function placeholdersIn(value) {
 
 /** Variables the panel provides without the template declaring them. */
 const BUILTIN_VARS = new Set([
+  'CLUSTER_ARGS',
   'SERVER_ID',
   'SERVER_NAME',
   'SERVER_DIR',
@@ -130,6 +131,7 @@ const BUILTIN_VARS = new Set([
   'MAX_PLAYERS',
   'JAVA_VERSION',
   'WORKSHOP_MODS',
+  'MAP_ARGS',
   // Supplied by resolvers
   'DOWNLOAD_URL',
   'RESOLVED_VERSION',

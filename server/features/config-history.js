@@ -10,6 +10,10 @@
  *
  * The first save of a file also keeps what was there before, so the original
  * can always be brought back.
+ *
+ * A server's own settings (name, memory, ports, start command, variables…)
+ * are versioned the same way under the pseudo path SETTINGS. Variables marked
+ * secret are never part of it.
  */
 
 const fs = require('fs');
@@ -19,6 +23,7 @@ const { config } = require('../core/config');
 const { fail } = require('../core/util');
 
 const KEEP = 50; // versions per file
+const SETTINGS = '@server-settings';
 const MAX_BYTES = 1024 * 1024;
 
 const root = (serverId) => path.join(config.dataDir, 'config-history', String(serverId).replace(/[^\w.-]/g, '_'));
@@ -65,7 +70,7 @@ function record(serverId, rel, { before = null, after, by = 'panel', source = 'e
 }
 
 /** Files of one server that have history, most recently changed first. */
-function files(serverId) {
+function files(serverId, { settings = false } = {}) {
   let dirs = [];
   try {
     dirs = fs.readdirSync(root(serverId));
@@ -74,7 +79,7 @@ function files(serverId) {
   }
   return dirs
     .map((d) => readIndex(path.join(root(serverId), d)))
-    .filter((index) => index?.versions?.length)
+    .filter((index) => index?.versions?.length && (settings || index.path !== SETTINGS))
     .map((index) => ({ path: index.path, versions: index.versions.length, lastAt: index.versions[0].at, lastBy: index.versions[0].by }))
     .sort((a, b) => b.lastAt - a.lastAt);
 }
@@ -96,4 +101,4 @@ function forget(serverId) {
   fs.rmSync(root(serverId), { recursive: true, force: true });
 }
 
-module.exports = { record, files, versions, content, forget, normal, KEEP };
+module.exports = { record, files, versions, content, forget, normal, KEEP, SETTINGS };

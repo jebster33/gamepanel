@@ -1,5 +1,5 @@
 import { api } from '../../core/api.js';
-import { $, esc, fmtBytes, icon, toast } from '../../core/util.js';
+import { $, can, esc, fmtBytes, icon, toast } from '../../core/util.js';
 import { confirmModal, openModal } from '../../ui/modal.js';
 import { sideBadge } from './modpacks.js';
 import { renderWorkshopPacks } from './workshop-packs.js';
@@ -426,6 +426,7 @@ function wireInstalled(server, info, refresh) {
         <div class="share-box mb-16">
           <div class="row mb-16"><b>${updates.length} update${updates.length > 1 ? 's' : ''}</b><div class="spacer"></div>
             <button class="btn btn-sm btn-primary" id="mod-update-all">Update all</button></div>
+          ${can('backups', server.id) ? '<label class="checkbox-row" style="margin:0 0 8px"><input type="checkbox" id="mod-update-safe" checked /><span>Back up first, so Backups can roll the server back (the backup can be large)</span></label>' : ''}
           ${updates
             .map(
               (u) => `<div class="row" style="justify-content:space-between;padding:3px 0">
@@ -437,7 +438,8 @@ function wireInstalled(server, info, refresh) {
       const run = async (body, el) => {
         el.disabled = true;
         try {
-          const res = await api(`/api/servers/${server.id}/mods/update`, { method: 'POST', body });
+          const safe = Boolean($('#mod-update-safe')?.checked);
+          const res = await api(`/api/servers/${server.id}/mods/update`, { method: 'POST', body: { ...body, safe } });
           toast(`Updated ${res.updated.length}${res.failed.length ? `, ${res.failed.length} failed` : ''}${res.restartNeeded ? '. Restart to load them.' : ''}`, res.failed.length ? 'warn' : 'info');
           refresh();
         } catch (err) {

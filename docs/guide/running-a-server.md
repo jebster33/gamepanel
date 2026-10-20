@@ -50,6 +50,11 @@ Browse, edit, create, rename and delete; drag files onto the page to upload, and
 is. **Search** looks through file names and contents. JSON and YAML are checked before saving, so a
 typo can't stop the server from starting.
 
+**History** (top right) lists every file saved through the panel: the editor, the Game settings form, the
+Configs forms and reverts. Pick a file to see each earlier version compared with the file as it is now, and
+**Put this version back** to undo a change (the current content stays in the history too). The first save
+of a file also keeps what was there before, and the last 50 versions of each file are kept.
+
 ## Schedules
 
 <img src="../screenshots/schedules.png" alt="Schedules" width="800" />
@@ -69,6 +74,14 @@ typo can't stop the server from starting.
 Tick **only when empty** to skip a run while people are playing. **Chat announcements** on the same tab
 rotate messages in game chat, and can send new players a first-join welcome.
 
+### Rust wipes and maps
+
+Rust servers get a **Wipe** card on the Schedules tab.
+
+- **Wipe now** asks for a **map wipe** (the save, player states and entities go; blueprints stay) or a **full wipe** (blueprints too), can pick a new random seed and update the game first. The server stops, wipes and starts again.
+- **Every force-wipe day** adds a scheduled full wipe on the first Thursday of the month at 19:00 (the panel machine's clock; edit it to match your time zone) with a 10 minute chat countdown, a new seed and a game update first. Any other wipe cycle is a "Wipe the map" task with its own time, type and warning.
+- The **Map** card picks what the server loads on its next start: a generated map (size and seed from Settings), one of the game's own maps (Barren, Hapis Island, Craggy Island, Savas Island), a link to a hosted `.map` file, or a `.map` you upload (the panel serves it to the game itself). Pick the map, then wipe so the save matches it. A fixed map keeps its layout, so "new seed" does nothing for it.
+
 ## Game settings
 
 The game's own config files (`server.properties` and friends) as a searchable form, with a note on what
@@ -87,7 +100,7 @@ each option does. **Restart now** applies changes that need a restart. Minecraft
 
 | Card | |
 |---|---|
-| **General** | Name, memory limit, start command, max players, **stop when empty** after X minutes, **restart when frozen** for X minutes |
+| **General** | Name, memory limit, start command, max players, **stop when empty** after X minutes, **restart when frozen** for X minutes. **History** shows earlier versions of everything on this tab (name, memory, ports, variables…) with a line-by-line comparison and one-click **Put this version back**. Secret variables like a Steam password are never stored in it. |
 | **Automatic game updates** | Follow the panel setting, or force on or off for this server. Steam is checked every 30 minutes, and the update waits until nobody is playing. |
 | **Alerts** | CPU, memory, folder size and TPS thresholds, posted to your alert webhook |
 | **Address** | A name like `play.example.com` through Cloudflare, when it's set up under Settings → Integrations |
@@ -102,3 +115,13 @@ each option does. **Restart now** applies changes that need a restart. Minecraft
 
 **Start all**, **Stop all** and **Message all** (a chat message to every running server) sit at the
 top of **Servers**, next to **Import existing**.
+
+## ARK clusters
+
+**Servers → Clusters → New cluster** links ARK servers (one per map) so players can upload a character, items or dinos at an obelisk or terminal on one map and download them on another.
+
+1. Create the ARK servers first, each on its own map. Evolved and Ascended cannot be mixed.
+2. Pick the servers, choose what players may upload and download (characters, items, dinos), and save.
+3. Restart the servers. They now share one cluster ID and one folder, kept in the panel's data folder (`clusters/`), mounted into Docker servers automatically.
+
+Only servers on the same machine can join a cluster; servers on another node cannot share its folder. Removing a cluster keeps the uploaded data. The optional timers set how long uploads last before they expire.

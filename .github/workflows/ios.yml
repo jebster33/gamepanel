@@ -1,0 +1,102 @@
+name: iOS app
+
+# Builds ios/ with Xcode, starts a throwaway panel with demo servers, runs the app in the
+# iOS Simulator against it and uploads a screenshot of every screen.
+on:
+  push:
+    paths: ['ios/**', '.github/workflows/ios.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  simulator:
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Start a demo panel
+        run: |
+          mkdir -p "$RUNNER_TEMP/gp"
+          GP_DATA_DIR="$RUNNER_TEMP/gp" GP_PORT=8420 GP_HOST=127.0.0.1 nohup node server/index.js > "$RUNNER_TEMP/panel.log" 2>&1 &
+          # On failure, show why as annotations: they're readable without signing in.
+          node ios/ci/seed-panel.mjs > "$RUNNER_TEMP/seed.log" 2>&1 || {
+            grep -v '^\s*at ' "$RUNNER_TEMP/seed.log" | tail -6 | sed 's/^/::error title=seed::/'
+            tail -12 "$RUNNER_TEMP/panel.log" | sed 's/^/::error title=panel::/'
+            exit 1
+          }
+          cat "$RUNNER_TEMP/seed.log"
+
+      - name: Pick the newest Xcode
+        run: |
+          XCODE=$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)
+          echo "Using $XCODE"
+          sudo xcode-select -s "$XCODE"
+          xcodebuild -version
+          xcrun simctl list runtimes
+
+      - name: Generate the Xcode project
+        run: |
+          brew install xcodegen
+          cd ios && xcodegen generate
+
+      - name: Build and run the screenshot tour
+        run: |
+          DEVICE=$(xcrun simctl list devices available -j | python3 -c "import json,sys; d=json.load(sys.stdin)['devices']; ios=[(k,v) for k,v in d.items() if 'iOS' in k]; ios.sort(key=lambda kv: [int(x) for x in kv[0].split('iOS-')[-1].split('-')]); print(next(x['udid'] for k,v in reversed(ios) for x in v if 'iPhone' in x['name'] and 'Pro' in x['name']))")
+          echo "Simulator $DEVICE"
+          xcrun simctl boot "$DEVICE" || true
+          TEST_RUNNER_SCREENSHOT_DIR="$RUNNER_TEMP/screenshots" \
+          TEST_RUNNER_PANEL_ADDRESS="127.0.0.1:8420" \
+          xcodebuild test \
+            -project ios/GamePanel.xcodeproj \
+            -scheme GamePanel \
+            -destination "id=$DEVICE" \
+            -resultBundlePath "$RUNNER_TEMP/tour.xcresult" \
+            > "$RUNNER_TEMP/xcodebuild.log" 2>&1 && STATUS=0 || STATUS=$?
+          grep -E "error:|Test Case|\*\*" "$RUNNER_TEMP/xcodebuild.log" | tail -40
+          if [ $STATUS -ne 0 ]; then
+            grep -E "error:|failed|XCTAssert" "$RUNNER_TEMP/xcodebuild.log" | sort -u | head -15 | sed 's/^/::error title=xcode::/'
+            exit $STATUS
+          fi
+
+      # Artifacts need a GitHub sign-in to download; a branch is viewable by anyone with the link.
+      - name: Publish screenshots to the ios-screenshots branch
+        if: always()
+        run: |
+          [ -d "$RUNNER_TEMP/screenshots" ] || exit 0
+          # A normal commit on top: the repository's rules refuse force-pushes.
+          REPO="https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
+          OUT="$RUNNER_TEMP/shots-branch"
+          git clone -q --depth 1 --branch ios-screenshots "$REPO" "$OUT" 2>/dev/null || { mkdir -p "$OUT" && git -C "$OUT" init -q -b ios-screenshots; }
+          cd "$OUT"
+          git rm -q --ignore-unmatch '*.png' README.md
+          cp "$RUNNER_TEMP"/screenshots/*.png .
+          printf '# iOS Simulator screenshots\n\nFrom %s, run %s.\n\n' "$GITHUB_SHA" "$GITHUB_RUN_ID" > README.md
+          for f in *.png; do printf '### %s\n![%s](%s)\n\n' "$f" "$f" "$f" >> README.md; done
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A && git commit -qm "Screenshots from run $GITHUB_RUN_ID"
+          git push "$REPO" HEAD:refs/heads/ios-screenshots 2>&1 | tail -3 | sed 's/^/::notice title=push::/' 
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-screenshots
+          path: ${{ runner.temp }}/screenshots
+          if-no-files-found: warn
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-logs
+          path: |
+            ${{ runner.temp }}/panel.log
+            ${{ runner.temp }}/xcodebuild.log
+          if-no-files-found: ignore

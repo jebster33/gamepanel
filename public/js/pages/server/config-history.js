@@ -9,6 +9,9 @@ import { skeleton } from '../../ui/skeleton.js';
 // Every save through the panel is kept. Pick a version to see what changed
 // between it and the file as it is now, and put it back with one click.
 
+/** Pseudo path of a server's own settings (name, memory, ports, variables…) in the history. */
+export const SETTINGS_PATH = '@server-settings';
+
 const qs = (server, rel, extra = '') => `/api/servers/${encodeURIComponent(server.id)}/config-history/${extra}?path=${encodeURIComponent(rel)}`;
 
 /** Files with history; picking one opens its versions. */
@@ -17,11 +20,11 @@ export async function openConfigHistoryList(server) {
   const modal = openModal({
     title: 'Config history',
     width: 640,
-    body: data.files.length
+    body: data.files.length || data.settings
       ? `<p class="faint" style="margin-top:0">Every save made in the panel is kept (the last 50 per file), with what the file held before the first one.</p>
          <div class="table-wrap"><table>
            <thead><tr><th>File</th><th class="nowrap">Versions</th><th class="nowrap">Last change</th></tr></thead>
-           <tbody>${data.files
+           <tbody>${data.settings ? `<tr><td><a data-history-file="${SETTINGS_PATH}">Server settings</a></td><td colspan="2" class="faint">name, memory, ports, variables…</td></tr>` : ''}${data.files
              .map(
                (f) => `<tr><td><a data-history-file="${esc(f.path)}" class="mono">${esc(f.path)}</a></td><td>${f.versions}</td><td class="faint nowrap">${fmtTime(f.lastAt)} · ${esc(f.lastBy)}</td></tr>`
              )
@@ -43,10 +46,12 @@ export async function openConfigHistory(server, rel, onReverted) {
   let list;
   let current;
   try {
+    const isSettings = rel === SETTINGS_PATH;
     [list, current] = await Promise.all([
       api(qs(server, rel, 'versions')),
-      api(`/api/servers/${encodeURIComponent(server.id)}/files/content?path=${encodeURIComponent(rel)}`).catch(() => ({ content: '' })),
+      isSettings ? Promise.resolve(null) : api(`/api/servers/${encodeURIComponent(server.id)}/files/content?path=${encodeURIComponent(rel)}`).catch(() => ({ content: '' })),
     ]);
+    if (isSettings) current = { content: list.current || '' };
   } catch (err) {
     toast(err.message, 'error');
     return;
@@ -55,9 +60,11 @@ export async function openConfigHistory(server, rel, onReverted) {
     toast('This file has no saved versions yet', 'warn');
     return;
   }
-  const canRevert = can('files.write', server.id);
+  const settings = rel === SETTINGS_PATH;
+  const canRevert = can(settings ? 'settings' : 'files.write', server.id);
+  const name = settings ? 'the server settings' : rel;
   const modal = openModal({
-    title: `History of ${esc(rel)}`,
+    title: `History of ${esc(name)}`,
     width: 1000,
     body: `
       <div class="history-grid">
@@ -95,17 +102,17 @@ export async function openConfigHistory(server, rel, onReverted) {
     // From that version to now: what putting it back would undo.
     const rows = lineDiff(version.content, current.content);
     const { added, removed } = diffStats(rows);
-    $('#history-summary').textContent = added || removed ? `Since this version: ${added} line${added === 1 ? '' : 's'} added, ${removed} removed` : 'The file is the same as this version now';
+    $('#history-summary').textContent = added || removed ? `Since this version: ${added} line${added === 1 ? '' : 's'} added, ${removed} removed` : `${settings ? 'The settings are' : 'The file is'} the same as this version now`;
     $('#history-diff').innerHTML = renderDiff(rows);
     const revert = $('#history-revert');
     if (revert) revert.disabled = !(added || removed);
   };
   $$('.history-item').forEach((b) => b.addEventListener('click', () => show(b.dataset.version)));
   $('#history-revert')?.addEventListener('click', async () => {
-    if (!(await confirmModal('Put this version back', `${rel} goes back to how it was. The current content stays in the history, so this can be undone too. Restart the server for it to take effect.`, 'Put it back'))) return;
+    if (!(await confirmModal('Put this version back', `${settings ? 'The server settings go' : `${rel} goes`} back to how they were. The current content stays in the history, so this can be undone too. Restart the server for it to take effect.`, 'Put it back'))) return;
     try {
       await api(`/api/servers/${encodeURIComponent(server.id)}/config-history/revert`, { method: 'POST', body: { path: rel, version: selected } });
-      toast(`${rel} reverted`);
+      toast(`${settings ? 'Settings' : rel} reverted`);
       modal.close();
       onReverted?.();
     } catch (err) {

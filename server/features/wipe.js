@@ -67,7 +67,7 @@ async function wipe(manager, server, { blueprints = false, newSeed = false, upda
   log(`Deleted ${files.length} save file${files.length === 1 ? '' : 's'}${blueprints ? ', blueprints included' : ''}`);
   let seed = null;
   let startError = null;
-  if (newSeed && spec.seedVar) {
+  if (newSeed && spec.seedVar && !(server.templateId === 'rust' && require('./rust-maps').isFixed(server))) {
     seed = crypto.randomInt(1, 2_147_483_647);
     manager.update(server.id, { vars: { [spec.seedVar]: seed } });
     log(`New map seed: ${seed}`);

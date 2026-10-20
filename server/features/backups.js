@@ -78,11 +78,11 @@ async function create(server, label = '') {
   return { name, size: stat.size, createdAt: stat.mtimeMs };
 }
 
-/** Keep the newest `keep` backups of a server (0 keeps everything). */
-function prune(serverId, keep) {
+/** Keep the newest `keep` backups of a server (0 keeps everything). `protect` names are never removed (the safe-update snapshot). */
+function prune(serverId, keep, protect = []) {
   const n = Number(keep) || 0;
   if (n <= 0) return [];
-  const removed = list(serverId).slice(n);
+  const removed = list(serverId).slice(n).filter((b) => !protect.includes(b.name));
   const snaps = removed.filter((b) => vault.isSnapshot(b.name));
   for (const b of removed) if (!vault.isSnapshot(b.name)) fs.rmSync(path.join(backupDirFor(serverId), b.name), { force: true });
   // One at a time: each removal also clears the pieces nothing uses any more.
