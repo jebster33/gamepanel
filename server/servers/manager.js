@@ -48,7 +48,7 @@ const { STATUS, CONTAINER_DIR } = require('./constants');
 const secrets = require('../core/secrets');
 
 /** Fields a PATCH may change. Anything else on a server is managed by the panel. */
-const EDITABLE = ['name', 'memory', 'cpuLimit', 'maxPlayers', 'autoStart', 'autoRestart', 'updateOnStart', 'autoUpdate', 'startCommand', 'notes', 'ip', 'backupRetention', 'idleStopMinutes', 'hangRestartMinutes', 'alerts', 'wakeOnJoin'];
+const EDITABLE = ['name', 'memory', 'cpuLimit', 'maxPlayers', 'autoStart', 'autoRestart', 'updateOnStart', 'autoUpdate', 'startCommand', 'notes', 'ip', 'backupRetention', 'idleStopMinutes', 'hangRestartMinutes', 'alerts', 'wakeOnJoin', 'autoPorts'];
 
 class ServerManager extends EventEmitter {
   /**
@@ -527,6 +527,8 @@ class ServerManager extends EventEmitter {
     const at = this.servers.indexOf(server);
     if (at !== -1) this.servers.splice(at, 1);
     this.runtime.delete(id);
+    // Take back the firewall rules and router mappings the panel opened for it.
+    if (server.portsOpened?.length) await require('../features/network').autoClose(this, server).catch(() => {});
     this.deleteHistory(id);
     this.dropMetricHistory(id);
     require('../features/config-history').forget(id);
