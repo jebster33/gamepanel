@@ -62,7 +62,7 @@ export function renderServerSettingsTab(host, server) {
   )}</textarea><div class="hint">${
     isOwner ? 'Runs inside the server directory. Placeholders like {{PORT}} and {{MEMORY}} are substituted at launch.' : 'Only administrators can change the start command.'
   }</div></label>
-      ${isAdmin ? '<button class="btn btn-primary mt-16" id="set-save">Save changes</button>' : ''}
+      ${isAdmin ? '<div class="row mt-16"><button class="btn btn-primary" id="set-save">Save changes</button><button class="btn btn-ghost" id="set-history" title="Earlier versions of these settings, with one-click undo">History</button></div>' : ''}
     </div>
 
     <div class="card mb-16">
@@ -235,6 +235,11 @@ export function renderServerSettingsTab(host, server) {
     } catch (err) {
       toast(err.message, 'error');
     }
+  });
+
+  $('#set-history')?.addEventListener('click', async () => {
+    const { openConfigHistory, SETTINGS_PATH } = await import('./config-history.js');
+    openConfigHistory(server, SETTINGS_PATH, () => loadServers().then(render));
   });
 
   $('#al-save').addEventListener('click', async () => {

@@ -50,6 +50,11 @@ Browse, edit, create, rename and delete; drag files onto the page to upload, and
 is. **Search** looks through file names and contents. JSON and YAML are checked before saving, so a
 typo can't stop the server from starting.
 
+**History** (top right) lists every file saved through the panel: the editor, the Game settings form, the
+Configs forms and reverts. Pick a file to see each earlier version compared with the file as it is now, and
+**Put this version back** to undo a change (the current content stays in the history too). The first save
+of a file also keeps what was there before, and the last 50 versions of each file are kept.
+
 ## Schedules
 
 <img src="../screenshots/schedules.png" alt="Schedules" width="800" />
@@ -95,7 +100,7 @@ each option does. **Restart now** applies changes that need a restart. Minecraft
 
 | Card | |
 |---|---|
-| **General** | Name, memory limit, start command, max players, **stop when empty** after X minutes, **restart when frozen** for X minutes |
+| **General** | Name, memory limit, start command, max players, **stop when empty** after X minutes, **restart when frozen** for X minutes. **History** shows earlier versions of everything on this tab (name, memory, ports, variables…) with a line-by-line comparison and one-click **Put this version back**. Secret variables like a Steam password are never stored in it. |
 | **Automatic game updates** | Follow the panel setting, or force on or off for this server. Steam is checked every 30 minutes, and the update waits until nobody is playing. |
 | **Alerts** | CPU, memory, folder size and TPS thresholds, posted to your alert webhook |
 | **Address** | A name like `play.example.com` through Cloudflare, when it's set up under Settings → Integrations |

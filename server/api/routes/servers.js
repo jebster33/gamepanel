@@ -139,7 +139,7 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
       if (body.memory !== undefined) quotas.checkMemory(manager, user, target, Math.max(256, Number(body.memory) || 0));
       if (body.cpuLimit !== undefined) quotas.checkCpu(user, target, body.cpuLimit);
     }
-    return { server: manager.publicServer(manager.update(params.id, body, { trusted: admin })) };
+    return { server: manager.publicServer(manager.update(params.id, body, { trusted: admin, actor: user.username })) };
   });
 
   router.delete('/api/servers/:id', async ({ user, params, url }) => {
