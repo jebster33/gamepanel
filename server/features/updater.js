@@ -46,17 +46,47 @@ function channelOf(setting) {
 }
 
 /**
+ * The repository's releases. GitHub allows 60 unauthenticated API requests an hour per
+ * address, shared by everything on it, so the list is kept for a few minutes and then
+ * revalidated with its ETag: a "304 Not Modified" answer does not count against the limit.
+ * Past the limit, the last list fetched is used if there is one.
+ */
+const RELEASES_TTL_MS = 10 * 60_000;
+let releasesCache = null; // { at, etag, releases }
+const clearReleasesCache = () => {
+  releasesCache = null;
+};
+
+async function fetchReleases(now = Date.now()) {
+  if (releasesCache && now - releasesCache.at < RELEASES_TTL_MS) return releasesCache.releases;
+  const headers = { 'User-Agent': 'GamePanel', Accept: 'application/vnd.github+json' };
+  if (releasesCache?.etag) headers['If-None-Match'] = releasesCache.etag;
+  const res = await fetch(`https://api.github.com/repos/${REPO}/releases?per_page=40`, { headers, signal: AbortSignal.timeout(15000) });
+  if (res.status === 304 && releasesCache) {
+    releasesCache.at = now;
+    return releasesCache.releases;
+  }
+  if (res.status === 404) return null;
+  const header = (name) => res.headers?.get?.(name) ?? null;
+  if ((res.status === 403 || res.status === 429) && header('x-ratelimit-remaining') === '0') {
+    if (releasesCache) return releasesCache.releases;
+    const reset = Number(header('x-ratelimit-reset')) * 1000;
+    const when = reset ? ` Try again after ${new Date(reset).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.` : '';
+    throw new Error(`GitHub's limit of 60 checks an hour for this address is used up.${when}`);
+  }
+  if (!res.ok) throw new Error(`GitHub answered ${res.status}`);
+  releasesCache = { at: now, etag: header('etag'), releases: await res.json() };
+  return releasesCache.releases;
+}
+
+/**
  * The newest panel release for a channel. Only "v1.2.3" tags count: the
  * repository also publishes other things (the bridge client) as releases.
  */
 async function latestRelease(channel = 'stable') {
-  const res = await fetch(`https://api.github.com/repos/${REPO}/releases?per_page=40`, {
-    headers: { 'User-Agent': 'GamePanel', Accept: 'application/vnd.github+json' },
-    signal: AbortSignal.timeout(15000),
-  });
-  if (res.status === 404) return null;
-  if (!res.ok) throw new Error(`GitHub answered ${res.status}`);
-  const releases = (await res.json()).filter((r) => !r.draft && /^v\d/.test(r.tag_name) && (channel === 'beta' || !r.prerelease));
+  const all = await fetchReleases();
+  if (!all) return null;
+  const releases = all.filter((r) => !r.draft && /^v\d/.test(r.tag_name) && (channel === 'beta' || !r.prerelease));
   // Newest first; a final release beats its own pre-releases (2.3.0 over 2.3.0-beta.1).
   return releases.sort((a, b) => (newer(a.tag_name, b.tag_name) ? -1 : newer(b.tag_name, a.tag_name) ? 1 : Number(a.prerelease) - Number(b.prerelease)))[0] || null;
 }
@@ -79,7 +109,8 @@ async function checkRelease(version, channel) {
       published: release.published_at,
     };
   } catch (err) {
-    return { supported: true, mode: 'release', channel, version, error: `Could not reach GitHub: ${err.message}` };
+    const message = err.message.startsWith("GitHub's limit") ? err.message : `Could not reach GitHub: ${err.message}`;
+    return { supported: true, mode: 'release', channel, version, error: message };
   }
 }
 
@@ -278,4 +309,4 @@ function scheduleRestart(delayMs = 1200) {
   }, delayMs).unref?.();
 }
 
-module.exports = { checkForUpdate, applyUpdate, scheduleRestart, currentRevision, isGitCheckout, channelOf, latestRelease, newer, CHANNELS };
+module.exports = { checkForUpdate, fetchReleases, clearReleasesCache, applyUpdate, scheduleRestart, currentRevision, isGitCheckout, channelOf, latestRelease, newer, CHANNELS };
