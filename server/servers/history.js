@@ -119,6 +119,7 @@ module.exports = {
         this.logActivity(server.id, { type: 'leave', name, dur });
       }
       h.known = online;
+      this.trackWipe?.(server, h, online, now);
       if (online.size) h.dirty = true;
 
       this.checkIdle(server, rt, online.size, now);
@@ -207,9 +208,9 @@ module.exports = {
       if (!this.servers.some((s) => s.id === id)) continue;
       try {
         fs.mkdirSync(DIR, { recursive: true });
-        const { players, log, samples, open, ips } = h;
+        const { players, log, samples, open, ips, wipes } = h;
         const tmp = `${fileFor(id)}.tmp`;
-        fs.writeFileSync(tmp, JSON.stringify({ players, log, samples, open, ips }));
+        fs.writeFileSync(tmp, JSON.stringify({ players, log, samples, open, ips, wipes }));
         fs.renameSync(tmp, fileFor(id));
         h.dirty = false;
       } catch (err) {

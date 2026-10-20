@@ -716,6 +716,7 @@ Object.assign(
   require('./power'),
   require('./stats'),
   require('./history'),
+  require('./wipe-stats'),
   require('./metrics-history'),
   require('./auto-update'),
   require('./versions'),

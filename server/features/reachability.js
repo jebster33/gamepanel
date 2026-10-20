@@ -97,4 +97,4 @@ async function check(manager, server, { host = '' } = {}) {
   return result;
 }
 
-module.exports = { check };
+module.exports = { check, publicIp };
