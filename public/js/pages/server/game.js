@@ -3,6 +3,7 @@ import { esc, toast } from '../../core/util.js';
 import { renderVersionCard } from './version.js';
 import { renderAppearance } from './appearance.js';
 import { renderWorldsCard } from './worlds.js';
+import { renderDinoWipeCard, renderTrimCard } from './trim.js';
 import { renderDatapacksCard } from './datapacks.js';
 import { renderCrossplayCard, renderGameruleCard, renderMapCard, renderPregenCard } from './crossplay.js';
 import { renderWorldMapCard } from './world-map.js';
@@ -17,7 +18,7 @@ import { skeleton } from '../../ui/skeleton.js';
  */
 
 export async function renderGameTab(root, server) {
-  root.innerHTML = '<div id="gv-card"></div><div id="gc-card"></div><div id="gm-card"></div><div id="gwm-card"></div><div id="gp-card"></div><div id="gr-card"></div><div id="gw-card"></div><div id="gd-card"></div><div id="gs-body"></div>';
+  root.innerHTML = '<div id="gv-card"></div><div id="gc-card"></div><div id="gm-card"></div><div id="gwm-card"></div><div id="gp-card"></div><div id="gr-card"></div><div id="gw-card"></div><div id="gt-card"></div><div id="gdw-card"></div><div id="gd-card"></div><div id="gs-body"></div>';
   renderVersionCard(root.querySelector('#gv-card'), server);
   renderCrossplayCard(root.querySelector('#gc-card'), server);
   renderMapCard(root.querySelector('#gm-card'), server);
@@ -25,6 +26,8 @@ export async function renderGameTab(root, server) {
   renderPregenCard(root.querySelector('#gp-card'), server);
   renderGameruleCard(root.querySelector('#gr-card'), server);
   renderWorldsCard(root.querySelector('#gw-card'), server);
+  renderTrimCard(root.querySelector('#gt-card'), server);
+  renderDinoWipeCard(root.querySelector('#gdw-card'), server);
   renderDatapacksCard(root.querySelector('#gd-card'), server);
   const host = root.querySelector('#gs-body');
   host.innerHTML = skeleton('card', 'Reading the game\'s settings…');

@@ -90,6 +90,10 @@ Rust servers get a **Wipe** card on the Schedules tab.
 - **Every force-wipe day** adds a scheduled full wipe on the first Thursday of the month at 19:00 (the panel machine's clock; edit it to match your time zone) with a 10 minute chat countdown, a new seed and a game update first. Any other wipe cycle is a "Wipe the map" task with its own time, type and warning.
 - The **Map** card picks what the server loads on its next start: a generated map (size and seed from Settings), one of the game's own maps (Barren, Hapis Island, Craggy Island, Savas Island), a link to a hosted `.map` file, or a `.map` you upload (the panel serves it to the game itself). Pick the map, then wipe so the save matches it. A fixed map keeps its layout, so "new seed" does nothing for it.
 
+### ARK wild dinos
+
+ARK servers can despawn every wild dino with `DestroyWildDinos` (tamed dinos stay): the **Wild dinos** card on the Game settings tab does it now, and a **Wipe wild dinos** task on the Schedules tab does it on a timer, with an optional chat countdown. Pair it with a daily restart to keep the map's spawns fresh.
+
 ## Game settings
 
 The game's own config files (`server.properties` and friends) as a searchable form, with a note on what
@@ -98,6 +102,7 @@ each option does. **Restart now** applies changes that need a restart. Minecraft
 - **Version and type:** switch between Vanilla, Paper, Purpur, Fabric, Quilt, Forge and NeoForge, or another
   Minecraft version. The panel stops the server and backs up first.
 - **Worlds:** load another world, import a zip, download, reset with a new seed, delete. It backs up first.
+- **Trim the world:** deletes chunks players barely visited (set the minimum time and a protected area around spawn) from the Overworld, Nether or End to shrink the world and its backups. **Preview** shows how many chunks and how much space first; the server must be stopped and a backup is made before anything is deleted. Deleted chunks regenerate from the seed if someone goes there later, so builds in areas nobody "inhabited" long enough are lost. Java Edition only.
 - **How it looks in Minecraft:** server icon and coloured MOTD with a live server-list preview.
 - **Game rules:** keep inventory, daylight cycle, mob griefing, sleep percentage… Changes apply live.
 - **Bedrock crossplay:** one switch installs Geyser, Floodgate and ViaVersion so Bedrock players can join.

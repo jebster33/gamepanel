@@ -12,7 +12,7 @@
 const { logger, uid, fail } = require('../core/util');
 const backups = require('./backups');
 
-const ACTIONS = ['restart', 'start', 'stop', 'backup', 'command', 'update', 'mods', 'wipe'];
+const ACTIONS = ['restart', 'start', 'stop', 'backup', 'command', 'update', 'mods', 'wipe', 'dinowipe'];
 
 const FIELDS = [
   { name: 'minute', min: 0, max: 59 },
@@ -92,7 +92,7 @@ function validate(input) {
     onlyWhenEmpty: action !== 'start' && Boolean(input.onlyWhenEmpty),
     enabled: input.enabled !== false,
     // Minutes of in-game countdown before a restart, stop or wipe.
-    warnMinutes: ['restart', 'stop', 'wipe'].includes(action) ? Math.max(0, Math.min(60, Math.round(Number(input.warnMinutes) || 0))) : 0,
+    warnMinutes: ['restart', 'stop', 'wipe', 'dinowipe'].includes(action) ? Math.max(0, Math.min(60, Math.round(Number(input.warnMinutes) || 0))) : 0,
     // "The first Thursday of the month": the weekday in the cron, in days 1 to 7 only.
     firstOfMonth: Boolean(input.firstOfMonth),
     wipe: action === 'wipe' ? { blueprints: Boolean(input.wipe?.blueprints), newSeed: input.wipe?.newSeed !== false, updateFirst: input.wipe?.updateFirst !== false } : undefined,
@@ -243,6 +243,15 @@ class Scheduler {
             this.store.addEvent('server.wiped', `${server.name} was wiped (${result})`, { serverId: server.id });
             break;
           }
+          case 'dinowipe':
+            if (!running) {
+              result = 'skipped (not running)';
+              break;
+            }
+            if (schedule.warnMinutes) await countdown(m, server, schedule.warnMinutes, 'wiping the wild dinos');
+            if (m.isActive(server.id)) await m.wipeWildDinos(server.id);
+            else result = 'skipped (not running)';
+            break;
           case 'backup': {
             m.checkDiskRoom('make a backup');
             const backup = await backups.create(server, 'auto');

@@ -474,6 +474,16 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
   router.post('/api/servers/:id/datapacks/:name/toggle', ({ user, params, body }) => datapacks.toggle(manager, serverFor(user, params.id, 'mods'), params.name, Boolean(body?.on), user.username));
   router.delete('/api/servers/:id/datapacks/:name', ({ user, params }) => datapacks.remove(manager, store, serverFor(user, params.id, 'mods'), params.name, user.username));
 
+  /** ARK: despawn every wild dino. */
+  router.post('/api/servers/:id/dino-wipe', async ({ user, params }) => manager.wipeWildDinos(serverFor(user, params.id, 'command').id, user));
+
+  /** Minecraft: cut unvisited chunks out of a world. */
+  router.get('/api/servers/:id/trim', ({ user, params }) => manager.trimInfo(serverFor(user, params.id, 'files').id));
+  router.post('/api/servers/:id/trim', async ({ user, params, body }) => {
+    const server = serverFor(user, params.id, 'files.write');
+    return manager.trimWorld(server.id, { world: body?.world, minSeconds: body?.minSeconds, protectRadius: body?.protectRadius, dimensions: body?.dimensions, backup: body?.backup !== false, dryRun: Boolean(body?.dryRun) }, user);
+  });
+
   /** Minecraft worlds. */
   router.get('/api/servers/:id/worlds',async ({ user, params }) => manager.listWorlds(serverFor(user, params.id, 'files')));
 
