@@ -1,5 +1,5 @@
 import { api } from '../../core/api.js';
-import { $, esc, fmtBytes, fmtTime, icon, toast } from '../../core/util.js';
+import { $, can, esc, fmtBytes, fmtTime, icon, toast } from '../../core/util.js';
 import { confirmModal, openModal } from '../../ui/modal.js';
 import { openRestorePreview } from './restore-preview.js';
 import { skeleton } from '../../ui/skeleton.js';
@@ -29,6 +29,7 @@ export async function renderBackupsTab(host, server) {
       }</span>
       <button class="btn btn-sm btn-ghost" id="backup-mode">Backup type…</button>
     </div>
+    <div id="safe-update"></div>
     <div class="card card-flush">
       <div class="table-wrap"><table>
         <thead><tr><th>Backup</th><th>Size</th><th>Created</th><th class="nowrap" title="Test-restored into a scratch folder">Checked</th><th class="cloud-col hidden">Cloud</th><th class="node-col hidden" id="node-col-head">Node</th><th></th></tr></thead>
@@ -61,6 +62,7 @@ export async function renderBackupsTab(host, server) {
     <div id="cloud-only"></div>
     <div id="node-only"></div>`;
 
+  renderSafeUpdate(host, server, () => renderBackupsTab(host, server));
   renderCopies(host, server, data.backups, 'cloud');
   renderCopies(host, server, data.backups, 'node');
   $('#backup-mode').addEventListener('click', () => openBackupMode(server, data, () => renderBackupsTab(host, server)));
@@ -339,4 +341,58 @@ function openBackupMode(server, data, done) {
   const sync = () => $('#bm-enc-row').classList.toggle('hidden', document.querySelector('input[name="bm"]:checked').value !== 'incremental');
   document.querySelectorAll('input[name="bm"]').forEach((r) => r.addEventListener('change', sync));
   sync();
+}
+
+/* ---------------------------------------------------------- safe updates */
+
+// "Update safely" backs the server up and then updates the game; "Roll back"
+// puts the server exactly as it was at that backup. Nothing rolls back by itself.
+
+async function renderSafeUpdate(host, server, rerender) {
+  const box = host.querySelector('#safe-update');
+  const info = await api(`/api/servers/${server.id}/safe-update`).catch(() => null);
+  if (!info || !box?.isConnected) return;
+  const snap = info.snapshot;
+  const running = ['running', 'starting', 'stopping'].includes(server.status);
+  const canRun = can('power', server.id);
+  if (!info.canUpdate && !snap) return;
+  box.innerHTML = `
+    <div class="card mb-16">
+      <h4 style="margin:0 0 6px">Safe update</h4>
+      <p class="faint" style="margin:0 0 12px">${
+        snap
+          ? snap.exists
+            ? `Snapshot taken ${esc(fmtTime(snap.at))} by ${esc(snap.by)} before ${snap.kind === 'mods' ? 'a mod update' : 'a game update'}: <span class="mono">${esc(snap.backup)}</span>${snap.size ? ` (${esc(fmtBytes(snap.size))})` : ''}. If the update went badly, roll back to it. This never happens on its own.`
+            : 'The snapshot backup was deleted, so there is nothing to roll back to.'
+          : 'Takes a backup, then updates the game files. If it goes badly, you can roll back to that backup from here. Nothing is rolled back automatically.'
+      }</p>
+      <div class="row" style="gap:8px;flex-wrap:wrap">
+        ${info.canUpdate && canRun && can('backups', server.id) ? `<button class="btn btn-primary" id="safe-run" ${running ? 'disabled title="Stop the server first"' : ''}>Update safely</button>` : ''}
+        ${snap?.exists && canRun && can('backups.restore', server.id) ? `<button class="btn btn-danger" id="safe-rollback" ${running ? 'disabled title="Stop the server first"' : ''}>Roll back to snapshot</button>` : ''}
+        ${info.lastRollback ? `<span class="faint">Last rollback: ${esc(fmtTime(info.lastRollback.at))} by ${esc(info.lastRollback.by)}</span>` : ''}
+      </div>
+    </div>`;
+  box.querySelector('#safe-run')?.addEventListener('click', async (event) => {
+    if (!(await confirmModal('Update safely', 'The server is backed up first (a big game can take a while and a lot of disk), then its game files are updated. Progress is in the console.', 'Back up and update'))) return;
+    event.currentTarget.disabled = true;
+    try {
+      await api(`/api/servers/${server.id}/safe-update`, { method: 'POST', body: {} });
+      toast('Backing up, then updating. Watch the console.');
+    } catch (err) {
+      toast(err.message, 'error');
+      event.currentTarget.disabled = false;
+    }
+  });
+  box.querySelector('#safe-rollback')?.addEventListener('click', async (event) => {
+    if (!(await confirmModal('Roll back to snapshot', `The whole server goes back to ${snap.backup}: game files, configs and worlds. Anything added or saved since is removed, including player progress. Automatic game updates, if on, will update again at their next check.`, 'Roll back'))) return;
+    event.currentTarget.disabled = true;
+    try {
+      const result = await api(`/api/servers/${server.id}/safe-update/rollback`, { method: 'POST', body: {} });
+      toast(`Rolled back${result.removed ? `, ${result.removed} newer files removed` : ''}`);
+      rerender();
+    } catch (err) {
+      toast(err.message, 'error');
+      event.currentTarget.disabled = false;
+    }
+  });
 }

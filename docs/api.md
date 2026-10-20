@@ -75,6 +75,11 @@ GET    /api/servers/:id/config-history   files with saved versions
 GET    /api/servers/:id/config-history/versions?path=        versions of one file
 GET    /api/servers/:id/config-history/version?path=&version= one version's content
 POST   /api/servers/:id/config-history/revert                {"path","version"} put it back
+                                                              path "@server-settings" is the server's own settings (needs "settings", not "files")
+GET    /api/servers/:id/safe-update      the safe-update snapshot, if any
+POST   /api/servers/:id/safe-update      back up, then update the game files (server stopped)
+POST   /api/servers/:id/safe-update/rollback  restore the snapshot by hand (server stopped)
+POST   /api/servers/:id/mods/update      add "safe": true to back up first
 GET    /api/quota                        your quota and what you use of it (self-service accounts)
 GET    /api/setups                       ready-made setups
 POST   /api/setups/:id/deploy            {"name","memory"} create a server from one

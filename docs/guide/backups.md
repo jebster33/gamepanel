@@ -23,6 +23,19 @@ A backup is a plain `.tar.gz` of the whole server folder, so you can open it any
   those (a broken config, one world) and leave everything else alone. Administrators only.
 - The download button saves the archive to your computer.
 
+## Safe updates
+
+On the Backups tab, **Update safely** backs the server up and then updates its game files (Steam and other
+updatable games; the server must be stopped). On the Mods tab, **Check updates** has a **Back up first** box
+that does the same before mods are updated. The backup is named `…-pre-update-…`, is shown in the
+**Safe update** card, and is never removed by backup retention.
+
+If the update went badly, **Roll back to snapshot** puts the whole server back exactly as it was: game
+files, configs and worlds, with anything added since removed (player progress since the snapshot is lost too).
+The server must be stopped. Nothing is ever rolled back automatically. If automatic game updates are on,
+they will update again at their next check, so switch them off for that server first if you want to stay on
+the old build. Only the latest snapshot is remembered; older ones are ordinary backups.
+
 ## Incremental and encrypted backups
 
 On a server's Backups tab, **Backup type…** switches between *Archive* (a complete `.tar.gz` each time, the default) and *Incremental*. Incremental backups store files as pieces, each piece once: the first backup is full size, later ones only add what changed, and unchanged files are not even read again. Restoring, restoring single files, browsing, checking and downloading (as a `.tar.gz`) all work the same. Cloud copies stay archive-only.
