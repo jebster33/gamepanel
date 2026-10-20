@@ -48,10 +48,30 @@ Incremental backups can be encrypted with AES-256. An administrator sets the pas
 
 ## Cloud copies
 
-**Settings → Cloud backups** copies every backup, by hand or scheduled, to an S3-compatible bucket so a
-dead disk doesn't take your worlds with it. Works with Backblaze B2, Cloudflare R2, Amazon S3, Wasabi and
-MinIO.
+**Settings → Cloud backups** copies every backup, by hand or scheduled, off this machine so a dead disk
+doesn't take your worlds with it. Pick **Copy backups to**: an S3-compatible bucket (Backblaze B2,
+Cloudflare R2, Amazon S3, Wasabi, MinIO), Google Drive, Dropbox or an SFTP server. Uploads, the Cloud column,
+**Bring back**, delete and **Copies to keep per server** work the same for all of them, and copies are
+stored as `<folder>/<server id>/<backup>.tar.gz`.
 
+**Google Drive.** Nothing is shared with anyone: you register your own app. In the Google Cloud console
+enable the Drive API, make an OAuth client of type *Web application*, and add the redirect address shown in
+the settings. Paste the client ID and secret, **Save**, then **Connect Google Drive** and allow access. The
+panel can only see files and folders it created itself.
+
+**Dropbox.** Create your own app in the Dropbox app console (*Scoped access*, *App folder*), enable
+`files.content.write` and `files.content.read`, add the redirect address shown in the settings, paste the app
+key and secret, then **Connect Dropbox**. Backups go in `Apps/<your app>/<folder>`.
+
+**SFTP.** Host, port, user name and a password or a private key (with its passphrase if it has one). Needs the
+OpenSSH client (`sftp`) on the machine running the panel; Linux usually has it and Windows has it as an
+optional feature. The server's key is remembered on first use and a changed key is refused. The folder is
+relative to the login's home.
+
+Secrets are stored sealed, like the other tokens, and never shown again. **Test connection** works for every
+target.
+
+**For S3 buckets:**
 1. Make a bucket, and a key that can only reach that bucket.
 2. Pick your provider, fill in **Endpoint**, **Bucket**, **Region** (often guessed from the endpoint),
    **Access key ID** and **Secret access key**. **Folder in the bucket** is optional.

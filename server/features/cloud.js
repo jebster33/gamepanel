@@ -3,7 +3,9 @@
 /**
  * Optional off-site copies of backups in any S3-compatible bucket: Amazon S3,
  * Backblaze B2, Cloudflare R2, Wasabi, MinIO… Requests are signed with AWS
- * Signature V4 using node:crypto, so there is still no dependency.
+ * Signature V4 using node:crypto, so there is still no dependency. Google
+ * Drive, Dropbox and SFTP work the same way (see cloud-targets.js); the
+ * `provider` setting picks one.
  *
  * Every backup the panel makes (by hand or on a schedule) is uploaded in the
  * background once this is turned on. Objects live at
@@ -18,10 +20,29 @@ const { Readable } = require('stream');
 const { pipeline } = require('stream/promises');
 const { logger, fail } = require('../core/util');
 const backups = require('./backups');
+const targets = require('./cloud-targets');
+const secrets = require('../core/secrets');
 
 const PART_SIZE = 32 * 1024 * 1024; // above this, upload in parts (S3 caps one PUT at 5 GB)
 
-const DEFAULTS = { enabled: false, endpoint: '', region: '', bucket: '', accessKeyId: '', secretAccessKey: '', prefix: 'gamepanel/', keep: 0, pathStyle: true };
+const DEFAULTS = {
+  enabled: false,
+  provider: 's3',
+  endpoint: '',
+  region: '',
+  bucket: '',
+  accessKeyId: '',
+  secretAccessKey: '',
+  prefix: 'gamepanel/',
+  keep: 0,
+  pathStyle: true,
+  gdrive: { clientId: '', clientSecret: '', refreshToken: '' },
+  dropbox: { clientId: '', clientSecret: '', refreshToken: '' },
+  sftp: { host: '', port: 22, username: '', password: '', privateKey: '', passphrase: '' },
+};
+const PROVIDERS = ['s3', 'gdrive', 'dropbox', 'sftp'];
+/** The secrets inside each provider's settings, sealed on disk. */
+const SECRET_FIELDS = { gdrive: ['clientSecret', 'refreshToken'], dropbox: ['clientSecret', 'refreshToken'], sftp: ['password', 'privateKey', 'passphrase'] };
 
 const sha256 = (data) => crypto.createHash('sha256').update(data).digest('hex');
 const hmac = (key, data) => crypto.createHmac('sha256', key).update(data).digest();
@@ -169,17 +190,41 @@ class CloudBackups {
   }
 
   get settings() {
-    const saved = { ...DEFAULTS, ...(this.store.state.settings.cloudBackups || {}) };
-    return { ...saved, secretAccessKey: require('../core/secrets').open(saved.secretAccessKey) };
+    const saved = this.store.state.settings.cloudBackups || {};
+    const out = { ...DEFAULTS, ...saved, secretAccessKey: secrets.open(saved.secretAccessKey || '') };
+    for (const [p, fields] of Object.entries(SECRET_FIELDS)) {
+      out[p] = { ...DEFAULTS[p], ...(saved[p] || {}) };
+      for (const f of fields) out[p][f] = secrets.open(out[p][f] || '');
+    }
+    if (!PROVIDERS.includes(out.provider)) out.provider = 's3';
+    return out;
+  }
+
+  /** True when the chosen provider has everything it needs to connect. */
+  ready(s) {
+    switch (s.provider) {
+      case 'gdrive':
+      case 'dropbox':
+        return Boolean(s[s.provider].clientId && s[s.provider].clientSecret && s[s.provider].refreshToken);
+      case 'sftp':
+        return Boolean(s.sftp.host && s.sftp.username && (s.sftp.password || s.sftp.privateKey));
+      default:
+        return Boolean(s.endpoint && s.bucket && s.accessKeyId && s.secretAccessKey);
+    }
   }
 
   get enabled() {
     const s = this.settings;
-    return Boolean(s.enabled && s.endpoint && s.bucket && s.accessKeyId && s.secretAccessKey);
+    return Boolean(s.enabled && this.ready(s));
   }
 
   client(cfg = this.settings) {
-    if (!cfg.endpoint || !cfg.bucket || !cfg.accessKeyId || !cfg.secretAccessKey) fail(400, 'Fill in the endpoint, bucket and both keys first');
+    if (!this.ready(cfg)) {
+      fail(400, { s3: 'Fill in the endpoint, bucket and both keys first', gdrive: 'Connect Google Drive first', dropbox: 'Connect Dropbox first', sftp: 'Fill in the host, user name and a password or key first' }[cfg.provider]);
+    }
+    if (cfg.provider === 'gdrive') return new targets.GoogleDrive(cfg.gdrive);
+    if (cfg.provider === 'dropbox') return new targets.Dropbox(cfg.dropbox);
+    if (cfg.provider === 'sftp') return new targets.Sftp(cfg.sftp, { dataDir: require('../core/config').dataDir });
     return new S3(cfg);
   }
 
@@ -187,45 +232,113 @@ class CloudBackups {
     return `${cfg.prefix || ''}${serverId}/`;
   }
 
-  /** What the settings page shows: everything but the secret itself. */
+  /** What the settings page shows: everything but the secrets themselves. */
   publicSettings() {
     const s = this.settings;
-    return { ...s, secretAccessKey: '', hasSecret: Boolean(s.secretAccessKey), regionGuess: s.endpoint ? guessRegion(s.endpoint) : '' };
+    const out = { ...s, secretAccessKey: '', hasSecret: Boolean(s.secretAccessKey), regionGuess: s.endpoint ? guessRegion(s.endpoint) : '' };
+    for (const [p, fields] of Object.entries(SECRET_FIELDS)) {
+      out[p] = { ...s[p] };
+      for (const f of fields) {
+        out[p][f + 'Set'] = Boolean(s[p][f]);
+        out[p][f] = '';
+      }
+    }
+    out.gdrive.connected = Boolean(s.gdrive.refreshToken);
+    out.dropbox.connected = Boolean(s.dropbox.refreshToken);
+    return out;
   }
 
-  update(body) {
-    const s = this.settings;
+  /** Merge the typed values into `s`; secrets are only replaced when something is typed. */
+  merge(s, body) {
+    if (body.provider !== undefined) {
+      if (!PROVIDERS.includes(body.provider)) fail(400, 'Unknown backup target');
+      s.provider = body.provider;
+    }
     if (body.endpoint !== undefined) {
       const endpoint = String(body.endpoint).trim().replace(/\/+$/, '');
       if (endpoint && !/^https?:\/\/[^/]+/.test(endpoint)) fail(400, 'The endpoint must be a URL like https://s3.us-west-004.backblazeb2.com');
+      if (body.pathStyle === undefined && endpoint !== s.endpoint) s.pathStyle = !/amazonaws\.com/.test(endpoint);
       s.endpoint = endpoint;
-      if (body.pathStyle === undefined && endpoint !== this.settings.endpoint) s.pathStyle = !/amazonaws\.com/.test(endpoint);
     }
     for (const k of ['region', 'bucket', 'accessKeyId']) if (body[k] !== undefined) s[k] = String(body[k]).trim();
     if (body.secretAccessKey) s.secretAccessKey = String(body.secretAccessKey).trim();
     if (body.prefix !== undefined) {
       let prefix = String(body.prefix).trim().replace(/^\/+/, '');
+      if (/(^|\/)\.\.(\/|$)|[\r\n\0]/.test(prefix)) fail(400, 'The folder cannot contain ".."');
       if (prefix && !prefix.endsWith('/')) prefix += '/';
       s.prefix = prefix;
     }
     if (body.keep !== undefined) s.keep = Math.max(0, Math.min(1000, Number(body.keep) || 0));
     if (body.pathStyle !== undefined) s.pathStyle = Boolean(body.pathStyle);
-    if (body.enabled !== undefined) s.enabled = Boolean(body.enabled);
-    if (s.enabled && !(s.endpoint && s.bucket && s.accessKeyId && s.secretAccessKey)) fail(400, 'Fill in the endpoint, bucket and both keys before turning cloud backups on');
-    this.store.state.settings.cloudBackups = { ...s, secretAccessKey: require('../core/secrets').seal(s.secretAccessKey) };
+    for (const p of ['gdrive', 'dropbox']) {
+      const b = body[p];
+      if (!b || typeof b !== 'object') continue;
+      if (b.clientId !== undefined) s[p].clientId = String(b.clientId).trim();
+      if (b.clientSecret) s[p].clientSecret = String(b.clientSecret).trim();
+      if (b.disconnect) s[p].refreshToken = '';
+    }
+    const f = body.sftp;
+    if (f && typeof f === 'object') {
+      if (f.host !== undefined) {
+        const host = String(f.host).trim();
+        if (host && !/^[A-Za-z0-9.:[\]_-]+$/.test(host)) fail(400, 'That does not look like a host name');
+        s.sftp.host = host;
+      }
+      if (f.port !== undefined) s.sftp.port = Math.max(1, Math.min(65535, Number(f.port) || 22));
+      if (f.username !== undefined) {
+        const username = String(f.username).trim();
+        if (username && !/^[A-Za-z0-9._@-]+$/.test(username)) fail(400, 'That user name has characters SFTP logins do not use');
+        s.sftp.username = username;
+      }
+      for (const k of ['password', 'privateKey', 'passphrase']) if (f[k]) s.sftp[k] = String(f[k]);
+      if (f.clearKey) {
+        s.sftp.privateKey = '';
+        s.sftp.passphrase = '';
+      }
+    }
+    return s;
+  }
+
+  save(s) {
+    const out = { ...s, secretAccessKey: secrets.seal(s.secretAccessKey) };
+    for (const [p, fields] of Object.entries(SECRET_FIELDS)) {
+      out[p] = { ...s[p] };
+      for (const f of fields) out[p][f] = secrets.seal(s[p][f]);
+    }
+    this.store.state.settings.cloudBackups = out;
     this.store.save();
+  }
+
+  update(body) {
+    const s = this.merge(this.settings, body);
+    if (body.enabled !== undefined) s.enabled = Boolean(body.enabled);
+    if (s.enabled && !this.ready(s)) {
+      fail(400, { s3: 'Fill in the endpoint, bucket and both keys before turning cloud backups on', gdrive: 'Connect Google Drive before turning cloud backups on', dropbox: 'Connect Dropbox before turning cloud backups on', sftp: 'Fill in the host, user name and a password or key before turning cloud backups on' }[s.provider]);
+    }
+    this.save(s);
     return this.publicSettings();
   }
 
+  /** Store the refresh token a finished OAuth sign-in produced. */
+  connected(provider, refreshToken) {
+    const s = this.settings;
+    s[provider].refreshToken = refreshToken;
+    this.save(s);
+  }
+
   /** Write, list and delete a small object, so a bad key shows up now rather than at 3am. */
-  async test(overrides = {}) {
-    const cfg = { ...this.settings, ...Object.fromEntries(Object.entries(overrides).filter(([k, v]) => k !== 'secretAccessKey' || v)) };
-    const s3 = this.client(cfg);
-    const key = `${cfg.prefix || ''}.gamepanel-test-${Date.now()}`;
-    await s3.request('PUT', key, { body: Buffer.from('GamePanel can write here.\n'), headers: { 'content-type': 'text/plain' } });
-    await s3.list(cfg.prefix || '');
-    await s3.remove(key);
-    return { ok: true, region: s3.region };
+  async test(body = {}) {
+    const cfg = this.merge(this.settings, body);
+    const client = this.client(cfg);
+    const prefix = cfg.prefix || '';
+    if (client instanceof S3) {
+      const key = `${prefix}.gamepanel-test-${Date.now()}`;
+      await client.request('PUT', key, { body: Buffer.from('GamePanel can write here.\n'), headers: { 'content-type': 'text/plain' } });
+      await client.list(prefix);
+      await client.remove(key);
+      return { ok: true, detail: `region ${client.region}` };
+    }
+    return { ok: true, detail: await client.selfTest(prefix) };
   }
 
   /** Uploads run one at a time so a big batch never saturates the uplink. */
@@ -316,4 +429,4 @@ function cloudBackups(store, manager) {
   return instance;
 }
 
-module.exports = { cloudBackups, CloudBackups, S3, guessRegion };
+module.exports = { cloudBackups, CloudBackups, S3, guessRegion, PROVIDERS };

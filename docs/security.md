@@ -87,7 +87,7 @@ Things that were tightened after a security review, and what is still on you:
   or "sign out everywhere" also revokes the account's API keys. Sign-in answers do not carry the session
   token (it lives in the cookie), a two-factor ticket works once, and adding or removing a passkey asks
   for the password.
-- **Tokens in the settings** (the Discord bot, Cloudflare, node keys, the S3 secret and sign-in provider
+- **Tokens in the settings** (the Discord bot, Cloudflare, node keys, the S3 secret, Google Drive and Dropbox app secrets and sign-in, SFTP passwords and keys, and sign-in provider
   secrets) are sealed with a key derived from `secret.key`, like server passwords. They are converted
   the first time an updated panel starts, and the settings page never gets them back.
 - **Public ban appeals** answer the same whether or not a name is banned, and a ban keeps at most three

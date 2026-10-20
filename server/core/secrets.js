@@ -50,7 +50,7 @@ function secretNames(template) {
 
 /**
  * Seal the tokens and keys the panel holds in its settings (Discord bot,
- * Cloudflare, node API keys, S3 secret, sign-in provider secrets). Safe to run
+ * Cloudflare, node API keys, S3 secret, Drive/Dropbox/SFTP secrets, sign-in provider secrets). Safe to run
  * on every start: sealed values are left alone, so settings saved by an older
  * version are converted the first time. Returns true when something changed.
  */
@@ -66,6 +66,9 @@ function sealSettings(settings) {
   put(settings.integrations?.cloudflare, 'token');
   for (const node of settings.nodes || []) put(node, 'key');
   put(settings.cloudBackups, 'secretAccessKey');
+  for (const [p, fields] of Object.entries({ gdrive: ['clientSecret', 'refreshToken'], dropbox: ['clientSecret', 'refreshToken'], sftp: ['password', 'privateKey', 'passphrase'] })) {
+    for (const f of fields) put(settings.cloudBackups?.[p], f);
+  }
   for (const provider of Object.values(settings.oauth || {})) if (provider && typeof provider === 'object') put(provider, 'clientSecret');
   return changed;
 }

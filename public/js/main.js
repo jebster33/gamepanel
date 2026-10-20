@@ -224,7 +224,7 @@ startTranslating();
 
 // Back from Google/Discord/GitHub: an error to show, a code step, or a freshly linked account.
 const returned = new URLSearchParams(location.search);
-if (returned.has('oauth_error') || returned.has('oauth2fa') || returned.has('oauth_linked')) history.replaceState(null, '', `/${location.hash}`);
+if (returned.has('oauth_error') || returned.has('oauth2fa') || returned.has('oauth_linked') || returned.has('cloud_connected') || returned.has('cloud_error')) history.replaceState(null, '', `/${location.hash}`);
 
 bootstrap()
   .then(() => {
@@ -236,6 +236,8 @@ bootstrap()
         $('#auth-error').classList.remove('hidden');
       }
     }
+    if (returned.get('cloud_error') && state.user) toast(returned.get('cloud_error'), 'error', 9000);
+    if (returned.get('cloud_connected') && state.user) toast(`${returned.get('cloud_connected')} connected. Turn on "Copy new backups" and save.`);
     if (returned.get('oauth_linked') && state.user) toast(`${returned.get('oauth_linked')} linked. You can sign in with it from now on.`);
   })
   .catch((err) => {
