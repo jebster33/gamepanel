@@ -149,6 +149,11 @@ POST   /api/servers/:id/datapacks/install          {"projectId","versionId?"}
 POST   /api/servers/:id/datapacks/upload           ?name=pack.zip (body: the zip)
 POST   /api/servers/:id/datapacks/:name/toggle     {"on"}
 DELETE /api/servers/:id/datapacks/:name
+GET    /api/servers/:id/resource-pack    the hosted resource pack (Minecraft Java) and its public address
+POST   /api/servers/:id/resource-pack    ?name=pack.zip (body: the zip) host it and set server.properties
+PATCH  /api/servers/:id/resource-pack    {"require","prompt","baseUrl","newLink"}
+DELETE /api/servers/:id/resource-pack
+GET    /api/public/resource-pack/:slug/pack.zip   public: the pack itself, nothing else
 GET    /api/servers/:id/backups/:name/preview      what a full restore would change
 POST   /api/servers/:id/backups/:name/restore      {"backupFirst","exact"}
 POST   /api/templates/check              {"template"} errors, warnings and the install script (admins)
