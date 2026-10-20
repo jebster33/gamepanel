@@ -191,6 +191,13 @@ class Nodes {
   request(node, method, path, body) {
     return new Promise((resolve, reject) => {
       const target = new URL(path, node.url);
+      // The request goes to the node, whatever the path says.
+      if (target.origin !== new URL(node.url).origin || !target.pathname.startsWith('/api/')) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'That path cannot be passed to a node' }));
+        resolve();
+        return;
+      }
       const lib = target.protocol === 'https:' ? https : http;
       const payload = body === undefined ? null : Buffer.from(JSON.stringify(body));
       const req = lib.request(
