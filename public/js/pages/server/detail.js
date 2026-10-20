@@ -10,6 +10,7 @@ import { renderGameTab } from './game.js';
 import { drawServerCharts, renderMetricsTab } from './metrics.js';
 import { renderModpacksTab } from './modpacks.js';
 import { renderModsTab } from './mods.js';
+import { renderNotesTab } from './notes.js';
 import { patchPlayersTab, renderPlayersTab } from './players.js';
 import { renderSchedulesTab } from './schedules.js';
 import { renderServerSettingsTab } from './settings.js';
@@ -28,6 +29,7 @@ function serverTabs(server) {
     server.hasMods && can('mods') && ['mods', 'Mods'],
     server.hasMods && can('files') && ['configs', 'Configs'],
     can('backups') && ['backups', 'Backups'],
+    ['notes', 'Notes'],
     can('schedules') && ['schedules', 'Schedules'],
     can('settings') && ['game', 'Game settings'],
     can('settings') && ['settings', 'Settings'],
@@ -186,6 +188,9 @@ function renderServerTab(server, tab) {
       break;
     case 'backups':
       renderBackupsTab(host, server);
+      break;
+    case 'notes':
+      renderNotesTab(host, server);
       break;
     case 'schedules':
       renderSchedulesTab(host, server);

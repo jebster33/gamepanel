@@ -20,7 +20,7 @@ export function renderDinoWipeCard(host, server) {
       </div>
     </div>`;
   host.querySelector('#dw-go')?.addEventListener('click', async () => {
-    if (!(await confirmModal('Wipe wild dinos', 'Every wild dino on the map despawns right now. Players can lose a dino they are chasing. Tamed dinos stay.', 'Wipe'))) return;
+    if (!(await confirmModal('Wipe wild dinos', 'Every wild dino on the map despawns right now. Players can lose a dino they are chasing. Tamed dinos stay.', 'Wipe', { type: 'wipe' }))) return;
     try {
       await api(`/api/servers/${server.id}/dino-wipe`, { method: 'POST', body: {} });
       toast('Wild dinos wiped. New ones spawn in over the next minutes.');
@@ -96,7 +96,7 @@ export async function renderTrimCard(host, server) {
   host.querySelector('#tr-preview').addEventListener('click', () => start(true));
   host.querySelector('#tr-go').addEventListener('click', async () => {
     const o = options(false);
-    if (!(await confirmModal('Trim the world', `Chunks visited for less than ${LIMITS.find(([s]) => s === o.minSeconds)?.[1].replace('under ', '') || 'the limit'} are deleted${o.backup ? ' after a backup of the whole server' : ' with no backup'}. Run a preview first if you have not.`, 'Trim'))) return;
+    if (!(await confirmModal('Trim the world', `Chunks visited for less than ${LIMITS.find(([s]) => s === o.minSeconds)?.[1].replace('under ', '') || 'the limit'} are deleted${o.backup ? ' after a backup of the whole server' : ' with no backup'}. Run a preview first if you have not.`, 'Trim', { type: 'trim' }))) return;
     start(false);
   });
   clearTimeout(host._trTimer);

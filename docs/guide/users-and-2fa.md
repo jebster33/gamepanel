@@ -53,6 +53,18 @@ Locked out? Another administrator can press **Reset 2FA** for you, or see
 [Locked out by two-factor sign-in](../troubleshooting.md#locked-out-by-two-factor-sign-in) to turn it off
 from the machine.
 
+### Confirming wipes and deletes
+
+With two-factor sign-in on, anything that destroys data asks for a fresh code (an authenticator code, or a
+recovery code) before it runs: deleting a server, backup, file or cluster, wipes, world resets and
+deletes, world trims, restoring a backup, rolling back a snapshot and reinstalling. One code covers the
+next two minutes on that browser, so deleting several files is one prompt. The panel checks it on the
+server, so the API asks too (send it as an `X-Confirm-Code` header).
+
+Without two-factor sign-in the buttons ask you to type the server name (or a word like `wipe`) instead.
+**API keys and scheduled tasks are not asked**: a key is something you made on purpose and a script can't
+type a code, so keep keys safe and read-only where you can.
+
 ## Passkeys
 
 On the Account page, **Add a passkey** lets you sign in with your fingerprint, face or a security key: choose **Sign in with a passkey** on the sign-in page, no username or password needed. A passkey that checks it is you counts as two-factor sign-in on its own (also for "require two-factor for administrators"). Browsers only offer passkeys when the panel is opened at its HTTPS address, at a name rather than an IP address: see [HTTPS](panel-settings.md#https).

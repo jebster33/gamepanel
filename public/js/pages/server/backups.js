@@ -384,7 +384,7 @@ async function renderSafeUpdate(host, server, rerender) {
     }
   });
   box.querySelector('#safe-rollback')?.addEventListener('click', async (event) => {
-    if (!(await confirmModal('Roll back to snapshot', `The whole server goes back to ${snap.backup}: game files, configs and worlds. Anything added or saved since is removed, including player progress. Automatic game updates, if on, will update again at their next check.`, 'Roll back'))) return;
+    if (!(await confirmModal('Roll back to snapshot', `The whole server goes back to ${snap.backup}: game files, configs and worlds. Anything added or saved since is removed, including player progress. Automatic game updates, if on, will update again at their next check.`, 'Roll back', { type: 'rollback' }))) return;
     event.currentTarget.disabled = true;
     try {
       const result = await api(`/api/servers/${server.id}/safe-update/rollback`, { method: 'POST', body: {} });

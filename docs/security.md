@@ -65,6 +65,10 @@ Things that were tightened after a security review, and what is still on you:
 - **API keys are scripts, not people.** They cannot change accounts, 2FA, passkeys or who can reach a
   server (also through a node's proxy), read-only keys cannot send console commands or read stored
   tokens, and a key is only as safe as where you keep it.
+- **Destructive actions need a fresh 2FA code** for accounts that have two-factor sign-in (server, backup,
+  file and cluster deletes, wipes, world resets and trims, restores, rollbacks, reinstalls), checked on
+  the server, also for servers on other nodes. API keys are exempt on purpose. Without 2FA the web UI asks
+  to type the server name instead.
 - **First-run setup needs a code** (printed in the log) unless it comes from the machine itself.
 - **"Require two-factor for administrators"** counts a passkey as the second factor only when the
   administrator signs in *with* the passkey: a password alone is not enough.

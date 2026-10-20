@@ -169,6 +169,7 @@ class Auth {
     this.secret = secret;
     this.failures = new Map(); // ip -> { count, until }
     this.usedTickets = new Map(); // two-factor ticket id -> expiry
+    this.dangerOk = new Map(); // session -> when its last confirmation code stops counting
   }
 
   /** What is stored for an API key or a revoked session token: a keyed hash, so panel.json alone cannot be used to check guesses against it. */
@@ -402,6 +403,32 @@ class Auth {
       this.store.save();
       return 'recovery';
     }
+    return null;
+  }
+
+  /**
+   * Destructive actions (see core/danger.js) need a fresh authenticator code
+   * from an account that has two-factor sign-in. One good code covers the next
+   * couple of minutes on the same session, so deleting several files is one prompt.
+   * Signed in without 2FA, or with an API key: nothing more is asked here.
+   * Returns null when fine, otherwise the message to show with the prompt.
+   */
+  requireDanger(user, req) {
+    if (!user?.totp?.secret || req.gpApiKey) return null;
+    const session = this.keyHash(req.gpSessionToken || user.id);
+    const now = Date.now();
+    for (const [k, until] of this.dangerOk) if (until < now) this.dangerOk.delete(k);
+    if ((this.dangerOk.get(session) || 0) > now) return null;
+    const code = String(req.headers['x-confirm-code'] || '');
+    if (!code) return 'Enter a code from your authenticator app to confirm this.';
+    const account = `2fa:${user.id}`;
+    this.checkLockout(account);
+    if (!this.checkSecondFactor(user, code)) {
+      this.noteAccountFailure(account);
+      return 'That code is not right.';
+    }
+    this.failures.delete(account);
+    this.dangerOk.set(session, now + 120_000);
     return null;
   }
 

@@ -32,7 +32,7 @@ function details(body) {
   if (!body || typeof body !== 'object' || Array.isArray(body)) return undefined;
   const out = {};
   for (const [k, v] of Object.entries(body)) {
-    if (SECRET.test(k) || k === 'action') continue;
+    if (SECRET.test(k) || k === 'action' || k === 'notes') continue; // notes may hold passwords
     if (['string', 'number', 'boolean'].includes(typeof v)) out[k] = typeof v === 'string' ? v.slice(0, 120) : v;
     else if (Array.isArray(v) && v.length <= 20 && v.every((x) => typeof x === 'string')) out[k] = v.join(', ').slice(0, 200);
     if (Object.keys(out).length >= 8) break;

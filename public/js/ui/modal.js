@@ -1,6 +1,7 @@
 import { api } from '../core/api.js';
 import { $, esc, icon } from '../core/util.js';
 import { reducedMotion } from './fx.js';
+import { state } from '../core/state.js';
 
 /* ---------------------------------------------------------------- modals */
 
@@ -61,16 +62,57 @@ export function openModal({ title, body, actions = [], width = 620 }) {
   return api;
 }
 
-export function confirmModal(title, message, confirmLabel = 'Confirm') {
+/**
+ * Yes/no. With { type: 'name' } the button stays off until that text is typed:
+ * for the actions that cannot be undone.
+ */
+export function confirmModal(title, message, confirmLabel = 'Confirm', { type: typed = '' } = {}) {
+  // Accounts with two-factor sign-in give a code instead (the API asks for it).
+  const type = state.user?.twoFactor ? '' : typed;
   return new Promise((resolve) => {
     const modal = openModal({
       title,
       width: 460,
-      body: `<p style="margin:0;line-height:1.6">${esc(message)}</p>`,
+      body: `<p style="margin:0;line-height:1.6">${esc(message)}</p>${type ? `<label class="mt-8"><span>Type <b>${esc(type)}</b> to confirm</span><input id="confirm-typed" autocomplete="off" spellcheck="false" /></label>` : ''}`,
       actions: [
         { label: 'Cancel', onClick: () => { modal.close(); resolve(false); } },
         { label: confirmLabel, danger: true, onClick: () => { modal.close(); resolve(true); } },
       ],
+    });
+    if (type) {
+      const input = $('#confirm-typed');
+      const button = [...document.querySelectorAll('.modal-backdrop:last-child .modal-foot .btn')].pop();
+      button.disabled = true;
+      input.addEventListener('input', () => { button.disabled = input.value.trim() !== type; });
+      input.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' && !button.disabled) button.click();
+      });
+    }
+  });
+}
+
+/** Asks for an authenticator code (or a recovery code) before a destructive action. Resolves the code, or null. */
+export function codeModal(message) {
+  return new Promise((resolve) => {
+    const modal = openModal({
+      title: 'Confirm with your code',
+      width: 420,
+      body: `<p style="margin:0 0 10px;line-height:1.6">${esc(message || 'Enter a code from your authenticator app to confirm this.')}</p><label><span>Authenticator code</span><input id="danger-code" inputmode="numeric" autocomplete="one-time-code" maxlength="20" /></label><div class="hint mt-8">A recovery code works too. One code covers the next two minutes.</div>`,
+      actions: [
+        { label: 'Cancel', onClick: () => { modal.close(); resolve(null); } },
+        { label: 'Confirm', danger: true, onClick: () => submit() },
+      ],
+    });
+    const input = $('#danger-code');
+    const submit = () => {
+      const code = input.value.trim();
+      if (!code) return;
+      modal.close();
+      resolve(code);
+    };
+    input.focus();
+    input.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') submit();
     });
   });
 }
