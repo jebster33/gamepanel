@@ -286,3 +286,20 @@ test('SMD, 3MF (zip) and VOX', async () => {
   const vox = parseVOX(u8(Buffer.concat([head, chunk('MAIN', Buffer.alloc(0), Buffer.concat([chunk('SIZE', size), chunk('XYZI', xyzi)]))])));
   assert.strictEqual(vox.meshes[0].indices.length / 3, 20, 'two touching voxels share one hidden face pair: 10 quads');
 });
+
+test('info-only files: .blend header and unknown magic', async () => {
+  const { describeFile } = await load('info.js');
+  const head = Buffer.alloc(12 + 24 + 64 + 24);
+  head.write('BLENDER-v300', 0);
+  // One OB block: code, size, old pointer, SDNA index, count, then data holding an ID name after 5 pointers.
+  head.write('OB\0\0', 12);
+  head.writeUInt32LE(64, 16);
+  head.write('OBCube\0', 12 + 24 + 5 * 8);
+  head.write('ENDB', 12 + 24 + 64);
+  const d = describeFile(u8(head), 'scene.blend');
+  assert.ok(d.rows.some((r) => r[0] === 'Blender version' && r[1] === '3.00'));
+  assert.ok(d.notes.some((n) => /Blender/.test(n)));
+  assert.ok(d.rows.some((r) => r[0] === 'Object names' && r[1] === 'Cube'));
+  const x = describeFile(u8(Buffer.from('hello world, nothing special')), 'a.mystery');
+  assert.ok(x.notes.length && x.hex.length);
+});

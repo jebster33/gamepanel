@@ -56,7 +56,8 @@ Administrators can apply memory, setting and flag changes with one click; they t
 
 Browse, edit, create, rename and delete; drag files onto the page to upload, and **Unpack** a zip where it
 is. **Search** looks through file names and contents. JSON and YAML are checked before saving, so a
-typo can't stop the server from starting.
+typo can't stop the server from starting. **Preview** opens images, textures, 3D models and GTA V files
+right in the browser: see [File previews](file-previews.md).
 
 **History** (top right) lists every file saved through the panel: the editor, the Game settings form, the
 Configs forms and reverts. Pick a file to see each earlier version compared with the file as it is now, and
