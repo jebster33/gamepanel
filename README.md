@@ -270,4 +270,81 @@ exposing the panel to the internet · [Troubleshooting](docs/troubleshooting.md)
 the UI modules; `node test/smoke.js --template=valheim` installs and boots a real server. The UI is plain
 ES modules in `public/js` (`core/`, `ui/`, `pages/`), with no build step.
 
-MIT licence. See [LICENSE](LICENSE).
+## Screenshots
+
+Every page of the panel.
+
+<table>
+  <tr>
+    <td align="center"><a href="docs/screenshots/library/00-sign-in.jpg"><img src="docs/screenshots/library/00-sign-in.jpg" alt="Sign in" /></a><br /><sub>Sign in</sub></td>
+    <td align="center"><a href="docs/screenshots/library/01-dashboard.jpg"><img src="docs/screenshots/library/01-dashboard.jpg" alt="Dashboard" /></a><br /><sub>Dashboard</sub></td>
+    <td align="center"><a href="docs/screenshots/library/02-servers.jpg"><img src="docs/screenshots/library/02-servers.jpg" alt="Servers" /></a><br /><sub>Servers</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><a href="docs/screenshots/library/03-games.jpg"><img src="docs/screenshots/library/03-games.jpg" alt="Games" /></a><br /><sub>Games</sub></td>
+    <td align="center"><a href="docs/screenshots/library/04-console.jpg"><img src="docs/screenshots/library/04-console.jpg" alt="Console" /></a><br /><sub>Console</sub></td>
+    <td align="center"><a href="docs/screenshots/library/05-players.jpg"><img src="docs/screenshots/library/05-players.jpg" alt="Players" /></a><br /><sub>Players</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><a href="docs/screenshots/library/06-metrics.jpg"><img src="docs/screenshots/library/06-metrics.jpg" alt="Graphs" /></a><br /><sub>Graphs</sub></td>
+    <td align="center"><a href="docs/screenshots/library/07-files.jpg"><img src="docs/screenshots/library/07-files.jpg" alt="Files" /></a><br /><sub>Files</sub></td>
+    <td align="center"><a href="docs/screenshots/library/08-storage.jpg"><img src="docs/screenshots/library/08-storage.jpg" alt="Storage" /></a><br /><sub>Storage</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><a href="docs/screenshots/library/09-backups.jpg"><img src="docs/screenshots/library/09-backups.jpg" alt="Backups" /></a><br /><sub>Backups</sub></td>
+    <td align="center"><a href="docs/screenshots/library/10-schedules.jpg"><img src="docs/screenshots/library/10-schedules.jpg" alt="Schedules" /></a><br /><sub>Schedules</sub></td>
+    <td align="center"><a href="docs/screenshots/library/11-notes.jpg"><img src="docs/screenshots/library/11-notes.jpg" alt="Notes" /></a><br /><sub>Notes</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><a href="docs/screenshots/library/12-game-settings.jpg"><img src="docs/screenshots/library/12-game-settings.jpg" alt="Game settings" /></a><br /><sub>Game settings</sub></td>
+    <td align="center"><a href="docs/screenshots/library/13-tools.jpg"><img src="docs/screenshots/library/13-tools.jpg" alt="Tools" /></a><br /><sub>Tools</sub></td>
+    <td align="center"><a href="docs/screenshots/library/14-server-settings.jpg"><img src="docs/screenshots/library/14-server-settings.jpg" alt="Server settings" /></a><br /><sub>Server settings</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><a href="docs/screenshots/library/15-access.jpg"><img src="docs/screenshots/library/15-access.jpg" alt="Sharing a server" /></a><br /><sub>Sharing a server</sub></td>
+    <td align="center"><a href="docs/screenshots/library/16-mods.jpg"><img src="docs/screenshots/library/16-mods.jpg" alt="Mods" /></a><br /><sub>Mods</sub></td>
+    <td align="center"><a href="docs/screenshots/library/17-rust-live-map.jpg"><img src="docs/screenshots/library/17-rust-live-map.jpg" alt="Rust live map" /></a><br /><sub>Rust live map</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><a href="docs/screenshots/library/18-rust-tools.jpg"><img src="docs/screenshots/library/18-rust-tools.jpg" alt="Rust tools" /></a><br /><sub>Rust tools</sub></td>
+    <td align="center"><a href="docs/screenshots/library/19-rust-game-settings.jpg"><img src="docs/screenshots/library/19-rust-game-settings.jpg" alt="Rust game settings" /></a><br /><sub>Rust game settings</sub></td>
+    <td align="center"><a href="docs/screenshots/library/20-activity.jpg"><img src="docs/screenshots/library/20-activity.jpg" alt="Activity" /></a><br /><sub>Activity</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><a href="docs/screenshots/library/21-audit.jpg"><img src="docs/screenshots/library/21-audit.jpg" alt="Audit log" /></a><br /><sub>Audit log</sub></td>
+    <td align="center"><a href="docs/screenshots/library/22-staff.jpg"><img src="docs/screenshots/library/22-staff.jpg" alt="Staff" /></a><br /><sub>Staff</sub></td>
+    <td align="center"><a href="docs/screenshots/library/23-bans.jpg"><img src="docs/screenshots/library/23-bans.jpg" alt="Bans" /></a><br /><sub>Bans</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><a href="docs/screenshots/library/24-networks.jpg"><img src="docs/screenshots/library/24-networks.jpg" alt="Minecraft networks" /></a><br /><sub>Minecraft networks</sub></td>
+    <td align="center"><a href="docs/screenshots/library/25-clusters.jpg"><img src="docs/screenshots/library/25-clusters.jpg" alt="ARK clusters" /></a><br /><sub>ARK clusters</sub></td>
+    <td align="center"><a href="docs/screenshots/library/26-community.jpg"><img src="docs/screenshots/library/26-community.jpg" alt="Community" /></a><br /><sub>Community</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><a href="docs/screenshots/library/27-calendar.jpg"><img src="docs/screenshots/library/27-calendar.jpg" alt="Calendar" /></a><br /><sub>Calendar</sub></td>
+    <td align="center"><a href="docs/screenshots/library/28-costs.jpg"><img src="docs/screenshots/library/28-costs.jpg" alt="Costs" /></a><br /><sub>Costs</sub></td>
+    <td align="center"><a href="docs/screenshots/library/29-hosting.jpg"><img src="docs/screenshots/library/29-hosting.jpg" alt="Hosting" /></a><br /><sub>Hosting</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><a href="docs/screenshots/library/30-player-records.jpg"><img src="docs/screenshots/library/30-player-records.jpg" alt="Warnings and notes" /></a><br /><sub>Warnings and notes</sub></td>
+    <td align="center"><a href="docs/screenshots/library/31-player-insights.jpg"><img src="docs/screenshots/library/31-player-insights.jpg" alt="When and where players join" /></a><br /><sub>When and where players join</sub></td>
+    <td align="center"><a href="docs/screenshots/library/32-nodes.jpg"><img src="docs/screenshots/library/32-nodes.jpg" alt="Nodes" /></a><br /><sub>Nodes</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><a href="docs/screenshots/library/33-users.jpg"><img src="docs/screenshots/library/33-users.jpg" alt="Users" /></a><br /><sub>Users</sub></td>
+    <td align="center"><a href="docs/screenshots/library/34-connections.jpg"><img src="docs/screenshots/library/34-connections.jpg" alt="Connections" /></a><br /><sub>Connections</sub></td>
+    <td align="center"><a href="docs/screenshots/library/35-account.jpg"><img src="docs/screenshots/library/35-account.jpg" alt="Account" /></a><br /><sub>Account</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><a href="docs/screenshots/library/36-settings.jpg"><img src="docs/screenshots/library/36-settings.jpg" alt="Panel settings" /></a><br /><sub>Panel settings</sub></td>
+    <td align="center"><a href="docs/screenshots/library/37-dashboard-light.jpg"><img src="docs/screenshots/library/37-dashboard-light.jpg" alt="Light theme" /></a><br /><sub>Light theme</sub></td>
+    <td align="center"><a href="docs/screenshots/library/38-phone-dashboard.jpg"><img src="docs/screenshots/library/38-phone-dashboard.jpg" alt="On a phone" /></a><br /><sub>On a phone</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><a href="docs/screenshots/library/39-phone-console.jpg"><img src="docs/screenshots/library/39-phone-console.jpg" alt="Console on a phone" /></a><br /><sub>Console on a phone</sub></td>
+  </tr>
+</table>
+
+## Licence
+
+Apache License 2.0. You can use and change GamePanel, but you must keep the [NOTICE](NOTICE) file and credit the original author, jebster33. See [LICENSE](LICENSE).
