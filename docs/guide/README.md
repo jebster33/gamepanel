@@ -14,6 +14,7 @@ Everything you can do with GamePanel, in the order you'll probably need it.
 - [Running a server](running-a-server.md): console, files, schedules, graphs, game settings, automatic updates
 - [Mods and modpacks](mods-and-modpacks.md)
 - [Dashboard, search and organising servers](dashboard-and-search.md): Ctrl+K, pins, folders, tags, dashboard layout
+- [ARK tools](ark.md): mod order, level cap, supply crates, give item, cluster transfers
 - [Players](players.md): who is on, history, whitelist and bans
 - [File editor, keyboard and getting started](editor-keyboard-onboarding.md): tabs, split view, compare, shortcuts, checklist
 - [Backups](backups.md): by hand, scheduled, in the cloud, restoring single files

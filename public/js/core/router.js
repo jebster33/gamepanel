@@ -17,6 +17,7 @@ import { renderBans } from '../pages/bans.js';
 import { renderNetworks } from '../pages/networks.js';
 import { renderClusters } from '../pages/clusters.js';
 import { renderCommunity } from '../pages/community.js';
+import { renderClusterTransfers } from '../pages/server/ark-transfers.js';
 import { renderUsers } from '../pages/users.js';
 import { closeSidebar, renderSidebarServers } from '../ui/sidebar.js';
 import { reducedMotion } from '../ui/fx.js';
@@ -41,6 +42,7 @@ const ROUTES = [
   { pattern: /^\/networks$/, name: 'networks', page: renderNetworks },
   { pattern: /^\/clusters$/, name: 'clusters', page: renderClusters },
   { pattern: /^\/community$/, name: 'community', page: renderCommunity },
+  { pattern: /^\/clusters\/([^/]+)\/transfers$/, name: 'cluster-transfers', keys: ['id'], page: renderClusterTransfers },
   { pattern: /^\/nodes$/, name: 'nodes', page: renderNodes },
   { pattern: /^\/account$/, name: 'account', page: renderAccount },
   { pattern: /^\/users$/, name: 'users', page: renderUsers },
