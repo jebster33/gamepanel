@@ -15,6 +15,7 @@ import { renderAudit } from '../pages/audit.js';
 import { renderBans } from '../pages/bans.js';
 import { renderNetworks } from '../pages/networks.js';
 import { renderClusters } from '../pages/clusters.js';
+import { renderCommunity } from '../pages/community.js';
 import { renderUsers } from '../pages/users.js';
 import { closeSidebar, renderSidebarServers } from '../ui/sidebar.js';
 import { reducedMotion } from '../ui/fx.js';
@@ -37,6 +38,7 @@ const ROUTES = [
   { pattern: /^\/bans$/, name: 'bans', page: renderBans },
   { pattern: /^\/networks$/, name: 'networks', page: renderNetworks },
   { pattern: /^\/clusters$/, name: 'clusters', page: renderClusters },
+  { pattern: /^\/community$/, name: 'community', page: renderCommunity },
   { pattern: /^\/nodes$/, name: 'nodes', page: renderNodes },
   { pattern: /^\/account$/, name: 'account', page: renderAccount },
   { pattern: /^\/users$/, name: 'users', page: renderUsers },
