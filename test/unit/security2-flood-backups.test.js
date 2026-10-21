@@ -66,7 +66,7 @@ test('flood engine: blocks an offender once, never private or allowlisted addres
   let now = 1_000_000;
   const text = (ip, n) => Array.from({ length: n }, (_, i) => `ipv4 2 tcp 6 100 ESTABLISHED src=${ip} dst=10.0.0.2 sport=${4000 + i} dport=25565`).join('\n');
   let listing = [text('203.0.113.5', 9), text('10.0.0.9', 9), text('198.51.100.4', 9), text('203.0.113.77', 9)].join('\n');
-  const engine = new flood.Flood({ store, manager, now: () => now, readFile: () => listing, run: async (file, args) => { calls.push([file, ...args]); return { code: 0, stdout: file === 'which' ? '/usr/sbin/nft' : '', stderr: '' }; } });
+  const engine = new flood.Flood({ store, manager, now: () => now, readFile: () => listing, run: async (file, args) => { if (file === 'sudo') { file = args[1]; args = args.slice(2); } calls.push([file, ...args]); return { code: 0, stdout: file === 'which' ? '/usr/sbin/nft' : '', stderr: '' }; } });
   if (platform.isWindows) engine.backend = 'windows'; // the engine itself picks netsh there; this test covers the Linux path
   else {
     await engine.tick();

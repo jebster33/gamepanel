@@ -6,6 +6,8 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
+process.env.GP_DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'gp-cs2-data-'));
+
 const cs2 = require('../../server/features/gametools/cs2');
 const skins = require('../../server/features/gametools/cs2-skins');
 
