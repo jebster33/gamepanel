@@ -195,5 +195,12 @@
       }
     ],
     "startCommand": "TerrariaServer.exe -config serverconfig.txt"
+  },
+  "mods": {
+    "providers": [
+      "tshock"
+    ],
+    "dir": "ServerPlugins",
+    "game": "terraria"
   }
 }

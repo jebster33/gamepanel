@@ -34,7 +34,7 @@ function serverTabs(server) {
     can('files') && ['files', 'Files'],
     can('files') && ['storage', 'Storage'],
     server.hasModpacks && can('mods') && ['modpacks', 'Modpack'],
-    server.hasMods && can('mods') && ['mods', 'Mods'],
+    (server.hasMods || server.nexusGame) && can('mods') && ['mods', 'Mods'],
     server.hasMods && can('files') && ['configs', 'Configs'],
     can('backups') && ['backups', 'Backups'],
     can('schedules') && ['schedules', 'Schedules'],

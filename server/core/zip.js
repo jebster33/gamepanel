@@ -68,15 +68,15 @@ function open(source) {
     return {
       names: [...entries.keys()],
       has: (name) => entries.has(name),
-      read(name) {
+      read(name, limit = MAX_ENTRY) {
         const e = entries.get(name);
-        if (!e || e.size > MAX_ENTRY || e.compressed > MAX_ENTRY) return null;
+        if (!e || e.size > limit || e.compressed > limit) return null;
         const header = r.read(e.offset, 30);
         if (header.length < 30 || header.readUInt32LE(0) !== 0x04034b50) return null;
         const start = e.offset + 30 + header.readUInt16LE(26) + header.readUInt16LE(28);
         const raw = r.read(start, e.compressed);
         if (e.method === 0) return Buffer.from(raw);
-        if (e.method === 8) return zlib.inflateRawSync(raw, { maxOutputLength: MAX_ENTRY });
+        if (e.method === 8) return zlib.inflateRawSync(raw, { maxOutputLength: limit });
         return null;
       },
       close: () => r.close(),

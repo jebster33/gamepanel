@@ -124,3 +124,23 @@ Players need the same pack and version on their own computer to join. The pack's
 the same way as above: server only, needed by players too, or client side.
 
 You can still add single mods to a modpack server on its **Mods** tab.
+
+## Thunderstore mods (Valheim, V Rising and other BepInEx games)
+
+Thunderstore is the mod site for games that use the BepInEx loader. On a Valheim or V Rising server, open **Mods**, pick **Thunderstore**, search and install. The panel works out what the mod needs: the first install also adds the BepInEx loader itself, then puts each file where mod managers put it (`BepInEx/plugins/<Owner-Name>/`, with configs in `BepInEx/config`). Installed mods can be switched off (their `.dll` files are renamed to `.dll.old`), updated and removed; a new release never overwrites a config you edited. Restart the server after changing mods.
+
+Not every Thunderstore mod is meant for servers; mods tagged client-side only are refused. The Valheim start line switches BepInEx on by itself once the loader is installed. On Linux, V Rising runs through Wine and the template sets the override BepInEx needs. This was written to Thunderstore's documented format and has not been run against a live game server.
+
+## tShock plugins (Terraria)
+
+tShock is a Terraria server with plugins. It is a separate download from vanilla Terraria: get it from github.com/Pryaxis/TShock/releases and upload it on the **Files** tab. Then the Terraria **Mods** tab can:
+
+- search GitHub for repositories tagged `tshock-plugin` and install their latest release (a `.dll` or a `.zip` holding one),
+- install from any `https://` address or an uploaded `.dll`/`.zip` (this needs the file-upload permission),
+- switch plugins off (`.dll.disabled`), update and remove them.
+
+tShock's own settings (`tshock/config.json`) show up as a form on the **Configs** tab once the server has started once.
+
+## Nexus Mods links
+
+Games that have no one-click source on the panel (7 Days to Die, Project Zomboid and many more) still get a **Mods** tab with a search box that opens that game's page on nexusmods.com, plus a link to browse all its mods. Download there and upload the files on the Files tab. The panel never talks to Nexus and needs no key.

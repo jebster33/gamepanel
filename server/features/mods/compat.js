@@ -102,6 +102,7 @@ function modContext(server, template, liveVersion) {
     appId: spec.appId ? String(spec.appId) : undefined,
     umodGame: spec.umodGame || spec.game || template?.id,
     workshop: spec.workshop || null,
+    thunderstore: spec.thunderstore || null,
     modpack: Boolean(template?.modpacks),
   };
 }

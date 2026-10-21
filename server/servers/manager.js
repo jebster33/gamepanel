@@ -293,6 +293,7 @@ class ServerManager extends EventEmitter {
     const hidden = secrets.secretNames(tpl);
     return {
       ...server,
+      steamBetaPassword: undefined, // sealed Steam beta password: only the Steam branch card learns whether one is set
       // Secret variables never leave the panel: only whether one is set.
       vars: Object.fromEntries(Object.entries(server.vars || {}).map(([k, v]) => [k, hidden.has(k) || secrets.isSealed(v) ? '' : v])),
       secretVars: Object.fromEntries([...hidden].map((k) => [k, Boolean(server.vars?.[k])])),
@@ -333,6 +334,7 @@ class ServerManager extends EventEmitter {
       supportsConsoleInput: tpl?.consoleInput !== false,
       hasRcon: Boolean(tpl?.rcon && server.vars?.RCON_PASSWORD),
       hasMods: Boolean(tpl?.mods?.providers?.length || tpl?.mods?.dir),
+      nexusGame: Boolean(require('../features/nexus').forTemplate(tpl?.id)), // Nexus Mods links on the Mods tab
       hasModpacks: Boolean(tpl?.modpacks),
       canUpdate: Boolean((tpl?.install || []).some((s) => s.type === 'steamcmd') || tpl?.update),
       canAutoUpdate: Boolean(this.steamApp(server)),
