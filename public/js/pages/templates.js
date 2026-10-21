@@ -92,6 +92,7 @@ export function renderTemplates(view) {
           <div class="t-foot">
             ${tpl.defaultMemory ? `<span class="badge" title="Recommended memory for this game">${fmtRam(tpl.defaultMemory)} RAM</span>` : ''}
             ${portBadge(tpl.ports || [])}
+            ${tpl.compat && /^arm/.test(tpl.compat.arch) ? `<span class="badge ${tpl.compat.status === 'ok' || tpl.compat.status === 'box64' ? 'accent' : ''}" title="${esc(tpl.compat.note)}">${esc(tpl.compat.label)}</span>` : ''}
             ${tpl.custom && state.user.role === 'admin' ? `<a class="btn btn-sm btn-ghost" href="#/templates/edit/${esc(tpl.id)}" data-no-deploy>Edit</a>` : ''}
             ${canDeploy(tpl) ? '<button class="btn btn-sm t-deploy">Deploy</button>' : ''}
           </div>

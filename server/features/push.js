@@ -14,6 +14,7 @@ const path = require('path');
 const crypto = require('crypto');
 const { config } = require('../core/config');
 const { logger, fail } = require('../core/util');
+const prefs = require('./notify-prefs');
 
 const KEYS_FILE = path.join(config.dataDir, 'push-keys.json');
 const SUBS_FILE = path.join(config.dataDir, 'push.json');
@@ -22,7 +23,7 @@ const b64u = (buf) => Buffer.from(buf).toString('base64url');
 const fromB64u = (s) => Buffer.from(String(s), 'base64url');
 
 // What a phone hears about unless its owner picks otherwise.
-const DEFAULT_EVENTS = ['server.crashed', 'server.install_failed', 'backup.failed', 'backup.upload_failed', 'user.lockout', 'user.new_ip', 'schedule.failed', 'server.resource_alert', 'panel.disk_low'];
+const DEFAULT_EVENTS = ['server.crashed', 'server.install_failed', 'backup.failed', 'backup.upload_failed', 'user.lockout', 'user.new_ip', 'schedule.failed', 'server.resource_alert', 'panel.disk_low', 'panel.host_health'];
 const EVENT_CHOICES = {
   'server.crashed': 'A server crashes',
   'server.ready': 'A server comes online',
@@ -35,9 +36,11 @@ const EVENT_CHOICES = {
   'schedule.failed': 'A scheduled task fails',
   'server.resource_alert': 'A server goes over its CPU, memory or disk alert',
   'panel.disk_low': "The panel's disk is almost full",
+  'panel.host_health': 'The host machine needs attention',
   'user.login': 'Someone signs in',
   'user.lockout': 'Repeated failed sign-ins',
   'user.new_ip': 'Someone signs in from a new address',
+  'panel.report': 'The monthly uptime report is ready',
 };
 
 /* ------------------------------------------------------------- crypto -- */
@@ -117,7 +120,7 @@ class Push {
     }
   }
 
-  subscribe(user, subscription, events, device) {
+  subscribe(user, subscription, events, device, client) {
     const endpoint = String(subscription?.endpoint || '');
     // Only real push services: never let a subscription make the panel call arbitrary URLs.
     if (!/^https:\/\/([a-z0-9-]+\.)*(push\.apple\.com|googleapis\.com|mozilla\.com|mozaws\.net|notify\.windows\.com|push\.services\.mozilla\.com)\//i.test(endpoint)) {
@@ -130,8 +133,19 @@ class Push {
     if (mine.length >= 20) fail(409, 'This account has too many phones subscribed. Remove some first.');
     if (this.subs.length >= 5000) fail(503, 'Too many phone subscriptions on this panel');
     const picked = Array.isArray(events) ? events.filter((e) => EVENT_CHOICES[e]) : DEFAULT_EVENTS;
+    const before = this.subs.find((s) => s.endpoint === endpoint && s.userId === user.id);
     this.subs = this.subs.filter((s) => s.endpoint !== endpoint);
-    this.subs.push({ userId: user.id, endpoint, keys: { p256dh: subscription.keys.p256dh, auth: subscription.keys.auth }, events: picked, device: String(device || '').slice(0, 60), at: Date.now() });
+    // Re-saving the event list must not forget the device's mutes or what kind of client it is.
+    this.subs.push({
+      userId: user.id,
+      endpoint,
+      keys: { p256dh: subscription.keys.p256dh, auth: subscription.keys.auth },
+      events: Array.isArray(events) || !before ? picked : before.events,
+      device: String(device || before?.device || '').slice(0, 60),
+      client: client === 'panel' || (!client && before?.client === 'panel') ? 'panel' : 'app',
+      prefs: before?.prefs,
+      at: Date.now(),
+    });
     this.save();
     return this.status(user, endpoint);
   }
@@ -180,6 +194,18 @@ class Push {
     return { ok: true };
   }
 
+  /** This device's mutes (or null to follow the account's). */
+  devicePrefs(user, endpoint) {
+    return this.subs.find((s) => s.endpoint === endpoint && s.userId === user.id)?.prefs || null;
+  }
+
+  setDevicePrefs(user, endpoint, value) {
+    const sub = this.subs.find((s) => s.endpoint === endpoint && s.userId === user.id);
+    if (!sub) fail(404, 'This device is not subscribed');
+    sub.prefs = value;
+    this.save();
+  }
+
   onEvent(event) {
     if (!this.subs.length) return;
     for (const sub of this.subs) {
@@ -188,12 +214,19 @@ class Push {
       if (!user) continue;
       // Server events only reach people who can see that server; account events only admins.
       if (event.serverId ? !this.auth.canAccessServer(user, event.serverId) : user.role !== 'admin') continue;
+      // Muted categories and servers send nothing.
+      if (!prefs.allows(prefs.effective(this.store, sub), event)) continue;
       const server = event.serverId ? this.manager.find(event.serverId) : null;
+      const panel = sub.client === 'panel';
+      const buttons = prefs.buttonsFor({ auth: this.auth, user, event });
       this.send(sub, {
         title: server ? server.name : 'GamePanel',
         body: event.message,
-        url: server ? `/app/#server/${server.id}` : '/app/',
+        url: server ? (panel ? `/#/servers/${server.id}` : `/app/#server/${server.id}`) : panel ? '/' : '/app/',
+        consoleUrl: server ? (panel ? `/#/servers/${server.id}/console` : `/app/#server/${server.id}`) : undefined,
         tag: `${event.type}:${event.serverId || ''}`,
+        actions: buttons.actions,
+        tokens: buttons.tokens,
       }).catch((err) => logger.debug(`Push failed: ${err.message}`));
     }
   }

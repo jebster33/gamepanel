@@ -127,7 +127,7 @@ async function ensureSteamcmd(log) {
  * Install or update a Steam app. SteamCMD updates itself on first run and
  * sometimes exits early while doing so, so failures are retried.
  */
-async function steamApp({ appid, login = 'anonymous', branch = '', dir, log, track, extraArgs = [] }) {
+async function steamApp({ appid, login = 'anonymous', branch = '', betaPassword = '', dir, log, track, extraArgs = [] }) {
   const binary = await ensureSteamcmd(log);
   const args = [
     '+@ShutdownOnFailedCommand',
@@ -141,6 +141,7 @@ async function steamApp({ appid, login = 'anonymous', branch = '', dir, log, tra
     '+app_update',
     String(appid),
     ...(branch ? ['-beta', branch] : []),
+    ...(branch && betaPassword ? ['-betapassword', betaPassword] : []),
     ...extraArgs,
     'validate',
     '+quit',
@@ -277,6 +278,7 @@ async function runStep(step, ctx) {
         appid: val(step.appid),
         login: val(step.login || 'anonymous'),
         branch: val(step.branch || ''),
+        betaPassword: step.betaPassword ? val(step.betaPassword) : '',
         dir: step.dir ? inDir(step.dir) : dir,
         log,
         track: ctx.track,

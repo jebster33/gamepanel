@@ -152,7 +152,7 @@
       }
     }
   ],
-  "startCommand": "WINEDEBUG=-all WINEPREFIX={{SERVER_DIR}}/.wine xvfb-run -a wine64 VRisingServer.exe -persistentDataPath ./save-data -serverName \"{{SERVER_NAME}}\" -saveName \"{{SAVE_NAME}}\" -logFile ./logs/VRisingServer.log",
+  "startCommand": "WINEDEBUG=-all WINEDLLOVERRIDES=\"winhttp=n,b\" WINEPREFIX={{SERVER_DIR}}/.wine xvfb-run -a wine64 VRisingServer.exe -persistentDataPath ./save-data -serverName \"{{SERVER_NAME}}\" -saveName \"{{SAVE_NAME}}\" -logFile ./logs/VRisingServer.log",
   "stopTimeout": 60,
   "query": {
     "type": "a2s",
@@ -195,5 +195,13 @@
   },
   "tailFiles": [
     "logs/VRisingServer.log"
-  ]
+  ],
+  "mods": {
+    "providers": [
+      "thunderstore"
+    ],
+    "dir": "BepInEx/plugins",
+    "game": "v-rising",
+    "thunderstore": "v-rising"
+  }
 }

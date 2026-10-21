@@ -86,7 +86,8 @@ class ServerManager extends EventEmitter {
     for (const t of this.timers) t.unref?.();
     this.refreshDiskUsage();
 
-    const autoStart = this.servers.filter((s) => s.autoStart && s.installedAt && !this.isActive(s.id));
+    // After a host reboot from the panel: exactly the servers that were running; otherwise the "start with panel" ones.
+    const autoStart = require('../features/host-power').startList(this, this.store);
     for (const server of autoStart) {
       logger.info(`Auto-starting ${server.name}`);
       await this.start(server.id).catch((err) => logger.error(`Auto-start failed for ${server.name}:`, err.message));
@@ -255,6 +256,8 @@ class ServerManager extends EventEmitter {
     if (!out.JAVA_VERSION) out.JAVA_VERSION = '21';
     // ARK clusters add -clusterid and -ClusterDirOverride (set by the panel, never by a user).
     if (this.store.state.arkClusters?.length) out.CLUSTER_ARGS = require('../features/ark-clusters').argsFor(this, this.store, server);
+    // ARK: Survival Ascended loads mods from -mods=, in the order of the MODS variable.
+    if (server.templateId === 'ark-survival-ascended') out.ARK_MODS_ARGS = require('../features/ark-mods').asaArgs(out.MODS);
     for (const [name, value] of Object.entries(ports)) out[`PORT_${name.toUpperCase()}`] = value;
     // Arma 3 and DayZ load mods through -mod=: the Workshop ones installed here, then any listed by hand.
     if (this.template(server)?.mods?.workshop?.strategy === 'bohemia') {
@@ -290,6 +293,7 @@ class ServerManager extends EventEmitter {
     const hidden = secrets.secretNames(tpl);
     return {
       ...server,
+      steamBetaPassword: undefined, // sealed Steam beta password: only the Steam branch card learns whether one is set
       // Secret variables never leave the panel: only whether one is set.
       vars: Object.fromEntries(Object.entries(server.vars || {}).map(([k, v]) => [k, hidden.has(k) || secrets.isSealed(v) ? '' : v])),
       secretVars: Object.fromEntries([...hidden].map((k) => [k, Boolean(server.vars?.[k])])),
@@ -331,6 +335,7 @@ class ServerManager extends EventEmitter {
       supportsConsoleInput: tpl?.consoleInput !== false,
       hasRcon: Boolean(tpl?.rcon && server.vars?.RCON_PASSWORD),
       hasMods: Boolean(tpl?.mods?.providers?.length || tpl?.mods?.dir),
+      nexusGame: Boolean(require('../features/nexus').forTemplate(tpl?.id)), // Nexus Mods links on the Mods tab
       hasModpacks: Boolean(tpl?.modpacks),
       canUpdate: Boolean((tpl?.install || []).some((s) => s.type === 'steamcmd') || tpl?.update),
       canAutoUpdate: Boolean(this.steamApp(server)),

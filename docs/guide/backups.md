@@ -38,13 +38,21 @@ the old build. Only the latest snapshot is remembered; older ones are ordinary b
 
 ## Incremental and encrypted backups
 
-On a server's Backups tab, **Backup type…** switches between *Archive* (a complete `.tar.gz` each time, the default) and *Incremental*. Incremental backups store files as pieces, each piece once: the first backup is full size, later ones only add what changed, and unchanged files are not even read again. Restoring, restoring single files, browsing, checking and downloading (as a `.tar.gz`) all work the same. Cloud copies stay archive-only.
+On a server's Backups tab, **Backup type…** switches between *Archive* (a complete `.tar.gz` each time, the default) and *Incremental*. Incremental backups store files as pieces, each piece once: the first backup is full size, later ones only add what changed, and unchanged files are not even read again. Restoring, restoring single files, browsing, checking and downloading (as a `.tar.gz`) all work the same. Scheduled backups and the retention number use incremental mode too, and removing an old backup also deletes the pieces nothing else uses.
+
+Under the backup list, **Incremental backup tools** has: **Check** (every snapshot opens and every piece it needs is there), **Deep check** (re-reads every piece and compares it with its name), **Free unused space** (clears pieces left behind by a crashed backup) and **Remove old** (keep the newest N and/or those younger than D days; preview first). GamePanel's own vault does what restic does (deduplicated, incremental, encrypted, prune, check, restore), so restic itself is not used.
+
+Cloud copies: an unencrypted incremental backup is packed into a `.tar.gz` for the upload. An encrypted one is never uploaded in plain form; use archive backups for cloud copies of those.
 
 Incremental backups can be encrypted with AES-256. An administrator sets the passphrase under **Settings → Backup encryption**; write it down, because without it encrypted backups cannot be restored on another machine. Changing the passphrase later keeps every encrypted backup readable.
 
 ## Checking backups
 
 **Check** on a backup unpacks it into a scratch folder and makes sure every file came back (for incremental backups, every piece is read and verified). Turn on **Settings → Backup checks** to check each backup right after it is made; a failed check sends an alert.
+
+## Test restores
+
+A backup you have never restored is a guess. Settings, **Backup test restores**, proves one: the panel unpacks a server's newest backup (or reads every piece of an incremental or encrypted one) into a scratch folder, compares the file count and sizes, then checks the game's own files: for Minecraft that `level.dat` unpacks and the region files are whole, for Rust that a save and a map are present. The scratch folder is deleted afterwards, only runs when there is disk space for it (otherwise the archive is read end to end), and the last 60 results are kept in a list. Tick **Test each server's newest backup every week** to have it run on its own; a failure raises a "Backup test restore failed" alert (turn it on under Alerts to get it in Discord or on your phone).
 
 ## Cloud copies
 

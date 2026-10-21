@@ -1,7 +1,9 @@
+import { loadReasonTemplates, reasonDialog } from '../staff-reasons.js';
 import { api } from '../../core/api.js';
 import { can, esc, fmtDuration, fmtTime, toast, icon } from '../../core/util.js';
-import { confirmModal, openModal, promptModal } from '../../ui/modal.js';
+import { confirmModal, openModal } from '../../ui/modal.js';
 import { skeleton } from '../../ui/skeleton.js';
+import { faceHtml, renderSkinPreview } from './mc-skin.js';
 
 /* --------------------------------------------------------------- players */
 
@@ -63,12 +65,12 @@ document.addEventListener(
   true
 );
 
-/** Minecraft heads where the game has them, a letter tile everywhere else. */
+/** Minecraft heads (fetched by the panel, never by the browser) where the game has them, a letter tile everywhere else. */
 export function avatar(server, name, size = 26) {
   const letter = esc(String(name).slice(0, 1).toUpperCase());
-  const java = String(server.templateId || '').startsWith('minecraft') && server.templateId !== 'minecraft-bedrock';
-  if (java && /^[A-Za-z0-9_]{3,16}$/.test(name)) {
-    return `<span class="player-avatar" style="width:${size}px;height:${size}px"><img src="https://mc-heads.net/avatar/${esc(name)}/${size * 2}" alt="" loading="lazy" data-fallback="${letter}" /></span>`;
+  const mc = String(server.templateId || '').startsWith('minecraft') && server.templateId !== 'minecraft-velocity' && server.id;
+  if (mc && /^\.?[A-Za-z0-9 _-]{1,32}$/.test(name)) {
+    return `<span class="player-avatar" style="width:${size}px;height:${size}px">${faceHtml(server.id, name, size, String(name).slice(0, 1).toUpperCase())}</span>`;
   }
   return `<span class="player-avatar" style="width:${size}px;height:${size}px">${letter}</span>`;
 }
@@ -134,10 +136,15 @@ async function onAction(event) {
   if (!btn) return;
   const serverId = current.server;
   const { playerAction: action, player } = btn.dataset;
-  if (action === 'ban' && !(await confirmModal(`Ban ${esc(player)}`, `${player} is removed and cannot join again until unbanned.`, 'Ban'))) return;
+  let extra = {};
+  if (action === 'ban' || (action === 'kick' && (await loadReasonTemplates()).length)) {
+    const picked = await reasonDialog({ title: `${ACTION_LABELS[action]} ${player}`, message: action === 'ban' ? `${player} is removed and cannot join again until unbanned.` : `${player} is removed from the server.`, confirmLabel: ACTION_LABELS[action] });
+    if (!picked) return;
+    extra = { reason: picked.reason || undefined, template: picked.template };
+  }
   btn.disabled = true;
   try {
-    await api(`/api/servers/${serverId}/players/action`, { method: 'POST', body: { action, name: player } });
+    await api(`/api/servers/${serverId}/players/action`, { method: 'POST', body: { action, name: player, ...extra } });
     toast(`${ACTION_LABELS[action] || action}: ${player}`);
   } catch (err) {
     toast(err.message, 'error');
@@ -340,6 +347,7 @@ export async function openProfile(serverId, name, ctx = current) {
         ${kpi('First seen', new Date(p.first).toLocaleDateString())}
       </div>
       ${p.stats ? statsHtml(p.stats) : ''}
+      ${String(ctx.templateId || '').startsWith('minecraft') && ctx.templateId !== 'minecraft-velocity' ? '<div id="pl-skin" class="mc-skin-box"></div>' : ''}
       ${/^minecraft-(?!bedrock|velocity)/.test(ctx.templateId || '') && can('files') ? '<h4 style="margin:18px 0 6px">Inventory</h4><div id="pl-inv"></div>' : ''}
       <h4 style="margin:18px 0 6px">Recent sessions</h4>
       <div class="pl-sessions">${
@@ -381,6 +389,8 @@ export async function openProfile(serverId, name, ctx = current) {
           ]
         : [],
   });
+  const skinBox = document.querySelector('.modal-backdrop:last-child #pl-skin');
+  if (skinBox) renderSkinPreview(skinBox, serverId, p.name);
   const invBox = document.querySelector('.modal-backdrop:last-child #pl-inv');
   if (invBox) import('./inventory.js').then((m) => m.renderInventory(invBox, serverId, p.name));
   document.querySelector('#pl-note-save')?.addEventListener('click', async (event) => {
@@ -422,12 +432,15 @@ function statsHtml(st) {
 /** BattleMetrics-style network ban: every Minecraft server this account moderates. */
 async function banEverywhere(name, unban) {
   let reason = '';
+  let template;
   if (!unban) {
-    reason = await promptModal(`Ban ${esc(name)} on every server`, 'Reason players see', 'Banned from the network');
-    if (reason === null) return;
+    const picked = await reasonDialog({ title: `Ban ${name} on every server`, message: 'The reason is shown to the player.', confirmLabel: 'Ban everywhere' });
+    if (!picked) return;
+    reason = picked.reason || 'Banned from the network';
+    template = picked.template;
   }
   try {
-    const { results } = await api('/api/players/ban-everywhere', { method: 'POST', body: { name, reason, unban } });
+    const { results } = await api('/api/players/ban-everywhere', { method: 'POST', body: { name, reason, unban, template } });
     const ok = results.filter((r) => r.ok).length;
     const failed = results.filter((r) => !r.ok);
     toast(`${unban ? 'Unbanned' : 'Banned'} ${name} on ${ok} server${ok === 1 ? '' : 's'}${failed.length ? `. Failed on ${failed.map((r) => r.server).join(', ')}: ${failed[0].error}` : ''}`, failed.length ? 'warn' : 'info', 7000);

@@ -5,6 +5,7 @@ import { renderEventsCard } from './events.js';
 import { skeleton } from '../../ui/skeleton.js';
 import { state } from '../../core/state.js';
 import { renderMapCard } from './rust-map.js';
+import { renderCommunityMessages } from './community-messages.js';
 
 /* ------------------------------------------------------------ schedules */
 
@@ -139,6 +140,7 @@ export async function renderSchedulesTab(host, server) {
   $('#an-save')?.addEventListener('click', saveAnnouncements);
   $('#an-on')?.addEventListener('change', saveAnnouncements);
 
+  renderCommunityMessages(host, server);
   host.insertAdjacentHTML('beforeend', '<div id="events-card"></div>');
   renderEventsCard($('#events-card'), server);
 

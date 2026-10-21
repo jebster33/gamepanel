@@ -60,7 +60,23 @@ function takeChallenge(id) {
 
 /* ---------------------------------------------------------- registering -- */
 
-function registerOptions(auth, store, sessionUser, req, password) {
+const KINDS = ['any', 'platform', 'security-key'];
+const TRANSPORTS = ['usb', 'nfc', 'ble', 'internal', 'hybrid', 'smart-card'];
+
+/**
+ * What to ask the browser for, by kind:
+ *  - platform: this device (Windows Hello, Touch ID / Face ID, Android biometrics). Discoverable and verified.
+ *  - security-key: a roaming USB/NFC key. Discoverable when the key has room for it, so sign-in without a username works.
+ *  - any: let the browser offer both.
+ */
+function selection(kind) {
+  if (kind === 'platform') return { authenticatorAttachment: 'platform', residentKey: 'required', requireResidentKey: true, userVerification: 'required' };
+  if (kind === 'security-key') return { authenticatorAttachment: 'cross-platform', residentKey: 'preferred', requireResidentKey: false, userVerification: 'preferred' };
+  return { residentKey: 'required', requireResidentKey: true, userVerification: 'preferred' };
+}
+
+function registerOptions(auth, store, sessionUser, req, password, kind = 'any') {
+  if (!KINDS.includes(kind)) fail(400, 'Unknown passkey type');
   const user = auth.users.find((u) => u.id === sessionUser.id);
   // A passkey is a way in that outlives the session that added it: whoever adds one proves they know the password.
   auth.checkPassword(user, password);
@@ -70,7 +86,7 @@ function registerOptions(auth, store, sessionUser, req, password) {
     user.webauthnId = crypto.randomBytes(16).toString('base64url');
     store.save();
   }
-  const { id, challenge } = newChallenge({ ...site, userId: user.id, purpose: 'register' });
+  const { id, challenge } = newChallenge({ ...site, userId: user.id, purpose: 'register', kind });
   return {
     requestId: id,
     options: {
@@ -84,8 +100,8 @@ function registerOptions(auth, store, sessionUser, req, password) {
       ],
       timeout: 120_000,
       attestation: 'none',
-      authenticatorSelection: { residentKey: 'required', requireResidentKey: true, userVerification: 'preferred' },
-      excludeCredentials: (user.passkeys || []).map((p) => ({ type: 'public-key', id: p.id })),
+      authenticatorSelection: selection(kind),
+      excludeCredentials: (user.passkeys || []).map((p) => ({ type: 'public-key', id: p.id, ...(p.transports?.length ? { transports: p.transports } : {}) })),
     },
   };
 }
@@ -101,6 +117,8 @@ function register(auth, store, sessionUser, req, { requestId, credential, name }
   } catch (err) {
     fail(400, err.message);
   }
+  // A "this device" passkey must have checked the person (Windows Hello PIN, fingerprint, face), or it is no better than a password.
+  if (entry.kind === 'platform' && !result.uv) fail(400, 'This device did not check who you are. Set up Windows Hello, Touch ID or a screen lock, then try again.');
   if (auth.users.some((u) => (u.passkeys || []).some((p) => p.id === result.id))) fail(409, 'That passkey is already registered');
   const user = auth.users.find((u) => u.id === sessionUser.id);
   const passkey = {
@@ -108,6 +126,9 @@ function register(auth, store, sessionUser, req, { requestId, credential, name }
     publicKey: result.publicKey,
     signCount: result.signCount,
     backedUp: result.backedUp,
+    kind: KINDS.includes(entry.kind) ? entry.kind : 'any',
+    uv: Boolean(result.uv),
+    transports: (Array.isArray(credential?.response?.transports) ? credential.response.transports : []).filter((t) => TRANSPORTS.includes(t)),
     rpId: entry.rpId,
     name: String(name || '').trim().slice(0, 40) || 'Passkey',
     createdAt: Date.now(),
@@ -175,10 +196,11 @@ function login(auth, store, req, ip, { requestId, credential }) {
   passkey.lastUsedAt = Date.now();
   store.save();
   // Only touched, not verified (no PIN or fingerprint): the authenticator code still applies.
-  if (!result.uv && user.totp?.secret) return { ...auth.loginLinked(user, ip), passkey: passkey.name };
+  if (!result.uv && user.totp?.secret) return { ...auth.loginLinked(user, ip, 'passkey'), passkey: passkey.name };
+  auth.guard?.(user, 'passkey', ip);
   return { ...auth.startSession(user, ip), passkey: passkey.name };
 }
 
-const publicList = (user) => (user.passkeys || []).map((p) => ({ id: p.id, name: p.name, createdAt: p.createdAt, lastUsedAt: p.lastUsedAt, backedUp: Boolean(p.backedUp) }));
+const publicList = (user) => (user.passkeys || []).map((p) => ({ id: p.id, name: p.name, createdAt: p.createdAt, lastUsedAt: p.lastUsedAt, backedUp: Boolean(p.backedUp), kind: p.kind || 'any', verified: Boolean(p.uv) }));
 
-module.exports = { registerOptions, register, rename, remove, loginOptions, login, publicList, siteOf };
+module.exports = { KINDS, selection, registerOptions, register, rename, remove, loginOptions, login, publicList, siteOf };

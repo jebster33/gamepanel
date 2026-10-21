@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="theme-color" content="#111210" />
+    <meta name="robots" content="noindex" />
+    <title>Player portal</title>
+    <link rel="icon" type="image/png" href="/img/favicon-64.png" />
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #111210;
+        --card: rgba(32, 33, 30, 0.72);
+        --border: rgba(255, 255, 255, 0.1);
+        --text: #ecebe6;
+        --muted: #a19f96;
+        --faint: #6f6d66;
+        --lime: #c6f432;
+        --lime-text: #c6f432;
+        --lime-soft: rgba(198, 244, 50, 0.12);
+        --red: #ff5f57;
+        --amber: #ffb340;
+        --input: rgba(0, 0, 0, 0.28);
+        --mono: "JetBrains Mono", "Cascadia Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      }
+      @media (prefers-color-scheme: light) {
+        :root {
+          color-scheme: light;
+          --bg: #f3f2ed;
+          --card: rgba(255, 255, 255, 0.82);
+          --border: rgba(0, 0, 0, 0.1);
+          --text: #1b1c18;
+          --muted: #5d5b53;
+          --faint: #8c8a81;
+          --lime-text: #4f6e00;
+          --lime-soft: rgba(120, 160, 0, 0.12);
+          --input: rgba(255, 255, 255, 0.9);
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font: 15px/1.5 "Inter", ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+        color: var(--text);
+        background:
+          radial-gradient(1200px 500px at 10% -10%, rgba(198, 244, 50, 0.1), transparent 60%),
+          var(--bg);
+      }
+      main {
+        max-width: 560px;
+        margin: 0 auto;
+        padding: 44px 16px 60px;
+      }
+      .brand {
+        margin-bottom: 14px;
+        font-size: 12.5px;
+        color: var(--muted);
+      }
+      h1 {
+        margin: 0;
+        font-size: clamp(26px, 6vw, 34px);
+        letter-spacing: -0.02em;
+        line-height: 1.15;
+      }
+      .lede {
+        margin: 8px 0 22px;
+        color: var(--muted);
+        white-space: pre-line;
+      }
+      .card {
+        padding: 20px;
+        margin-bottom: 14px;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        backdrop-filter: blur(20px) saturate(1.4);
+        -webkit-backdrop-filter: blur(20px) saturate(1.4);
+      }
+      h2 {
+        margin: 0 0 12px;
+        font-size: 16px;
+      }
+      label {
+        display: block;
+        margin-bottom: 12px;
+        font-size: 13px;
+        color: var(--muted);
+      }
+      input,
+      textarea {
+        display: block;
+        width: 100%;
+        margin-top: 5px;
+        padding: 10px 12px;
+        font: inherit;
+        color: var(--text);
+        background: var(--input);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+      }
+      input:focus,
+      textarea:focus {
+        outline: none;
+        border-color: var(--lime);
+      }
+      textarea {
+        min-height: 130px;
+        resize: vertical;
+      }
+      button {
+        padding: 9px 16px;
+        font: inherit;
+        font-weight: 650;
+        color: #111210;
+        background: var(--lime);
+        border: 0;
+        border-radius: 10px;
+        cursor: pointer;
+      }
+      button:disabled {
+        opacity: 0.6;
+        cursor: default;
+      }
+      .row {
+        display: flex;
+        gap: 8px;
+        align-items: flex-end;
+      }
+      .row label {
+        flex: 1;
+        margin: 0;
+      }
+      .msg {
+        margin-top: 12px;
+        font-size: 14px;
+      }
+      .msg.error {
+        color: var(--red);
+      }
+      .code {
+        display: inline-block;
+        margin: 6px 0;
+        padding: 6px 12px;
+        font-family: var(--mono);
+        font-size: 20px;
+        letter-spacing: 0.12em;
+        color: var(--lime-text);
+        background: var(--lime-soft);
+        border-radius: 10px;
+      }
+      .status {
+        font-weight: 650;
+      }
+      .status.accepted {
+        color: var(--lime-text);
+      }
+      .status.denied {
+        color: var(--red);
+      }
+      .reply {
+        margin-top: 8px;
+        padding: 10px 12px;
+        color: var(--muted);
+        border-left: 3px solid var(--border);
+        white-space: pre-line;
+      }
+      .hidden {
+        display: none;
+      }
+      .faint {
+        color: var(--faint);
+        font-size: 13px;
+      }
+    
+      main { max-width: 640px; }
+      .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; margin-top: 12px; }
+      .stat { padding: 10px 12px; background: var(--input); border: 1px solid var(--border); border-radius: 12px; }
+      .stat b { display: block; font-size: 16px; }
+      .stat span, .k { font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--faint); }
+      .btn { display: inline-block; padding: 9px 16px; font-weight: 650; color: #111210; background: var(--lime); border-radius: 10px; text-decoration: none; margin: 0 8px 8px 0; }
+      .btn.ghost { color: var(--text); background: transparent; border: 1px solid var(--border); }
+      .pill { display: inline-block; padding: 1px 8px; font-size: 12px; color: var(--lime-text); background: var(--lime-soft); border-radius: 99px; }
+      .pill.bad { color: var(--red); background: rgba(255, 95, 87, 0.12); }
+      .head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; }
+      .head h2 { margin: 0; }
+      .linkbtn { padding: 2px 8px; font-size: 12px; font-weight: 500; color: var(--muted); background: transparent; border: 1px solid var(--border); }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="brand" id="brand"></div>
+      <h1>Player portal</h1>
+      <p class="lede">See your own play time, stats and bans.</p>
+      <div class="msg error" id="error"></div>
+      <div class="card hidden" id="off"><p style="margin:0">The player portal is not open on this server.</p></div>
+      <div id="signin" class="card hidden">
+        <h2>Sign in</h2>
+        <div id="providers"></div>
+        <form id="name-form" autocomplete="off">
+          <label>Or prove your in-game name<input id="name" maxlength="32" placeholder="Steve" /></label>
+          <button type="submit">Get a code</button>
+        </form>
+        <p class="faint" style="margin:10px 0 0">Steam and Discord show who you are. To see game stats you also add your in-game name by saying a one-time code in the game's chat.</p>
+      </div>
+      <div id="code-box" class="card hidden">
+        <h2>Say this in game chat</h2>
+        <div class="code" id="code"></div>
+        <p class="faint" style="margin:6px 0 0" id="code-note">Waiting for you to say it in chat on one of the servers. It works for 10 minutes.</p>
+      </div>
+      <div id="me" class="hidden"></div>
+    </main>
+    <script src="/js/portal-page.js" type="module"></script>
+  </body>
+</html>

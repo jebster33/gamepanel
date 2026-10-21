@@ -1,0 +1,37 @@
+{
+  "name": "theme-forest-green",
+  "title": "Forest green theme",
+  "version": "1.0.0",
+  "author": "GamePanel",
+  "description": "The Forest green colour theme.",
+  "themes": [
+    {
+      "id": "forest-green",
+      "name": "Forest green",
+      "mode": "dark",
+      "vars": {
+        "--bg": "#0d140f",
+        "--sidebar": "#101a12",
+        "--surface": "#15201a",
+        "--raised": "#1b2a21",
+        "--hover": "#223428",
+        "--border": "#284033",
+        "--border-strong": "#35523f",
+        "--inset": "#080e0a",
+        "--text": "#e6efe8",
+        "--muted": "#9bb0a1",
+        "--faint": "#667d6d",
+        "--lime": "#4fc97a",
+        "--lime-ink": "#07130b",
+        "--lime-text": "#5fd38a",
+        "--lime-soft": "rgba(79,201,122,0.12)",
+        "--lime-glow": "0 0 10px rgba(79,201,122,0.55)",
+        "--amber": "#ffb340",
+        "--amber-soft": "rgba(255,179,64,0.12)",
+        "--red": "#ff6b5f",
+        "--red-soft": "rgba(255,107,95,0.12)",
+        "--blue": "#6cb6ff"
+      }
+    }
+  ]
+}

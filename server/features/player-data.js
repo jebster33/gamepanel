@@ -214,4 +214,4 @@ async function restore(manager, store, server, name, backup, actor) {
   return { ok: true };
 }
 
-module.exports = { inventory, restore, summarize, item, uuidOf };
+module.exports = { inventory, restore, summarize, item, uuidOf, target, plainText };

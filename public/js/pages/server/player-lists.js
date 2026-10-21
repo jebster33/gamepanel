@@ -3,6 +3,9 @@ import { state } from '../../core/state.js';
 import { esc, toast, icon } from '../../core/util.js';
 import { confirmModal } from '../../ui/modal.js';
 import { avatar } from './players.js';
+import { loadReasonTemplates, reasonPickerHtml, wireReasonPicker } from '../staff-reasons.js';
+
+let templates = [];
 import { skeleton } from '../../ui/skeleton.js';
 
 /* ----------------------------------------------- whitelist, ops and bans */
@@ -15,6 +18,7 @@ const HINTS = {
 };
 
 export async function renderLists(box, server) {
+  templates = await loadReasonTemplates();
   box.innerHTML = skeleton('list', 'Reading the lists…');
   let data;
   try {
@@ -94,6 +98,7 @@ function draw(box, server, data) {
     }
   });
 
+  box.querySelectorAll('[data-list-form="bans"]').forEach((form) => wireReasonPicker(form, templates, { id: 'rt-bans', reason: 'input[name=reason]' }));
   box.querySelectorAll('[data-list-form]').forEach((form) =>
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
@@ -143,7 +148,7 @@ function listCard(server, list) {
       <p class="faint list-hint">${esc(HINTS[list.id] || '')}</p>
       <form class="list-add" data-list-form="${esc(list.id)}">
         <input name="name" placeholder="${list.ip ? 'IP address' : 'Player name'}" autocomplete="off" spellcheck="false" />
-        ${list.reason ? '<input name="reason" placeholder="Reason (optional)" autocomplete="off" />' : ''}
+        ${list.reason ? `<input name="reason" placeholder="Reason (optional)" autocomplete="off" />${list.id === 'bans' ? reasonPickerHtml(templates, `rt-${list.id}`) : ''}` : ''}
         <button class="btn ${list.id.includes('ban') ? 'btn-danger' : 'btn-primary'}" type="submit">${list.id.includes('ban') ? 'Ban' : 'Add'}</button>
       </form>
       <div class="list-entries">${

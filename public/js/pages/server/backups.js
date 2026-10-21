@@ -3,6 +3,7 @@ import { $, can, esc, fmtBytes, fmtTime, icon, toast } from '../../core/util.js'
 import { confirmModal, openModal } from '../../ui/modal.js';
 import { openRestorePreview } from './restore-preview.js';
 import { skeleton } from '../../ui/skeleton.js';
+import { renderVaultTools } from '../infra2.js';
 
 /* --------------------------------------------------------------- backups */
 
@@ -62,6 +63,7 @@ export async function renderBackupsTab(host, server) {
     <div id="cloud-only"></div>
     <div id="node-only"></div>`;
 
+  renderVaultTools(host, server, data);
   renderSafeUpdate(host, server, () => renderBackupsTab(host, server));
   renderCopies(host, server, data.backups, 'cloud');
   renderCopies(host, server, data.backups, 'node');

@@ -149,7 +149,7 @@ cat > /etc/sudoers.d/gamepanel <<EOF
 # non-interactive; sudo otherwise resets the environment, which is why
 # unattended installs would still try to open a debconf dialog.
 Defaults:$SERVICE_USER env_keep += "DEBIAN_FRONTEND NEEDRESTART_MODE NEEDRESTART_SUSPEND"
-$SERVICE_USER ALL=(root) NOPASSWD: /usr/bin/apt-get, /usr/bin/dpkg, /usr/sbin/ufw, /usr/bin/firewall-cmd, /usr/bin/systemctl restart gamepanel, /bin/systemctl restart gamepanel
+$SERVICE_USER ALL=(root) NOPASSWD: /usr/bin/apt-get, /usr/bin/dpkg, /usr/sbin/ufw, /usr/bin/firewall-cmd, /usr/sbin/nft, /usr/sbin/iptables, /usr/sbin/ip6tables, /usr/sbin/conntrack, /usr/bin/systemctl restart gamepanel, /bin/systemctl restart gamepanel, /usr/bin/systemctl reboot, /bin/systemctl reboot, /usr/bin/systemctl poweroff, /bin/systemctl poweroff, /usr/sbin/smartctl -H -A -i -j /dev/*
 EOF
 chmod 440 /etc/sudoers.d/gamepanel
 visudo -cf /etc/sudoers.d/gamepanel >/dev/null || { rm -f /etc/sudoers.d/gamepanel; warn "sudoers rule rejected — dependency installs will need manual apt"; }

@@ -107,7 +107,7 @@ module.exports = {
         h.open[name] = since && since < now ? since : now;
         if (p.first > h.open[name]) p.first = h.open[name];
         this.logActivity(server.id, { type: 'join', name });
-        if (p.sessions === 1 && server.welcome?.enabled && now - h.open[name] < 120_000) this.welcomePlayer(server, name);
+        if (server.welcome?.enabled && now - h.open[name] < 120_000) this.welcomePlayer(server, name, p.sessions === 1);
         const flag = this.playerNote(name);
         // Not for players who were already on before the panel started watching.
         if (flag?.watch && now - h.open[name] < 120_000) this.store.addEvent('player.watched', `${name} joined ${server.name}${flag.note ? ` (note: ${flag.note.slice(0, 120)})` : ''}`, { serverId: server.id });
@@ -165,6 +165,7 @@ module.exports = {
     for (const line of text.split('\n')) {
       const m = line.match(pattern);
       if (m) {
+        require('../features/portal').onChat(this, server, m[1], String(m[2] || ''));
         this.logActivity(server.id, { type: 'chat', name: m[1], text: String(m[2] || '').trim().slice(0, 500) });
         if (server.moderation?.enabled) require('../features/chat-moderation').onChat(this, server, m[1], String(m[2] || '')).catch(() => {});
       }
@@ -325,13 +326,14 @@ module.exports = {
     return out.sort((a, b) => b.online - a.online || b.last - a.last).slice(0, 100);
   },
 
-  /** First time on the server: greet them in chat. server.welcome = { enabled, message } with {player}. */
-  welcomePlayer(server, name) {
-    const command = require('../games/players').broadcastCommand(this.template(server));
-    if (!command) return;
-    const text = String(server.welcome.message || 'Welcome {player}! Say hi everyone.').replace(/\{player\}/g, () => name);
+  /** Greet a joining player in chat: the first time ever, or every time when server.welcome.mode is 'every'. */
+  welcomePlayer(server, name, firstTime = true) {
+    const players = require('../games/players');
+    const command = players.broadcastCommand(this.template(server));
+    const text = command && require('../features/welcome').welcomeText(this, server, name, firstTime);
+    if (!text) return;
     // A moment after joining, so it lands after the join message.
-    setTimeout(() => this.sendCommand(server.id, require('../games/players').fillBroadcast(command, text)).catch(() => {}), 3000);
+    setTimeout(() => this.sendCommand(server.id, players.fillBroadcast(command, text)).catch(() => {}), 3000);
   },
 
   /** Staff notes and the join watchlist, shared by every server (keyed by lower-case name). */

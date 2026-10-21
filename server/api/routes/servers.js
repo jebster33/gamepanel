@@ -367,7 +367,8 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
     if (!manager.rt(server.id).playerList.includes(name) || /["\r\n\x00-\x1f]/.test(name)) fail(400, 'That player is not online');
     const result = await manager.sendCommand(server.id, template.replace('{name}', name));
     store.addEvent(`player.${body.action}`, `${user.username} used ${body.action} on ${name} (${server.name})`, { serverId: server.id });
-    manager.logActivity(server.id, { type: body.action, name, by: user.username });
+    const why = require('../../features/staff').applyReason(store, body).reason;
+    manager.logActivity(server.id, { type: body.action, name, by: user.username, ...(why ? { text: String(why).replace(/[\r\n]/g, ' ').slice(0, 200) } : {}) });
     return result;
   });
 
@@ -661,6 +662,7 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
     requireCap(user, 'command');
     const lists = require('../../games/player-lists');
     const unban = Boolean(body?.unban);
+    body = { ...body, ...require('../../features/staff').applyReason(store, body || {}) };
     const results = [];
     for (const server of manager.servers) {
       if (user.role !== 'admin' && !canCommand(user, server.id)) continue;
@@ -716,7 +718,7 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
 
   router.post('/api/servers/:id/player-lists', async ({ user, params, body }) => {
     const server = serverFor(user, params.id, 'command');
-    const result = await require('../../games/player-lists').changeList(manager, server, body || {}, user.username);
+    const result = await require('../../games/player-lists').changeList(manager, server, { ...body, ...(body?.template ? { reason: require('../../features/staff').applyReason(store, body).reason } : {}) }, user.username);
     store.addEvent('player.list', `${user.username} ${body.action === 'add' ? 'added' : 'removed'} ${body.name} (${body.list}, ${server.name})`, { serverId: server.id });
     return result;
   });
@@ -800,6 +802,39 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
     return manager.sendCommand(server.id, String(body.command).trim());
   });
 
+  /* Quick commands, autocomplete lines and macros for the console. */
+  router.get('/api/servers/:id/commands', ({ user, params }) => {
+    const server = serverFor(user, params.id, 'console');
+    const { quick, suggest } = require('../../games/commands').catalog(manager.template(server));
+    return { quick, suggest, macros: server.macros || [], canSay: Boolean(require('../../games/players').broadcastCommand(manager.template(server))) };
+  });
+
+  router.put('/api/servers/:id/macros', ({ user, params, body }) => {
+    const server = serverFor(user, params.id, 'command');
+    server.macros = require('../../games/commands').validateMacros(body?.macros);
+    store.save();
+    store.addEvent('server.settings', `${user.username} changed the console macros on ${server.name}`, { serverId: server.id });
+    return { macros: server.macros };
+  });
+
+  /** A catalog button ({ quick, values }) or a saved macro ({ macro }); the panel builds the command itself. */
+  router.post('/api/servers/:id/quick-command', async ({ user, params, body }) => {
+    const server = serverFor(user, params.id, 'command');
+    const commands = require('../../games/commands');
+    const template = manager.template(server);
+    let lines;
+    if (body?.macro) {
+      const macro = (server.macros || []).find((m) => m.id === body.macro);
+      if (!macro) fail(404, 'That macro no longer exists');
+      lines = commands.macroCommands(template, macro);
+    } else {
+      lines = [commands.build(template, String(body?.quick || ''), body?.values)];
+    }
+    let last;
+    for (const line of lines) last = await manager.sendCommand(server.id, line);
+    return { ok: true, sent: lines.length, response: last?.response || '' };
+  });
+
   router.get('/api/servers/:id/history', ({ user, params, url }) => {
     const server = serverFor(user, params.id);
     return { history: manager.getHistory(server.id, url.searchParams.get('range')) };
@@ -855,7 +890,7 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
     const every = Math.max(1, Math.min(240, Math.round(Number(body?.every) || 15)));
     server.announcements = { enabled: Boolean(body?.enabled) && messages.length > 0, every, messages, next: 0 };
     if (body?.welcome !== undefined) {
-      server.welcome = { enabled: Boolean(body.welcome.enabled), message: String(body.welcome.message || '').replace(/[\r\n]+/g, ' ').trim().slice(0, 200) };
+      server.welcome = { ...server.welcome, enabled: Boolean(body.welcome.enabled), message: String(body.welcome.message || '').replace(/[\r\n]+/g, ' ').trim().slice(0, 200) };
     }
     store.save();
     return { announcements: server.announcements, welcome: server.welcome || null };

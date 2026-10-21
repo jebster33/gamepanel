@@ -36,7 +36,11 @@ Administrators see a **Capacity** card on the Overview, one per machine (each no
 
 ## Update channels
 
-Under Panel updates, pick **Stable** (tagged releases) or **Beta** (newer builds as they land).
+Under Panel updates, pick **Stable** (tagged releases) or **Beta** (newer builds as they land). The panel shows the release notes (or the list of new commits), and **Check for updates every 6 hours** raises an alert when a new version is out (it never installs by itself). After an update, **Roll back** returns to the version you were on before, and the last few updates are listed under it.
+
+## Log retention
+
+Settings, Log retention deletes or compresses old logs once a day, and can cap a log folder's size. It covers each server's `logs`, `crash-reports`, Oxide, Carbon and ARK log folders and `*.log` files, plus the panel's own logs. **Preview** lists what would change without touching anything. The log being written, files changed in the last hour and links are never touched. A server's **Storage** tab can have its own rules instead.
 
 ## Limits
 
@@ -93,3 +97,12 @@ For the service itself (Linux: `sudo systemctl edit gamepanel`):
 | `GP_PROXY_HOPS` | `1` | Proxies that each add to `X-Forwarded-For` (use `2` for Cloudflare in front of nginx) |
 | `GP_DOCKER_SOCKET` | `/var/run/docker.sock` | Docker socket |
 | `GP_LOG_LEVEL` | `info` | `debug`, `info`, `warn`, `error` |
+
+## Extensions and themes
+
+Settings, Extensions installs themes, extra pages, dashboard widgets and webhooks. Everyone can pick a colour theme under Account, Appearance. See [Extensions](../extensions.md) for what each kind can do and the trust rules (code extensions are off by default).
+## Connection flood blocking
+
+Settings, **Connection flood blocking**, protects game servers from one address opening hundreds of connections. Tick it per server; every 10 seconds the panel counts connections (and, where the system counts them, packets per second) from each address to that server's game ports, and an address over your limit is blocked with a firewall rule for the number of minutes you set, then unblocked on its own. Blocked addresses are listed with an **Unblock** button, and each block raises a "Connection flood blocked" alert.
+
+It never blocks this machine, private/LAN addresses, your "never block" list, addresses your staff have signed in from, or bridge devices. On Linux it needs permission to change the firewall (nftables, or iptables if there is no nft): the installer grants this to the panel's service user (re-run `install.sh` after updating), or run the panel as root. Counting uses conntrack (TCP and UDP) when available, otherwise TCP only. On Windows it counts TCP connections and adds Windows Firewall block rules, so the panel needs to run as a service or administrator. Not tested live against a real flood.
