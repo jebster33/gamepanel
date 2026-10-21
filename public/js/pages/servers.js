@@ -3,6 +3,7 @@ import { state } from '../core/state.js';
 import { api } from '../core/api.js';
 import { $, can, esc, fmtBytes, gameArt, icon, statusPill, toast } from '../core/util.js';
 import { revealChildren } from '../ui/fx.js';
+import { filterBar, groupedRows, organizeButton, starButton, tagChips } from '../ui/server-groups.js';
 
 /* --------------------------------------------------------- server cards */
 
@@ -13,7 +14,8 @@ export function serverAddress(server) {
   return `${server.node?.host || location.hostname}:${port}`;
 }
 
-export function renderServerCards({ selectable = false } = {}) {
+export function renderServerCards({ selectable = false, pinnedOnly = false, hidePinned = false } = {}) {
+  if (pinnedOnly && !groupedRows(state.servers, () => 'x', { pinnedOnly })) return '';
   if (!state.servers.length) {
     return `<div class="empty">
       <img class="line-art" src="/img/empty-rack.png" alt="" width="140" height="135" />
@@ -23,6 +25,7 @@ export function renderServerCards({ selectable = false } = {}) {
     </div>`;
   }
   return `
+    ${pinnedOnly ? '' : filterBar()}
     <div class="srv-list">
       <div class="srv-row srv-head">
         <span class="srv-first">${selectable ? '<input type="checkbox" id="srv-check-all" title="Select all" aria-label="Select all servers" />' : ''}<span>Server</span></span>
@@ -33,7 +36,7 @@ export function renderServerCards({ selectable = false } = {}) {
         <span class="hide-md hide-sm">Ping</span>
         <span></span>
       </div>
-      ${state.servers.map((server) => serverRow(server, selectable)).join('')}
+      ${groupedRows(state.servers, (server) => serverRow(server, selectable), { pinnedOnly, hidePinned })}
     </div>`;
 }
 
@@ -50,6 +53,7 @@ function serverRow(server, selectable) {
         <span class="sub">${esc(server.templateName)}${
           server.gameVersion ? ` · <span class="ver">${esc(server.gameVersion)}</span>` : ''
         } · ${esc(serverAddress(server))}${server.node ? ` · <span class="badge" title="Runs on another machine">${esc(server.node.name)}</span>` : ''}</span>
+        ${tagChips(server.id)}
       </span>
     </a>
     </span>
@@ -74,6 +78,7 @@ function serverRow(server, selectable) {
     <span class="srv-metric hide-md hide-sm" data-field="ping">${server.ping != null ? server.ping + ' ms' : '—'}</span>
 
     <span class="srv-actions">
+      ${starButton(server)}${organizeButton(server)}
       ${
         running
           ? `<button class="btn btn-sm btn-ghost" data-power="restart" data-id="${esc(
