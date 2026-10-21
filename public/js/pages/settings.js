@@ -10,6 +10,7 @@ import { skeleton } from '../ui/skeleton.js';
 import { renderSettingsInfra2 } from './infra2.js';
 import { renderExtSettings } from './ext-settings.js';
 import { renderSecuritySettings } from './security-settings.js';
+import { mountInfraCards } from './infra-hosting.js';
 
 /* -------------------------------------------------------------- settings */
 
@@ -130,6 +131,12 @@ export async function renderSettings(view) {
       <div class="card-head"><h4>SFTP</h4><div class="spacer"></div><label class="switch"><input type="checkbox" id="sftp-on" /><i></i></label></div>
       <div id="sftp-body">${skeleton('lines')}</div>
     </div>
+
+    <div class="card mb-16" id="hosting"><h4>playit.gg tunnel</h4><div id="ih-playit-body">${skeleton('lines')}</div></div>
+    <div class="card mb-16"><h4>Tailscale and ZeroTier</h4><div id="ih-vpn-body">${skeleton('lines')}</div></div>
+    <div class="card mb-16"><h4>Connection wizard</h4><div id="ih-wizard-body"></div></div>
+    <div class="card mb-16" id="config-sync"><h4>Config sync (git)</h4><div id="ih-sync-body">${skeleton('lines')}</div></div>
+    <div class="card mb-16" id="servers-file"><h4>Servers as a file</h4><div id="ih-iac-body"></div></div>
 
     <div class="card mb-16" id="backup-checks">
       <h4>Backup checks</h4>
@@ -345,6 +352,7 @@ export async function renderSettings(view) {
   renderHttps();
   renderSftp();
   renderExtSettings($('#ext-cards'));
+  mountInfraCards();
 
   $('#s-bpass-save').addEventListener('click', async (event) => {
     const btn = event.currentTarget;

@@ -69,6 +69,8 @@ async function main() {
   const extensions = require('./features/extensions').init({ store });
   extensions.startCode({ manager });
   require('./features/reports').init({ store, manager });
+  require('./features/playit').boot(store);
+  require('./features/config-sync').start({ store, manager });
 
   /* ------------------------------------------------------ static assets -- */
 
@@ -374,6 +376,8 @@ async function main() {
     nodes.stop();
     scheduler.stop();
     bridge.stop();
+    require('./features/playit').stop();
+    require('./features/config-sync').stop();
     stopSampler();
     wss.close();
     server.close();

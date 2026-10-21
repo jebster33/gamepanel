@@ -1,0 +1,20 @@
+# GamePanel as a TrueNAS SCALE custom app (24.10 "Electric Eel" and newer).
+#
+# Apps -> Discover Apps -> Custom App -> "Install via YAML", paste this file.
+# Create the dataset first (Datasets -> Add) and make the host path below match it.
+# Read docs/guide/install-truenas.md: the Docker socket is mounted so the panel can
+# start game servers, which gives it control of Docker on this machine.
+#
+# Not tested on a live TrueNAS system.
+services:
+  gamepanel:
+    image: ghcr.io/jebster33/gamepanel:latest   # or build your own from the Dockerfile and use its name
+    container_name: gamepanel
+    restart: unless-stopped
+    network_mode: host                          # game ports work without listing them
+    environment:
+      GP_PORT: "8420"
+      GP_DATA_DIR: /mnt/tank/apps/gamepanel     # must equal the host path below
+    volumes:
+      - /mnt/tank/apps/gamepanel:/mnt/tank/apps/gamepanel
+      - /var/run/docker.sock:/var/run/docker.sock
