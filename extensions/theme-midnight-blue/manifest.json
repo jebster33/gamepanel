@@ -1,0 +1,37 @@
+{
+  "name": "theme-midnight-blue",
+  "title": "Midnight blue theme",
+  "version": "1.0.0",
+  "author": "GamePanel",
+  "description": "The Midnight blue colour theme.",
+  "themes": [
+    {
+      "id": "midnight-blue",
+      "name": "Midnight blue",
+      "mode": "dark",
+      "vars": {
+        "--bg": "#0b1020",
+        "--sidebar": "#0e1428",
+        "--surface": "#121a30",
+        "--raised": "#18223c",
+        "--hover": "#1e2a48",
+        "--border": "#243256",
+        "--border-strong": "#2f4070",
+        "--inset": "#070b16",
+        "--text": "#e6ebf8",
+        "--muted": "#9aa7c7",
+        "--faint": "#66739a",
+        "--lime": "#5aa9ff",
+        "--lime-ink": "#06101f",
+        "--lime-text": "#5aa9ff",
+        "--lime-soft": "rgba(90,169,255,0.12)",
+        "--lime-glow": "0 0 10px rgba(90,169,255,0.55)",
+        "--amber": "#ffb340",
+        "--amber-soft": "rgba(255,179,64,0.12)",
+        "--red": "#ff6b6b",
+        "--red-soft": "rgba(255,107,107,0.12)",
+        "--blue": "#8ec5ff"
+      }
+    }
+  ]
+}

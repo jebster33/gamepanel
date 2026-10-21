@@ -66,6 +66,9 @@ async function main() {
   wss.scope = (conn, topic, payload) => scopeBroadcast(auth, conn, topic, payload);
   require('./features/live-notifications').start({ store, auth, wss });
   require('./features/setups').start({ store, manager, scheduler });
+  const extensions = require('./features/extensions').init({ store });
+  extensions.startCode({ manager });
+  require('./features/reports').init({ store, manager });
 
   /* ------------------------------------------------------ static assets -- */
 
@@ -110,6 +113,24 @@ async function main() {
       });
       fs.createReadStream(file).pipe(res);
     });
+  }
+
+  function serveExtension(req, res, pathname) {
+    const m = /^\/ext\/([a-z0-9-]+)\/(.+)$/.exec(pathname);
+    let rel = '';
+    try {
+      rel = m ? decodeURIComponent(m[2]) : '';
+    } catch {
+      /* bad escape */
+    }
+    const file = m && req.method === 'GET' ? extensions.fileFor(m[1], rel) : null;
+    if (!file) return json(res, 404, { error: 'Not found' });
+    const ext = path.extname(file).toLowerCase();
+    // Opaque origin, no network, no framing by other sites: an extension page can only talk to the panel through postMessage.
+    res.setHeader('Content-Security-Policy', "sandbox allow-scripts; default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'none'; frame-ancestors 'self'");
+    res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream', 'Cache-Control': 'no-cache', 'X-Content-Type-Options': 'nosniff', 'Access-Control-Allow-Origin': '*' });
+    fs.createReadStream(file).pipe(res);
+    return undefined;
   }
 
   /* ------------------------------------------------- security headers -- */
@@ -174,6 +195,9 @@ async function main() {
     res.setHeader('X-Frame-Options', 'SAMEORIGIN');
     res.setHeader('Referrer-Policy', 'same-origin');
     securityHeaders(req, res);
+
+    // Extension files (pages, widgets): public, sandboxed, and only from enabled extensions.
+    if (url.pathname.startsWith('/ext/')) return serveExtension(req, res, url.pathname);
 
     if (!url.pathname.startsWith('/api/')) {
       try {

@@ -26,7 +26,7 @@ $Branch     = $env:GP_BRANCH
 $NodeMajor  = 22
 $WinSwUrl   = 'https://github.com/winsw/winsw/releases/download/v2.12.0/WinSW-x64.exe'
 $DataDir    = Join-Path $env:ProgramData 'GamePanel'
-$AppPaths   = 'server', 'public', 'templates', 'windows', 'cli', 'package.json', 'README.md', 'LICENSE'
+$AppPaths   = 'server', 'public', 'extensions', 'templates', 'windows', 'cli', 'package.json', 'README.md', 'LICENSE'
 
 function Step($text) { Write-Host "==> $text" -ForegroundColor Cyan }
 function Ok($text)   { Write-Host " ok $text" -ForegroundColor Green }

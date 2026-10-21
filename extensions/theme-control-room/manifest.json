@@ -1,0 +1,37 @@
+{
+  "name": "theme-control-room",
+  "title": "Control room theme",
+  "version": "1.0.0",
+  "author": "GamePanel",
+  "description": "The Control room colour theme.",
+  "themes": [
+    {
+      "id": "control-room",
+      "name": "Control room",
+      "mode": "dark",
+      "vars": {
+        "--bg": "#111210",
+        "--sidebar": "#141513",
+        "--surface": "#191a17",
+        "--raised": "#20211e",
+        "--hover": "#262723",
+        "--border": "#2c2d29",
+        "--border-strong": "#3a3b36",
+        "--inset": "#0c0d0b",
+        "--text": "#ecebe6",
+        "--muted": "#a19f96",
+        "--faint": "#6f6d66",
+        "--lime": "#c6f432",
+        "--lime-ink": "#111210",
+        "--lime-text": "#c6f432",
+        "--lime-soft": "rgba(198,244,50,0.12)",
+        "--lime-glow": "0 0 10px rgba(198,244,50,0.55)",
+        "--amber": "#ffb340",
+        "--amber-soft": "rgba(255,179,64,0.12)",
+        "--red": "#ff5f57",
+        "--red-soft": "rgba(255,95,87,0.12)",
+        "--blue": "#6cb6ff"
+      }
+    }
+  ]
+}
