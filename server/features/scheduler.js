@@ -45,6 +45,9 @@ function parseCron(expr) {
   return { sets, restrictDay: parts[2] !== '*', restrictWeekday: parts[4] !== '*' };
 }
 
+/** Is this date in the given week of its month (1: days 1-7 … 4: days 22-28)? 0 means any. */
+const inWeek = (date, week) => !week || Math.ceil(date.getDate() / 7) === week;
+
 function matches(cron, date) {
   const { sets, restrictDay, restrictWeekday } = cron;
   if (!sets[0].has(date.getMinutes()) || !sets[1].has(date.getHours()) || !sets[3].has(date.getMonth() + 1)) return false;
@@ -56,7 +59,7 @@ function matches(cron, date) {
 }
 
 /** The next time an expression fires, for display. */
-function nextRun(expr, from = new Date(), { firstOfMonth = false } = {}) {
+function nextRun(expr, from = new Date(), { firstOfMonth = false, weekOfMonth = 0 } = {}) {
   let cron;
   try {
     cron = parseCron(expr);
@@ -67,7 +70,7 @@ function nextRun(expr, from = new Date(), { firstOfMonth = false } = {}) {
   d.setSeconds(0, 0);
   for (let i = 0; i < 60 * 24 * 366; i++) {
     d.setMinutes(d.getMinutes() + 1);
-    if (matches(cron, d) && (!firstOfMonth || d.getDate() <= 7)) return d.getTime();
+    if (matches(cron, d) && inWeek(d, firstOfMonth ? 1 : weekOfMonth)) return d.getTime();
   }
   return null;
 }
@@ -101,6 +104,11 @@ function validate(input, template) {
     warnMinutes: ['restart', 'stop', 'wipe', 'dinowipe', 'preset'].includes(action) ? Math.max(0, Math.min(60, Math.round(Number(input.warnMinutes) || 0))) : 0,
     // "The first Thursday of the month": the weekday in the cron, in days 1 to 7 only.
     firstOfMonth: Boolean(input.firstOfMonth),
+    // 1 to 4: only in that week of the month (days 1-7, 8-14, 15-21, 22-28). Combined with a weekday, "the third Thursday".
+    weekOfMonth: Math.max(0, Math.min(4, Math.round(Number(input.weekOfMonth) || 0))) || undefined,
+    // "Restart when the server is empty": wait for the last player to leave, but no longer than maxWaitMinutes.
+    waitForEmpty: ['restart', 'stop', 'wipe', 'dinowipe', 'preset'].includes(action) && !input.onlyWhenEmpty && Boolean(input.waitForEmpty),
+    maxWaitMinutes: Math.max(5, Math.min(720, Math.round(Number(input.maxWaitMinutes) || 120))),
     wipe: action === 'wipe' ? { blueprints: Boolean(input.wipe?.blueprints), newSeed: input.wipe?.newSeed !== false, updateFirst: input.wipe?.updateFirst !== false } : undefined,
   };
 }
@@ -130,6 +138,8 @@ class Scheduler {
     this.store = store;
     this.lastMinute = null;
     this.timer = null;
+    // Schedules that wait for their server to empty: "serverId:scheduleId" -> { since, deadline }
+    this.waiting = new Map();
   }
 
   start() {
@@ -151,6 +161,8 @@ class Scheduler {
     require('./discord-roles').tick(this.manager, this.store, now.getTime()).catch(() => {});
     require('./wipe-announce').tick(this.manager, this.store, now.getTime()).catch(() => {});
     require('./welcome').tick(this.manager, now.getTime());
+    this.checkWaiting(now.getTime());
+    require('./ops-tick').tick(this.manager, this.store, now.getTime());
     for (const server of this.manager.servers) {
       this.announce(server, minute).catch(() => {});
       for (const schedule of server.schedules || []) {
@@ -161,7 +173,7 @@ class Scheduler {
         } catch {
           continue;
         }
-        if (schedule.firstOfMonth && !require('./wipe').isFirstWeekOfMonth(now)) continue;
+        if (!inWeek(now, schedule.firstOfMonth ? 1 : schedule.weekOfMonth)) continue;
         if (matches(cron, now)) this.run(server, schedule).catch(() => {});
       }
     }
@@ -186,7 +198,25 @@ class Scheduler {
     await m.sendCommand(server.id, require('../games/players').fillBroadcast(command, text));
   }
 
-  async run(server, schedule) {
+  /** Run the schedules that were waiting for their server to empty, once it has (or their time is up). */
+  checkWaiting(now) {
+    for (const [key, w] of this.waiting) {
+      const server = this.manager.servers.find((s) => s.id === w.serverId);
+      const schedule = server?.schedules?.find((s) => s.id === w.scheduleId);
+      if (!server || !schedule || !schedule.waitForEmpty || !this.manager.isActive(server.id)) {
+        this.waiting.delete(key);
+        continue;
+      }
+      const rt = this.manager.rt(server.id);
+      const online = rt.players ?? rt.playerList?.length ?? 0;
+      if (online === 0 || now >= w.deadline) {
+        this.waiting.delete(key);
+        this.run(server, schedule, { fromWait: true, forced: online > 0 }).catch(() => {});
+      }
+    }
+  }
+
+  async run(server, schedule, opts = {}) {
     const m = this.manager;
     const running = m.isActive(server.id);
     let result = 'ok';
@@ -195,6 +225,10 @@ class Scheduler {
     try {
       if (schedule.onlyWhenEmpty && running && online > 0) {
         result = `skipped (${online} player${online === 1 ? '' : 's'} online)`;
+      } else if (schedule.waitForEmpty && running && online > 0 && !opts.fromWait) {
+        const key = `${server.id}:${schedule.id}`;
+        if (!this.waiting.has(key)) this.waiting.set(key, { serverId: server.id, scheduleId: schedule.id, since: Date.now(), deadline: Date.now() + (schedule.maxWaitMinutes || 120) * 60_000 });
+        result = `waiting for the server to empty (${online} online, up to ${schedule.maxWaitMinutes || 120} min)`;
       } else {
         switch (schedule.action) {
           case 'restart':
@@ -307,7 +341,11 @@ class Scheduler {
   /* ------------------------------------------------------------- CRUD -- */
 
   list(server) {
-    return (server.schedules || []).map((s) => ({ ...s, nextRun: s.enabled ? nextRun(s.cron, new Date(), { firstOfMonth: s.firstOfMonth }) : null }));
+    return (server.schedules || []).map((s) => ({
+      ...s,
+      nextRun: s.enabled ? nextRun(s.cron, new Date(), { firstOfMonth: s.firstOfMonth, weekOfMonth: s.weekOfMonth }) : null,
+      waitingSince: this.waiting.get(`${server.id}:${s.id}`)?.since || null,
+    }));
   }
 
   add(server, input) {
@@ -332,4 +370,4 @@ class Scheduler {
   }
 }
 
-module.exports = { Scheduler, parseCron, matches, nextRun, ACTIONS };
+module.exports = { Scheduler, parseCron, matches, nextRun, inWeek, ACTIONS };

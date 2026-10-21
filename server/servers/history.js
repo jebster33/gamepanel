@@ -129,6 +129,14 @@ module.exports = {
         // Offline is recorded as null so the graph shows a gap, not zero players.
         const count = rt.status === STATUS.RUNNING ? (rt.players ?? online.size) : null;
         h.samples.push([now, count]);
+        // One [online, total] pair per day, kept for a year: the longer uptime history (the samples only reach back 30 days).
+        const day = (h.daily ||= {});
+        const key = new Date(now).toISOString().slice(0, 10);
+        const entry = (day[key] ||= [0, 0]);
+        entry[1]++;
+        if (count != null) entry[0]++;
+        const keys = Object.keys(day);
+        if (keys.length > 400) for (const k of keys.sort().slice(0, keys.length - 400)) delete day[k];
         if (h.samples.length > MAX_SAMPLES) h.samples.splice(0, h.samples.length - MAX_SAMPLES);
         h.dirty = true;
       }
@@ -209,9 +217,9 @@ module.exports = {
       if (!this.servers.some((s) => s.id === id)) continue;
       try {
         fs.mkdirSync(DIR, { recursive: true });
-        const { players, log, samples, open, ips, wipes } = h;
+        const { players, log, samples, open, ips, wipes, daily } = h;
         const tmp = `${fileFor(id)}.tmp`;
-        fs.writeFileSync(tmp, JSON.stringify({ players, log, samples, open, ips, wipes }));
+        fs.writeFileSync(tmp, JSON.stringify({ players, log, samples, open, ips, wipes, daily }));
         fs.renameSync(tmp, fileFor(id));
         h.dirty = false;
       } catch (err) {
@@ -242,6 +250,16 @@ module.exports = {
       const bin = bins[Math.min(days - 1, Math.floor((t - first) / DAY))];
       bin[1]++;
       if (n != null) bin[0]++;
+    }
+    // Beyond 30 days the per-day totals are used: the same bars, from the daily record.
+    if (days > 30) {
+      const list = [];
+      for (let i = days - 1; i >= 0; i--) {
+        const e = h.daily?.[new Date(now - i * DAY).toISOString().slice(0, 10)];
+        list.push(e && e[1] ? e[0] / e[1] : null);
+      }
+      const known = list.filter((v) => v != null);
+      return { days: list, day: null, week: null, month: null, average: known.length ? known.reduce((a, v) => a + v, 0) / known.length : null };
     }
     const share = (ms) => {
       const list = h.samples.filter(([t]) => now - t <= ms);

@@ -36,6 +36,8 @@ const EVENT_CHOICES = {
   'schedule.failed': 'A scheduled task fails',
   'server.resource_alert': 'A server goes over its CPU, memory or disk alert',
   'panel.disk_low': "The panel's disk is almost full",
+  'panel.memory_pressure': 'The machine is running low on memory',
+  'server.disk_quota': 'A server nears its disk quota',
   'panel.host_health': 'The host machine needs attention',
   'user.login': 'Someone signs in',
   'user.lockout': 'Repeated failed sign-ins',

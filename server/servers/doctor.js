@@ -69,6 +69,7 @@ module.exports = {
   diagnoseCrash(server, code, signal) {
     try {
       const result = this.runDiagnosis(server, { code, signal });
+      require('../features/crashes').record(this, server, code, signal, result);
       if (!result) return;
       for (const f of result.findings) this.pushConsole(server, `Crash doctor: ${f.title}. ${f.detail.split('\n')[0]}`, 'system');
       this.broadcastServers();

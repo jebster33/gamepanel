@@ -19,6 +19,8 @@ import { renderClusters } from '../pages/clusters.js';
 import { renderCommunity } from '../pages/community.js';
 import { renderClusterTransfers } from '../pages/server/ark-transfers.js';
 import { renderUsers } from '../pages/users.js';
+import { renderOps } from '../pages/ops.js';
+import { renderPlayerHub } from '../pages/player-hub.js';
 import { renderExtPage } from '../ui/ext.js';
 import { closeSidebar, renderSidebarServers } from '../ui/sidebar.js';
 import { reducedMotion } from '../ui/fx.js';
@@ -44,6 +46,8 @@ const ROUTES = [
   { pattern: /^\/clusters$/, name: 'clusters', page: renderClusters },
   { pattern: /^\/community$/, name: 'community', page: renderCommunity },
   { pattern: /^\/clusters\/([^/]+)\/transfers$/, name: 'cluster-transfers', keys: ['id'], page: renderClusterTransfers },
+  { pattern: /^\/ops(?:\/([^/]+))?$/, name: 'ops', keys: ['tab'], page: renderOps },
+  { pattern: /^\/player-hub(?:\/([^/]+))?$/, name: 'player-hub', keys: ['tab'], page: renderPlayerHub },
   { pattern: /^\/nodes$/, name: 'nodes', page: renderNodes },
   { pattern: /^\/account$/, name: 'account', page: renderAccount },
   { pattern: /^\/users$/, name: 'users', page: renderUsers },

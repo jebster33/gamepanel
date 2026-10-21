@@ -219,8 +219,11 @@ class ServerManager extends EventEmitter {
   runtimeFor(server) {
     if ((server.platform || 'linux') === 'windows') return 'process';
     if (isWindows) return 'docker';
-    if (server.runtime === 'process' || !this.dockerAvailable || this.settings.containerize === false) return 'process';
+    if (server.runtime === 'process') return 'process';
     if (this.template(server)?.container === false) return 'process';
+    // "Always in Docker" on one server beats the panel-wide switch (start() refuses when Docker is missing).
+    if (server.runtime === 'docker') return 'docker';
+    if (!this.dockerAvailable || this.settings.containerize === false) return 'process';
     return 'docker';
   }
 
@@ -588,6 +591,8 @@ class ServerManager extends EventEmitter {
     this.dropMetricHistory(id);
     require('../features/config-history').forget(id);
     require('../features/notes').forget(id);
+    require('../features/crashes').forget(id);
+    require('../features/trash').empty(id).catch(() => {});
     // Free play.example.com so the name can be reused.
     if (server.subdomain) require('../features/dns').release(this.store, server).catch(() => {});
     this.forgetServerEverywhere(id);

@@ -24,6 +24,8 @@ module.exports = {
     if (!server.installedAt) fail(409, 'The server is not installed yet');
     if (!require('fs').existsSync(server.dir)) fail(500, 'The server directory is missing — reinstall the server');
     this.checkCanStart(server);
+    require('../features/disk-quota').checkStart(this, server);
+    if (server.runtime === 'docker' && this.runtimeFor(server) === 'docker' && !this.dockerAvailable) fail(409, 'This server is set to always run in Docker, but Docker is not available on this machine. Install Docker or switch it to "Process" on the Tools tab.');
 
     // Optional: pull the newest game build first, like LinuxGSM/AMP do.
     if (server.updateOnStart && updateSteps(template).length && !rt.task) {
@@ -79,6 +81,7 @@ module.exports = {
     }
 
     rt.startedAt = Date.now();
+    require('../features/cpu-pin').apply(this, server).catch(() => {});
     this.openLogStream(server);
     if (template.mods) setImmediate(() => this.warnAboutMods(server, template));
     this.store.addEvent('server.started', `${server.name} started`, { serverId: id });

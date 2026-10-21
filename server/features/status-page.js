@@ -144,6 +144,7 @@ function publicView(store, manager, slug) {
         mapPort: s.showAddress && server.ports?.map ? server.ports.map : undefined,
         mapUrl: require('../games/world-maps').publicMapUrl(server) || undefined,
         uptime30: manager.uptime ? manager.uptime(server.id) : null,
+        uptime90: manager.uptime ? manager.uptime(server.id, 90).days : null,
         topPlayers: s.showPlayers && manager.playerHistory
           ? manager.playerHistory(server.id).players.filter((x) => x.seconds >= 60).sort((a, b) => b.seconds - a.seconds).slice(0, 5).map((x) => ({ name: x.name, hours: Math.round(x.seconds / 360) / 10 }))
           : undefined,
@@ -160,6 +161,7 @@ function publicView(store, manager, slug) {
     hideBadge: Boolean(s.hideBadge),
     logo: s.logo ? `/api/public/status/${encodeURIComponent(s.slug)}/logo?v=${s.logo.v}` : null,
     servers,
+    incidents: require('./incidents').publicList(store, s.servers),
     feed: joinFeed(store, manager),
     boards: s.showPlayers && s.showBoards !== false,
     appeals: Boolean(store.state.settings.appeals?.enabled),

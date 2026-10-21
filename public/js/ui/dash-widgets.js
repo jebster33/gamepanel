@@ -10,8 +10,8 @@ import { pinnedServers, prefs, savePrefs } from './ux-prefs.js';
  * as drag and drop, so the layout can be changed with the keyboard alone.
  */
 
-export const WIDGET_LABELS = { host: 'Host metrics', counts: 'Server counts', capacity: 'Capacity', pinned: 'Pinned servers', servers: 'Servers' };
-const DEFAULT_ORDER = ['host', 'counts', 'capacity', 'pinned', 'servers'];
+export const WIDGET_LABELS = { host: 'Host metrics', counts: 'Server counts', feed: 'Recent activity', capacity: 'Capacity', pinned: 'Pinned servers', servers: 'Servers' };
+const DEFAULT_ORDER = ['host', 'counts', 'feed', 'capacity', 'pinned', 'servers'];
 
 let editing = false;
 let announce = '';
