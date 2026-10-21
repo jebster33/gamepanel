@@ -99,6 +99,13 @@
       "default": 4,
       "description": "Automatic backups of the world.",
       "group": "Rules"
+    },
+    {
+      "name": "WORLD_MODIFIERS",
+      "label": "World modifiers (launch arguments)",
+      "default": "",
+      "description": "Set from the Tools tab: combat, death penalty, resources, raids, portals.",
+      "group": "Rules"
     }
   ],
   "ports": [
@@ -126,7 +133,7 @@
       "mode": "+x"
     }
   ],
-  "startCommand": "if [ -f ./doorstop_libs/libdoorstop_x64.so ]; then export DOORSTOP_ENABLE=TRUE DOORSTOP_INVOKE_DLL_PATH=./BepInEx/core/BepInEx.Preloader.dll DOORSTOP_CORLIB_OVERRIDE_PATH=./unstripped_corlib LD_PRELOAD=libdoorstop_x64.so:$LD_PRELOAD LD_LIBRARY_PATH=./doorstop_libs:$LD_LIBRARY_PATH; fi; SteamAppId=892970 LD_LIBRARY_PATH=./linux64:$LD_LIBRARY_PATH ./valheim_server.x86_64 -nographics -batchmode -name \"{{SERVER_NAME}}\" -port {{PORT}} -world \"{{WORLD_NAME}}\" -password \"{{SERVER_PASSWORD}}\" -preset {{PRESET}} -saveinterval {{SAVE_INTERVAL}} -backups {{BACKUPS}} -public {{PUBLIC}} {{CROSSPLAY}} -savedir ./savedir",
+  "startCommand": "if [ -f ./doorstop_libs/libdoorstop_x64.so ]; then export DOORSTOP_ENABLE=TRUE DOORSTOP_INVOKE_DLL_PATH=./BepInEx/core/BepInEx.Preloader.dll DOORSTOP_CORLIB_OVERRIDE_PATH=./unstripped_corlib LD_PRELOAD=libdoorstop_x64.so:$LD_PRELOAD LD_LIBRARY_PATH=./doorstop_libs:$LD_LIBRARY_PATH; fi; SteamAppId=892970 LD_LIBRARY_PATH=./linux64:$LD_LIBRARY_PATH ./valheim_server.x86_64 -nographics -batchmode -name \"{{SERVER_NAME}}\" -port {{PORT}} -world \"{{WORLD_NAME}}\" -password \"{{SERVER_PASSWORD}}\" -preset {{PRESET}} {{WORLD_MODIFIERS}} -saveinterval {{SAVE_INTERVAL}} -backups {{BACKUPS}} -public {{PUBLIC}} {{CROSSPLAY}} -savedir ./savedir",
   "stopSignal": "SIGINT",
   "stopTimeout": 60,
   "query": {

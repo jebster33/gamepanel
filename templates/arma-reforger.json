@@ -108,6 +108,13 @@
         }
       ],
       "group": "Rules"
+    },
+    {
+      "name": "MODS_JSON",
+      "label": "Mods (JSON list)",
+      "default": "[]",
+      "description": "Set from the Tools tab. Each entry is {\"modId\":\"…\",\"name\":\"…\"}.",
+      "group": "Mods"
     }
   ],
   "ports": [
@@ -144,7 +151,7 @@
     {
       "path": "config.json",
       "mode": "overwrite",
-      "content": "{\n  \"bindAddress\": \"0.0.0.0\",\n  \"bindPort\": {{PORT}},\n  \"publicPort\": {{PORT}},\n  \"a2s\": { \"address\": \"0.0.0.0\", \"port\": {{PORT_QUERY}} },\n  \"game\": {\n    \"name\": \"{{SERVER_NAME}}\",\n    \"password\": \"{{SERVER_PASSWORD}}\",\n    \"passwordAdmin\": \"{{ADMIN_PASSWORD}}\",\n    \"admins\": [],\n    \"scenarioId\": \"{{SCENARIO}}\",\n    \"maxPlayers\": {{MAX_PLAYERS}},\n    \"visible\": true,\n    \"crossPlatform\": {{CROSS_PLATFORM}},\n    \"gameProperties\": { \"serverMaxViewDistance\": {{VIEW_DISTANCE}}, \"networkViewDistance\": 1000, \"disableThirdPerson\": {{DISABLE_THIRD_PERSON}}, \"fastValidation\": true, \"battlEye\": {{BATTLEYE}} },\n    \"mods\": []\n  }\n}\n"
+      "content": "{\n  \"bindAddress\": \"0.0.0.0\",\n  \"bindPort\": {{PORT}},\n  \"publicPort\": {{PORT}},\n  \"a2s\": { \"address\": \"0.0.0.0\", \"port\": {{PORT_QUERY}} },\n  \"game\": {\n    \"name\": \"{{SERVER_NAME}}\",\n    \"password\": \"{{SERVER_PASSWORD}}\",\n    \"passwordAdmin\": \"{{ADMIN_PASSWORD}}\",\n    \"admins\": [],\n    \"scenarioId\": \"{{SCENARIO}}\",\n    \"maxPlayers\": {{MAX_PLAYERS}},\n    \"visible\": true,\n    \"crossPlatform\": {{CROSS_PLATFORM}},\n    \"gameProperties\": { \"serverMaxViewDistance\": {{VIEW_DISTANCE}}, \"networkViewDistance\": 1000, \"disableThirdPerson\": {{DISABLE_THIRD_PERSON}}, \"fastValidation\": true, \"battlEye\": {{BATTLEYE}} },\n    \"mods\": {{MODS_JSON}}\n  }\n}\n"
     }
   ],
   "startCommand": "./ArmaReforgerServer -config ./config.json -profile ./profile -maxFPS 60",

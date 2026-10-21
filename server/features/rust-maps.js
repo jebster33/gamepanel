@@ -111,4 +111,46 @@ function openFile(server, token, name) {
   }
 }
 
-module.exports = { args, describe, set, openFile, isFixed, OFFICIAL, DIR };
+/**
+ * Look at an uploaded .map before the game does. The inside of a .map is compressed, so this
+ * checks what can be known from the file itself: that it is a map and not a web page or zip,
+ * the size players must download, and what that size means for the server's memory.
+ */
+function check(manager, server, name) {
+  if (!FILE_NAME.test(String(name || ''))) fail(400, 'Pick one of the uploaded .map files');
+  let file;
+  try {
+    file = containedPath(server.dir, `${DIR}/${name}`);
+  } catch {
+    fail(404, 'That file is not there');
+  }
+  if (!fs.existsSync(file)) fail(404, 'That file is not there');
+  const size = fs.statSync(file).size;
+  const head = Buffer.alloc(16);
+  const fd = fs.openSync(file, 'r');
+  try {
+    fs.readSync(fd, head, 0, 16, 0);
+  } finally {
+    fs.closeSync(fd);
+  }
+  const mb = size / 1048576;
+  const items = [];
+  const add = (level, text) => items.push({ level, text });
+  const text = head.toString('latin1').toLowerCase();
+  if (text.startsWith('<!doc') || text.startsWith('<html')) add('error', 'This is a web page, not a map. The download probably failed or needed a login.');
+  else if (head[0] === 0x50 && head[1] === 0x4b) add('error', 'This is a zip file. Unpack it and upload the .map inside.');
+  else if (head[0] === 0x1f && head[1] === 0x8b) add('error', 'This is a gzip file. Unpack it and upload the .map inside.');
+  else if (head.every((b) => b === 0)) add('error', 'The file starts with empty bytes: the upload is damaged.');
+  else add('ok', 'The file does not look like a web page or an archive.');
+  if (size < 512 * 1024) add('error', `Only ${Math.round(size / 1024)} KB: too small to be a map. It was cut off or is not a map.`);
+  else if (mb > 250) add('error', `${mb.toFixed(0)} MB. Players download this when they join; most will give up. Rust maps are normally 15 to 80 MB.`);
+  else if (mb > 120) add('warn', `${mb.toFixed(0)} MB. Large: joining takes a while and the server needs more memory. Rust maps are normally 15 to 80 MB.`);
+  else add('ok', `${mb.toFixed(1)} MB: a normal size.`);
+  const ram = Number(server.memoryMb || server.memory || 0);
+  const need = 4096 + mb * 30;
+  if (ram && ram < need) add('warn', `For a map this size, plan for about ${(need / 1024).toFixed(1)} GB of memory; this server is set to ${(ram / 1024).toFixed(1)} GB.`);
+  add('info', 'Prefab counts and broken prefabs cannot be read from outside the game. Start the server once: it logs missing prefabs while loading, and the Tools tab log explainer can read that.');
+  return { name, size, level: items.some((i) => i.level === 'error') ? 'error' : items.some((i) => i.level === 'warn') ? 'warn' : 'ok', items };
+}
+
+module.exports = { check, args, describe, set, openFile, isFixed, OFFICIAL, DIR };

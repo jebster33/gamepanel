@@ -223,6 +223,7 @@ module.exports = (router, { store, auth, manager, scheduler, bridge }, { require
     store.addEvent('server.map', `${server.name} map set to ${result.map.mode}${result.map.level ? ` (${result.map.level})` : ''} by ${user.username}`, { serverId: server.id });
     return result;
   });
+  router.post('/api/servers/:id/map/check', ({ user, params, body }) => rustMaps.check(manager, mapServer(user, params.id, 'files'), body?.file));
   // RustMaps: a preview link for the seed, and custom maps with chosen monuments left out (the owner's own key).
   const rustmaps = require('../../features/rustmaps');
   router.get('/api/servers/:id/rustmaps', ({ user, params }) => rustmaps.describe(manager, store, mapServer(user, params.id, 'settings')));
