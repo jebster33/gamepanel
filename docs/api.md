@@ -180,3 +180,11 @@ POST   /api/system/update                update and restart
 ```
 
 `WS /ws` streams `servers`, `stats`, `system`, `server:status`, `notification` and `console:<id>`.
+
+## Getting started checklist
+
+Per account: every signed-in user reads and changes only their own progress.
+
+- `GET /api/onboarding` returns `{ items: [{ id, label, hint, link, done, auto, skipped }], hidden, tourDone, newsId, newsSeen }`. Only steps the account can use are listed.
+- `PUT /api/onboarding` takes any of `{ id, done }` (tick or untick one step), `hidden`, `tourDone`, `seenNews`.
+- `POST /api/onboarding/reset` clears the account's progress.

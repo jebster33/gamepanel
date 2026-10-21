@@ -16,6 +16,7 @@ import { renderSchedulesTab } from './schedules.js';
 import { renderServerSettingsTab } from './settings.js';
 import { serverAddress } from '../servers.js';
 import { openPushModal, stagingBanner } from './staging.js';
+import { mountServerTips } from '../../ui/onboarding.js';
 
 /* --------------------------------------------------------- server detail */
 
@@ -108,6 +109,7 @@ export function renderServerDetail(view) {
     <div id="tab-content"></div>`;
 
   $('#staging-push')?.addEventListener('click', () => openPushModal(server));
+  mountServerTips(server);
   renderServerTab(server, tab);
   if (state.route.params.tab === 'network') setTimeout(() => $('#network-card')?.scrollIntoView({ behavior: 'smooth' }), 300);
 }

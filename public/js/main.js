@@ -18,6 +18,7 @@ import { openImportModal } from './pages/deploy.js';
 import { drawServerCharts } from './pages/server/metrics.js';
 import { copyToClipboard } from './ui/clipboard.js';
 import { wireOtp } from './ui/otp.js';
+import { initKeyboard } from './ui/keyboard.js';
 import { closeSidebar } from './ui/sidebar.js';
 import { fadeAway, shake } from './ui/fx.js';
 import { applyTheme, switchTheme } from './ui/theme.js';
@@ -221,6 +222,7 @@ window.addEventListener('resize', () => {
 });
 
 startTranslating();
+initKeyboard();
 
 // Back from Google/Discord/GitHub: an error to show, a code step, or a freshly linked account.
 const returned = new URLSearchParams(location.search);

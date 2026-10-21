@@ -1,50 +1,15 @@
 import { esc } from '../core/util.js';
+import * as core from './diff-core.js';
+
+const { visibleRows } = core;
+
+// The algorithm lives in diff-core.js (no DOM, so tests load it); these are the names the pages import.
+export const lineDiff = (before, after) => core.lineDiff(before, after);
+export const diffStats = (rows) => core.diffStats(rows);
+export const sideBySide = (rows) => core.sideBySide(rows);
+export const changeStarts = (paired) => core.changeStarts(paired);
 
 /* ------------------------------------------------------------------ diff */
-
-/**
- * Line diff of two texts: [{ op: ' ' | '-' | '+', text }]. The common start
- * and end are trimmed first, so config edits (a few changed lines in a long
- * file) stay cheap; the middle uses a longest-common-subsequence table.
- */
-export function lineDiff(before, after) {
-  const a = String(before ?? '').split('\n');
-  const b = String(after ?? '').split('\n');
-  let start = 0;
-  while (start < a.length && start < b.length && a[start] === b[start]) start++;
-  let endA = a.length;
-  let endB = b.length;
-  while (endA > start && endB > start && a[endA - 1] === b[endB - 1]) {
-    endA--;
-    endB--;
-  }
-  const out = a.slice(0, start).map((text) => ({ op: ' ', text }));
-  const midA = a.slice(start, endA);
-  const midB = b.slice(start, endB);
-  if (midA.length * midB.length > 4_000_000) {
-    // Too big to match line by line: show it as replaced.
-    out.push(...midA.map((text) => ({ op: '-', text })), ...midB.map((text) => ({ op: '+', text })));
-  } else {
-    const n = midA.length;
-    const m = midB.length;
-    const table = Array.from({ length: n + 1 }, () => new Uint32Array(m + 1));
-    for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--) table[i][j] = midA[i] === midB[j] ? table[i + 1][j + 1] + 1 : Math.max(table[i + 1][j], table[i][j + 1]);
-    let i = 0;
-    let j = 0;
-    while (i < n && j < m) {
-      if (midA[i] === midB[j]) {
-        out.push({ op: ' ', text: midA[i] });
-        i++;
-        j++;
-      } else if (table[i + 1][j] >= table[i][j + 1]) out.push({ op: '-', text: midA[i++] });
-      else out.push({ op: '+', text: midB[j++] });
-    }
-    while (i < n) out.push({ op: '-', text: midA[i++] });
-    while (j < m) out.push({ op: '+', text: midB[j++] });
-  }
-  out.push(...a.slice(endA).map((text) => ({ op: ' ', text })));
-  return out;
-}
 
 /** The diff as HTML, with unchanged runs folded down to a few lines of context. */
 export function renderDiff(rows, context = 3) {
@@ -70,6 +35,30 @@ export function renderDiff(rows, context = 3) {
   return `<div class="diff">${html}</div>`;
 }
 
-export function diffStats(rows) {
-  return { added: rows.filter((r) => r.op === '+').length, removed: rows.filter((r) => r.op === '-').length };
+/**
+ * Two columns, old on the left and new on the right, with the changed lines
+ * highlighted. Unchanged runs fold. Returns HTML; `labels` names the columns.
+ */
+export function renderSideBySide(rows, { context = 3, labels = ['Left', 'Right'] } = {}) {
+  const paired = sideBySide(rows);
+  if (!rows.some((r) => r.op !== ' ')) return '<div class="faint" style="padding:12px">The two are identical.</div>';
+  const keep = visibleRows(paired.map((p) => p.op), context);
+  const cell = (side, cls) => `<div class="sbs-cell ${side ? cls : 'empty'}"><span class="sbs-n">${side ? side.n : ''}</span><span class="sbs-t">${side ? esc(side.text) || ' ' : ''}</span></div>`;
+  let html = '';
+  let skipped = 0;
+  const fold = () => {
+    if (skipped) html += `<div class="sbs-fold">… ${skipped} unchanged line${skipped === 1 ? '' : 's'}</div>`;
+    skipped = 0;
+  };
+  paired.forEach((row, i) => {
+    if (!keep[i]) {
+      skipped++;
+      return;
+    }
+    fold();
+    const change = row.op !== ' ';
+    html += `<div class="sbs-row${change ? ' change' : ''}" data-sbs-row="${i}">${cell(row.left, row.op === '+' ? '' : change ? 'del' : '')}${cell(row.right, row.op === '-' ? '' : change ? 'add' : '')}</div>`;
+  });
+  fold();
+  return `<div class="sbs"><div class="sbs-head"><span>${esc(labels[0])}</span><span>${esc(labels[1])}</span></div><div class="sbs-body">${html}</div></div>`;
 }
