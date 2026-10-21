@@ -119,6 +119,11 @@ too (after asking), along with users, bridge connections and the containers Game
 | **Update channels** | Stable (tagged releases) or beta for the panel itself. |
 | **World maps** | Rust (RustMaps), Valheim (valheim-map.world) and Terraria (TerraMap), next to Minecraft's live BlueMap. |
 | **Sign in with Google, Discord or GitHub** | Link one on your Account page and skip the password. |
+| **Operations** | Calendar of every schedule and Rust's forced wipe, costs per server, dynamic DNS, Prometheus/Grafana export, phone widgets, host benchmark, memory pressure alerts, status page history. |
+| **Server tools** | Trash with restore, search across files, crash reports with a cause guess, log explainer, disk quotas, CPU core pinning, Docker per server, live progress when moving a server. |
+| **Players** | Warnings and notes shared by staff, alt account and VPN detection, peak-time heatmap, map of player countries. |
+| **Minecraft extras** | Plugin update check, world border editor, mod compatibility check before switching type, flame graph profiler. |
+| **Game extras** | FiveM resources, DayZ loot table, Valheim world modifiers, Factorio saves, Unturned frameworks, Reforger mods, ARK ASA mod search, Rust map check. |
 | **Languages** | English, Nederlands, Deutsch, Español, Français, Português. |
 | **Notifications** | A bell for crashes, installs and backups, with pop-ups and desktop alerts. |
 

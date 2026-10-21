@@ -682,7 +682,6 @@ function openMoveModal(server, targets) {
 
 /** A small live status while a move runs: step and megabytes sent. Stops when it ends or the page changes. */
 function watchMove(id, name, to) {
-  const hash = location.hash;
   const note = document.createElement('div');
   note.className = 'card';
   note.style.cssText = 'position:fixed;right:16px;bottom:16px;z-index:50;max-width:320px';
@@ -697,7 +696,7 @@ function watchMove(id, name, to) {
     const mbSent = (j.bytes / 1048576).toFixed(1);
     note.innerHTML = `<b>Moving ${esc(name)} to ${esc(to)}</b><div class="faint">${j.state === 'failed' ? `Failed: ${esc(j.error)}` : j.state === 'done' ? 'Done.' : `${esc(j.step)} · ${mbSent} MB sent`}</div>${j.state === 'running' ? '' : '<button class="btn btn-sm mt-8">Close</button>'}`;
     note.querySelector('button')?.addEventListener('click', () => note.remove());
-    if (j.state === 'running' && location.hash === hash || j.state === 'running') setTimeout(tick, 1500);
+    if (j.state === 'running') setTimeout(tick, 1500);
   };
   tick();
 }
