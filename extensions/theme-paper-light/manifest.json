@@ -1,0 +1,38 @@
+{
+  "name": "theme-paper-light",
+  "title": "Paper light theme",
+  "version": "1.0.0",
+  "author": "GamePanel",
+  "description": "The Paper light colour theme.",
+  "themes": [
+    {
+      "id": "paper-light",
+      "name": "Paper light",
+      "mode": "light",
+      "vars": {
+        "--bg": "#f4efe4",
+        "--sidebar": "#ebe4d3",
+        "--surface": "#fffcf5",
+        "--raised": "#f7f1e3",
+        "--hover": "#eee5d0",
+        "--border": "#ddd2b9",
+        "--border-strong": "#c7b998",
+        "--inset": "#2b2519",
+        "--text": "#2b2519",
+        "--muted": "#6a604b",
+        "--faint": "#8f8468",
+        "--lime": "#1f4e8c",
+        "--lime-ink": "#ffffff",
+        "--lime-text": "#1f4e8c",
+        "--lime-soft": "rgba(31,78,140,0.12)",
+        "--lime-glow": "0 0 6px rgba(31,78,140,0.4)",
+        "--amber": "#9a6200",
+        "--amber-soft": "rgba(154,98,0,0.12)",
+        "--red": "#c4372f",
+        "--red-soft": "rgba(196,55,47,0.12)",
+        "--blue": "#1f6fbf",
+        "--shadow": "0 20px 50px -24px rgba(30,30,20,0.3)"
+      }
+    }
+  ]
+}

@@ -51,6 +51,7 @@ function draw(view, data) {
             .map(
               (c) => `<div class="card mb-16">
           <div class="card-head"><h4>${esc(c.name)}</h4><span class="chip chip-sm">${esc(c.game)}</span><div class="spacer"></div>
+            <a class="btn btn-sm" href="#/clusters/${esc(c.id)}/transfers">Transfers</a>
             <button class="btn btn-sm" data-edit="${esc(c.id)}">Edit</button>
             <button class="btn btn-sm btn-ghost btn-danger" data-del="${esc(c.id)}">Remove</button></div>
           <div class="list">

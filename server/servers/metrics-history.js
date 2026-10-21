@@ -44,11 +44,11 @@ module.exports = {
       const slot = Math.floor(point.t / tier.every) * tier.every;
       const acc = m.acc[tier.name];
       if (acc && acc.t !== slot && acc.n) {
-        m[tier.name].push({ t: acc.t, cpu: +(acc.cpu / acc.n).toFixed(1), mem: Math.round(acc.mem / acc.n), memMax: acc.memMax, players: +(acc.players / acc.n).toFixed(1), playersMax: acc.playersMax });
+        m[tier.name].push({ t: acc.t, cpu: +(acc.cpu / acc.n).toFixed(1), mem: Math.round(acc.mem / acc.n), memMax: acc.memMax, players: +(acc.players / acc.n).toFixed(1), playersMax: acc.playersMax, rx: Math.round(acc.rx / acc.n), tx: Math.round(acc.tx / acc.n) });
         if (m[tier.name].length > tier.keep) m[tier.name].splice(0, m[tier.name].length - tier.keep);
         m.dirty = true;
       }
-      if (!acc || acc.t !== slot) m.acc[tier.name] = { t: slot, n: 0, cpu: 0, mem: 0, memMax: 0, players: 0, playersMax: 0 };
+      if (!acc || acc.t !== slot) m.acc[tier.name] = { t: slot, n: 0, cpu: 0, mem: 0, memMax: 0, players: 0, playersMax: 0, rx: 0, tx: 0 };
       const a = m.acc[tier.name];
       a.n++;
       a.cpu += point.cpu;
@@ -56,6 +56,8 @@ module.exports = {
       a.memMax = Math.max(a.memMax, point.mem);
       a.players += point.players;
       a.playersMax = Math.max(a.playersMax, point.players);
+      a.rx += point.rx || 0;
+      a.tx += point.tx || 0;
     }
   },
 

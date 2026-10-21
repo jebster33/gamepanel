@@ -318,6 +318,7 @@ class Auth {
       this.recordFailure(ip, 'Incorrect username or password');
     }
     this.failures.delete(account);
+    this.guard(user, 'password', ip);
     if (user.totp?.secret) {
       return { twoFactor: true, ticket: this.newTicket(user) };
     }
@@ -373,7 +374,8 @@ class Auth {
    * GitHub). Two-factor sign-in still applies: the result is the same as a
    * right password.
    */
-  loginLinked(user, ip = 'unknown') {
+  loginLinked(user, ip = 'unknown', method = 'oauth') {
+    this.guard(user, method, ip);
     if (user.totp?.secret) return { twoFactor: true, ticket: this.newTicket(user) };
     this.passkeyOnlyAdmin(user);
     return this.startSession(user, ip);
@@ -460,8 +462,31 @@ class Auth {
     return { recoveryCodes: codes };
   }
 
-  /** Resolve a request to a user, via cookie or `Authorization: Bearer`. */
+  /**
+   * Extra sign-in rules that need the account: the IP allowlist and "this
+   * account signs in with SSO only". method: password, passkey, oauth, sso.
+   * Throws 403 when the sign-in is not allowed.
+   */
+  guard(user, method, ip) {
+    require('../features/ip-allowlist').checkSignIn(this.store, user, ip);
+    require('../features/oidc').checkMethod(this.store, user, method);
+  }
+
+  /** Resolve a request to a user, via cookie or `Authorization: Bearer`; refused when the address is not allowed for that account. */
   userFromRequest(req) {
+    const user = this.userFromRequestUnguarded(req);
+    if (!user) return user;
+    try {
+      require('../features/ip-allowlist').checkRequest(this.store, user, req);
+    } catch (err) {
+      // A WebSocket upgrade cannot take a throw: refused like a signed-out socket.
+      if (routePath(req.url) === '/ws') return null;
+      throw err;
+    }
+    return user;
+  }
+
+  userFromRequestUnguarded(req) {
     const cookies = parseCookies(req.headers.cookie);
     let token = cookies[COOKIE_NAME];
     const authHeader = req.headers.authorization;

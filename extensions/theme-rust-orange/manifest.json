@@ -1,0 +1,37 @@
+{
+  "name": "theme-rust-orange",
+  "title": "Rust orange theme",
+  "version": "1.0.0",
+  "author": "GamePanel",
+  "description": "The Rust orange colour theme.",
+  "themes": [
+    {
+      "id": "rust-orange",
+      "name": "Rust orange",
+      "mode": "dark",
+      "vars": {
+        "--bg": "#14100d",
+        "--sidebar": "#181310",
+        "--surface": "#1f1814",
+        "--raised": "#271e18",
+        "--hover": "#30251d",
+        "--border": "#3a2c22",
+        "--border-strong": "#4d3a2c",
+        "--inset": "#0d0a08",
+        "--text": "#f2e8de",
+        "--muted": "#b3a393",
+        "--faint": "#7d6c5d",
+        "--lime": "#e8642a",
+        "--lime-ink": "#140c07",
+        "--lime-text": "#ff8a50",
+        "--lime-soft": "rgba(232,100,42,0.12)",
+        "--lime-glow": "0 0 10px rgba(232,100,42,0.55)",
+        "--amber": "#ffb340",
+        "--amber-soft": "rgba(255,179,64,0.12)",
+        "--red": "#ff5f57",
+        "--red-soft": "rgba(255,95,87,0.12)",
+        "--blue": "#6cb6ff"
+      }
+    }
+  ]
+}

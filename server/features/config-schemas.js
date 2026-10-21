@@ -196,6 +196,32 @@ const SCHEMAS = [
       excavatorresourcetickrate: { label: 'Excavator tick rate', unit: 'seconds', help: 'Lower means faster output.' },
     },
   },
+  {
+    id: 'tshock',
+    title: 'tShock: server settings',
+    description: 'The everyday settings of a tShock Terraria server: who can join, slots, PvP, building and backups. Changes apply after a restart.',
+    match: /(^|\/)tshock\/config\.json$/i,
+    groups: [
+      { name: 'Joining', keys: ['settings.ServerPassword', 'settings.ServerPort', 'settings.MaxSlots', 'settings.ReservedSlots', 'settings.MaximumLoginAttempts'] },
+      { name: 'Rules', keys: ['settings.PvPMode', 'settings.HardcoreOnly', 'settings.MediumcoreOnly', 'settings.DisableBuild', 'settings.DisableHardmode', 'settings.SpawnProtection', 'settings.SpawnProtectionRadius', 'settings.RespawnSeconds', 'settings.RespawnBossSeconds', 'settings.InvasionMultiplier', 'settings.DisableDungeonGuardian'] },
+      { name: 'Saving and backups', keys: ['settings.AutoSave', 'settings.AnnounceSave', 'settings.ShowBackupAutosaveMessages', 'settings.BackupInterval', 'settings.BackupKeepFor'] },
+      { name: 'Chat', keys: ['settings.EnableGeoIP', 'settings.EnableChatAboveHeads', 'settings.ChatFormat', 'settings.ChatAboveHeadsFormat', 'settings.BroadcastRGB'] },
+    ],
+    fields: {
+      'settings.ServerPassword': { label: 'Join password', help: 'Leave empty for an open server.' },
+      'settings.MaxSlots': { label: 'Player slots', help: 'How many players can be on at once.', min: 1, max: 255 },
+      'settings.ReservedSlots': { label: 'Reserved slots', help: 'Slots kept free for players with the reservedslot permission.' },
+      'settings.PvPMode': { label: 'PvP mode', help: 'normal lets players choose, always forces PvP, disabled turns it off.', options: ['normal', 'always', 'disabled'] },
+      'settings.DisableBuild': { label: 'Block building', help: 'Only players with permission can place or break blocks (useful for a spawn).' },
+      'settings.SpawnProtection': { label: 'Spawn protection', help: 'Stops building near the spawn point.' },
+      'settings.SpawnProtectionRadius': { label: 'Spawn protection radius', unit: 'blocks' },
+      'settings.AutoSave': { label: 'Auto-save the world' },
+      'settings.BackupInterval': { label: 'Backup every', unit: 'minutes', help: '0 turns tShock backups off.' },
+      'settings.BackupKeepFor': { label: 'Keep backups for', unit: 'minutes' },
+      'settings.RespawnSeconds': { label: 'Respawn time', unit: 'seconds' },
+      'settings.RespawnBossSeconds': { label: 'Respawn time during a boss', unit: 'seconds' },
+    },
+  },
 ];
 
 const norm = (s) => String(s).toLowerCase();

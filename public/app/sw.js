@@ -3,7 +3,7 @@
  * Network first, so a panel update shows up on the next launch; the API and
  * the WebSocket are never cached.
  */
-const CACHE = 'gp-app-v5';
+const CACHE = 'gp-app-v6';
 const SHELL = ['/app/', '/app/app.css', '/app/app.js', '/img/logo-192.png'];
 
 self.addEventListener('install', (event) => {
@@ -49,14 +49,27 @@ self.addEventListener('push', (event) => {
       icon: '/img/logo-192.png',
       badge: '/img/favicon-64.png',
       tag: data.tag,
-      data: { url: data.url || '/app/' },
+      // Buttons (Restart, Start…) where the phone shows them; iOS only shows them on a long press.
+      actions: (Array.isArray(data.actions) ? data.actions : []).slice(0, 2).map((a) => ({ action: String(a.action), title: String(a.title) })),
+      data: { url: data.url || '/app/', consoleUrl: data.consoleUrl, tokens: data.tokens || {} },
     })
   );
 });
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const url = event.notification.data?.url || '/app/';
+  const { tokens, consoleUrl } = event.notification.data || {};
+  const action = event.action;
+  if (action && tokens && tokens[action]) {
+    event.waitUntil(
+      fetch('/api/notify-actions/run', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: tokens[action] }) })
+        .then((res) => res.json().then((body) => ({ ok: res.ok, body })))
+        .then(({ ok, body }) => self.registration.showNotification(ok ? 'Done' : 'That did not work', { body: ok ? body.message : body.error || 'Open the app to do it.', icon: '/img/logo-192.png', tag: 'gp-action-result' }))
+        .catch(() => self.registration.showNotification('That did not work', { body: 'The panel could not be reached.', icon: '/img/logo-192.png', tag: 'gp-action-result' }))
+    );
+    return;
+  }
+  const url = (action === 'console' && consoleUrl) || event.notification.data?.url || '/app/';
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
       const open = list.find((c) => c.url.includes('/app'));

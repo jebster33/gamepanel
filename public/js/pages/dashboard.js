@@ -4,8 +4,11 @@ import { setCrumbs } from '../core/router.js';
 import { state } from '../core/state.js';
 import { $, esc, fmtBytes, fmtDuration, fmtRate, icon } from '../core/util.js';
 import { renderCapacity } from './capacity.js';
+import { renderHostCard } from './infra2.js';
 import { renderServerCards } from './servers.js';
 import { countUp, flash, revealChildren } from '../ui/fx.js';
+import { decorateWidgets, pinnedWidgetShown } from '../ui/dash-widgets.js';
+import { renderExtWidgets } from '../ui/ext.js';
 
 /* ------------------------------------------------------------- dashboard */
 
@@ -24,7 +27,10 @@ export function renderDashboard(view) {
       </div>
     </div>
     <div id="checklist"></div>
+    <div id="ext-widgets"></div>
 
+    <div id="ux-widgets">
+    <section data-widget="host">
     <div class="metrics">
       <div class="tile spot">
         <div class="tile-label">CPU</div>
@@ -54,6 +60,8 @@ export function renderDashboard(view) {
       </div>
     </div>
 
+    </section>
+    <section data-widget="counts">
     <div class="metrics compact">
       <div class="tile spot">
         <div class="tile-label">Servers online</div>
@@ -74,19 +82,29 @@ export function renderDashboard(view) {
       </div>
     </div>
 
-    <div id="capacity"></div>
-
+    </section>
+    <section data-widget="capacity"><div id="host-health"></div><div id="capacity"></div></section>
+    <section data-widget="pinned">
+    <h2 class="section-title" ${pinnedWidgetShown() ? '' : 'hidden'}>Pinned</h2>
+    ${renderServerCards({ pinnedOnly: true })}
+    </section>
+    <section data-widget="servers">
     <div class="row" style="margin-bottom:10px">
       <h2 class="section-title" style="margin:0">Servers</h2>
       <div class="spacer" style="flex:1"></div>
       <a class="btn btn-sm" href="#/servers">View all</a>
     </div>
-    ${renderServerCards()}`;
+    ${renderServerCards({ hidePinned: pinnedWidgetShown() })}
+    </section>
+    </div>`;
+  decorateWidgets(view);
 
   drawHostCharts();
+  renderExtWidgets($('#ext-widgets'));
   if (state.user?.role === 'admin') {
     renderChecklist();
     renderCapacity($('#capacity'), true);
+    renderHostCard($('#host-health'), true);
   }
   revealChildren(view);
   view.querySelectorAll('[data-countup]').forEach((el) => countUp(el, el.dataset.countup));

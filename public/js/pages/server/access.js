@@ -2,6 +2,7 @@ import { api } from '../../core/api.js';
 import { $, esc, icon, toast } from '../../core/util.js';
 import { confirmModal, openModal } from '../../ui/modal.js';
 import { skeleton } from '../../ui/skeleton.js';
+import { decorateAccess } from './access-staff.js';
 
 /* --------------------------------------------------------------- access */
 
@@ -61,6 +62,7 @@ export async function renderAccessTab(host, server) {
       </table></div>
     </div>`;
 
+  decorateAccess(host, server, data, refresh);
   $('#acc-new').addEventListener('click', () => accessModal({ server, data, onDone: refresh }));
   $('#acc-add')?.addEventListener('click', () => accessModal({ server, data, pick: others, onDone: refresh }));
   host.querySelectorAll('[data-acc-edit]').forEach((el) =>

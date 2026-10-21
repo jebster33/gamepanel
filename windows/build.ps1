@@ -25,7 +25,7 @@ Write-Host "==> Building GamePanel $Version for Windows"
 if (Test-Path (Join-Path $OutDir 'stage')) { Remove-Item (Join-Path $OutDir 'stage') -Recurse -Force }
 New-Item -ItemType Directory -Force -Path $Stage | Out-Null
 
-foreach ($rel in 'server', 'public', 'templates', 'windows', 'cli', 'package.json', 'README.md', 'LICENSE') {
+foreach ($rel in 'server', 'public', 'extensions', 'templates', 'windows', 'cli', 'package.json', 'README.md', 'LICENSE') {
   Copy-Item (Join-Path $Root $rel) (Join-Path $Stage $rel) -Recurse -Force
 }
 Remove-Item (Join-Path $Stage 'windows\build.ps1'), (Join-Path $Stage 'windows\setup.iss') -ErrorAction SilentlyContinue

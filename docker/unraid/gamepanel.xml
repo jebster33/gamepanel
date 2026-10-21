@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>GamePanel</Name>
+  <Repository>ghcr.io/jebster33/gamepanel:latest</Repository>
+  <Registry>https://github.com/jebster33/gamepanel/pkgs/container/gamepanel</Registry>
+  <Network>host</Network>
+  <MyIP/>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/jebster33/gamepanel/issues</Support>
+  <Project>https://github.com/jebster33/gamepanel</Project>
+  <Overview>Game server control panel: one web page to install, run, back up and mod game servers. This template runs the panel in host network mode and starts each game server as a sibling container through the Docker socket (mounted below). Mounting the Docker socket gives the panel control of Docker on this Unraid server: only give panel admin accounts to people you trust. The data folder is mapped to the same path inside and outside the container on purpose.</Overview>
+  <Category>GameServers: Tools:</Category>
+  <WebUI>http://[IP]:[PORT:8420]/</WebUI>
+  <TemplateURL>https://raw.githubusercontent.com/jebster33/gamepanel/main/docker/unraid/gamepanel.xml</TemplateURL>
+  <Icon>https://raw.githubusercontent.com/jebster33/gamepanel/main/docs/brand/logo-mark.png</Icon>
+  <ExtraParams>--restart=unless-stopped</ExtraParams>
+  <PostArgs/>
+  <CPUset/>
+  <DateInstalled/>
+  <DonateText/>
+  <DonateLink/>
+  <Requires>Docker must be running. The first start of a game downloads its files, so give the share some room.</Requires>
+  <Config Name="Web UI port" Target="GP_PORT" Default="8420" Mode="" Description="Port the panel listens on (host network mode)." Type="Variable" Display="always" Required="true" Mask="false">8420</Config>
+  <Config Name="Data folder" Target="/mnt/user/appdata/gamepanel" Default="/mnt/user/appdata/gamepanel" Mode="rw" Description="Servers, backups and settings. The container path must equal the host path, so game containers can mount their folders." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/gamepanel</Config>
+  <Config Name="Data folder path inside the panel" Target="GP_DATA_DIR" Default="/mnt/user/appdata/gamepanel" Mode="" Description="Leave equal to the data folder above." Type="Variable" Display="advanced" Required="true" Mask="false">/mnt/user/appdata/gamepanel</Config>
+  <Config Name="Docker socket" Target="/var/run/docker.sock" Default="/var/run/docker.sock" Mode="rw" Description="Lets the panel start game servers as containers. Gives it control of Docker." Type="Path" Display="advanced" Required="true" Mask="false">/var/run/docker.sock</Config>
+</Container>

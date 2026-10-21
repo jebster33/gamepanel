@@ -219,4 +219,4 @@ function list(manager, store) {
   };
 }
 
-module.exports = { list, create, update, remove, argsFor, mountFor, prepare, TEMPLATES, DEFAULTS, CLUSTER_MOUNT };
+module.exports = { list, create, update, remove, argsFor, mountFor, prepare, listOf, dirOf, TEMPLATES, DEFAULTS, CLUSTER_MOUNT };

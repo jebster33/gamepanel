@@ -66,6 +66,11 @@ async function main() {
   wss.scope = (conn, topic, payload) => scopeBroadcast(auth, conn, topic, payload);
   require('./features/live-notifications').start({ store, auth, wss });
   require('./features/setups').start({ store, manager, scheduler });
+  const extensions = require('./features/extensions').init({ store });
+  extensions.startCode({ manager });
+  require('./features/reports').init({ store, manager });
+  require('./features/playit').boot(store);
+  require('./features/config-sync').start({ store, manager });
 
   /* ------------------------------------------------------ static assets -- */
 
@@ -78,6 +83,8 @@ async function main() {
     if (/^\/mods\/[A-Za-z0-9_-]+\/?$/.test(rel)) rel = '/mods.html';
     // Ban appeals: /appeal
     if (rel === '/appeal' || rel === '/appeal/') rel = '/appeal.html';
+    // Player portal: /portal
+    if (rel === '/portal' || rel === '/portal/') rel = '/portal.html';
     // The iPhone app: /app, /app/
     if (rel === '/app' || rel === '/app/') rel = '/app.html';
     const file = path.join(config.publicDir, path.normalize(rel).replace(/^(\.\.[/\\])+/, ''));
@@ -110,6 +117,24 @@ async function main() {
       });
       fs.createReadStream(file).pipe(res);
     });
+  }
+
+  function serveExtension(req, res, pathname) {
+    const m = /^\/ext\/([a-z0-9-]+)\/(.+)$/.exec(pathname);
+    let rel = '';
+    try {
+      rel = m ? decodeURIComponent(m[2]) : '';
+    } catch {
+      /* bad escape */
+    }
+    const file = m && req.method === 'GET' ? extensions.fileFor(m[1], rel) : null;
+    if (!file) return json(res, 404, { error: 'Not found' });
+    const ext = path.extname(file).toLowerCase();
+    // Opaque origin, no network, no framing by other sites: an extension page can only talk to the panel through postMessage.
+    res.setHeader('Content-Security-Policy', "sandbox allow-scripts; default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'none'; frame-ancestors 'self'");
+    res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream', 'Cache-Control': 'no-cache', 'X-Content-Type-Options': 'nosniff', 'Access-Control-Allow-Origin': '*' });
+    fs.createReadStream(file).pipe(res);
+    return undefined;
   }
 
   /* ------------------------------------------------- security headers -- */
@@ -174,6 +199,9 @@ async function main() {
     res.setHeader('X-Frame-Options', 'SAMEORIGIN');
     res.setHeader('Referrer-Policy', 'same-origin');
     securityHeaders(req, res);
+
+    // Extension files (pages, widgets): public, sandboxed, and only from enabled extensions.
+    if (url.pathname.startsWith('/ext/')) return serveExtension(req, res, url.pathname);
 
     if (!url.pathname.startsWith('/api/')) {
       try {
@@ -312,6 +340,9 @@ async function main() {
   await httpsFeature.start(store, handleRequest, handleUpgrade);
   require('./features/status-bots').start({ store, manager });
   require('./features/wake-on-join').start({ store, manager });
+  require('./features/rust-afk').start({ store, manager });
+  require('./features/flood').start({ store, manager });
+  require('./features/backup-test').start({ store, manager });
   require('./features/server-list').start({ store, manager });
   require('./features/sftp')
     .start({ store, auth, manager })
@@ -322,6 +353,17 @@ async function main() {
   await manager.init();
   scheduler.start();
   nodes.start();
+  // Time-limited access: expired grants go at boot and then every minute.
+  const staffTools = require('./features/staff');
+  const grantTick = () => {
+    try {
+      staffTools.expireGrants(store, auth, manager);
+    } catch (err) {
+      logger.warn(`Expiring access grants: ${err.message}`);
+    }
+  };
+  grantTick();
+  setInterval(grantTick, 60_000).unref?.();
   const updateTimer = setInterval(() => manager.checkAutoUpdates().catch(() => {}), 60_000);
   updateTimer.unref?.();
 
@@ -334,6 +376,8 @@ async function main() {
     nodes.stop();
     scheduler.stop();
     bridge.stop();
+    require('./features/playit').stop();
+    require('./features/config-sync').stop();
     stopSampler();
     wss.close();
     server.close();

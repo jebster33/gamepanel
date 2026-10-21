@@ -95,6 +95,8 @@ module.exports = {
     const rt = this.rt(server.id);
     const runtime = this.runtimeFor(server);
     const log = (line, stream = 'stdout') => this.pushConsole(server, line, stream);
+    // A server that follows a Steam beta branch installs and updates from it.
+    steps = require('../features/steam-branch').apply(this, server, steps, vars);
 
     if (server.platform === 'windows') {
       const children = new Set();

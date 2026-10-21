@@ -43,6 +43,13 @@
       "generate": "password"
     },
     {
+      "name": "MODS",
+      "label": "Mod IDs (load order)",
+      "default": "",
+      "description": "CurseForge mod IDs, comma separated, loaded first to last. The ARK tab has a drag and drop list for this.",
+      "group": "Mods"
+    },
+    {
       "name": "XP_MULTIPLIER",
       "label": "XP multiplier",
       "type": "number",
@@ -286,7 +293,7 @@
       }
     ]
   },
-  "startCommand": "ShooterGame\\Binaries\\Win64\\ArkAscendedServer.exe {{MAP}}?listen?SessionName=\"{{SERVER_NAME}}\"?Port={{PORT}}?RCONEnabled=True?RCONPort={{PORT_RCON}}?ServerPassword={{SERVER_PASSWORD}}?ServerAdminPassword={{RCON_PASSWORD}} -WinLiveMaxPlayers={{MAX_PLAYERS}} -log {{CLUSTER_ARGS}}",
+  "startCommand": "ShooterGame\\Binaries\\Win64\\ArkAscendedServer.exe {{MAP}}?listen?SessionName=\"{{SERVER_NAME}}\"?Port={{PORT}}?RCONEnabled=True?RCONPort={{PORT_RCON}}?ServerPassword={{SERVER_PASSWORD}}?ServerAdminPassword={{RCON_PASSWORD}} -WinLiveMaxPlayers={{MAX_PLAYERS}} -log {{ARK_MODS_ARGS}} {{CLUSTER_ARGS}}",
   "tailFiles": [
     "ShooterGame/Saved/Logs/ShooterGame.log"
   ],

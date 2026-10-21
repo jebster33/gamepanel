@@ -1,0 +1,24 @@
+# GamePanel with Docker Compose. See docs/guide/install-docker.md.
+#
+#   docker compose up -d --build
+#   then open http://<this machine>:8420
+#
+# Read the notes in the guide before exposing this: mounting the Docker socket
+# gives the panel (and anyone who becomes a panel administrator) control of
+# Docker on the host, which is how it starts game servers.
+services:
+  gamepanel:
+    build: .
+    image: gamepanel:local
+    container_name: gamepanel
+    restart: unless-stopped
+    # Host networking lets every game server's ports work without listing them
+    # here. (Linux only. On Docker Desktop publish the ports yourself instead.)
+    network_mode: host
+    environment:
+      GP_PORT: "8420"
+      GP_DATA_DIR: /var/lib/gamepanel
+    volumes:
+      # Same path on both sides on purpose: game containers mount their folder by this path on the host.
+      - /var/lib/gamepanel:/var/lib/gamepanel
+      - /var/run/docker.sock:/var/run/docker.sock

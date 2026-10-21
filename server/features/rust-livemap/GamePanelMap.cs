@@ -7,15 +7,20 @@ using System.Text;
 namespace Oxide.Plugins
 {
     [Info("GamePanelMap", "gamepanel", "1.0.0")]
-    [Description("Answers the game panel's live map over RCON: gamepanel.map info|players|events|bases [page]")]
+    [Description("Answers the game panel's live map over RCON: gamepanel.map info|players|events|bases|teams|entities [page]")]
     class GamePanelMap : RustPlugin
     {
         const int MonumentPage = 40;
         const int PlayerPage = 30;
         const int BasePage = 40;
+        const int TeamPage = 25;
+        const int EntityPage = 40;
 
         List<object[]> baseCache = new List<object[]>();
         DateTime baseCacheAt = DateTime.MinValue;
+        List<string> entityCache = new List<string>();
+        int entityTotal = 0;
+        DateTime entityCacheAt = DateTime.MinValue;
 
         static string Esc(string s)
         {
@@ -45,6 +50,8 @@ namespace Oxide.Plugins
                 case "players": Players(arg, page); break;
                 case "events": Events(arg); break;
                 case "bases": Bases(arg, page); break;
+                case "teams": Teams(arg, page); break;
+                case "entities": Entities(arg, page); break;
             }
         }
 
@@ -120,6 +127,63 @@ namespace Oxide.Plugins
                 "[\"" + b[0] + "\",\"" + Esc(((string)b[1]).Length > 24 ? ((string)b[1]).Substring(0, 24) : (string)b[1]) + "\"," + N((float)b[2]) + "," + N((float)b[3]) + "," + b[4] + "]");
             var more = baseCache.Count > (page + 1) * BasePage;
             arg.ReplyWith("{\"total\":" + baseCache.Count + ",\"more\":" + (more ? "true" : "false") + ",\"bases\":[" + string.Join(",", slice.ToArray()) + "]}");
+        }
+
+        // Rust teams: [teamId, leaderId, [memberIds...]]
+        void Teams(ConsoleSystem.Arg arg, int page)
+        {
+            var rows = new List<string>();
+            var manager = RelationshipManager.ServerInstance;
+            if (manager != null)
+            {
+                foreach (var kv in manager.teams)
+                {
+                    var team = kv.Value;
+                    if (team == null || team.members == null || team.members.Count == 0) continue;
+                    rows.Add("[\"" + team.teamID + "\",\"" + team.teamLeader + "\",[" + string.Join(",", team.members.Select(m => "\"" + m + "\"").ToArray()) + "]]");
+                }
+            }
+            var slice = rows.Skip(page * TeamPage).Take(TeamPage);
+            var more = rows.Count > (page + 1) * TeamPage;
+            arg.ReplyWith("{\"total\":" + rows.Count + ",\"more\":" + (more ? "true" : "false") + ",\"teams\":[" + string.Join(",", slice.ToArray()) + "]}");
+        }
+
+        // Entities per owner, biggest first: [ownerId, name, total, buildingParts, deployables, x, y, z].
+        // Scanning every entity is slow, so the answer is cached for a minute.
+        void Entities(ConsoleSystem.Arg arg, int page)
+        {
+            if ((DateTime.UtcNow - entityCacheAt).TotalSeconds > 60)
+            {
+                var owners = new Dictionary<ulong, float[]>();
+                var all = 0;
+                foreach (var e in BaseNetworkable.serverEntities)
+                {
+                    var be = e as BaseEntity;
+                    if (be == null) continue;
+                    all++;
+                    if (be.OwnerID == 0) continue;
+                    if (be is BasePlayer) continue;
+                    float[] a;
+                    if (!owners.TryGetValue(be.OwnerID, out a)) { a = new float[6]; owners[be.OwnerID] = a; }
+                    a[0]++;
+                    if (be is BuildingBlock) a[1]++; else a[2]++;
+                    var p = be.transform.position;
+                    a[3] += p.x; a[4] += p.y; a[5] += p.z;
+                }
+                entityTotal = all;
+                entityCache = owners.OrderByDescending(o => o.Value[0]).Take(200).Select(o =>
+                {
+                    var player = covalence.Players.FindPlayerById(o.Key.ToString());
+                    var n = player != null ? player.Name : "";
+                    if (n.Length > 24) n = n.Substring(0, 24);
+                    var c = o.Value[0];
+                    return "[\"" + o.Key + "\",\"" + Esc(n) + "\"," + c + "," + o.Value[1] + "," + o.Value[2] + "," + N(o.Value[3] / c) + "," + N(o.Value[4] / c) + "," + N(o.Value[5] / c) + "]";
+                }).ToList();
+                entityCacheAt = DateTime.UtcNow;
+            }
+            var slice = entityCache.Skip(page * EntityPage).Take(EntityPage);
+            var more = entityCache.Count > (page + 1) * EntityPage;
+            arg.ReplyWith("{\"all\":" + entityTotal + ",\"more\":" + (more ? "true" : "false") + ",\"owners\":[" + string.Join(",", slice.ToArray()) + "]}");
         }
     }
 }

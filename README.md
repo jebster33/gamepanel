@@ -42,6 +42,8 @@ curl -fsSL https://raw.githubusercontent.com/jebster33/gamepanel/main/install.sh
 Then open **http://localhost:8420** (or `http://<server-ip>:8420`) and create your admin account.
 The installers set up everything else: Node.js, the background service, the firewall rule and, on Linux, Docker.
 Step by step: [Linux](docs/guide/install-linux.md) · [Windows](docs/guide/install-windows.md) · [First setup](docs/guide/first-setup.md)
+Also: [Docker](docs/guide/install-docker.md) · [Unraid](docs/guide/install-unraid.md) · [TrueNAS SCALE](docs/guide/install-truenas.md) · [Proxmox](docs/guide/install-proxmox.md)
+No port forwarding? [playit.gg, Tailscale and ZeroTier](docs/guide/hosting-without-port-forwarding.md) · [Config sync and servers as a file](docs/guide/config-as-code.md)
 
 <details>
 <summary>Install options</summary>

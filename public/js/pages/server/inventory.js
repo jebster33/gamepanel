@@ -2,33 +2,15 @@ import { api } from '../../core/api.js';
 import { can, esc, fmtTime, toast, icon } from '../../core/util.js';
 import { confirmModal } from '../../ui/modal.js';
 import { skeleton } from '../../ui/skeleton.js';
+import { tile, itemTitle } from './mc-items.js';
 
 /* ------------------------------------------------- a Minecraft player's inventory */
 
-const TEXTURES = 'https://assets.mcasset.cloud/1.21.4/assets/minecraft/textures';
-
-// Item pictures: the item texture, else the block one, else two letters.
-document.addEventListener(
-  'error',
-  (event) => {
-    const img = event.target;
-    if (img?.tagName !== 'IMG' || !img.dataset.invId) return;
-    if (!img.dataset.triedBlock) {
-      img.dataset.triedBlock = '1';
-      img.src = `${TEXTURES}/block/${img.dataset.invId}.png`;
-    } else img.replaceWith(document.createTextNode(img.dataset.invLetters));
-  },
-  true
-);
-
+// Items are drawn by the panel itself (mc-items.js): no image host sees who is looking.
 function slot(it, extra = '') {
   if (!it) return `<div class="inv-slot ${extra}"></div>`;
-  const letters = it.id.split('_').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
-  const tip = [it.name, it.enchants?.length ? it.enchants.map((e) => `${e.id} ${e.level}`).join(', ') : '', it.damage ? `Damage ${it.damage}` : '', it.contains ? `Holds ${it.contains} stacks` : ''].filter(Boolean).join('\n');
-  return `<div class="inv-slot ${it.enchants?.length ? 'enchanted' : ''} ${extra}" title="${esc(tip)}">
-    <img src="${TEXTURES}/item/${esc(it.id)}.png" alt="" loading="lazy" data-inv-id="${esc(it.id)}" data-inv-letters="${esc(letters)}" />
-    ${it.count > 1 ? `<span class="inv-count">${it.count}</span>` : ''}
-  </div>`;
+  const view = { ...it, id: `minecraft:${it.id}`, enchants: (it.enchants || []).map((e) => ({ id: String(e.id).toLowerCase().replace(/ /g, '_'), level: e.level })) };
+  return `<div class="inv-slot ${extra}" title="${esc(itemTitle(view))}">${tile(view)}</div>`;
 }
 
 function grid(items, from, to) {
@@ -63,6 +45,7 @@ export async function renderInventory(box, serverId, name) {
         </div>
       </div>
       ${inv.ender.length ? `<div class="field-label mt-8">Ender chest</div><div class="inv-grid">${grid(inv.ender, 0, 26)}</div>` : ''}
+      ${!backup && can('files.write') ? `<div class="row mt-8" style="justify-content:flex-end"><button class="btn btn-sm" id="inv-edit">${inv.online ? 'Open editor (read only while online)' : 'Edit items'}</button></div>` : ''}
       ${backup && can('backups.restore') ? `<div class="row mt-8" style="justify-content:flex-end"><button class="btn btn-sm btn-primary" id="inv-restore">Put this inventory back</button></div>` : ''}`;
     wire(backup);
   };
@@ -74,6 +57,7 @@ export async function renderInventory(box, serverId, name) {
         </select></div>`
       : '';
   const wire = (backup) => {
+    box.querySelector('#inv-edit')?.addEventListener('click', () => import('./mc-inventory-editor.js').then((m) => m.openInventoryEditor(serverId, name, () => draw(''))));
     box.querySelector('#inv-when')?.addEventListener('change', (e) => draw(e.target.value));
     box.querySelector('#inv-restore')?.addEventListener('click', async () => {
       if (!(await confirmModal('Put the inventory back', `${name}'s inventory, ender chest, health and position go back to how they were in this backup. The current ones are kept in .gamepanel/player-rollbacks. ${name} must be offline.`, 'Put it back'))) return;

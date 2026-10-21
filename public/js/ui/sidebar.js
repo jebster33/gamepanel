@@ -1,5 +1,6 @@
 import { state } from '../core/state.js';
 import { $, esc } from '../core/util.js';
+import { isPinned, pinnedFirst } from './ux-prefs.js';
 
 /* --------------------------------------------------------------- sidebar */
 
@@ -10,12 +11,12 @@ export function renderSidebarServers() {
     list.innerHTML = '<div class="sidebar-empty">No servers yet</div>';
     return;
   }
-  list.innerHTML = state.servers
+  list.innerHTML = pinnedFirst(state.servers)
     .map(
       (s) => `
       <a class="sidebar-server ${state.route.params.id === s.id ? 'active' : ''}" href="#/servers/${esc(s.id)}">
         <span class="status ${esc(s.status)}" style="padding:0;background:none"><i class="dot"></i></span>
-        <span class="name">${esc(s.name)}</span>${s.node ? `<span class="faint" style="font-size:11px;margin-left:auto">${esc(s.node.name)}</span>` : ''}
+        <span class="name">${esc(s.name)}</span>${isPinned(s.id) ? '<span class="ux-pin" title="Pinned" aria-label="Pinned">★</span>' : ''}${s.node ? `<span class="faint" style="font-size:11px;margin-left:auto">${esc(s.node.name)}</span>` : ''}
       </a>`
     )
     .join('');

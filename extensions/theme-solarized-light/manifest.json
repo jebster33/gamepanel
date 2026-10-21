@@ -1,0 +1,38 @@
+{
+  "name": "theme-solarized-light",
+  "title": "Solarized light theme",
+  "version": "1.0.0",
+  "author": "GamePanel",
+  "description": "The Solarized light colour theme.",
+  "themes": [
+    {
+      "id": "solarized-light",
+      "name": "Solarized light",
+      "mode": "light",
+      "vars": {
+        "--bg": "#fdf6e3",
+        "--sidebar": "#eee8d5",
+        "--surface": "#fffdf5",
+        "--raised": "#f5efdc",
+        "--hover": "#eee8d5",
+        "--border": "#ddd6c1",
+        "--border-strong": "#c9c2ab",
+        "--inset": "#073642",
+        "--text": "#073642",
+        "--muted": "#586e75",
+        "--faint": "#93a1a1",
+        "--lime": "#2aa198",
+        "--lime-ink": "#fdf6e3",
+        "--lime-text": "#1d7a73",
+        "--lime-soft": "rgba(42,161,152,0.12)",
+        "--lime-glow": "0 0 6px rgba(42,161,152,0.4)",
+        "--amber": "#9a7400",
+        "--amber-soft": "rgba(154,116,0,0.12)",
+        "--red": "#dc322f",
+        "--red-soft": "rgba(220,50,47,0.12)",
+        "--blue": "#268bd2",
+        "--shadow": "0 20px 50px -24px rgba(30,30,20,0.3)"
+      }
+    }
+  ]
+}

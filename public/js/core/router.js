@@ -12,10 +12,14 @@ import { renderSettings } from '../pages/settings.js';
 import { renderTemplates } from '../pages/templates.js';
 import { renderTemplateBuilder } from '../pages/template-builder.js';
 import { renderAudit } from '../pages/audit.js';
+import { renderStaff } from '../pages/staff.js';
 import { renderBans } from '../pages/bans.js';
 import { renderNetworks } from '../pages/networks.js';
 import { renderClusters } from '../pages/clusters.js';
+import { renderCommunity } from '../pages/community.js';
+import { renderClusterTransfers } from '../pages/server/ark-transfers.js';
 import { renderUsers } from '../pages/users.js';
+import { renderExtPage } from '../ui/ext.js';
 import { closeSidebar, renderSidebarServers } from '../ui/sidebar.js';
 import { reducedMotion } from '../ui/fx.js';
 import { skeleton } from '../ui/skeleton.js';
@@ -34,13 +38,17 @@ const ROUTES = [
   { pattern: /^\/templates\/(new|edit)(?:\/([^/]+))?$/, name: 'template-builder', keys: ['mode', 'id'], page: renderTemplateBuilder },
   { pattern: /^\/activity$/, name: 'activity', page: renderActivity },
   { pattern: /^\/audit$/, name: 'audit', page: renderAudit },
+  { pattern: /^\/staff$/, name: 'staff', page: renderStaff },
   { pattern: /^\/bans$/, name: 'bans', page: renderBans },
   { pattern: /^\/networks$/, name: 'networks', page: renderNetworks },
   { pattern: /^\/clusters$/, name: 'clusters', page: renderClusters },
+  { pattern: /^\/community$/, name: 'community', page: renderCommunity },
+  { pattern: /^\/clusters\/([^/]+)\/transfers$/, name: 'cluster-transfers', keys: ['id'], page: renderClusterTransfers },
   { pattern: /^\/nodes$/, name: 'nodes', page: renderNodes },
   { pattern: /^\/account$/, name: 'account', page: renderAccount },
   { pattern: /^\/users$/, name: 'users', page: renderUsers },
   { pattern: /^\/connections$/, name: 'connections', page: renderConnections },
+  { pattern: /^\/x\/([^/]+)\/([^/]+)$/, name: 'ext', keys: ['ext', 'page'], page: renderExtPage },
   { pattern: /^\/settings(?:\/([^/]+))?$/, name: 'settings', keys: ['section'], page: renderSettings },
 ];
 
