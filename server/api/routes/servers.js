@@ -784,6 +784,39 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
     return manager.sendCommand(server.id, String(body.command).trim());
   });
 
+  /* Quick commands, autocomplete lines and macros for the console. */
+  router.get('/api/servers/:id/commands', ({ user, params }) => {
+    const server = serverFor(user, params.id, 'console');
+    const { quick, suggest } = require('../../games/commands').catalog(manager.template(server));
+    return { quick, suggest, macros: server.macros || [], canSay: Boolean(require('../../games/players').broadcastCommand(manager.template(server))) };
+  });
+
+  router.put('/api/servers/:id/macros', ({ user, params, body }) => {
+    const server = serverFor(user, params.id, 'command');
+    server.macros = require('../../games/commands').validateMacros(body?.macros);
+    store.save();
+    store.addEvent('server.settings', `${user.username} changed the console macros on ${server.name}`, { serverId: server.id });
+    return { macros: server.macros };
+  });
+
+  /** A catalog button ({ quick, values }) or a saved macro ({ macro }); the panel builds the command itself. */
+  router.post('/api/servers/:id/quick-command', async ({ user, params, body }) => {
+    const server = serverFor(user, params.id, 'command');
+    const commands = require('../../games/commands');
+    const template = manager.template(server);
+    let lines;
+    if (body?.macro) {
+      const macro = (server.macros || []).find((m) => m.id === body.macro);
+      if (!macro) fail(404, 'That macro no longer exists');
+      lines = commands.macroCommands(template, macro);
+    } else {
+      lines = [commands.build(template, String(body?.quick || ''), body?.values)];
+    }
+    let last;
+    for (const line of lines) last = await manager.sendCommand(server.id, line);
+    return { ok: true, sent: lines.length, response: last?.response || '' };
+  });
+
   router.get('/api/servers/:id/history', ({ user, params, url }) => {
     const server = serverFor(user, params.id);
     return { history: manager.getHistory(server.id, url.searchParams.get('range')) };

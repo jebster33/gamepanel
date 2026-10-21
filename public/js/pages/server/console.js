@@ -4,6 +4,7 @@ import { state } from '../../core/state.js';
 import { $, can, esc, toast, icon } from '../../core/util.js';
 import { copyToClipboard } from '../../ui/clipboard.js';
 import { confirmModal, openModal } from '../../ui/modal.js';
+import { setupCommandTools } from './console-commands.js';
 
 /* -------------------------------------------------------------- console */
 
@@ -78,6 +79,7 @@ export function renderConsoleTab(host, server) {
 
   const history = loadHistory(server.id);
   let cursor = history.length;
+  setupCommandTools(host, server, $('#console-input'), $('#console-form'), history);
   $('#console-input').addEventListener('keydown', (event) => {
     const input = event.currentTarget;
     if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
