@@ -141,6 +141,8 @@ function createApi(app) {
     } else {
       const ip = clientIp(req);
       if (!anonymousLimit.take(ip)) return tooMany(res, anonymousLimit, ip);
+      // IP allowlist set to "all accounts": strangers cannot even try to sign in.
+      require('../features/ip-allowlist').checkPublic(app.store, req, url.pathname);
     }
 
     // Sign-in and other public routes take small bodies only: anyone on the internet can send one.

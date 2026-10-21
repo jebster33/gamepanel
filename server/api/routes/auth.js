@@ -182,7 +182,7 @@ module.exports = (router, app) => {
   /** Off to Google/Discord/GitHub. ?link=1 links the signed-in account instead of signing in. */
   router.get(
     '/api/auth/oauth/:provider/start',
-    ({ req, res, params, url }) => {
+    async ({ req, res, params, url }) => {
       let linkUserId = null;
       if (url.searchParams.get('link') === '1') {
         const user = auth.userFromRequest(req);
@@ -191,7 +191,7 @@ module.exports = (router, app) => {
         if (req.gpApiKey) fail(403, 'Link accounts from the Account page while signed in, not with an API key');
         linkUserId = user.id;
       }
-      const { url: to, cookie } = oauth.start(store, auth, req, params.provider, { linkUserId });
+      const { url: to, cookie } = await oauth.start(store, auth, req, params.provider, { linkUserId });
       redirect(res, to, [cookie]);
       return undefined;
     },
@@ -228,7 +228,13 @@ module.exports = (router, app) => {
         redirect(res, `/?oauth_error=${encodeURIComponent(`No panel account is linked to the ${label} account ${identity.name}. Sign in with your password once, then link it on the Account page.`)}#/`, [clearState]);
         return undefined;
       }
-      const login = auth.loginLinked(user, ip);
+      let login;
+      try {
+        login = auth.loginLinked(user, ip, params.provider === 'oidc' ? 'sso' : 'oauth');
+      } catch (err) {
+        redirect(res, `/?oauth_error=${encodeURIComponent(err.message)}#/`, [clearState]);
+        return undefined;
+      }
       if (login.twoFactor) {
         redirect(res, `/?oauth2fa=${encodeURIComponent(login.ticket)}#/`, [clearState]);
         return undefined;

@@ -196,7 +196,8 @@ function login(auth, store, req, ip, { requestId, credential }) {
   passkey.lastUsedAt = Date.now();
   store.save();
   // Only touched, not verified (no PIN or fingerprint): the authenticator code still applies.
-  if (!result.uv && user.totp?.secret) return { ...auth.loginLinked(user, ip), passkey: passkey.name };
+  if (!result.uv && user.totp?.secret) return { ...auth.loginLinked(user, ip, 'passkey'), passkey: passkey.name };
+  auth.guard?.(user, 'passkey', ip);
   return { ...auth.startSession(user, ip), passkey: passkey.name };
 }
 
