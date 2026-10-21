@@ -183,7 +183,7 @@ function dayzSetType(server, name, fields) {
   const rel = typesPath(server);
   if (!/^[A-Za-z0-9_\-.]{1,80}$/.test(String(name))) fail(400, 'That is not an item class name');
   const xml = read(server, rel, 16 * 1024 * 1024);
-  const re = new RegExp(`(<type\\s+name="${name.replace(/[.]/g, '\\.')}"\\s*>)([\\s\\S]*?)(</type>)`);
+  const re = new RegExp(`(<type\\s+name="${name.replace(/[\\^$.*+?()[\]{}|\-]/g, '\\$&')}"\\s*>)([\\s\\S]*?)(</type>)`);
   const m = xml.match(re);
   if (!m) fail(404, 'No item has that name in types.xml');
   let body = m[2];
