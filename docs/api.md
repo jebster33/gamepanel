@@ -172,6 +172,11 @@ POST   /api/servers/:id/staging          {"name","withWorld"} make a staging cop
 GET    /api/servers/:id/staging/diff     what a push from this staging copy would change
 POST   /api/servers/:id/staging/push     {"entries":[folders],"properties","version"}
 PATCH  /api/servers/:id                  … {"wakeOnJoin":true} turns on wake on join (Minecraft Java)
+GET    /api/servers/:id/gametools/<game> per-game tools, game = cs2, squad, garrysmod, satisfactory, palworld, space-engineers (see docs/guide/game-tools.md)
+       cs2: GET, POST preset, PUT maps, POST plugins/:id (admin), skins/* (admin, opt-in, needs {"acknowledge":true})
+       squad: GET, PUT ?file=   garrysmod: GET, PUT, POST workshop   palworld: GET players, POST reset|restore (admin)
+       satisfactory: GET, POST trust|login|logout (admin), GET sessions|download|file, POST load|save|new|upload|file, DELETE save|session|file
+       space-engineers: GET scan, POST remove (admin)
 GET    /api/system                       host metrics
 GET    /api/system/capacity              memory, CPU, disk per machine and per server (admins)
 GET    /api/system/runtime               Docker status

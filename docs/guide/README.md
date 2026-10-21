@@ -14,6 +14,7 @@ Everything you can do with GamePanel, in the order you'll probably need it.
 - [Running a server](running-a-server.md): console, files, schedules, graphs, game settings, automatic updates
 - [Mods and modpacks](mods-and-modpacks.md)
 - [Players](players.md): who is on, history, whitelist and bans
+- [Game tools](game-tools.md): CS2 presets and map vote, Squad layers, GMod gamemodes, Satisfactory saves, Palworld and Space Engineers cleanup
 - [Backups](backups.md): by hand, scheduled, in the cloud, restoring single files
 
 **Letting people in**
