@@ -375,9 +375,10 @@ async function listInstalled(server, template) {
     const full = path.join(dirOf(server, ctx), entry.name);
     const stat = await fsp.stat(full).catch(() => null);
     if (!stat) continue;
-    const disabled = entry.name.endsWith('.disabled') || Boolean(meta?.disabled);
-    const base = disabled ? entry.name.slice(0, -9) : entry.name;
+    const renamed = entry.name.endsWith('.disabled');
+    const base = renamed ? entry.name.slice(0, -9) : entry.name;
     const meta = byFile.get(base) || byFile.get(entry.name) || null;
+    const disabled = renamed || Boolean(meta?.disabled);
     // Minecraft mods and plugins are single .jar files; a folder next to them
     // (plugins/bStats, plugins/spark) is a plugin's config, not another mod.
     if (ctx.game === 'minecraft' && entry.isDirectory() && !meta) continue;

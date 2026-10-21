@@ -4585,3 +4585,10 @@ pre.code-block {
 .cap-legend { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 8px; font-size: 12px; color: var(--muted); }
 .cap-key { display: inline-block; width: 9px; height: 9px; margin-right: 6px; border-radius: 2px; background: var(--c); }
 .cap-key.hatch { background: repeating-linear-gradient(135deg, var(--c) 0 2px, transparent 2px 4px); }
+
+/* games1: per-game extras */
+.gx-field { display: grid; grid-template-columns: minmax(140px, 1fr) minmax(140px, 1fr); gap: 4px 12px; align-items: center; padding: 5px 0; }
+.gx-field > label { font-size: 13px; }
+.gx-field > .faint { grid-column: 1 / -1; }
+.gx-card canvas { image-rendering: pixelated; }
+@media (max-width: 560px) { .gx-field { grid-template-columns: 1fr; } }

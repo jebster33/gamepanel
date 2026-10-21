@@ -38,6 +38,17 @@ GET    /api/servers/:id/mods/updates     newer compatible releases
 POST   /api/servers/:id/mods/update      {"keys":[…]} or {"all":true}
 DELETE /api/servers/:id/mods/:key        remove (and dependencies nothing else needs)
 POST   /api/servers/:id/mods/:key/toggle enable or disable
+GET    /api/servers/:id/steam-branch     Steam branch of a SteamCMD server (never the password)
+GET    /api/servers/:id/steam-branch/branches  branches Steam lists for the game
+PUT    /api/servers/:id/steam-branch     {"branch","password?","clearPassword?"}
+GET    /api/servers/:id/tshock           tShock detected? plugin folder
+POST   /api/servers/:id/tshock/install-url  {"url"} https .dll/.zip into ServerPlugins (needs files.write)
+POST   /api/servers/:id/tshock/upload    raw body, ?name=Plugin.dll (needs files.write)
+GET    /api/servers/:id/sandbox          Zomboid sandbox options as a form (?file=)
+PUT    /api/servers/:id/sandbox          {"file","version","changes":{"A.B":value}} (server stopped)
+GET    /api/servers/:id/sevendays-map    generated world preview data (?world=)
+GET    /api/servers/:id/sevendays-map/image  biomes.png of a world (?world=&file=)
+GET    /api/servers/:id/nexus            Nexus Mods links for the game (?query=)
 GET    /api/servers/:id/schedules        scheduled tasks
 POST   /api/servers/:id/schedules        {"name","action","cron","command?"}
 GET    /api/servers/:id/backups          backups

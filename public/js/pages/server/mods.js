@@ -5,6 +5,7 @@ import { sideBadge } from './modpacks.js';
 import { renderWorkshopPacks } from './workshop-packs.js';
 import { renderModShare } from './mod-share.js';
 import { skeleton } from '../../ui/skeleton.js';
+import { renderNexusCard, renderTshockExtras } from './games1.js';
 
 /* ------------------------------------------------------------------ mods */
 
@@ -41,7 +42,9 @@ export async function renderModsTab(host, server) {
       <div class="empty">
         <h3>No mod source for this game</h3>
         <p>You can still upload mods by hand in the <a href="#/servers/${esc(server.id)}/files">file manager</a>.</p>
-      </div>`;
+      </div>
+      <div id="gx-nexus"></div>`;
+    renderNexusCard(host.querySelector('#gx-nexus'), server);
     return;
   }
 
@@ -107,8 +110,10 @@ export async function renderModsTab(host, server) {
           ${installedHtml(info)}
         </div>
         <div id="mod-share"></div>
+        <div id="gx-tshock"></div>
       </div>
     </div>`;
+  renderTshockExtras(host.querySelector('#gx-tshock'), server);
 
   const refresh = () => renderModsTab(host, server);
 

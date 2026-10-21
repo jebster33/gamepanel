@@ -151,3 +151,15 @@ top of **Servers**, next to **Import existing**.
 3. Restart the servers. They now share one cluster ID and one folder, kept in the panel's data folder (`clusters/`), mounted into Docker servers automatically.
 
 Only servers on the same machine can join a cluster; servers on another node cannot share its folder. Removing a cluster keeps the uploaded data. The optional timers set how long uploads last before they expire.
+
+## Steam branch (beta builds)
+
+For games installed through SteamCMD, the **Game settings** tab has a **Steam branch** card. "public" is the normal release; games also publish test builds on other branches ("beta", "experimental", "unstable"). Pick one from the list Steam reports, or type its name. Locked branches need a password, which the panel stores encrypted and never shows again. The choice is per server and used by Update, Reinstall and automatic updates. Going back to "public" after a beta may need a reinstall because a beta build can change save formats.
+
+## Project Zomboid sandbox options
+
+On a Project Zomboid server, **Game settings → Sandbox options** edits `<name>_SandboxVars.lua`: zombie speed and population, loot, day length, XP and so on, as a form with a few presets named after the game's difficulties (they are close approximations). The file is read as plain data and never run; only the values you change are rewritten, so comments and order stay. Stop the server first, because the game rewrites the file when it shuts down. The file appears after the server has started once.
+
+## 7 Days to Die map preview
+
+After the first start has generated the world, **Game settings → World map** shows the biome picture with every building marked; hover a dot to see its name. Before that there is nothing to show, because the game builds the world itself on first start: start the server once, then come back. (A preview from a throwaway test world is not offered.)

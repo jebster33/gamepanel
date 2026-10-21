@@ -331,6 +331,7 @@ class ServerManager extends EventEmitter {
       supportsConsoleInput: tpl?.consoleInput !== false,
       hasRcon: Boolean(tpl?.rcon && server.vars?.RCON_PASSWORD),
       hasMods: Boolean(tpl?.mods?.providers?.length || tpl?.mods?.dir),
+      nexusGame: Boolean(require('../features/nexus').forTemplate(tpl?.id)), // Nexus Mods links on the Mods tab
       hasModpacks: Boolean(tpl?.modpacks),
       canUpdate: Boolean((tpl?.install || []).some((s) => s.type === 'steamcmd') || tpl?.update),
       canAutoUpdate: Boolean(this.steamApp(server)),

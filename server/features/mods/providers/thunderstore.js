@@ -113,7 +113,7 @@ function mapLayout(names, { id, loader, root }) {
     // The pack is the server's loader: its files go to the server folder, minus a wrapper folder.
     const real = entries.filter((e) => !(e.parts.length === 1 && METADATA.has(e.parts[0].toLowerCase())));
     const tops = new Set(real.map((e) => e.parts[0]));
-    const strip = tops.size === 1 && real.every((e) => e.parts.length > 1) && ![...tops][0].toLowerCase().startsWith('bepinex') ? 1 : 0;
+    const strip = tops.size === 1 && real.every((e) => e.parts.length > 1) && [...tops][0].toLowerCase() !== 'bepinex' ? 1 : 0;
     for (const e of real) {
       const config = e.parts[strip]?.toLowerCase() === 'bepinex' && e.parts[strip + 1]?.toLowerCase() === 'config';
       out.push({ from: e.from, to: e.parts.slice(strip).join('/'), config });
