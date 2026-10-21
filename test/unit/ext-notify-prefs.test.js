@@ -67,3 +67,24 @@ test('action buttons only for people who may use them, tokens work once', () => 
   const old = t.mint({ userId: 'u', serverId: 's', action: 'start' }, 0);
   assert.strictEqual(t.consume(old, 25 * 3600_000), null, 'expired');
 });
+
+test('the action endpoint checks the token, the session and current permission', async () => {
+  const { makeApp, load } = require('./support/routes');
+  const calls = [];
+  const app = makeApp({ manager: { servers: [{ id: 's1', name: 'One' }], require() {}, find() {}, restart: async (id) => calls.push(id), start: async () => {} } });
+  const admin = app.auth.createUser({ username: 'boss', password: 'correct horse battery', role: 'admin' });
+  const helper = app.auth.createUser({ username: 'helper', password: 'another long passphrase', role: 'user', servers: ['s1'], permissions: ['console'] });
+  const { call } = load('ext', app);
+  const token = (u) => prefs.tokens.mint({ userId: u.id, serverId: 's1', action: 'restart' });
+  const ctx = (body) => ({ body, req: { headers: {}, socket: { remoteAddress: '1.2.3.4' } } });
+
+  await assert.rejects(call('POST', '/api/notify-actions/run', ctx({ token: 'garbage' })), /expired/);
+  const t = token(admin);
+  const ok = await call('POST', '/api/notify-actions/run', ctx({ token: t }));
+  assert.match(ok.message, /Restarting One/);
+  assert.deepStrictEqual(calls, ['s1']);
+  await assert.rejects(call('POST', '/api/notify-actions/run', ctx({ token: t })), /expired|already used/);
+  // A token for an account that lacks the power permission is refused when pressed.
+  await assert.rejects(call('POST', '/api/notify-actions/run', ctx({ token: token(helper) })), /not allowed/);
+  assert.deepStrictEqual(calls, ['s1']);
+});

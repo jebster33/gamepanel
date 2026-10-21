@@ -7,6 +7,7 @@ import { $, esc, fmtBytes, fmtDuration, fmtTime, icon, toast } from '../core/uti
 import { confirmModal } from '../ui/modal.js';
 import { setBridgeNav } from '../ui/sidebar.js';
 import { skeleton } from '../ui/skeleton.js';
+import { renderExtSettings } from './ext-settings.js';
 
 /* -------------------------------------------------------------- settings */
 
@@ -52,6 +53,8 @@ export async function renderSettings(view) {
   const limits = s.limits || {};
   view.innerHTML = `
     <div class="page-head"><div><h1>Settings</h1><div class="lede">Panel-wide options. Per-server options live on each server's Settings tab.</div></div></div>
+
+    <div id="ext-cards"></div>
 
     <div class="card mb-16" id="notifications">
       <h4>Alerts</h4>
@@ -332,6 +335,7 @@ export async function renderSettings(view) {
 
   renderHttps();
   renderSftp();
+  renderExtSettings($('#ext-cards'));
 
   $('#s-bpass-save').addEventListener('click', async (event) => {
     const btn = event.currentTarget;

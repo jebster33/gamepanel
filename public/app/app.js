@@ -839,6 +839,8 @@ function notificationsScreen(el) {
     endpoint = sub?.endpoint || '';
     const info = await api(`/api/push?endpoint=${encodeURIComponent(endpoint)}`);
     const on = Boolean(sub && info.subscribed);
+    // Per-category and per-server mutes live on the panel, for this phone only.
+    const prefs = on ? await api(`/api/notify-prefs?endpoint=${encodeURIComponent(endpoint)}`) : null;
     body.innerHTML = `
       <p class="subtitle" style="margin-top:-6px">${Notification.permission === 'denied' ? 'Notifications are blocked. Turn them on in Settings, Notifications, GamePanel.' : 'Get a buzz when something needs you.'}</p>
       <div class="group flat"><label class="row"><span class="row-main"><div class="row-title">Allow notifications</div></span>
@@ -848,6 +850,16 @@ function notificationsScreen(el) {
           ? `<div class="section-label">Tell me when</div><div class="group flat">${Object.entries(info.choices)
               .map(([id, label]) => `<label class="row"><span class="row-main"><div class="row-title" style="font-weight:500">${esc(label)}</div></span><input type="checkbox" class="ios-switch" data-ev="${esc(id)}" ${info.events.includes(id) ? 'checked' : ''}/></label>`)
               .join('')}</div>
+             <div class="section-label">Categories</div><div class="group flat">${prefs.categories
+               .map((c) => `<label class="row"><span class="row-main"><div class="row-title" style="font-weight:500">${esc(c.label)}</div></span><input type="checkbox" class="ios-switch" data-cat="${esc(c.id)}" ${prefs.prefs.mutedCategories.includes(c.id) ? '' : 'checked'}/></label>`)
+               .join('')}</div>
+             ${
+               prefs.servers.length
+                 ? `<div class="section-label">Servers</div><div class="group flat">${prefs.servers
+                     .map((sv) => `<label class="row"><span class="row-main"><div class="row-title" style="font-weight:500">${esc(sv.name)}</div></span><input type="checkbox" class="ios-switch" data-srv="${esc(sv.id)}" ${prefs.prefs.mutedServers.includes(sv.id) ? '' : 'checked'}/></label>`)
+                     .join('')}</div>`
+                 : ''
+             }
              <div class="section-label"></div><div class="group flat"><button class="row" id="n-test"><span class="row-main"><div class="row-title lime">Send a test notification</div></span></button></div>`
           : ''
       }`;
@@ -860,7 +872,7 @@ function notificationsScreen(el) {
           const fresh =
             (await reg.pushManager.getSubscription()) ||
             (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: Uint8Array.from(atob(info.publicKey.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0)) }));
-          await api('/api/push', { method: 'POST', body: { subscription: fresh.toJSON(), device: /iPhone/.test(navigator.userAgent) ? 'iPhone' : navigator.platform } });
+          await api('/api/push', { method: 'POST', body: { subscription: fresh.toJSON(), client: 'app', device: /iPhone/.test(navigator.userAgent) ? 'iPhone' : navigator.platform } });
           toast('Notifications on');
         } else {
           const current = await reg.pushManager.getSubscription();
@@ -881,6 +893,18 @@ function notificationsScreen(el) {
         const current = await reg.pushManager.getSubscription();
         await api('/api/push', { method: 'POST', body: { subscription: current.toJSON(), events } }).catch((err) => toast(err.message, 'error'));
       })
+    );
+    body.querySelectorAll('[data-cat],[data-srv]').forEach((box) =>
+      box.addEventListener('change', () =>
+        api('/api/notify-prefs', {
+          method: 'PUT',
+          body: {
+            endpoint,
+            mutedCategories: [...body.querySelectorAll('[data-cat]')].filter((b) => !b.checked).map((b) => b.dataset.cat),
+            mutedServers: [...body.querySelectorAll('[data-srv]')].filter((b) => !b.checked).map((b) => b.dataset.srv),
+          },
+        }).catch((err) => toast(err.message, 'error'))
+      )
     );
     $('#n-test', el)?.addEventListener('click', () =>
       api('/api/push/test', { method: 'POST', body: { endpoint } })

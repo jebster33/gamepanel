@@ -93,3 +93,7 @@ For the service itself (Linux: `sudo systemctl edit gamepanel`):
 | `GP_PROXY_HOPS` | `1` | Proxies that each add to `X-Forwarded-For` (use `2` for Cloudflare in front of nginx) |
 | `GP_DOCKER_SOCKET` | `/var/run/docker.sock` | Docker socket |
 | `GP_LOG_LEVEL` | `info` | `debug`, `info`, `warn`, `error` |
+
+## Extensions and themes
+
+Settings, Extensions installs themes, extra pages, dashboard widgets and webhooks. Everyone can pick a colour theme under Account, Appearance. See [Extensions](../extensions.md) for what each kind can do and the trust rules (code extensions are off by default).

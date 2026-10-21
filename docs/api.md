@@ -180,3 +180,25 @@ POST   /api/system/update                update and restart
 ```
 
 `WS /ws` streams `servers`, `stats`, `system`, `server:status`, `notification` and `console:<id>`.
+
+## Notifications, reports, extensions
+
+```
+GET    /api/notify-prefs?endpoint=       categories, servers and the muted lists (device list if the endpoint has one)
+PUT    /api/notify-prefs                 {"mutedCategories":[],"mutedServers":[],"endpoint"?,"reset"?}
+POST   /api/notify-actions/run           {"token"} one-time signed button token from a notification; rate limited, audited
+GET    /api/reports                      admin: saved reports, auto setting
+PUT    /api/reports/settings             admin: {"auto":true}
+POST   /api/reports/generate             admin: {"month":"2026-09"} saves data/reports/uptime-2026-09.pdf
+GET    /api/reports/uptime.pdf           admin: ?month=2026-09[&server=id] the PDF
+GET    /api/reports/file/:name           admin: a saved report
+GET    /api/extensions/active            themes, pages and widgets this account can use, and its selected theme
+PUT    /api/account/theme                {"theme":"theme-nord/nord"} ("" for none)
+GET    /api/extensions                   admin: installed extensions
+PUT    /api/extensions/:name             admin: {"enabled":true}
+DELETE /api/extensions/:name             admin: remove an installed one
+PUT    /api/extensions/settings          admin: {"allowCode":false}
+POST   /api/extensions/install-url       admin: {"url":"https://…zip"}
+POST   /api/extensions/install-zip       admin: raw .zip body
+GET    /ext/<name>/<file>                files of an enabled extension (sandboxed, public)
+```

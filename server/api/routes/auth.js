@@ -298,7 +298,7 @@ module.exports = (router, app) => {
 
   router.get('/api/push', ({ user, url }) => ({ publicKey: push().keys.publicKey, ...push().status(user, url.searchParams.get('endpoint') || '') }));
 
-  router.post('/api/push', ({ user, body }) => push().subscribe(user, body?.subscription, body?.events, body?.device));
+  router.post('/api/push', ({ user, body }) => push().subscribe(user, body?.subscription, body?.events, body?.device, body?.client));
 
   router.delete('/api/push', ({ user, body }) => push().unsubscribe(user, String(body?.endpoint || '')));
 

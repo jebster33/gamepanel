@@ -103,7 +103,8 @@ export function addNotification(note) {
   if (!note.loud || panelOpen) return;
   if (popupsOn()) toast(`${note.title ? `${note.title}: ` : ''}${note.message}`, note.level === 'error' ? 'error' : note.level === 'warn' ? 'warn' : 'info', 7000);
   // A desktop alert only matters when the tab is in the background.
-  if (document.hidden && 'Notification' in window && Notification.permission === 'granted') {
+  // (With background push on, the push service already shows it.)
+  if (document.hidden && store.get('gp-desktop-push', '') !== '1' && 'Notification' in window && Notification.permission === 'granted') {
     try {
       new Notification(note.title || 'GamePanel', { body: note.message, tag: note.id, icon: '/img/favicon-64.png' });
     } catch {

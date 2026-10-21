@@ -6,6 +6,7 @@ import { $, esc, fmtBytes, fmtDuration, fmtRate, icon } from '../core/util.js';
 import { renderCapacity } from './capacity.js';
 import { renderServerCards } from './servers.js';
 import { countUp, flash, revealChildren } from '../ui/fx.js';
+import { renderExtWidgets } from '../ui/ext.js';
 
 /* ------------------------------------------------------------- dashboard */
 
@@ -24,6 +25,7 @@ export function renderDashboard(view) {
       </div>
     </div>
     <div id="checklist"></div>
+    <div id="ext-widgets"></div>
 
     <div class="metrics">
       <div class="tile spot">
@@ -84,6 +86,7 @@ export function renderDashboard(view) {
     ${renderServerCards()}`;
 
   drawHostCharts();
+  renderExtWidgets($('#ext-widgets'));
   if (state.user?.role === 'admin') {
     renderChecklist();
     renderCapacity($('#capacity'), true);

@@ -5,6 +5,7 @@ import { handleRoute } from './router.js';
 import { state } from './state.js';
 import { $, $$, can, esc } from './util.js';
 import { initNotifications } from '../ui/notifications.js';
+import { loadExtensions } from '../ui/ext.js';
 import { maybeStartTour } from '../ui/tour.js';
 import { renderSidebarServers, setBridgeNav } from '../ui/sidebar.js';
 
@@ -80,6 +81,7 @@ export async function enterApp() {
   // Restricted accounts may not be allowed every one of these; a refused
   // request must not stop the panel from loading.
   await Promise.allSettled([loadServers(), loadTemplates(), loadSystem()]);
+  await loadExtensions().catch(() => {});
   setBridgeNav(state.bridgeEnabled);
   connectWebSocket();
   initNotifications();

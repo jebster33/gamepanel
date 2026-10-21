@@ -72,3 +72,15 @@ shows player names, and the address players should use.
 It shows which servers are up, who's on, 30-day uptime bars, the most played servers, leaderboards
 (kills, blocks mined, distance, deaths) and the live map link where there is one. Maintenance mode shows
 there too.
+
+## Choosing what you hear about
+
+Under **Account, Notifications** (and in Settings) you can switch off whole categories (crashes, installs, backups, sign-ins, resource alerts, status changes, players, updates, reports) and single servers. Anything switched off is never sent: not in the bell, not as a desktop notification, not to your phone. On a phone or browser with push on, that device keeps its own list.
+
+## Desktop and phone notifications with buttons
+
+Turn on **Desktop notifications** (Account, Notifications) to get browser notifications even when the panel tab is closed. This needs the panel on `https://` (or `localhost`). Crash notifications carry **Restart** and **Open console** buttons, "server stopped" ones carry **Start**. A button only works once, for 24 hours, only for the account it was sent to, and only if that account may start/stop the server at that moment. Every press is recorded in the audit log. The iPhone app (Account, iPhone app, then Notifications in the app) uses the same switches; iOS shows the buttons on a long press where the system supports it. The native iOS source has no push support yet.
+
+## Monthly uptime report
+
+**Settings, Monthly uptime report** makes a PDF for the whole panel and each server: uptime, crashes, restarts, peak players, backups ok/failed and disk growth. Download one, save it into `data/reports`, or tick the box to have last month's made automatically on the 1st and announced through your alert channels (tick "Monthly uptime report ready" under Alerts for Discord/ntfy). Backups and crashes are counted from when this feature was installed; uptime and players come from the history the panel already keeps.
