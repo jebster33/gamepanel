@@ -58,6 +58,7 @@ async function main() {
   const manager = new ServerManager(store, templates, wss);
   const nodes = (manager.nodes = new Nodes({ store, manager, wss }));
   const scheduler = new Scheduler(manager, store);
+  require('./features/ops-tick').init(hostMetrics);
   const notifier = new Notifier(store);
   const bridge = new Bridge({ store, manager, secret });
   if (bridge.enabled) bridge.identity();

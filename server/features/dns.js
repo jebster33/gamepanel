@@ -117,4 +117,4 @@ function playerAddress(server) {
   return s.srv || !s.port ? s.host : `${s.host}:${s.port}`;
 }
 
-module.exports = { assign, release, playerAddress, cf, LABEL };
+module.exports = { assign, release, playerAddress, cf, publicIp, zoneId, settingsOf, LABEL };

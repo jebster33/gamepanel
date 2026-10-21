@@ -24,6 +24,10 @@ const SAVE_EVERY_MS = 60_000;
 
 // Minecraft Java chat: "[12:00:00] [Server thread/INFO]: <Steve> hello" (also "[Not Secure] <Steve> hi").
 // "Steve[/203.0.113.7:53422] logged in with entity id 123 at ..."
+// Rust: "1.2.3.4:51234/76561198000000000/Name joined [windows/76561198000000000]"
+const RUST_JOIN = /(\d{1,3}(?:\.\d{1,3}){3}):\d+\/\d{17}\/(.+?) joined \[/;
+// Source engine: "Name<3><[U:1:123]><>" connected, address 1.2.3.4:27005
+const SOURCE_JOIN = /"(.+?)<\d+><[^>]*><[^>]*>" connected, address (\d{1,3}(?:\.\d{1,3}){3}):\d+/;
 const MC_LOGIN = /\]:\s+([A-Za-z0-9_]{3,16})\[\/([0-9a-fA-F.:]+):\d+\] logged in with entity id/;
 const MC_CHAT = /\]:\s+(?:\[Not Secure\]\s+)?<([A-Za-z0-9_]{3,16})>\s(.*)$/;
 
@@ -129,6 +133,14 @@ module.exports = {
         // Offline is recorded as null so the graph shows a gap, not zero players.
         const count = rt.status === STATUS.RUNNING ? (rt.players ?? online.size) : null;
         h.samples.push([now, count]);
+        // One [online, total] pair per day, kept for a year: the longer uptime history (the samples only reach back 30 days).
+        const day = (h.daily ||= {});
+        const key = new Date(now).toISOString().slice(0, 10);
+        const entry = (day[key] ||= [0, 0]);
+        entry[1]++;
+        if (count != null) entry[0]++;
+        const keys = Object.keys(day);
+        if (keys.length > 400) for (const k of keys.sort().slice(0, keys.length - 400)) delete day[k];
         if (h.samples.length > MAX_SAMPLES) h.samples.splice(0, h.samples.length - MAX_SAMPLES);
         h.dirty = true;
       }
@@ -158,6 +170,15 @@ module.exports = {
 
   /** Chat lines from the console, for the activity log. */
   trackChat(server, template, text) {
+    // Join addresses for alt detection, country stats and VPN blocking: Rust and Source engine games print them.
+    if (server.templateId === 'rust' || template.query?.type === 'a2s') {
+      for (const line of text.split('\n')) {
+        const rust = server.templateId === 'rust' && line.match(RUST_JOIN);
+        if (rust) this.noteAddress(server.id, rust[2], rust[1]);
+        const source = !rust && line.match(SOURCE_JOIN);
+        if (source) this.noteAddress(server.id, source[1], source[2]);
+      }
+    }
     const custom = template.logPatterns?.chat;
     const pattern = custom ? new RegExp(custom) : template.query?.type === 'minecraft' ? MC_CHAT : null;
     if (!pattern) return;
@@ -186,14 +207,20 @@ module.exports = {
       list.push(entry);
       // Where it is, like BattleMetrics shows (same lookup and setting as sign-in locations).
       require('../features/geoip')
-        .locate(ip, { enabled: this.store?.state.settings.geoLookup !== false })
-        .then((where) => {
-          if (where) {
-            entry.where = where;
+        .lookup(ip, { enabled: this.store?.state.settings.geoLookup !== false })
+        .then((info) => {
+          if (info) {
+            Object.assign(entry, { where: info.label, ...(info.cc ? { cc: info.cc, lat: info.lat, lon: info.lon } : {}) });
             h.dirty = true;
           }
         })
         .catch(() => {});
+    }
+    // VPN and proxy blocking, and a flag for players who share an address with a banned one.
+    try {
+      require('../features/player-security').onJoin(this, this.require(id), name, ip);
+    } catch {
+      /* never let a check break the console */
     }
     list.sort((a, b) => b.last - a.last);
     list.splice(10);
@@ -209,9 +236,9 @@ module.exports = {
       if (!this.servers.some((s) => s.id === id)) continue;
       try {
         fs.mkdirSync(DIR, { recursive: true });
-        const { players, log, samples, open, ips, wipes } = h;
+        const { players, log, samples, open, ips, wipes, daily } = h;
         const tmp = `${fileFor(id)}.tmp`;
-        fs.writeFileSync(tmp, JSON.stringify({ players, log, samples, open, ips, wipes }));
+        fs.writeFileSync(tmp, JSON.stringify({ players, log, samples, open, ips, wipes, daily }));
         fs.renameSync(tmp, fileFor(id));
         h.dirty = false;
       } catch (err) {
@@ -242,6 +269,16 @@ module.exports = {
       const bin = bins[Math.min(days - 1, Math.floor((t - first) / DAY))];
       bin[1]++;
       if (n != null) bin[0]++;
+    }
+    // Beyond 30 days the per-day totals are used: the same bars, from the daily record.
+    if (days > 30) {
+      const list = [];
+      for (let i = days - 1; i >= 0; i--) {
+        const e = h.daily?.[new Date(now - i * DAY).toISOString().slice(0, 10)];
+        list.push(e && e[1] ? e[0] / e[1] : null);
+      }
+      const known = list.filter((v) => v != null);
+      return { days: list, day: null, week: null, month: null, average: known.length ? known.reduce((a, v) => a + v, 0) / known.length : null };
     }
     const share = (ms) => {
       const list = h.samples.filter(([t]) => now - t <= ms);
@@ -351,6 +388,7 @@ module.exports = {
     const text = String(note || '').trim().slice(0, 1000);
     if (!text && !watch) delete notes[key];
     else notes[key] = { note: text, watch: Boolean(watch), by: actor?.username || null, at: Date.now() };
+    if (text && text !== existing?.note) require('../features/player-records').noteChanged(this.store, key, text, actor?.username);
     this.store.save();
     return notes[key] || null;
   },

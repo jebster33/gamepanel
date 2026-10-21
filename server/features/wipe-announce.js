@@ -146,7 +146,7 @@ async function tick(manager, store, now = Date.now()) {
     if (!c?.ahead || c.before === false || !webhookOf(server)) continue;
     for (const s of server.schedules || []) {
       if (s.action !== 'wipe' || !s.enabled) continue;
-      const next = nextRun(s.cron, new Date(now), { firstOfMonth: s.firstOfMonth });
+      const next = nextRun(s.cron, new Date(now), { firstOfMonth: s.firstOfMonth, weekOfMonth: s.weekOfMonth });
       if (!next || next - now > c.ahead * 3_600_000 || c.sent?.[s.id] === next) continue;
       c.sent = { ...c.sent, [s.id]: next };
       store.save();

@@ -257,6 +257,7 @@ module.exports = {
         Memory: memoryBytes,
         MemorySwap: memoryBytes, // no swap: a leaking server cannot drag the host down
         NanoCpus: nanoCpus,
+        ...(require('../../features/cpu-pin').coresFor(this, server) ? { CpusetCpus: require('../../features/cpu-pin').coresFor(this, server) } : {}),
         NetworkMode: network,
         // A Velocity proxy reaches the servers behind it through their published ports on the host.
         ExtraHosts: ['host.docker.internal:host-gateway'],

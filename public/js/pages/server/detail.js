@@ -17,6 +17,7 @@ import { renderModsTab } from './mods.js';
 import { renderNotesTab } from './notes.js';
 import { patchPlayersTab, renderPlayersTab } from './players.js';
 import { renderSchedulesTab } from './schedules.js';
+import { renderToolsTab } from './tools.js';
 import { renderServerSettingsTab } from './settings.js';
 import { serverAddress } from '../servers.js';
 import { openPushModal, stagingBanner } from './staging.js';
@@ -43,6 +44,7 @@ function serverTabs(server) {
     can('schedules') && ['schedules', 'Schedules'],
     can('settings') && ['game', 'Game settings'],
     can('settings') && gameToolsLabel(server) && ['gametools', gameToolsLabel(server)],
+    ['tools', 'Tools'],
     can('settings') && ['settings', 'Settings'],
     state.user.role === 'admin' && !server.node && ['access', 'Access'],
   ].filter(Boolean);
@@ -221,6 +223,9 @@ function renderServerTab(server, tab) {
       break;
     case 'schedules':
       renderSchedulesTab(host, server);
+      break;
+    case 'tools':
+      renderToolsTab(host, server);
       break;
     case 'settings':
       renderServerSettingsTab(host, server);

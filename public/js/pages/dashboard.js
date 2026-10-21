@@ -2,7 +2,7 @@ import { api } from '../core/api.js';
 import { drawChart } from '../core/charts.js';
 import { setCrumbs } from '../core/router.js';
 import { state } from '../core/state.js';
-import { $, esc, fmtBytes, fmtDuration, fmtRate, icon } from '../core/util.js';
+import { $, can, esc, fmtBytes, fmtDuration, fmtRate, icon } from '../core/util.js';
 import { renderCapacity } from './capacity.js';
 import { renderHostCard } from './infra2.js';
 import { renderServerCards } from './servers.js';
@@ -83,6 +83,7 @@ export function renderDashboard(view) {
     </div>
 
     </section>
+    <section data-widget="feed"><div id="activity-feed"></div></section>
     <section data-widget="capacity"><div id="host-health"></div><div id="capacity"></div></section>
     <section data-widget="pinned">
     <h2 class="section-title" ${pinnedWidgetShown() ? '' : 'hidden'}>Pinned</h2>
@@ -101,6 +102,7 @@ export function renderDashboard(view) {
 
   drawHostCharts();
   renderExtWidgets($('#ext-widgets'));
+  renderFeed();
   if (state.user?.role === 'admin') {
     renderChecklist();
     renderCapacity($('#capacity'), true);
@@ -147,6 +149,30 @@ export function patchDashboard() {
   }
   drawHostCharts();
   if (state.user?.role === 'admin') renderCapacity($('#capacity'));
+}
+
+/* --------------------------------------------------------- activity feed */
+
+/** Who did what lately: the last few things staff and the panel did. */
+async function renderFeed() {
+  const box = $('#activity-feed');
+  if (!box || !can('activity')) return;
+  let data;
+  try {
+    data = await api('/api/activity-feed?limit=8');
+  } catch {
+    return;
+  }
+  if (!box.isConnected || !data.items.length) return;
+  const ago = (t) => {
+    const s = (Date.now() - t) / 1000;
+    return s < 90 ? 'just now' : s < 5400 ? `${Math.round(s / 60)} min ago` : s < 129600 ? `${Math.round(s / 3600)} h ago` : `${Math.round(s / 86400)} d ago`;
+  };
+  box.innerHTML = `
+    <div class="row" style="margin-bottom:10px"><h2 class="section-title" style="margin:0">Recent activity</h2><div class="spacer" style="flex:1"></div><a class="btn btn-sm" href="#/activity">See all</a></div>
+    <div class="card" style="padding:6px 16px">${data.items
+      .map((i) => `<div class="row" style="gap:10px;padding:7px 0;border-bottom:1px solid var(--border, rgba(127,127,127,.18))">${i.who ? `<span class="badge accent">${esc(i.who)}</span>` : '<span class="badge">panel</span>'}<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis">${i.serverId ? `<a href="#/servers/${esc(i.serverId)}">${esc(i.text)}</a>` : esc(i.text)}</span><span class="faint" style="white-space:nowrap">${ago(i.at)}</span></div>`)
+      .join('')}</div>`;
 }
 
 /* ----------------------------------------------------------- checklist */

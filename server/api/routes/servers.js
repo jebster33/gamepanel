@@ -64,6 +64,10 @@ module.exports = (router, { store, auth, manager, scheduler, bridge }, { require
   );
 
   /** Move a server to another node, or from a node to this machine. */
+  router.get('/api/move/:id', ({ user, params }) => {
+    requireAdmin(user);
+    return require('../../features/move').progress(params.id);
+  });
   router.post('/api/move', ({ user, body }) => {
     requireAdmin(user);
     return require('../../features/move').start({ manager, store }, { serverId: String(body?.serverId || ''), to: String(body?.to || ''), keepSource: Boolean(body?.keepSource) }, user);
@@ -223,6 +227,7 @@ module.exports = (router, { store, auth, manager, scheduler, bridge }, { require
     store.addEvent('server.map', `${server.name} map set to ${result.map.mode}${result.map.level ? ` (${result.map.level})` : ''} by ${user.username}`, { serverId: server.id });
     return result;
   });
+  router.post('/api/servers/:id/map/check', ({ user, params, body }) => rustMaps.check(manager, mapServer(user, params.id, 'files'), body?.file));
   // RustMaps: a preview link for the seed, and custom maps with chosen monuments left out (the owner's own key).
   const rustmaps = require('../../features/rustmaps');
   router.get('/api/servers/:id/rustmaps', ({ user, params }) => rustmaps.describe(manager, store, mapServer(user, params.id, 'settings')));

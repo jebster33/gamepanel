@@ -72,6 +72,8 @@ module.exports = {
 
   emitConsoleLines(server, lines, stream) {
     const rt = this.rt(server.id);
+    // The flame graph sampler takes JVM thread dumps out of the output while it runs.
+    if (rt.dumpFilter && stream !== 'system' && stream !== 'input') lines = rt.dumpFilter(lines);
     const batch = [];
     for (const line of lines) {
       const entry = { seq: ++rt.seq, at: Date.now(), stream, line: line.replace(/\r$/, '') };

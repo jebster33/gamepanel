@@ -95,7 +95,14 @@ module.exports = (router, app, { serverFor }) => {
 
   router.post('/api/servers/:id/files/rename', async ({ user, params, body }) => files.rename(rootOf(user, params.id, 'files.write'), body.from, body.to));
 
-  router.delete('/api/servers/:id/files', async ({ user, params, url }) => files.remove(rootOf(user, params.id, 'files.write'), url.searchParams.get('path') || ''));
+  // Deleted things go to the trash for two weeks (Tools tab); only what is too big to keep is removed for good.
+  router.delete('/api/servers/:id/files', async ({ user, params, url }) => {
+    const server = serverFor(user, params.id, 'files.write');
+    const rel = url.searchParams.get('path') || '';
+    const item = await require('../../features/trash').put(server, rel, user.username);
+    if (item) return { path: rel, trashed: true, trashId: item.id };
+    return { ...(await files.remove(server.dir, rel)), trashed: false };
+  });
 
   router.post('/api/servers/:id/files/extract', async ({ user, params, body }) => files.extract(rootOf(user, params.id, 'files.write'), body.path));
 

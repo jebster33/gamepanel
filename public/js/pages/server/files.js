@@ -171,13 +171,13 @@ export async function renderFilesTab(host, server, dirPath) {
 
   $('#file-delete-selected').addEventListener('click', async () => {
     const paths = selected();
-    if (!(await confirmModal('Delete files', `Delete ${paths.length} item(s)? This cannot be undone.`, 'Delete'))) return;
+    if (!(await confirmModal('Delete files', `Delete ${paths.length} item(s)? They go to the trash (Tools tab) for two weeks.`, 'Delete'))) return;
     for (const path of paths) {
       await api(`/api/servers/${server.id}/files?path=${encodeURIComponent(path)}`, { method: 'DELETE' }).catch((err) =>
         toast(err.message, 'error')
       );
     }
-    toast('Deleted');
+    toast('Moved to the trash');
     refresh();
   });
 
@@ -216,10 +216,10 @@ export async function renderFilesTab(host, server, dirPath) {
 
   host.querySelectorAll('[data-delete]').forEach((el) =>
     el.addEventListener('click', async () => {
-      if (!(await confirmModal('Delete', `Delete “${el.dataset.delete}”? This cannot be undone.`, 'Delete'))) return;
+      if (!(await confirmModal('Delete', `Delete “${el.dataset.delete}”? It goes to the trash (Tools tab) for two weeks.`, 'Delete'))) return;
       try {
-        await api(`/api/servers/${server.id}/files?path=${encodeURIComponent(el.dataset.delete)}`, { method: 'DELETE' });
-        toast('Deleted');
+        const r = await api(`/api/servers/${server.id}/files?path=${encodeURIComponent(el.dataset.delete)}`, { method: 'DELETE' });
+        toast(r?.trashed ? 'Moved to the trash' : 'Deleted for good (too big for the trash)');
         refresh();
       } catch (err) {
         toast(err.message, 'error');

@@ -12,6 +12,7 @@ const levels = require('../../features/ark-levels');
 const crates = require('../../features/ark-crates');
 const items = require('../../features/ark-items');
 const transfers = require('../../features/ark-transfers');
+const { getJson } = require('../../features/mods/http');
 
 module.exports = (router, { store, manager }, { requireAdmin, serverFor }) => {
   /** The server, which must be an ARK one. */
@@ -32,6 +33,21 @@ module.exports = (router, { store, manager }, { requireAdmin, serverFor }) => {
     const result = mods.write(manager, server, body?.mods, user.username);
     store.addEvent('ark.mods', `${user.username} changed the mod load order on ${server.name}`, { serverId: server.id });
     return { ...result, restartNeeded: manager.isActive(server.id) };
+  });
+
+  router.get('/api/servers/:id/ark/ini-diff', ({ user, params, url }) => require('../../features/ark-ini-diff').view(manager, arkServer(user, params.id, 'files'), url.searchParams.get('file') || 'GameUserSettings.ini'));
+
+  // ASA mods come from CurseForge (game 83374). Search them by name so nobody has to hunt for IDs.
+  router.get('/api/servers/:id/ark/mods/search', async ({ user, params, url }) => {
+    const server = arkServer(user, params.id, 'mods');
+    if (server.templateId !== 'ark-survival-ascended') fail(400, 'Mod search is for ARK: Survival Ascended (Evolved uses the Steam Workshop)');
+    const apiKey = (store.state.settings.integrations || {}).curseforgeKey;
+    if (!apiKey) fail(400, 'Add a CurseForge API key in Settings, Integrations to search for mods. It is free at console.curseforge.com.');
+    const q = new URLSearchParams({ gameId: '83374', searchFilter: String(url.searchParams.get('q') || '').slice(0, 80), pageSize: '20', sortField: url.searchParams.get('q') ? '2' : '6', sortOrder: 'desc' });
+    const data = await getJson(`https://api.curseforge.com/v1/mods/search?${q}`, { 'x-api-key': apiKey });
+    return {
+      items: (data.data || []).map((m) => ({ id: String(m.id), name: m.name, author: m.authors?.[0]?.name || '', summary: m.summary, downloads: m.downloadCount, icon: m.logo?.thumbnailUrl || null, url: m.links?.websiteUrl || null })),
+    };
   });
 
   /* ------------------------------------------------- level cap and engrams -- */

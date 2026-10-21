@@ -34,6 +34,7 @@ export async function renderMapCard(host, server) {
       <div class="form-row map-opt" data-for="file"><label for="map-file">Uploaded map</label>
         <select id="map-file">${info.files.length ? info.files.map((f) => `<option value="${esc(f.name)}" ${map.file === f.name ? 'selected' : ''}>${esc(f.name)} (${(f.size / 1048576).toFixed(1)} MB)</option>`).join('') : '<option value="">No map uploaded yet</option>'}</select>
         <div class="row mt-8"><button class="btn btn-sm" id="map-upload">${icon('upload', 12)} Upload a .map…</button><input type="file" id="map-input" accept=".map" class="hidden" /></div>
+        <div class="row mt-8"><button class="btn btn-sm" id="map-check">Check this map</button></div><div id="map-check-out" class="mt-8"></div>
         <div class="hint">The panel serves it to the game itself, so no hosting is needed. Files live in <span class="mono">${esc(info.dir)}/</span>.</div></div>
       <div class="row mt-16"><button class="btn btn-sm btn-primary" id="map-save">Save map</button></div>
       <div id="rm-box" class="mt-16"></div>
@@ -57,6 +58,15 @@ export async function renderMapCard(host, server) {
       renderMapCard(host, server);
     } catch (err) {
       toast(err.message, 'error');
+    }
+  });
+  $('#map-check').addEventListener('click', async () => {
+    const out = $('#map-check-out');
+    try {
+      const r = await api(`/api/servers/${server.id}/map/check`, { method: 'POST', body: { file: $('#map-file').value } });
+      out.innerHTML = r.items.map((i) => `<div class="hint"><b>${{ ok: 'OK', warn: 'Warning', error: 'Problem', info: 'Note' }[i.level]}:</b> ${esc(i.text)}</div>`).join('');
+    } catch (err) {
+      out.innerHTML = `<div class="hint">${esc(err.message)}</div>`;
     }
   });
   $('#map-save').addEventListener('click', async () => {

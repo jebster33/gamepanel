@@ -110,8 +110,11 @@ function start(app, { serverId, to, keepSource = false }, actor) {
   const name = from.server?.name || nodes.remoteServers().find((s) => s.id === serverId)?.name || serverId;
   const where = target ? target.name : nodes?.localName || 'this machine';
   moving.add(serverId);
-  run(app, { from, target, keepSource, name, where }, actor)
+  const job = { state: 'running', step: 'Stopping the server', to: where, bytes: 0, startedAt: Date.now() };
+  jobs.set(serverId, job);
+  run(app, { from, target, keepSource, name, where, job }, actor)
     .catch((err) => {
+      Object.assign(job, { state: 'failed', error: err.message, finishedAt: Date.now() });
       logger.warn(`Moving ${name} failed: ${err.message}`);
       app.store.addEvent('server.move_failed', `Moving ${name} to ${where} failed: ${err.message}`, from.server ? { serverId: from.id } : {});
       if (from.server) {
@@ -124,11 +127,34 @@ function start(app, { serverId, to, keepSource = false }, actor) {
 }
 
 const moving = new Set();
+/** Progress of the latest move per server: shown live in the panel, kept for a while after it ends. */
+const jobs = new Map();
 
-async function run(app, { from, target, keepSource, name, where }, actor) {
+function progress(serverId) {
+  const j = jobs.get(serverId);
+  return j ? { ...j } : { state: 'idle' };
+}
+
+/** Passes the export through and counts bytes, without starting the stream early. */
+function counted(source, job) {
+  const { Transform } = require('stream');
+  const counter = new Transform({
+    transform(chunk, enc, cb) {
+      job.bytes += chunk.length;
+      cb(null, chunk);
+    },
+  });
+  source.on('error', (err) => counter.destroy(err));
+  return source.pipe(counter);
+}
+
+async function run(app, { from, target, keepSource, name, where, job }, actor) {
   const { manager, store } = app;
   const nodes = manager.nodes;
-  const note = (text) => from.server && manager.pushConsole(from.server, text, 'system');
+  const note = (text) => {
+    job.step = text.replace(/^Moving to [^:]*: /, '').replace(/…$/, '');
+    if (from.server) manager.pushConsole(from.server, text, 'system');
+  };
   if (from.server) manager.setTask?.(from.server, `Moving to ${where}`);
 
   note(`Moving to ${where}: stopping the server…`);
@@ -143,6 +169,7 @@ async function run(app, { from, target, keepSource, name, where }, actor) {
     ({ proc, stream: source } = await manager.exportStream(from.server, { unseal: true }));
   }
 
+  source = counted(source, job);
   let created;
   try {
     if (target) {
@@ -157,6 +184,7 @@ async function run(app, { from, target, keepSource, name, where }, actor) {
     throw err;
   }
 
+  job.step = 'Arrived, setting it up';
   // Arrived: retire the original.
   if (keepSource) {
     if (from.server) {
@@ -170,7 +198,11 @@ async function run(app, { from, target, keepSource, name, where }, actor) {
     await manager.remove(from.id, true);
   }
   store.addEvent('server.moved', `${actor?.username || 'Someone'} moved ${name} to ${where}${keepSource ? ' (original kept)' : ''}`, { serverId: created.id });
+  job.state = 'done';
+  job.step = 'Done';
+  job.finishedAt = Date.now();
+  job.newId = created.id;
   return created;
 }
 
-module.exports = { start, locate, nodeStream };
+module.exports = { start, locate, nodeStream, progress };
