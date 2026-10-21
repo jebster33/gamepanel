@@ -110,8 +110,11 @@ export function renderTemplates(view) {
   $('#egg-import')?.addEventListener('click', openEggImport);
   $('#tpl-search').addEventListener('input', (event) => {
     templateFilter.search = event.target.value;
+    const caret = event.target.selectionStart;
     render();
-    $('#tpl-search').focus();
+    const box = $('#tpl-search');
+    box.focus();
+    box.setSelectionRange(caret, caret);
   });
   view.querySelectorAll('[data-cat]').forEach((el) =>
     el.addEventListener('click', () => {
