@@ -4,6 +4,7 @@ const { fail } = require('../../core/util');
 const { RateLimiter } = require('../../core/ratelimit');
 const { clientIp } = require('../helpers');
 const bans = require('../../features/bans');
+const staff = require('../../features/staff');
 
 module.exports = (router, { store, manager }, { requireAdmin, serverFor }) => {
   router.get('/api/bans', ({ user }) => {
@@ -13,7 +14,7 @@ module.exports = (router, { store, manager }, { requireAdmin, serverFor }) => {
 
   router.post('/api/bans', async ({ user, body }) => {
     requireAdmin(user);
-    await bans.ban(manager, store, body || {}, user.username);
+    await bans.ban(manager, store, { ...body, ...staff.applyReason(store, body || {}) }, user.username);
     return bans.view(manager, store);
   });
 

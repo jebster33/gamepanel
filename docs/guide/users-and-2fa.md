@@ -69,3 +69,15 @@ On the Account page, **Add a passkey** lets you sign in with your fingerprint, f
 ## Who did what
 
 Everything people change through the panel or the API lands in the [audit log](panel-settings.md#audit-log).
+
+## Staff: roles, timed access and activity
+
+The **Staff** page (administrators only) has three tabs.
+
+- **Role templates** are ready-made bundles of permissions for one server: Helper, Moderator, Builder, Operator and Manager ship with the panel. Change them, reset them, or make your own. In a server's **Access** tab, pick a role from the "Role…" box next to a sub-user to give it to them in one click. It writes exactly what ticking the boxes would.
+- **Temporary access**: in the Access tab, **Grant temporary access** gives a user a role on that server for a number of hours. A countdown shows how long is left. When it ends (checked every minute, and when the panel starts) the access is taken away and whatever they had before comes back. **End now** does it early. Starts, endings and early ends are in the audit log.
+- **Activity** shows, for each staff member, how many kicks, bans, notes and other moderation actions they did, per day and per week, when they were last active, and a list of what they did. It is built from the audit log, the shared ban list and player notes.
+
+## Ban and kick reasons
+
+Staff page, **Ban and kick reasons**: create named reasons (for example "Griefing", 24 hours, with an appeal line such as "Appeal at example.com/appeal"). They show up as a **Template** box in the ban and kick dialogs, the Bans page and each server's ban list, and are shared by all servers. Picking one fills in the reason and length; you can still edit the text.

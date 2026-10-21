@@ -323,6 +323,17 @@ async function main() {
   await manager.init();
   scheduler.start();
   nodes.start();
+  // Time-limited access: expired grants go at boot and then every minute.
+  const staffTools = require('./features/staff');
+  const grantTick = () => {
+    try {
+      staffTools.expireGrants(store, auth, manager);
+    } catch (err) {
+      logger.warn(`Expiring access grants: ${err.message}`);
+    }
+  };
+  grantTick();
+  setInterval(grantTick, 60_000).unref?.();
   const updateTimer = setInterval(() => manager.checkAutoUpdates().catch(() => {}), 60_000);
   updateTimer.unref?.();
 
