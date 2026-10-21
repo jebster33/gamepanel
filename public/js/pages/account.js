@@ -7,6 +7,7 @@ import { confirmModal, openModal, promptModal } from '../ui/modal.js';
 import { otpMarkup, wireOtp } from '../ui/otp.js';
 import { qrSvg } from '../ui/qr.js';
 import { startTour } from '../ui/tour.js';
+import { renderOnboardingCard } from '../ui/onboarding.js';
 import { LANGUAGES, lang, setLanguage } from '../core/i18n.js';
 import { addPasskey, passkeysSupported } from '../core/passkey.js';
 
@@ -57,6 +58,7 @@ export async function renderAccount(view) {
       <div class="hint">Changing it signs you out on every other device.</div>
     </div>
 
+    <div id="onboarding-card"></div>
     <div id="linked-card"></div>
 
     <div class="card mb-16" id="prefs">
@@ -95,6 +97,7 @@ export async function renderAccount(view) {
   renderApiKeys();
 
   $('#a-tour').addEventListener('click', () => startTour());
+  renderOnboardingCard($('#onboarding-card'));
   $('#a-lang').addEventListener('change', (e) => setLanguage(e.target.value));
   renderLinkedAccounts($('#linked-card'));
   $('#a-revoke').addEventListener('click', async () => {

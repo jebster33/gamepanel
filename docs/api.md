@@ -219,3 +219,10 @@ DELETE /api/portal/names/:server/:name          player session: unlink a name
 POST   /api/portal/logout
 GET    /api/auth/oauth/steam/start|callback     Steam OpenID sign-in or link (like the other providers)
 ```
+## Getting started checklist
+
+Per account: every signed-in user reads and changes only their own progress.
+
+- `GET /api/onboarding` returns `{ items: [{ id, label, hint, link, done, auto, skipped }], hidden, tourDone, newsId, newsSeen }`. Only steps the account can use are listed.
+- `PUT /api/onboarding` takes any of `{ id, done }` (tick or untick one step), `hidden`, `tourDone`, `seenNews`.
+- `POST /api/onboarding/reset` clears the account's progress.
