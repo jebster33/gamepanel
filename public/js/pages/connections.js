@@ -35,8 +35,7 @@ export async function renderConnections(view) {
 
   view.innerHTML = `
     <div class="page-head">
-      <div><h1>Manage connections</h1>
-        <div class="lede">People who play on your servers through GamePanel Bridge. They run their personal client and your servers appear on their own computer, with no ports opened on yours.</div></div>
+      <h1>Manage connections</h1>
       <div class="spacer"></div>
       <button class="btn btn-primary" id="c-new">${icon('plus', 13)} Add connection</button>
     </div>
