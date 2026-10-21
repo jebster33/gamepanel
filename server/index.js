@@ -339,6 +339,8 @@ async function main() {
   require('./features/status-bots').start({ store, manager });
   require('./features/wake-on-join').start({ store, manager });
   require('./features/rust-afk').start({ store, manager });
+  require('./features/flood').start({ store, manager });
+  require('./features/backup-test').start({ store, manager });
   require('./features/server-list').start({ store, manager });
   require('./features/sftp')
     .start({ store, auth, manager })

@@ -50,6 +50,10 @@ Incremental backups can be encrypted with AES-256. An administrator sets the pas
 
 **Check** on a backup unpacks it into a scratch folder and makes sure every file came back (for incremental backups, every piece is read and verified). Turn on **Settings → Backup checks** to check each backup right after it is made; a failed check sends an alert.
 
+## Test restores
+
+A backup you have never restored is a guess. Settings, **Backup test restores**, proves one: the panel unpacks a server's newest backup (or reads every piece of an incremental or encrypted one) into a scratch folder, compares the file count and sizes, then checks the game's own files: for Minecraft that `level.dat` unpacks and the region files are whole, for Rust that a save and a map are present. The scratch folder is deleted afterwards, only runs when there is disk space for it (otherwise the archive is read end to end), and the last 60 results are kept in a list. Tick **Test each server's newest backup every week** to have it run on its own; a failure raises a "Backup test restore failed" alert (turn it on under Alerts to get it in Discord or on your phone).
+
 ## Cloud copies
 
 **Settings → Cloud backups** copies every backup, by hand or scheduled, off this machine so a dead disk

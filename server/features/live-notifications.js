@@ -10,13 +10,13 @@ const { TITLES } = require('./notify');
 const prefs = require('./notify-prefs');
 
 // Shown as a pop-up as well as in the list.
-const LOUD = /\.(crashed|install_failed|failed|upload_failed|verify_failed|disk_low|lockout|hung|resource_alert|watched|ready|installed)$/;
+const LOUD = /\.(crashed|install_failed|failed|upload_failed|verify_failed|test_failed|flood_blocked|disk_low|lockout|hung|resource_alert|watched|ready|installed)$/;
 
 /** Same rule as the activity log: account events are for administrators only. */
 function visibleTo(auth, user, event) {
   if (!user) return false;
   if (user.role === 'admin') return true;
-  if (event.type.startsWith('user.') || event.type.startsWith('panel.') || event.type.startsWith('settings.')) return false;
+  if (event.type.startsWith('user.') || event.type.startsWith('panel.') || event.type.startsWith('security.') || event.type.startsWith('settings.')) return false;
   return Boolean(event.serverId) && auth.canAccessServer(user, event.serverId);
 }
 

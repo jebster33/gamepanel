@@ -59,6 +59,8 @@ const PROVIDERS = {
 
 // Steam uses OpenID, not OAuth: no client id or secret, only the panel address (see steam-openid.js).
 PROVIDERS.steam = { label: 'Steam', openid: true, console: 'https://steamcommunity.com/' };
+// Generic OpenID Connect (oidc.js): not listed with the fixed providers above, but found by id everywhere below.
+Object.defineProperty(PROVIDERS, 'oidc', { enumerable: false, value: { label: 'Single sign-on' } });
 
 const STATE_COOKIE = 'gp_oauth';
 const STATE_TTL_MS = 10 * 60_000;
@@ -79,6 +81,7 @@ function provider(id) {
 
 function configured(store, id) {
   if (PROVIDERS[id]?.openid) return Boolean(settings(store).steam?.enabled && settings(store).publicUrl);
+  if (id === 'oidc') return require('./oidc').configured(store);
   const c = settings(store)[id];
   return Boolean(c?.clientId && c?.clientSecret);
 }
@@ -87,7 +90,8 @@ function configured(store, id) {
 function enabled(store) {
   return Object.entries(PROVIDERS)
     .filter(([id]) => configured(store, id))
-    .map(([id, p]) => ({ id, label: p.label }));
+    .map(([id, p]) => ({ id, label: p.label }))
+    .concat(require('./oidc').enabled(store));
 }
 
 /** Where the provider sends people back to. */
@@ -111,6 +115,7 @@ function origin(req) {
  */
 function start(store, auth, req, id, { linkUserId = null, portal = false } = {}) {
   const p = provider(id);
+  if (id === 'oidc') return require('./oidc').start(store, auth, req, { linkUserId }, { redirectUri: redirectUri(store, req, id), stateCookie: STATE_COOKIE, secure: require('../api/helpers').isSecure(req) });
   if (!configured(store, id)) fail(400, `Sign-in with ${p.label} is not set up. An administrator can add it under Settings.`);
   const nonce = crypto.randomBytes(16).toString('base64url');
   const state = auth.sign({ purpose: 'oauth', p: id, n: nonce, link: linkUserId, portal: portal || undefined, exp: Date.now() + STATE_TTL_MS });
@@ -134,6 +139,7 @@ function start(store, auth, req, id, { linkUserId = null, portal = false } = {})
 /** Check the answer, swap the code for a token and find out who it is. */
 async function finish(store, auth, req, id, query) {
   const p = provider(id);
+  if (id === 'oidc') return require('./oidc').finish(store, auth, req, query, { redirectUri: redirectUri(store, req, id), stateCookie: STATE_COOKIE });
   if (query.get('error')) throw new Error(query.get('error_description') || `${p.label} said: ${query.get('error')}`);
   const state = auth.verify(String(query.get('state') || ''));
   const cookies = Object.fromEntries(String(req.headers.cookie || '').split(';').map((c) => c.trim().split('=')).filter((c) => c.length === 2));
@@ -178,6 +184,7 @@ function link(store, auth, userId, id, identity) {
 function unlink(store, user, id) {
   provider(id);
   if (!user.identities?.[id]) fail(404, 'Not linked');
+  if (id === 'oidc') require('./oidc').beforeUnlink(store, user);
   delete user.identities[id];
   store.save();
 }

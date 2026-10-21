@@ -9,6 +9,7 @@ import { setBridgeNav } from '../ui/sidebar.js';
 import { skeleton } from '../ui/skeleton.js';
 import { renderSettingsInfra2 } from './infra2.js';
 import { renderExtSettings } from './ext-settings.js';
+import { renderSecuritySettings } from './security-settings.js';
 
 /* -------------------------------------------------------------- settings */
 
@@ -32,6 +33,8 @@ const EVENT_LABELS = {
   'backup.created': 'A backup is made',
   'backup.failed': 'A backup fails',
   'backup.verify_failed': 'A backup fails its check',
+  'backup.test_failed': 'A backup test restore fails',
+  'security.flood_blocked': 'A connection flood is blocked',
   'backup.uploaded': 'A backup is copied to the cloud',
   'backup.upload_failed': 'Copying a backup to the cloud fails',
   'schedule.failed': 'A scheduled task fails',
@@ -221,6 +224,8 @@ export async function renderSettings(view) {
       </p>
       <div id="oauth-form" class="faint">${skeleton('lines')}</div>
     </div>
+
+    <div class="card mb-16" id="security2"></div>
 
     <div class="card mb-16" id="status-page">
       <h4>Public server list</h4>
@@ -507,6 +512,7 @@ export async function renderSettings(view) {
   renderNodeCopiesForm();
   renderStatusPageForm();
   renderOauthForm();
+  renderSecuritySettings($('#security2'));
 }
 
 /* ---------------------------------------------------- public status page */

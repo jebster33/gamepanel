@@ -9,9 +9,9 @@ import { qrSvg } from '../ui/qr.js';
 import { startTour } from '../ui/tour.js';
 import { renderOnboardingCard } from '../ui/onboarding.js';
 import { LANGUAGES, lang, setLanguage } from '../core/i18n.js';
-import { addPasskey, passkeysSupported } from '../core/passkey.js';
 import { renderThemePicker } from '../ui/ext.js';
 import { renderNotifyPrefs } from './ext-settings.js';
+import { addPasskey, passkeyBlocker, passkeysSupported, platformPasskeyReady } from '../core/passkey.js';
 
 /* --------------------------------------------------------------- account */
 
@@ -33,7 +33,7 @@ export async function renderAccount(view) {
     </div>
 
     <div class="card mb-16" id="passkeys">
-      <div class="card-head"><h4>Passkeys</h4><div class="spacer"></div><button class="btn btn-sm" id="pk-add">Add a passkey</button></div>
+      <div class="card-head"><h4>Passkeys</h4><div class="spacer"></div><button class="btn btn-sm" id="pk-add">Set up with this device</button><button class="btn btn-sm" id="pk-add-key">Add a security key</button></div>
       <div id="pk-body"></div>
     </div>
 
@@ -360,16 +360,23 @@ function renderPasskeys(me) {
   const list = me.passkeys || [];
   const supported = passkeysSupported();
   $('#pk-add').classList.toggle('hidden', !supported);
+  $('#pk-add-key').classList.toggle('hidden', !supported);
+  $('#pk-add').textContent = /Win/.test(navigator.platform) ? 'Set up with Windows Hello' : /iPhone|iPad|Mac/.test(navigator.userAgent) ? 'Set up with Touch ID / Face ID' : 'Set up with this device';
+  platformPasskeyReady().then((ready) => {
+    const hint = $('#pk-hint');
+    if (hint && supported && !ready) hint.textContent = 'This device did not report Windows Hello, Touch ID, Face ID or a screen lock as ready. Set one up in your system settings to use "this device", or add a security key.';
+  });
   body.innerHTML = `
     <p class="faint" style="margin:0 0 ${list.length ? 12 : 0}px;line-height:1.6">Sign in with your fingerprint, face or a security key instead of a password. A passkey that checks it is you counts as two-factor sign-in on its own.${
-      supported ? '' : ' <b>This browser cannot use passkeys here:</b> open the panel at its HTTPS address (a domain, not an IP address).'
+      supported ? '' : ` <b>This browser cannot use passkeys here:</b> ${esc(passkeyBlocker() || 'not supported')}`
     }</p>
+    <p id="pk-hint" class="faint" style="margin:0 0 12px;line-height:1.6"></p>
     ${
       list.length
         ? `<div class="list">${list
             .map(
               (p) => `<div class="list-row">
-          <div class="grow"><div class="title">${esc(p.name)}${p.backedUp ? ' <span class="chip chip-sm" title="Synced by your password manager or phone account">synced</span>' : ''}</div>
+          <div class="grow"><div class="title">${esc(p.name)}${p.kind === 'platform' ? ' <span class="chip chip-sm">this device</span>' : p.kind === 'security-key' ? ' <span class="chip chip-sm">security key</span>' : ''}${p.backedUp ? ' <span class="chip chip-sm" title="Synced by your password manager or phone account">synced</span>' : ''}</div>
             <div class="sub">Added ${esc(fmtTime(p.createdAt))} · ${p.lastUsedAt ? `last used ${esc(fmtTime(p.lastUsedAt))}` : 'not used yet'}</div></div>
           <button class="btn btn-sm btn-ghost" data-pk-rename="${esc(p.id)}">Rename</button>
           <button class="btn btn-sm btn-ghost btn-danger" data-pk-remove="${esc(p.id)}">Remove</button>
@@ -408,15 +415,19 @@ function renderPasskeys(me) {
       }
     })
   );
-  $('#pk-add').onclick = async () => {
-    const guess = /iPhone|iPad/.test(navigator.userAgent) ? 'iPhone' : /Android/.test(navigator.userAgent) ? 'Android phone' : /Mac/.test(navigator.platform) ? 'Mac' : /Win/.test(navigator.platform) ? 'Windows PC' : 'This device';
-    const password = await promptModal('Add a passkey', 'Your password', '', { type: 'password', hint: 'Adding a way to sign in asks for your password.' });
+  const add = (kind, label, fallback) => async () => {
+    const password = await promptModal(label, 'Your password', '', { type: 'password', hint: 'Adding a way to sign in asks for your password.' });
     if (password === null) return;
+    const name = await promptModal('Name this passkey', 'Name', fallback);
+    if (name === null) return;
     try {
-      update(await addPasskey(guess, password));
+      update(await addPasskey(name || fallback, password, kind));
       toast('Passkey added. Next time, choose "Sign in with a passkey".');
     } catch (err) {
-      toast(err.message, 'error');
+      toast(err.message, 'error', 9000);
     }
   };
+  const guess = /iPhone|iPad/.test(navigator.userAgent) ? 'iPhone' : /Android/.test(navigator.userAgent) ? 'Android phone' : /Mac/.test(navigator.platform) ? 'Mac' : /Win/.test(navigator.platform) ? 'Windows PC' : 'This device';
+  $('#pk-add').onclick = add('platform', 'Set up this device', guess);
+  $('#pk-add-key').onclick = add('security-key', 'Add a security key', 'Security key');
 }
