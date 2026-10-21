@@ -172,6 +172,18 @@ POST   /api/servers/:id/staging          {"name","withWorld"} make a staging cop
 GET    /api/servers/:id/staging/diff     what a push from this staging copy would change
 POST   /api/servers/:id/staging/push     {"entries":[folders],"properties","version"}
 PATCH  /api/servers/:id                  … {"wakeOnJoin":true} turns on wake on join (Minecraft Java)
+GET    /api/infra/export                 all servers as YAML (no secret variables) (admins)
+POST   /api/infra/plan                   {"text"} YAML or JSON servers file: create/update/unchanged/delete plan
+POST   /api/infra/apply                  {"text","confirmPrune"} apply it (deletes only with prune: true and confirmPrune)
+GET    /api/config-sync                  git config sync state; PUT saves {"remote","branch","token","username","everyHours","enabled","files"}
+POST   /api/config-sync/run              snapshot, commit, push
+POST   /api/config-sync/restore/preview  fetch the repository and compare; …/restore/apply {"settings","servers","files"}
+GET    /api/hosting/playit               agent state, claim link, public address per server port (admins)
+POST   /api/hosting/playit/install|start|stop|reset      PUT {"autoStart"}
+GET    /api/hosting/vpn                  Tailscale and ZeroTier state and connect addresses
+POST   /api/hosting/vpn/install          {"which":"tailscale|zerotier"} official installer (Linux)
+POST   /api/hosting/vpn/join|leave       {"which","authKey","hostname","remember"} or {"which":"zerotier","networkId"}
+POST   /api/hosting/wizard               {"serverId","check"} recommended way to let players in
 GET    /api/system                       host metrics
 GET    /api/system/capacity              memory, CPU, disk per machine and per server (admins)
 GET    /api/system/runtime               Docker status

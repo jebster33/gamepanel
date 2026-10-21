@@ -23,7 +23,11 @@ gamepanel backups <server>
 gamepanel update game <server>      # SteamCMD game files
 gamepanel update mods <server>      # every mod with a newer compatible release
 gamepanel update panel [-y]
+gamepanel export > servers.yaml     # every server as YAML, no secret variables
+gamepanel apply servers.yaml        # shows the plan, then applies it (--plan: only the plan)
 ```
+
+`apply` never deletes servers unless the file says `prune: true`, and then asks first. See [servers as a file](config-as-code.md).
 
 `<server>` is its id, its name, or the start of a name that is unique. `console -f` keeps following the output until you press Ctrl+C.
 
