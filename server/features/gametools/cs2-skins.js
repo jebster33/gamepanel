@@ -204,7 +204,7 @@ const TEAMS = { 0: 'both', 2: 'terrorists', 3: 'counter-terrorists' };
  * Save a pick for a player. A pick is a weapon (defindex + class) with a paint;
  * for a knife it also sets which knife the player gets.
  */
-async function pick(store, server, steamid, input = {}) {
+async function pick(store, server, steamid, input = {}, preloaded = null) {
   checkSteamId(steamid);
   const s = sc(server);
   const defindex = Number(input.defindex);
@@ -218,7 +218,7 @@ async function pick(store, server, steamid, input = {}) {
   if (!Number.isInteger(seed) || seed < 0 || seed > 1000) fail(400, 'Pattern seed must be 0 to 1000');
   if (!(team in TEAMS)) fail(400, 'Team must be 0 (both), 2 (T) or 3 (CT)');
   // The catalog is the allow-list: the weapon class and paint must belong together.
-  const { items } = await catalog();
+  const { items } = preloaded || (await catalog());
   const item = items.find((i) => i.d === defindex && i.p === paint);
   if (!item && paint !== 0) fail(400, 'That skin is not in the catalog for that weapon');
   const w = item?.w || String(input.weaponClass || '');
@@ -331,4 +331,4 @@ async function sync(server) {
   return null;
 }
 
-module.exports = { WARNING, FALLBACK, catalog, normalise, view, enable, setDb, pick, unpick, sql, writePluginConfig, sync, checkSteamId, PLUGIN_CONFIG, CORE_CONFIG };
+module.exports = { WARNING, FALLBACK, FALLBACK_CATALOG: { items: fallbackItems() }, catalog, normalise, view, enable, setDb, pick, unpick, sql, writePluginConfig, sync, checkSteamId, PLUGIN_CONFIG, CORE_CONFIG };
