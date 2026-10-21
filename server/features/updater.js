@@ -114,11 +114,11 @@ async function checkRelease(version, channel) {
   }
 }
 
-async function applyRelease(onLog, channel) {
+async function applyRelease(onLog, channel, tag = null) {
   const { download, extractArchive } = require('../servers/install/native');
-  const release = await latestRelease(channel);
-  if (!release) fail(400, 'No releases have been published yet');
-  const tag = release.tag_name;
+  const release = tag ? ((await fetchReleases()) || []).find((r) => r.tag_name === tag) : await latestRelease(channel);
+  if (!release) fail(400, tag ? `Release ${tag} was not found` : 'No releases have been published yet');
+  tag = release.tag_name;
   const work = path.join(config.cacheDir, `update-${tag.replace(/[^\w.-]/g, '')}`);
   fs.rmSync(work, { recursive: true, force: true });
   const archive = path.join(config.cacheDir, `gamepanel-${tag}.zip`);
@@ -250,11 +250,11 @@ async function checkForUpdate({ channel: setting } = {}) {
  * Pull the new code, then hand over to systemd (or simply exit — the unit has
  * Restart=always, so the supervisor brings the panel back on the new code).
  */
-async function applyUpdate({ onLog = () => {}, channel: setting } = {}) {
+async function applyUpdate({ onLog = () => {}, channel: setting, tag = null } = {}) {
   const channel = channelOf(setting);
   if (!isGitCheckout()) {
     const from = require('../../package.json').version;
-    const result = await applyRelease(onLog, channel);
+    const result = await applyRelease(onLog, channel, tag);
     return { from, to: result.to, subject: `Release ${result.to}` };
   }
 
