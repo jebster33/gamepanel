@@ -180,3 +180,21 @@ POST   /api/system/update                update and restart
 ```
 
 `WS /ws` streams `servers`, `stats`, `system`, `server:status`, `notification` and `console:<id>`.
+
+## Community
+
+```
+GET    /api/leaderboards?game=&metric=          top players across your servers
+PUT    /api/servers/:id/community-messages      {"welcome":{enabled,message,mode},"motd":{enabled,messages,everyMinutes,order}}
+GET/PUT /api/community/settings                 {"showFeed","showBoards"} (admins)
+GET/PUT /api/portal/settings                    {"enabled"} (admins)
+GET    /api/public/status/:slug/leaderboards    public leaderboard (rate limited)
+GET    /api/portal/config                       public: portal state and sign-in buttons
+GET    /api/portal/auth/:provider/start         public: steam or discord sign-in for players
+POST   /api/portal/code                         public: {"name"} get a chat code (name sign-in), or none when signed in to add a name
+GET    /api/portal/code/:ticket                 public: waiting / verified / expired
+GET    /api/portal/me                           player session: own stats, bans, accounts
+DELETE /api/portal/names/:server/:name          player session: unlink a name
+POST   /api/portal/logout
+GET    /api/auth/oauth/steam/start|callback     Steam OpenID sign-in or link (like the other providers)
+```
