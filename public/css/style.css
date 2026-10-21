@@ -4585,3 +4585,8 @@ pre.code-block {
 .cap-legend { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 8px; font-size: 12px; color: var(--muted); }
 .cap-key { display: inline-block; width: 9px; height: 9px; margin-right: 6px; border-radius: 2px; background: var(--c); }
 .cap-key.hatch { background: repeating-linear-gradient(135deg, var(--c) 0 2px, transparent 2px 4px); }
+
+/* security2: security and access settings */
+.sec2-block { padding: 16px 0; border-top: 1px solid var(--line, rgba(255,255,255,.08)); }
+.sec2-block h4 { margin: 0 0 6px; }
+.sec2-block textarea { width: 100%; font-family: var(--mono, monospace); }

@@ -55,7 +55,39 @@ from the machine.
 
 ## Passkeys
 
-On the Account page, **Add a passkey** lets you sign in with your fingerprint, face or a security key: choose **Sign in with a passkey** on the sign-in page, no username or password needed. A passkey that checks it is you counts as two-factor sign-in on its own (also for "require two-factor for administrators"). Browsers only offer passkeys when the panel is opened at its HTTPS address, at a name rather than an IP address: see [HTTPS](panel-settings.md#https).
+A passkey lets you sign in with the lock you already use on your device: Windows Hello (face, fingerprint or PIN), Touch ID or Face ID on a Mac or iPhone, Android fingerprint or screen lock, or a USB/NFC security key. No password is typed and the secret never leaves the device.
+
+Set one up on the Account page, under **Passkeys**:
+
+1. Open the panel at its **HTTPS address, at a name** (like `panel.example.com`, or `localhost`). Browsers refuse passkeys on plain HTTP and on IP addresses; the page tells you if that is the problem. See [HTTPS](panel-settings.md#https).
+2. Click **Set up with Windows Hello** (it says Touch ID / Face ID or "this device" on other systems). Enter your password, name the passkey, and approve the prompt from your device.
+3. Or click **Add a security key** for a USB/NFC key and touch it when it blinks.
+
+If the prompt never appears or the browser says the device cannot make a passkey, Windows Hello is probably not set up: open Windows Settings, Accounts, Sign-in options and add a PIN or face/fingerprint. On a Mac or phone, turn on a screen lock or Touch ID / Face ID.
+
+To sign in, click **Sign in with a passkey** on the sign-in page, or just click the username box and pick your passkey from the suggestions the browser shows (autofill). No username is needed: the passkey is stored on the device with your account name. (A security key that has no room for it still works but needs the button.) Each passkey can be renamed or removed from the Account page; removing one asks for your password. A passkey that checks it is you counts as two-factor sign-in on its own (also for "require two-factor for administrators").
+
+## Single sign-on (OpenID Connect)
+
+Under Settings, **Single sign-on (OpenID Connect)** adds a sign-in button for your own identity provider: Authentik, Keycloak, Authelia, Microsoft Entra ID, Zitadel and similar. Like Google and Discord sign-in, it never creates accounts: people sign in with their password once, click **Link** on the Account page, and use the button from then on.
+
+1. In your provider, create an OpenID Connect (OAuth2) application of the "confidential / web" kind and register the redirect URL shown in the panel's settings.
+2. Paste the provider's **discovery address** (the issuer, like `https://auth.example.com/application/o/gamepanel/`, or the `.well-known/openid-configuration` address), the client ID and the client secret, and click **Test the connection**.
+3. Optionally tick accounts under "Only allow sign-in through SSO". Those accounts (which must be linked first) can no longer use a password or passkey. If your provider is ever down, `node server/reset-allowlist.js` lifts this from the command line.
+
+The panel uses PKCE, a state and nonce tied to the browser, and checks the id_token's signature against the provider's published keys. Two-factor sign-in still applies after SSO. Not tested live against every provider.
+
+## IP allowlist
+
+Settings, **IP allowlist**, limits who can sign in or use the API to addresses you list (single addresses or ranges like `192.168.1.0/24` or `2001:db8::/32`). Choose whether it applies to administrators, other accounts or both. An account can also have its own list under "Per-account lists", which replaces the shared one for that account. The panel always allows connections from its own machine (localhost), shows "Your current address" first, and **refuses to turn on a list that would lock you out**. Blocked attempts are written to the activity log (a few per address, so a flood cannot fill it). Behind a reverse proxy, set `GP_BEHIND_PROXY` (and `GP_PROXY_HOPS`) so the real visitor address is used.
+
+If everyone is locked out anyway, stop the panel and run this on the machine, then start it again (add `--accounts` to also clear the per-account lists):
+
+```
+sudo systemctl stop gamepanel && sudo node /opt/gamepanel/server/reset-allowlist.js --accounts && sudo systemctl start gamepanel
+```
+
+On Windows use an administrator PowerShell: `Stop-Service GamePanel`, run `server\reset-allowlist.js` with the panel's own `node.exe` as shown at the top of that script, then `Start-Service GamePanel`.
 
 ## Passwords and sessions
 

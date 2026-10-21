@@ -93,3 +93,9 @@ For the service itself (Linux: `sudo systemctl edit gamepanel`):
 | `GP_PROXY_HOPS` | `1` | Proxies that each add to `X-Forwarded-For` (use `2` for Cloudflare in front of nginx) |
 | `GP_DOCKER_SOCKET` | `/var/run/docker.sock` | Docker socket |
 | `GP_LOG_LEVEL` | `info` | `debug`, `info`, `warn`, `error` |
+
+## Connection flood blocking
+
+Settings, **Connection flood blocking**, protects game servers from one address opening hundreds of connections. Tick it per server; every 10 seconds the panel counts connections (and, where the system counts them, packets per second) from each address to that server's game ports, and an address over your limit is blocked with a firewall rule for the number of minutes you set, then unblocked on its own. Blocked addresses are listed with an **Unblock** button, and each block raises a "Connection flood blocked" alert.
+
+It never blocks this machine, private/LAN addresses, your "never block" list, addresses your staff have signed in from, or bridge devices. On Linux it needs permission to change the firewall (nftables, or iptables if there is no nft): the installer grants this to the panel's service user (re-run `install.sh` after updating), or run the panel as root. Counting uses conntrack (TCP and UDP) when available, otherwise TCP only. On Windows it counts TCP connections and adds Windows Firewall block rules, so the panel needs to run as a service or administrator. Not tested live against a real flood.

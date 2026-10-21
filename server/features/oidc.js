@@ -31,7 +31,7 @@ const ALGS = { RS256: 'sha256', RS384: 'sha384', RS512: 'sha512', ES256: 'sha256
 const pending = new Map(); // state nonce -> { verifier, nonce, exp }
 const cache = new Map(); // issuer -> { doc, jwks, fetched, jwksFetched }
 
-const settings = (store) => store.state.settings.oauth?.oidc || {};
+const settings = (store) => store.state.settings?.oauth?.oidc || {};
 const configured = (store) => {
   const s = settings(store);
   return Boolean(s.issuer && s.clientId && s.clientSecret);

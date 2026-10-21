@@ -172,6 +172,21 @@ POST   /api/servers/:id/staging          {"name","withWorld"} make a staging cop
 GET    /api/servers/:id/staging/diff     what a push from this staging copy would change
 POST   /api/servers/:id/staging/push     {"entries":[folders],"properties","version"}
 PATCH  /api/servers/:id                  … {"wakeOnJoin":true} turns on wake on join (Minecraft Java)
+GET    /api/settings/oidc                OpenID Connect settings (admins; the secret is never returned)
+PUT    /api/settings/oidc                {"issuer","clientId","clientSecret","label","scopes","ssoOnly":[ids]} or {"clear":true}
+POST   /api/settings/oidc/test           check the provider's discovery document and keys
+GET    /api/settings/ip-allowlist        list, roles, "yourIp", accounts (admins)
+PUT    /api/settings/ip-allowlist        {"enabled","cidrs":[],"roles":["admin","user"]} (refused if it would lock you out)
+PUT    /api/settings/ip-allowlist/accounts/:id  {"allowedIps":[]} one account's own list
+GET    /api/security/flood               flood blocking state: servers, settings, blocked addresses (admins)
+PUT    /api/security/flood               {"maxConnections","maxPackets","blockMinutes","allow":[]}
+PUT    /api/security/flood/servers/:id   {"enabled":true} turn it on for one server
+POST   /api/security/flood/blocks        {"ip","serverId","minutes"} block by hand
+DELETE /api/security/flood/blocks/:id    unblock
+GET    /api/security/backup-tests        weekly switch and result history (admins)
+PUT    /api/security/backup-tests        {"weekly":true}
+POST   /api/security/backup-tests/run    {"serverId","backup"?} test-restore a backup now
+POST   /api/auth/passkeys/options        {"password","kind":"platform"|"security-key"|"any"} start adding a passkey
 GET    /api/system                       host metrics
 GET    /api/system/capacity              memory, CPU, disk per machine and per server (admins)
 GET    /api/system/runtime               Docker status

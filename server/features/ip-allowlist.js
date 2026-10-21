@@ -44,7 +44,7 @@ function ranges(list) {
 }
 
 const config = (store) => {
-  const c = store.state.settings.ipAllowlist || {};
+  const c = store.state.settings?.ipAllowlist || {};
   return { enabled: Boolean(c.enabled), cidrs: Array.isArray(c.cidrs) ? c.cidrs : [], roles: Array.isArray(c.roles) && c.roles.length ? c.roles.filter((r) => ROLES.includes(r)) : ROLES.slice() };
 };
 
