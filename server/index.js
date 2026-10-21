@@ -66,6 +66,8 @@ async function main() {
   wss.scope = (conn, topic, payload) => scopeBroadcast(auth, conn, topic, payload);
   require('./features/live-notifications').start({ store, auth, wss });
   require('./features/setups').start({ store, manager, scheduler });
+  require('./features/playit').boot(store);
+  require('./features/config-sync').start({ store, manager });
 
   /* ------------------------------------------------------ static assets -- */
 
@@ -334,6 +336,8 @@ async function main() {
     nodes.stop();
     scheduler.stop();
     bridge.stop();
+    require('./features/playit').stop();
+    require('./features/config-sync').stop();
     stopSampler();
     wss.close();
     server.close();

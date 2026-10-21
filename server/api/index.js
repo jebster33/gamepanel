@@ -30,7 +30,17 @@ const safeDecode = (v) => {
     return v;
   }
 };
-const ROUTES = ['auth', 'system', 'templates', 'servers', 'files', 'mods', 'network', 'backups', 'users', 'bridge', 'bans'];
+const CORE_ROUTES = ['auth', 'system', 'templates', 'servers', 'files', 'mods', 'network', 'backups', 'users', 'bridge', 'bans'];
+// Every other file in routes/ is loaded too, after the core ones.
+const ROUTES = [
+  ...CORE_ROUTES,
+  ...require('fs')
+    .readdirSync(require('path').join(__dirname, 'routes'))
+    .filter((f) => f.endsWith('.js'))
+    .map((f) => f.slice(0, -3))
+    .filter((n) => !CORE_ROUTES.includes(n))
+    .sort(),
+];
 
 /** @param {{store, auth, manager, templates, hostMetrics, scheduler, notifier, bridge}} app */
 function createApi(app) {
