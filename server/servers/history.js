@@ -24,6 +24,10 @@ const SAVE_EVERY_MS = 60_000;
 
 // Minecraft Java chat: "[12:00:00] [Server thread/INFO]: <Steve> hello" (also "[Not Secure] <Steve> hi").
 // "Steve[/203.0.113.7:53422] logged in with entity id 123 at ..."
+// Rust: "1.2.3.4:51234/76561198000000000/Name joined [windows/76561198000000000]"
+const RUST_JOIN = /(\d{1,3}(?:\.\d{1,3}){3}):\d+\/\d{17}\/(.+?) joined \[/;
+// Source engine: "Name<3><[U:1:123]><>" connected, address 1.2.3.4:27005
+const SOURCE_JOIN = /"(.+?)<\d+><[^>]*><[^>]*>" connected, address (\d{1,3}(?:\.\d{1,3}){3}):\d+/;
 const MC_LOGIN = /\]:\s+([A-Za-z0-9_]{3,16})\[\/([0-9a-fA-F.:]+):\d+\] logged in with entity id/;
 const MC_CHAT = /\]:\s+(?:\[Not Secure\]\s+)?<([A-Za-z0-9_]{3,16})>\s(.*)$/;
 
@@ -166,6 +170,15 @@ module.exports = {
 
   /** Chat lines from the console, for the activity log. */
   trackChat(server, template, text) {
+    // Join addresses for alt detection, country stats and VPN blocking: Rust and Source engine games print them.
+    if (server.templateId === 'rust' || template.query?.type === 'a2s') {
+      for (const line of text.split('\n')) {
+        const rust = server.templateId === 'rust' && line.match(RUST_JOIN);
+        if (rust) this.noteAddress(server.id, rust[2], rust[1]);
+        const source = !rust && line.match(SOURCE_JOIN);
+        if (source) this.noteAddress(server.id, source[1], source[2]);
+      }
+    }
     const custom = template.logPatterns?.chat;
     const pattern = custom ? new RegExp(custom) : template.query?.type === 'minecraft' ? MC_CHAT : null;
     if (!pattern) return;
@@ -194,14 +207,20 @@ module.exports = {
       list.push(entry);
       // Where it is, like BattleMetrics shows (same lookup and setting as sign-in locations).
       require('../features/geoip')
-        .locate(ip, { enabled: this.store?.state.settings.geoLookup !== false })
-        .then((where) => {
-          if (where) {
-            entry.where = where;
+        .lookup(ip, { enabled: this.store?.state.settings.geoLookup !== false })
+        .then((info) => {
+          if (info) {
+            Object.assign(entry, { where: info.label, ...(info.cc ? { cc: info.cc, lat: info.lat, lon: info.lon } : {}) });
             h.dirty = true;
           }
         })
         .catch(() => {});
+    }
+    // VPN and proxy blocking, and a flag for players who share an address with a banned one.
+    try {
+      require('../features/player-security').onJoin(this, this.require(id), name, ip);
+    } catch {
+      /* never let a check break the console */
     }
     list.sort((a, b) => b.last - a.last);
     list.splice(10);
@@ -369,6 +388,7 @@ module.exports = {
     const text = String(note || '').trim().slice(0, 1000);
     if (!text && !watch) delete notes[key];
     else notes[key] = { note: text, watch: Boolean(watch), by: actor?.username || null, at: Date.now() };
+    if (text && text !== existing?.note) require('../features/player-records').noteChanged(this.store, key, text, actor?.username);
     this.store.save();
     return notes[key] || null;
   },

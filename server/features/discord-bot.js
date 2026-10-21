@@ -26,6 +26,10 @@ const COMMANDS = [
   { name: 'start', description: 'Start a server', options: [server()] },
   { name: 'stop', description: 'Stop a server', options: [server()] },
   { name: 'restart', description: 'Restart a server', options: [server()] },
+  { name: 'nextwipe', description: 'When each server wipes next' },
+  { name: 'uptime', description: 'How reliable a server has been lately', options: [server()] },
+  { name: 'warnings', description: 'Staff only: warnings and notes on a player', options: [{ type: 3, name: 'player', description: 'Player name', required: true }] },
+  { name: 'backup', description: 'Staff only: make a backup of a server now', options: [server()] },
   { name: 'link', description: 'Tell the panel your Minecraft name, for the whitelist', options: [{ type: 3, name: 'name', description: 'Your Minecraft name', required: true }] },
   { name: 'unlink', description: 'Forget your linked Minecraft name' },
 ];
@@ -229,6 +233,33 @@ class DiscordBot {
       return respond(null, [{ title: clean(rows[0].name), description: lines.join('\n'), color: LIME, footer: { text: `${hours(total)} played in total` } }]);
     }
 
+    const isController = String(this.settings.controllers || '').split(/[\s,]+/).filter(Boolean).includes(String(userId));
+
+    if (name === 'nextwipe') {
+      const { nextRun } = require('./scheduler');
+      const lines = [];
+      for (const s of this.manager.servers) {
+        for (const w of (s.schedules || []).filter((x) => x.enabled && x.action === 'wipe')) {
+          const at = nextRun(w.cron, new Date(), { firstOfMonth: w.firstOfMonth, weekOfMonth: w.weekOfMonth });
+          if (at) lines.push({ at, text: `**${clean(s.name)}** · <t:${Math.floor(at / 1000)}:F> (<t:${Math.floor(at / 1000)}:R>)` });
+        }
+      }
+      if (this.manager.servers.some((s) => s.templateId === 'rust')) {
+        const forced = require('./calendar').nextForcedWipes(Date.now(), 1)[0];
+        lines.push({ at: forced, text: `Rust forced wipe · <t:${Math.floor(forced / 1000)}:F> (<t:${Math.floor(forced / 1000)}:R>)` });
+      }
+      lines.sort((a, b) => a.at - b.at);
+      return respond(null, [{ title: 'Next wipes', description: lines.map((l) => l.text).join('\n') || 'No wipes are scheduled.', color: LIME }]);
+    }
+
+    if (name === 'warnings') {
+      if (!isController) return respond('Only people the panel admin listed can do that.', null, true);
+      const file = require('./player-records').file(this.store, String(options.player || ''));
+      if (!file.records.length) return respond(`No warnings or notes on ${clean(options.player || '')}.`, null, true);
+      const lines = file.records.slice(0, 8).map((r) => `${r.kind === 'warning' ? (r.active ? '⚠️' : '▫️') : r.kind === 'action' ? '🤖' : '📝'} <t:${Math.floor(r.at / 1000)}:d> ${clean(r.text)}${r.by ? ` — ${clean(r.by)}` : ''}`);
+      return respond(null, [{ title: clean(file.name), description: lines.join('\n'), color: LIME, footer: { text: `${file.points} active warning point${file.points === 1 ? '' : 's'}` } }], true);
+    }
+
     if (name === 'link' || name === 'unlink') {
       const roles = require('./discord-roles');
       if (!userId) return respond('Use this inside a Discord server.', null, true);
@@ -255,6 +286,26 @@ class DiscordBot {
     if (name === 'players') {
       const list = rt.playerList || [];
       return respond(null, [{ title: clean(target.name), description: list.length ? list.map(clean).join(', ') : 'Nobody is online.', color: LIME, footer: { text: `${list.length}${rt.maxPlayers ? ` / ${rt.maxPlayers}` : ''} players` } }]);
+    }
+
+    if (name === 'uptime') {
+      const u = this.manager.uptime?.(target.id);
+      const pct = (v) => (v == null ? 'no data' : `${(v * 100).toFixed(2)}%`);
+      return respond(null, [{ title: clean(target.name), description: `Last 24 hours: **${pct(u?.day)}**\nLast 7 days: **${pct(u?.week)}**\nLast 30 days: **${pct(u?.month)}**`, color: LIME }]);
+    }
+
+    if (name === 'backup') {
+      if (!isController) return respond('Only people the panel admin listed can do that.', null, true);
+      await this.reply(i, { type: 5 });
+      const edit = (content) => this.rest('PATCH', `/webhooks/${this.state.appId}/${i.token}/messages/@original`, { content, allowed_mentions: { parse: [] } });
+      try {
+        this.manager.checkDiskRoom('make a backup');
+        await require('./backups').create(target, 'discord');
+      } catch (err) {
+        return edit(`Could not back up ${clean(target.name)}: ${err.message}`);
+      }
+      this.store.addEvent('backup.created', `${caller} made a backup of ${target.name} from Discord`, { serverId: target.id });
+      return edit(`Backed up **${clean(target.name)}**.`);
     }
 
     if (POWER.has(name)) {

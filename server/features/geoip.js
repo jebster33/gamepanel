@@ -35,20 +35,20 @@ function normalize(ip) {
 }
 
 /**
- * @returns {Promise<string|null>} a short "City, Country" label, or a local
- * descriptor, or null when it could not be determined.
+ * Everything the lookup knows about an address: { label, cc, country, lat, lon, isp }.
+ * Private addresses give a label only. Null when the lookup is off or failed.
  */
-async function locate(ip, { enabled = true } = {}) {
+async function lookup(ip, { enabled = true } = {}) {
   const address = normalize(ip);
   const local = classifyPrivate(address);
-  if (local) return local;
+  if (local) return { label: local };
   if (!enabled) return null;
 
   const hit = cache.get(address);
-  if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.label;
+  if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.info;
 
   try {
-    const res = await fetch(`https://ipwho.is/${encodeURIComponent(address)}?fields=success,city,region,country,connection`, {
+    const res = await fetch(`https://ipwho.is/${encodeURIComponent(address)}?fields=success,city,region,country,country_code,latitude,longitude,connection`, {
       headers: { 'User-Agent': 'GamePanel/1.0' },
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
@@ -58,14 +58,24 @@ async function locate(ip, { enabled = true } = {}) {
 
     const label = [data.city, data.country].filter(Boolean).join(', ') || data.country || null;
     const isp = data.connection?.isp ? ` · ${data.connection.isp}` : '';
-    const full = label ? `${label}${isp}` : null;
-    cache.set(address, { at: Date.now(), label: full });
-    return full;
+    const info = label
+      ? { label: `${label}${isp}`, cc: data.country_code || null, country: data.country || null, lat: Number.isFinite(data.latitude) ? data.latitude : null, lon: Number.isFinite(data.longitude) ? data.longitude : null, isp: data.connection?.isp || null }
+      : null;
+    cache.set(address, { at: Date.now(), info });
+    return info;
   } catch (err) {
     logger.debug(`geoip lookup for ${address} failed: ${err.message}`);
-    cache.set(address, { at: Date.now(), label: null });
+    cache.set(address, { at: Date.now(), info: null });
     return null;
   }
 }
 
-module.exports = { locate, classifyPrivate };
+/**
+ * @returns {Promise<string|null>} a short "City, Country" label, or a local
+ * descriptor, or null when it could not be determined.
+ */
+async function locate(ip, options) {
+  return (await lookup(ip, options))?.label || null;
+}
+
+module.exports = { locate, lookup, classifyPrivate };
