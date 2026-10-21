@@ -64,6 +64,10 @@ module.exports = (router, { store, auth, manager, scheduler, bridge }, { require
   );
 
   /** Move a server to another node, or from a node to this machine. */
+  router.get('/api/move/:id', ({ user, params }) => {
+    requireAdmin(user);
+    return require('../../features/move').progress(params.id);
+  });
   router.post('/api/move', ({ user, body }) => {
     requireAdmin(user);
     return require('../../features/move').start({ manager, store }, { serverId: String(body?.serverId || ''), to: String(body?.to || ''), keepSource: Boolean(body?.keepSource) }, user);
