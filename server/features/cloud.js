@@ -184,8 +184,8 @@ class CloudBackups {
     this.status = new Map(); // "<server>/<name>" -> uploading | queued | failed message
     this.chain = Promise.resolve();
     store.on('event', (event) => {
-      // Incremental backups live in their vault; cloud copies are for the archives.
-      if (event.type === 'backup.created' && event.backup && this.enabled && !require('./vault').isSnapshot(event.backup)) this.queue(event.serverId, event.backup);
+      // Incremental backups are packed as a .tar.gz for the upload (unencrypted vaults only, see upload()).
+      if (event.type === 'backup.created' && event.backup && this.enabled) this.queue(event.serverId, event.backup);
     });
   }
 
@@ -353,18 +353,34 @@ class CloudBackups {
     const id = `${serverId}/${name}`;
     const server = this.manager.servers.find((s) => s.id === serverId);
     let file;
-    try {
-      file = backups.resolve(serverId, name);
-    } catch {
-      this.status.delete(id);
-      return;
+    let remoteName = name;
+    let temp = false;
+    if (backups.vault.isSnapshot(name)) {
+      try {
+        const packed = await require('./vault-tools').exportSnapshot(backups.dirFor(serverId), name);
+        file = packed.file;
+        remoteName = packed.name;
+        temp = true;
+      } catch (err) {
+        this.status.delete(id);
+        // Encrypted vaults are never sent in plain form; that is not a failure worth an alert.
+        if (!/Encrypted backups/.test(err.message)) this.store.addEvent('backup.upload_failed', `Copying a backup of ${server?.name || serverId} to the cloud failed: ${err.message}`, { serverId, backup: name });
+        return;
+      }
+    } else {
+      try {
+        file = backups.resolve(serverId, name);
+      } catch {
+        this.status.delete(id);
+        return;
+      }
     }
     const label = server?.name || serverId;
     this.status.set(id, 'uploading');
     const started = Date.now();
     try {
       const s3 = this.client();
-      await s3.putFile(this.prefixFor(serverId) + name, file);
+      await s3.putFile(this.prefixFor(serverId) + remoteName, file);
       this.status.delete(id);
       const secs = Math.round((Date.now() - started) / 1000);
       this.store.addEvent('backup.uploaded', `Backup of ${label} copied to the cloud (${secs}s)`, { serverId, backup: name });
@@ -372,6 +388,8 @@ class CloudBackups {
     } catch (err) {
       this.status.set(id, `failed: ${err.message}`);
       this.store.addEvent('backup.upload_failed', `Copying a backup of ${label} to the cloud failed: ${err.message}`, { serverId, backup: name });
+    } finally {
+      if (temp) fs.rmSync(file, { force: true });
     }
   }
 

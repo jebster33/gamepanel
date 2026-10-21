@@ -19,6 +19,7 @@ import { renderServerSettingsTab } from './settings.js';
 import { serverAddress } from '../servers.js';
 import { openPushModal, stagingBanner } from './staging.js';
 import { mountServerTips } from '../../ui/onboarding.js';
+import { renderStorageTab } from '../infra2.js';
 
 /* --------------------------------------------------------- server detail */
 
@@ -31,6 +32,7 @@ function serverTabs(server) {
     server.templateId === 'rust' && ['rust', 'Rust'],
     String(server.templateId).startsWith('ark-survival') && (can('mods') || can('settings') || can('command')) && ['ark', 'ARK'],
     can('files') && ['files', 'Files'],
+    can('files') && ['storage', 'Storage'],
     server.hasModpacks && can('mods') && ['modpacks', 'Modpack'],
     server.hasMods && can('mods') && ['mods', 'Mods'],
     server.hasMods && can('files') && ['configs', 'Configs'],
@@ -188,6 +190,9 @@ function renderServerTab(server, tab) {
       break;
     case 'game':
       renderGameTab(host, server);
+      break;
+    case 'storage':
+      renderStorageTab(host, server);
       break;
     case 'files':
       renderFilesTab(host, server, '');

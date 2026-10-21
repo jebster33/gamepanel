@@ -96,6 +96,7 @@ module.exports = (router, { store, auth, manager, hostMetrics, notifier, bridge 
       const lines = [];
       const result = await updater.applyUpdate({ onLog: (line) => lines.push(line), channel: store.state.settings.updateChannel });
       store.addEvent('panel.updated', `Panel updated ${result.from} → ${result.to} by ${user.username}`);
+      require('../../features/update-extras').record({ from: result.from, to: result.to, mode: updater.isGitCheckout() ? 'git' : 'release', channel: store.state.settings.updateChannel, user: user.username });
       // Reply first, then restart. Containerised servers keep running.
       json(res, 200, { ok: true, ...result, log: lines, restarting: true });
       updater.scheduleRestart();

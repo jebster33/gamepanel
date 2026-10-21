@@ -30,6 +30,8 @@ Everything you can do with GamePanel, in the order you'll probably need it.
 - [Alerts, Discord and the status page](alerts-and-discord.md)
 - [Nodes](nodes.md): several machines in one panel
 - [Panel settings, limits and the audit log](panel-settings.md)
+- [Host health, restarting the machine and storage](host-health.md)
+- [Raspberry Pi and ARM](raspberry-pi-arm.md)
 - [Command line](cli.md): `gamepanel` for scripting starts, backups and updates
 - [Updating and uninstalling](uninstall.md)
 - [Troubleshooting](../troubleshooting.md)

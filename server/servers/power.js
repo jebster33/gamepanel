@@ -56,7 +56,7 @@ module.exports = {
     this.patchMap(server);
 
     const vars = this.vars(server);
-    const command = interpolate(server.startCommand || template.startCommand, vars);
+    const command = require('../features/arch').wrapStart(interpolate(server.startCommand || template.startCommand, vars), server, template);
     this.setStatus(server, STATUS.STARTING);
     // The console reaches anyone with console access and the log file, so
     // never echo secrets that were substituted into the command.

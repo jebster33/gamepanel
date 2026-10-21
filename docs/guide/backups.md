@@ -38,7 +38,11 @@ the old build. Only the latest snapshot is remembered; older ones are ordinary b
 
 ## Incremental and encrypted backups
 
-On a server's Backups tab, **Backup type…** switches between *Archive* (a complete `.tar.gz` each time, the default) and *Incremental*. Incremental backups store files as pieces, each piece once: the first backup is full size, later ones only add what changed, and unchanged files are not even read again. Restoring, restoring single files, browsing, checking and downloading (as a `.tar.gz`) all work the same. Cloud copies stay archive-only.
+On a server's Backups tab, **Backup type…** switches between *Archive* (a complete `.tar.gz` each time, the default) and *Incremental*. Incremental backups store files as pieces, each piece once: the first backup is full size, later ones only add what changed, and unchanged files are not even read again. Restoring, restoring single files, browsing, checking and downloading (as a `.tar.gz`) all work the same. Scheduled backups and the retention number use incremental mode too, and removing an old backup also deletes the pieces nothing else uses.
+
+Under the backup list, **Incremental backup tools** has: **Check** (every snapshot opens and every piece it needs is there), **Deep check** (re-reads every piece and compares it with its name), **Free unused space** (clears pieces left behind by a crashed backup) and **Remove old** (keep the newest N and/or those younger than D days; preview first). GamePanel's own vault does what restic does (deduplicated, incremental, encrypted, prune, check, restore), so restic itself is not used.
+
+Cloud copies: an unencrypted incremental backup is packed into a `.tar.gz` for the upload. An encrypted one is never uploaded in plain form; use archive backups for cloud copies of those.
 
 Incremental backups can be encrypted with AES-256. An administrator sets the passphrase under **Settings → Backup encryption**; write it down, because without it encrypted backups cannot be restored on another machine. Changing the passphrase later keeps every encrypted backup readable.
 

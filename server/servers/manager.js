@@ -86,7 +86,8 @@ class ServerManager extends EventEmitter {
     for (const t of this.timers) t.unref?.();
     this.refreshDiskUsage();
 
-    const autoStart = this.servers.filter((s) => s.autoStart && s.installedAt && !this.isActive(s.id));
+    // After a host reboot from the panel: exactly the servers that were running; otherwise the "start with panel" ones.
+    const autoStart = require('../features/host-power').startList(this, this.store);
     for (const server of autoStart) {
       logger.info(`Auto-starting ${server.name}`);
       await this.start(server.id).catch((err) => logger.error(`Auto-start failed for ${server.name}:`, err.message));

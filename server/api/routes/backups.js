@@ -269,9 +269,10 @@ module.exports = (router, { store, manager, auth }, { requireAdmin, requireCap, 
 
   router.post('/api/servers/:id/backups/:name/upload', ({ user, params }) => {
     const server = serverFor(user, params.id, 'backups');
-    if (backups.vault.isSnapshot(params.name)) fail(400, 'Cloud copies are for archive backups. Download this one as a .tar.gz to keep a copy elsewhere.');
     if (!cloud.enabled) fail(400, 'Turn on cloud backups in Settings first');
-    backups.resolve(server.id, params.name);
+    if (backups.vault.isSnapshot(params.name)) {
+      if (backups.list(server.id).find((b) => b.name === params.name)?.encrypted) fail(400, 'Encrypted backups are not copied to the cloud in plain form. Use archive backups for cloud copies.');
+    } else backups.resolve(server.id, params.name);
     cloud.queue(server.id, params.name);
     return { ok: true, queued: true };
   });

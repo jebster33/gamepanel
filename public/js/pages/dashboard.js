@@ -4,6 +4,7 @@ import { setCrumbs } from '../core/router.js';
 import { state } from '../core/state.js';
 import { $, esc, fmtBytes, fmtDuration, fmtRate, icon } from '../core/util.js';
 import { renderCapacity } from './capacity.js';
+import { renderHostCard } from './infra2.js';
 import { renderServerCards } from './servers.js';
 import { countUp, flash, revealChildren } from '../ui/fx.js';
 import { decorateWidgets, pinnedWidgetShown } from '../ui/dash-widgets.js';
@@ -80,7 +81,7 @@ export function renderDashboard(view) {
     </div>
 
     </section>
-    <section data-widget="capacity"><div id="capacity"></div></section>
+    <section data-widget="capacity"><div id="host-health"></div><div id="capacity"></div></section>
     <section data-widget="pinned">
     <h2 class="section-title" ${pinnedWidgetShown() ? '' : 'hidden'}>Pinned</h2>
     ${renderServerCards({ pinnedOnly: true })}
@@ -100,6 +101,7 @@ export function renderDashboard(view) {
   if (state.user?.role === 'admin') {
     renderChecklist();
     renderCapacity($('#capacity'), true);
+    renderHostCard($('#host-health'), true);
   }
   revealChildren(view);
   view.querySelectorAll('[data-countup]').forEach((el) => countUp(el, el.dataset.countup));

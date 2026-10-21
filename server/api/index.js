@@ -46,6 +46,11 @@ function createApi(app) {
   const router = new Router();
   const h = createHelpers(app);
   for (const name of ROUTES) require(`./routes/${name}`)(router, app, h);
+  // Newer feature areas: every other file in routes/ is loaded too.
+  for (const file of require('fs').readdirSync(require('path').join(__dirname, 'routes')).sort()) {
+    const name = file.replace(/\.js$/, '');
+    if (file.endsWith('.js') && !ROUTES.includes(name)) require(`./routes/${name}`)(router, app, h);
+  }
   // Per address for anything anonymous (sign-in page, status page), per account once signed in.
   const anonymousLimit = new RateLimiter({ limit: 120 });
   const userLimit = new RateLimiter({ limit: 1200 });

@@ -7,6 +7,7 @@ import { $, esc, fmtBytes, fmtDuration, fmtTime, icon, toast } from '../core/uti
 import { confirmModal } from '../ui/modal.js';
 import { setBridgeNav } from '../ui/sidebar.js';
 import { skeleton } from '../ui/skeleton.js';
+import { renderSettingsInfra2 } from './infra2.js';
 
 /* -------------------------------------------------------------- settings */
 
@@ -22,6 +23,9 @@ const EVENT_LABELS = {
   'server.unlisted': 'A server drops off the Steam server list',
   'server.relisted': 'A server is back on the Steam server list',
   'panel.disk_low': "The panel's disk is almost full",
+  'panel.host_health': 'The host machine needs attention (disk health, heat, disk filling up, updates)',
+  'panel.update_available': 'A new panel version is available',
+  'panel.host_power': 'Someone restarts or shuts down the host machine from the panel',
   'user.lockout': 'Repeated failed sign-ins',
   'user.new_ip': 'Someone signs in from a new address',
   'backup.created': 'A backup is made',
@@ -441,6 +445,7 @@ export async function renderSettings(view) {
     }
   });
 
+  renderSettingsInfra2($('#updates'));
   $('#update-check').addEventListener('click', () => checkForUpdates(true));
   $('#update-channel').addEventListener('change', async (event) => {
     try {

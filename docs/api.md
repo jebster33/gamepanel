@@ -204,6 +204,22 @@ GET    /api/system/capacity              memory, CPU, disk per machine and per s
 GET    /api/system/runtime               Docker status
 GET    /api/system/update                pending panel updates
 POST   /api/system/update                update and restart
+GET    /api/system/update/history        applied updates and the rollback target (admins)
+POST   /api/system/update/rollback       go back to the version before the last update (admins)
+PUT    /api/system/update/auto-check     {"enabled"} six-hourly update check (admins)
+GET    /api/system/host-health           SMART, temperatures, OS updates, forecast, uptime (admins; ?refresh=1)
+GET    /api/system/host-power            status of a host restart/shutdown (admins)
+POST   /api/system/host-power/plan       {"action":"reboot|shutdown"} dry run (admins)
+POST   /api/system/host-power            {"action","seconds"} start the countdown (admins)
+DELETE /api/system/host-power            cancel it (admins)
+GET    /api/system/arch                  CPU architecture, box64/box86 (admins)
+POST   /api/system/arch/box64            {"confirm":true} install box64 with apt (admins)
+GET    /api/settings/log-rules           global log rules (admins); PUT saves; POST .../run {"dryRun"}
+GET    /api/servers/:id/storage          disk breakdown per folder, biggest files, bandwidth (files)
+GET    /api/servers/:id/log-rules        per-server rules; PUT saves; POST .../run {"dryRun"}
+POST   /api/servers/:id/backups/vault/check      {"deep"} check incremental backups
+POST   /api/servers/:id/backups/vault/compact    free unused pieces
+POST   /api/servers/:id/backups/vault/retention  {"keepLast","keepDays","dryRun"} remove old incremental backups
 ```
 
 `WS /ws` streams `servers`, `stats`, `system`, `server:status`, `notification` and `console:<id>`.
