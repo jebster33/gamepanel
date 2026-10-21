@@ -14,6 +14,7 @@ const SECTIONS = [
   ['levels', 'Levels & engrams', () => can('settings'), renderLevels],
   ['crates', 'Supply crates', () => can('settings'), renderCrates],
   ['give', 'Give item', () => can('command'), renderGive],
+  ['diff', 'Changed settings', () => can('files'), renderDiff],
 ];
 let current = 'mods';
 
@@ -65,6 +66,7 @@ async function renderMods(host, server) {
       <div class="card">
         <h4>Mod load order</h4>
         <p class="faint">ARK loads mods from the top down, and a mod lower in the list can override one above it. Drag a row, or use the arrow buttons. Saved to ${esc(data.applied)}.${data.game === 'ase' && running(server) ? ' <b>Stop the server before saving.</b>' : ' Restart the server to apply it.'}</p>
+        ${data.game === 'asa' ? '<form id="ark-mod-find" class="row gap-8" style="margin-bottom:8px"><input name="q" placeholder="Search CurseForge for ASA mods"><button class="btn">Search</button></form><div id="ark-mod-results" style="margin-bottom:12px"></div>' : ''}
         <div class="ark-list" id="ark-mods" role="list">${
           mods.length
             ? mods
@@ -119,6 +121,29 @@ async function renderMods(host, server) {
         from = null;
       });
     });
+    const find = host.querySelector('#ark-mod-find');
+    if (find) {
+      find.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const out = host.querySelector('#ark-mod-results');
+        out.innerHTML = '<span class="spinner"></span>';
+        try {
+          const r = await api(`${base(server)}/mods/search?q=${encodeURIComponent(find.q.value)}`);
+          out.innerHTML = r.items.length
+            ? r.items.map((m) => `<div class="row gap-8" style="align-items:center;padding:4px 0">${m.icon ? `<img src="${esc(m.icon)}" width="32" height="32" alt="" style="border-radius:6px">` : ''}<div style="flex:1;min-width:0"><b>${esc(m.name)}</b> <span class="faint">${esc(m.author)} · ID ${esc(m.id)} · ${Number(m.downloads).toLocaleString()} downloads</span><div class="faint" style="font-size:12px">${esc(m.summary || '')}</div></div><button class="btn btn-sm" data-add="${esc(m.id)}" data-name="${esc(m.name)}" ${mods.some((x) => x.id === m.id) ? 'disabled' : ''}>Add</button></div>`).join('')
+            : '<div class="faint">Nothing found.</div>';
+          out.querySelectorAll('[data-add]').forEach((b) =>
+            b.addEventListener('click', () => {
+              mods.push({ id: b.dataset.add, name: b.dataset.name });
+              dirty = true;
+              draw('Added');
+            })
+          );
+        } catch (err) {
+          out.innerHTML = `<div class="faint">${esc(err.message)}</div>`;
+        }
+      });
+    }
     host.querySelector('#ark-mod-add').addEventListener('click', () => {
       const input = host.querySelector('#ark-mod-id');
       const id = input.value.trim();
@@ -497,4 +522,28 @@ async function renderGive(host, server) {
   });
   fillPlayers();
   search();
+}
+
+/* ---------------------------------------------- settings changed from default -- */
+
+async function renderDiff(host, server, file = 'GameUserSettings.ini') {
+  host.innerHTML = '<div class="card faint">Loading…</div>';
+  let d;
+  try {
+    d = await api(`${base(server)}/ini-diff?file=${encodeURIComponent(file)}`);
+  } catch (err) {
+    host.innerHTML = `<div class="card faint">${esc(err.message)}</div>`;
+    return;
+  }
+  const rows = (list, cols) => (list.length ? `<div class="table-wrap"><table><thead><tr>${cols.map((c) => `<th>${c}</th>`).join('')}</tr></thead><tbody>${list.join('')}</tbody></table></div>` : '<div class="faint">None.</div>');
+  host.innerHTML = `<div class="card">
+    <h4>Settings changed from default</h4>
+    <p class="faint">Compares the file with the values ARK uses when a setting is missing, for the settings people change most. Settings not in that table are listed apart, so nothing is hidden.</p>
+    <div class="row gap-8" style="margin-bottom:8px">${d.files.map((f) => `<button class="btn btn-sm ${f === d.file ? 'primary' : ''}" data-f="${esc(f)}">${esc(f)}</button>`).join('')}</div>
+    <h5>Changed (${d.changed.length})</h5>
+    ${rows(d.changed.map((r) => `<tr><td>${esc(r.key)}</td><td class="mono">${esc(r.value)}</td><td class="mono faint">${esc(r.default)}</td></tr>`), ['Setting', 'Now', 'Default'])}
+    <p class="hint">${d.matching} more setting(s) are already at their default.</p>
+    <details><summary>Other entries (${d.unknown.length})</summary>${rows(d.unknown.slice(0, 300).map((r) => `<tr><td class="mono">${esc(r.section)}</td><td>${esc(r.key)}</td><td class="mono">${esc(r.value.slice(0, 120))}</td></tr>`), ['Section', 'Key', 'Value'])}</details>
+  </div>`;
+  host.querySelectorAll('[data-f]').forEach((b) => b.addEventListener('click', () => renderDiff(host, server, b.dataset.f)));
 }
