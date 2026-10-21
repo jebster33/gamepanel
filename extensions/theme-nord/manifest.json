@@ -1,0 +1,37 @@
+{
+  "name": "theme-nord",
+  "title": "Nord theme",
+  "version": "1.0.0",
+  "author": "GamePanel",
+  "description": "The Nord colour theme.",
+  "themes": [
+    {
+      "id": "nord",
+      "name": "Nord",
+      "mode": "dark",
+      "vars": {
+        "--bg": "#2e3440",
+        "--sidebar": "#2a303b",
+        "--surface": "#3b4252",
+        "--raised": "#434c5e",
+        "--hover": "#4c566a",
+        "--border": "#4a5367",
+        "--border-strong": "#5b667d",
+        "--inset": "#242933",
+        "--text": "#eceff4",
+        "--muted": "#aab3c5",
+        "--faint": "#7b88a1",
+        "--lime": "#88c0d0",
+        "--lime-ink": "#2e3440",
+        "--lime-text": "#88c0d0",
+        "--lime-soft": "rgba(136,192,208,0.12)",
+        "--lime-glow": "0 0 10px rgba(136,192,208,0.55)",
+        "--amber": "#ebcb8b",
+        "--amber-soft": "rgba(235,203,139,0.12)",
+        "--red": "#bf616a",
+        "--red-soft": "rgba(191,97,106,0.12)",
+        "--blue": "#81a1c1"
+      }
+    }
+  ]
+}

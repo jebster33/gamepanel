@@ -215,4 +215,4 @@ async function snapshot(manager, store, server) {
   return { ...out, ...data, size: data.size || out.size };
 }
 
-module.exports = { snapshot, installPlugin, pluginState, uploadImage, clearUploaded, openImage, saveFromUrl, parseReply, sniff };
+module.exports = { ask, pages, hasRcon, snapshot, installPlugin, pluginState, uploadImage, clearUploaded, openImage, saveFromUrl, parseReply, sniff };

@@ -26,7 +26,7 @@ module.exports = (router, { templates, manager, auth }, { requireAdmin, requireC
         runnable = false;
         runsAs = err.message;
       }
-      return { ...(user.role === 'admin' ? t : catalogueView(t)), runnable, runsAs };
+      return { ...(user.role === 'admin' ? t : catalogueView(t)), runnable, runsAs, compat: require('../../features/arch').compat(t) };
     });
     return { templates: list, categories: templates.categories() };
   });

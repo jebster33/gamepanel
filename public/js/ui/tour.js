@@ -1,5 +1,7 @@
 import { state } from '../core/state.js';
+import { api } from '../core/api.js';
 import { $, esc } from '../core/util.js';
+import { PANEL_STEPS, SERVER_STEPS, pickSteps, stepAfter } from './onboarding-core.js';
 
 /* ------------------------------------------------------------------ tour */
 
@@ -9,18 +11,10 @@ import { $, esc } from '../core/util.js';
 
 const DONE_KEY = 'gp-tour-done';
 
-const STEPS = [
-  { sel: '#nav [data-page="dashboard"]', title: 'Dashboard', text: 'How the machine is doing, every server at a glance, and a checklist for a fresh panel.' },
-  { sel: '#nav [data-page="templates"]', title: 'Games', text: 'Pick a game here. The panel downloads it, gives it free ports and starts it, usually within a few minutes.' },
-  { sel: '#sidebar-server-list', title: 'Your servers', text: 'Each server has its console, players, files, mods, backups and schedules on its own page.' },
-  { sel: '#bell-btn', title: 'Notifications', text: 'Crashes, finished installs, backups and sign-ins show up here, with a pop-up for the important ones.' },
-  { sel: '#nav [data-page="users"]', title: 'Users', text: 'Give friends an account with exactly the servers and permissions you choose, or let them create their own servers within a quota.' },
-  { sel: '#nav [data-page="settings"]', title: 'Settings', text: 'Alerts to Discord, cloud backups, the public server list, limits and panel updates.' },
-  { sel: '.user-link', title: 'Your account', text: 'Turn on two-factor sign-in here, pick a language, and take this tour again any time.' },
-];
-
 let index = 0;
 let steps = [];
+let track = 'panel';
+let opener = null;
 
 function visible(el) {
   if (!el) return false;
@@ -32,25 +26,39 @@ function close(done = true) {
   $('#tour')?.remove();
   document.removeEventListener('keydown', onKey);
   window.removeEventListener('resize', place);
-  if (done) {
+  if (done && track === 'panel') {
     try {
       localStorage.setItem(DONE_KEY, '1');
     } catch {
       /* private mode */
     }
+    // Remembered on the account too, so a second browser does not repeat it.
+    api('/api/onboarding', { method: 'PUT', body: { tourDone: true } }).catch(() => {});
+    document.dispatchEvent(new CustomEvent('gp:tour-done'));
   }
+  if (opener?.isConnected) opener.focus();
+  opener = null;
 }
 
 function onKey(event) {
   if (event.key === 'Escape') close();
   if (event.key === 'ArrowRight') go(1);
   if (event.key === 'ArrowLeft') go(-1);
+  // Keep Tab inside the bubble while the tour is up.
+  if (event.key === 'Tab') {
+    const buttons = [...document.querySelectorAll('#tour-bubble button')];
+    if (!buttons.length) return;
+    const at = buttons.indexOf(document.activeElement);
+    const next = event.shiftKey ? (at <= 0 ? buttons.length - 1 : at - 1) : at === buttons.length - 1 ? 0 : at + 1;
+    event.preventDefault();
+    buttons[next].focus();
+  }
 }
 
 function go(delta) {
-  const next = index + delta;
-  if (next < 0) return;
-  if (next >= steps.length) return close();
+  const next = stepAfter(index, delta, steps.length);
+  if (next === 'done') return close();
+  if (next === index) return;
   index = next;
   draw();
 }
@@ -96,17 +104,20 @@ function draw() {
   $('#tour-bubble [data-tour="next"]').focus();
 }
 
-export function startTour() {
+/** track: 'panel' (the whole panel) or 'server' (the page of one server). */
+export function startTour(which = 'panel') {
   close(false);
+  track = which === 'server' ? 'server' : 'panel';
+  opener = document.activeElement;
   // On a phone the menu is a drawer; open it so the nav steps have something to point at.
   if (window.innerWidth <= 900) {
     $('#sidebar')?.classList.add('open');
     $('#sidebar-backdrop')?.classList.add('show');
   }
-  steps = STEPS.filter((s) => visible(document.querySelector(s.sel)));
+  steps = pickSteps(track === 'server' ? SERVER_STEPS : PANEL_STEPS, (sel) => visible(document.querySelector(sel)));
   if (!steps.length) return;
   index = 0;
-  document.body.insertAdjacentHTML('beforeend', '<div id="tour" class="tour"><div id="tour-ring" class="tour-ring"></div><div id="tour-bubble" class="tour-bubble" role="dialog" aria-live="polite"></div></div>');
+  document.body.insertAdjacentHTML('beforeend', '<div id="tour" class="tour"><div id="tour-ring" class="tour-ring"></div><div id="tour-bubble" class="tour-bubble" role="dialog" aria-live="polite" aria-label="Panel tour"></div></div>');
   $('#tour').addEventListener('click', (event) => {
     const action = event.target.closest('[data-tour]')?.dataset.tour;
     if (action === 'next') go(1);
@@ -118,14 +129,23 @@ export function startTour() {
   draw();
 }
 
-/** Once, the first time someone uses the panel in this browser. */
-export function maybeStartTour() {
-  let done = false;
+/** Once per account: the first time someone uses the panel. */
+export async function maybeStartTour() {
+  if (!state.user) return;
+  let local = false;
   try {
-    done = localStorage.getItem(DONE_KEY) === '1';
+    local = localStorage.getItem(DONE_KEY) === '1';
   } catch {
-    done = true;
+    local = true;
   }
-  if (done || !state.user) return;
+  let remote = null;
+  try {
+    remote = await api('/api/onboarding');
+  } catch {
+    /* older server or no access: fall back to this browser */
+  }
+  // A browser that finished the tour before accounts tracked it counts as done, and the account learns that.
+  if (remote && local && !remote.tourDone) api('/api/onboarding', { method: 'PUT', body: { tourDone: true } }).catch(() => {});
+  if (remote ? remote.tourDone || local : local) return;
   setTimeout(startTour, 900);
 }

@@ -293,6 +293,38 @@ const commands = {
     );
   },
 
+  /** Print every server as a YAML file (secret variables left out). */
+  async export() {
+    process.stdout.write((await request('GET', '/api/infra/export')).yaml);
+  },
+
+  /** Apply a servers file: show the plan, then do it (--plan stops after the plan). */
+  async apply(file) {
+    if (!file) die('Usage: gamepanel apply <servers.yaml> [--plan] [-y]');
+    let text;
+    try {
+      text = fs.readFileSync(file, 'utf8');
+    } catch (err) {
+      die(`Cannot read ${file}: ${err.message}`);
+    }
+    const plan = await request('POST', '/api/infra/plan', { text });
+    const mark = { create: '+', update: '~', unchanged: '=', delete: '-', error: '!' };
+    for (const a of plan.actions) {
+      console.log(`${mark[a.action]} ${a.name}  ${a.action}`);
+      for (const e of a.errors || []) console.log(`    ${e}`);
+      for (const c of a.changes || []) console.log(`    ${c.field}: ${JSON.stringify(c.from)} -> ${JSON.stringify(c.to)}`);
+    }
+    const c = plan.counts;
+    console.log(`${c.create} to create, ${c.update} to update, ${c.unchanged} unchanged, ${c.delete} to remove, ${c.error} with problems`);
+    if (!plan.ok) die('Fix the problems above first; nothing was changed.');
+    if (flags.plan || c.create + c.update + c.delete === 0) return;
+    if (c.delete && !(await confirm(`Remove ${c.delete} server(s) that are not in the file? Their folders stay on disk.`))) return;
+    const r = await request('POST', '/api/infra/apply', { text, confirmPrune: c.delete > 0 }, { timeout: 10 * 60 * 1000 });
+    for (const a of r.applied) console.log(`${a.action} ${a.name}${a.error ? ` FAILED: ${a.error}` : ' done'}`);
+    if (r.restartNeeded.length) console.log(`Restart to use the changes: ${r.restartNeeded.join(', ')}`);
+    if (r.stoppedEarly) process.exitCode = 1;
+  },
+
   /** Game files (SteamCMD games), mods, or the panel itself. */
   async update(what, ref) {
     if (what === 'panel') {
@@ -329,6 +361,8 @@ const HELP = `gamepanel: control a GamePanel install from the command line
   backups <server>             list backups
   update game|mods <server>    update game files / all mods
   update panel [-y]            update the panel itself (asks first)
+  export                       print all servers as YAML (no secret variables)
+  apply <file> [--plan] [-y]   show what a servers file would change, then apply it
 
 <server> is an id, a name, or a unique start of a name.
 Use --url or GP_URL to point at a remote panel, GP_API_KEY to pass a key without saving it.
@@ -349,6 +383,8 @@ const main = async () => {
     case 'backup':
     case 'backups':
     case 'update':
+    case 'export':
+    case 'apply':
       return commands[cmd === 'ls' ? 'list' : cmd](...rest);
     case 'start':
     case 'stop':

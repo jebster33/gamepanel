@@ -25,6 +25,7 @@ export async function renderWorldsCard(host, server) {
     <div class="card mb-16">
       <div class="row" style="justify-content:space-between;margin-bottom:10px">
         <h4 style="margin:0">Worlds</h4>
+        ${write ? '<button class="btn btn-sm btn-ghost" id="gw-sp">Singleplayer world</button>' : ''}
         ${write ? `<label class="btn btn-sm" style="display:inline-flex">Import a world<input type="file" id="gw-file" accept=".zip,.tar.gz,.tgz,.tar" hidden /></label>` : ''}
       </div>
       ${
@@ -80,6 +81,8 @@ export async function renderWorldsCard(host, server) {
       });
     })
   );
+
+  host.querySelector('#gw-sp')?.addEventListener('click', () => import('./mc-world-import.js').then((m) => m.openWorldImport(server, redraw)));
 
   host.querySelector('#gw-file')?.addEventListener('change', async (event) => {
     const file = event.target.files[0];

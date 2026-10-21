@@ -1,0 +1,11 @@
+.git
+.github
+node_modules
+data
+test
+ios
+windows
+docs/screenshots
+docs/releases
+*.whl
+*.log

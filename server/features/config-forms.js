@@ -439,6 +439,7 @@ const SCAN = [
   ['oxide/config', 1],
   ['carbon/configs', 1],
   ['BepInEx/config', 1],
+  ['tshock', 1],
 ];
 const ROOT_FILES = /^(bukkit|spigot|purpur|paper|pufferfish|commands|velocity|config|leaves)\.(yml|toml)$|^paper-(global|world-defaults)\.yml$/i;
 const SKIP_NAME = /^(usercache|usernamecache|whitelist|ops|banned-players|banned-ips|permissions|help|version_history|\.[^/]*)\.(json|yml)$|cache|\.lock$|-data\.|^data\.(yml|json)$/i;
@@ -450,6 +451,7 @@ function groupOf(rel) {
   if (parts.length === 1) return 'Server';
   if (parts[0] === 'oxide' || parts[0] === 'carbon') return 'Plugins';
   if (parts[0] === 'BepInEx') return 'Mods';
+  if (parts[0] === 'tshock') return 'tShock';
   if (parts.length > 2 && parts[0] === 'config') return parts[1];
   return path.basename(rel).replace(/[-_.](common|server|client)?\.?(toml|json|ya?ml|cfg|properties)$/i, '').replace(/\.(toml|json|ya?ml|cfg|properties)$/i, '');
 }

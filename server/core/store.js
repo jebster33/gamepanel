@@ -44,6 +44,7 @@ const DEFAULT_STATE = {
 class Store extends EventEmitter {
   constructor(file, { tmpDir } = {}) {
     super();
+    this.setMaxListeners(50); // many features listen for events
     this.file = file;
     this.tmp = file && (tmpDir ? path.join(tmpDir, path.basename(file) + '.tmp') : file + '.tmp');
     // The previous good copy, kept for when the main file is cut short.

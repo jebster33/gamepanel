@@ -31,13 +31,27 @@ const safeDecode = (v) => {
     return v;
   }
 };
-const ROUTES = ['auth', 'system', 'templates', 'servers', 'files', 'mods', 'network', 'backups', 'users', 'bridge', 'bans'];
+const CORE_ROUTES = ['auth', 'system', 'templates', 'servers', 'files', 'mods', 'network', 'backups', 'users', 'bridge', 'bans'];
+// Every other file in routes/ (nodes.js is wired by users.js) is loaded too, after the core ones (in name order), so a new area needs no edit here.
+const ROUTES = [
+  ...CORE_ROUTES,
+  ...require('fs')
+    .readdirSync(require('path').join(__dirname, 'routes'))
+    .filter((f) => f.endsWith('.js') && !CORE_ROUTES.includes(f.slice(0, -3)) && f !== 'nodes.js')
+    .map((f) => f.slice(0, -3))
+    .sort(),
+];
 
 /** @param {{store, auth, manager, templates, hostMetrics, scheduler, notifier, bridge}} app */
 function createApi(app) {
   const router = new Router();
   const h = createHelpers(app);
   for (const name of ROUTES) require(`./routes/${name}`)(router, app, h);
+  // Newer feature areas: every other file in routes/ is loaded too.
+  for (const file of require('fs').readdirSync(require('path').join(__dirname, 'routes')).sort()) {
+    const name = file.replace(/\.js$/, '');
+    if (file.endsWith('.js') && !ROUTES.includes(name)) require(`./routes/${name}`)(router, app, h);
+  }
   // Per address for anything anonymous (sign-in page, status page), per account once signed in.
   const anonymousLimit = new RateLimiter({ limit: 120 });
   const userLimit = new RateLimiter({ limit: 1200 });

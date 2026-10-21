@@ -1,0 +1,37 @@
+{
+  "name": "theme-dracula",
+  "title": "Dracula theme",
+  "version": "1.0.0",
+  "author": "GamePanel",
+  "description": "The Dracula colour theme.",
+  "themes": [
+    {
+      "id": "dracula",
+      "name": "Dracula",
+      "mode": "dark",
+      "vars": {
+        "--bg": "#282a36",
+        "--sidebar": "#21222c",
+        "--surface": "#2f3140",
+        "--raised": "#343746",
+        "--hover": "#3c3f52",
+        "--border": "#44475a",
+        "--border-strong": "#565a73",
+        "--inset": "#191a21",
+        "--text": "#f8f8f2",
+        "--muted": "#b6b9d0",
+        "--faint": "#7a7e9c",
+        "--lime": "#bd93f9",
+        "--lime-ink": "#21222c",
+        "--lime-text": "#bd93f9",
+        "--lime-soft": "rgba(189,147,249,0.12)",
+        "--lime-glow": "0 0 10px rgba(189,147,249,0.55)",
+        "--amber": "#ffb86c",
+        "--amber-soft": "rgba(255,184,108,0.12)",
+        "--red": "#ff5555",
+        "--red-soft": "rgba(255,85,85,0.12)",
+        "--blue": "#8be9fd"
+      }
+    }
+  ]
+}

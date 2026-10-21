@@ -66,7 +66,7 @@ module.exports = (router, app) => {
     { public: true }
   );
 
-  router.post('/api/auth/passkeys/options', ({ user, req, body }) => passkeys.registerOptions(auth, store, user, req, body?.password));
+  router.post('/api/auth/passkeys/options', ({ user, req, body }) => passkeys.registerOptions(auth, store, user, req, body?.password, body?.kind || 'any'));
 
   router.post('/api/auth/passkeys', ({ user, req, body }) => {
     const passkey = passkeys.register(auth, store, user, req, body || {});
@@ -182,7 +182,7 @@ module.exports = (router, app) => {
   /** Off to Google/Discord/GitHub. ?link=1 links the signed-in account instead of signing in. */
   router.get(
     '/api/auth/oauth/:provider/start',
-    ({ req, res, params, url }) => {
+    async ({ req, res, params, url }) => {
       let linkUserId = null;
       if (url.searchParams.get('link') === '1') {
         const user = auth.userFromRequest(req);
@@ -191,7 +191,7 @@ module.exports = (router, app) => {
         if (req.gpApiKey) fail(403, 'Link accounts from the Account page while signed in, not with an API key');
         linkUserId = user.id;
       }
-      const { url: to, cookie } = oauth.start(store, auth, req, params.provider, { linkUserId });
+      const { url: to, cookie } = await oauth.start(store, auth, req, params.provider, { linkUserId });
       redirect(res, to, [cookie]);
       return undefined;
     },
@@ -208,10 +208,16 @@ module.exports = (router, app) => {
       try {
         result = await oauth.finish(store, auth, req, params.provider, url.searchParams);
       } catch (err) {
-        redirect(res, `/?oauth_error=${encodeURIComponent(err.message)}#/`, [clearState]);
+        const fromPortal = auth.verify(String(url.searchParams.get('state') || ''))?.portal;
+        redirect(res, fromPortal ? `/portal?error=${encodeURIComponent(err.message)}` : `/?oauth_error=${encodeURIComponent(err.message)}#/`, [clearState]);
         return undefined;
       }
       const { identity, linkUserId } = result;
+      // A player signing in to the player portal: a separate, read-only session, never a panel one.
+      if (result.portal) {
+        redirect(res, '/portal', [clearState, require('../../features/portal').loginCookie(store, auth, req, params.provider, identity)]);
+        return undefined;
+      }
       if (linkUserId) {
         try {
           const user = oauth.link(store, auth, linkUserId, params.provider, identity);
@@ -228,7 +234,13 @@ module.exports = (router, app) => {
         redirect(res, `/?oauth_error=${encodeURIComponent(`No panel account is linked to the ${label} account ${identity.name}. Sign in with your password once, then link it on the Account page.`)}#/`, [clearState]);
         return undefined;
       }
-      const login = auth.loginLinked(user, ip);
+      let login;
+      try {
+        login = auth.loginLinked(user, ip, params.provider === 'oidc' ? 'sso' : 'oauth');
+      } catch (err) {
+        redirect(res, `/?oauth_error=${encodeURIComponent(err.message)}#/`, [clearState]);
+        return undefined;
+      }
       if (login.twoFactor) {
         redirect(res, `/?oauth2fa=${encodeURIComponent(login.ticket)}#/`, [clearState]);
         return undefined;
@@ -298,7 +310,7 @@ module.exports = (router, app) => {
 
   router.get('/api/push', ({ user, url }) => ({ publicKey: push().keys.publicKey, ...push().status(user, url.searchParams.get('endpoint') || '') }));
 
-  router.post('/api/push', ({ user, body }) => push().subscribe(user, body?.subscription, body?.events, body?.device));
+  router.post('/api/push', ({ user, body }) => push().subscribe(user, body?.subscription, body?.events, body?.device, body?.client));
 
   router.delete('/api/push', ({ user, body }) => push().unsubscribe(user, String(body?.endpoint || '')));
 

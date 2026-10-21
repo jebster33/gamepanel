@@ -495,6 +495,22 @@ async function gc(vault) {
   return { ok: true, freed };
 }
 
+/** Clear every piece no snapshot uses (after a crash, or a backup that failed half way). Never while a backup runs. */
+async function compact(backupDir) {
+  if (locks.has(backupDir)) fail(409, 'A backup of this server is running. Try again when it is done.');
+  locks.add(backupDir);
+  try {
+    let freed = 0;
+    for (const vault of Vault.all(backupDir)) {
+      vault.unlock();
+      freed += (await gc(vault)).freed;
+    }
+    return { ok: true, freed };
+  } finally {
+    locks.delete(backupDir);
+  }
+}
+
 /** A new passphrase: rewrap every server's vault key with it. */
 function rewrapAll(backupsRoot, oldPassphrase, newPassphrase) {
   const vaults = [];
@@ -521,4 +537,4 @@ function rewrapAll(backupsRoot, oldPassphrase, newPassphrase) {
 
 const isSnapshot = (name) => NAME_RE.test(String(name));
 
-module.exports = { configure, create, list, stats, info, contents, restore, verify, remove, rewrapAll, isSnapshot, Vault, CHUNK };
+module.exports = { configure, create, list, stats, info, contents, restore, verify, remove, compact, rewrapAll, isSnapshot, Vault, CHUNK };

@@ -352,6 +352,15 @@
           transition: none !important;
         }
       }
+      .lb-filters { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+      .lb-filters select { padding: 6px 10px; font: inherit; color: var(--text); background: transparent; border: 1px solid var(--border); border-radius: 8px; }
+      .lb-list { margin: 8px 0 0; padding: 0; list-style: none; }
+      .lb-list li { display: flex; justify-content: space-between; gap: 12px; padding: 5px 0; border-top: 1px solid var(--border); }
+      .lb-list li:first-child { border-top: 0; }
+      .lb-list .lb-name { overflow-wrap: anywhere; }
+      ol.lb-list { counter-reset: lb; }
+      ol.lb-list li::before { counter-increment: lb; content: counter(lb); width: 22px; font-family: var(--mono); font-size: 12px; color: var(--faint); }
+      ol.lb-list .lb-name { flex: 1; }
     </style>
   </head>
   <body>
@@ -364,6 +373,7 @@
         <nav class="links" id="links" hidden></nav>
       </header>
       <section class="cards" id="cards"></section>
+      <section class="cards" id="community" style="margin-top:14px"></section>
       <footer id="footer">Updates every 15 seconds</footer>
     </main>
     <script src="/js/status-page.js" type="module"></script>

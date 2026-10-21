@@ -3,6 +3,8 @@
  * of the dashboard's modules, just the one public endpoint.
  */
 
+import { renderCommunity } from './status-community.js';
+
 const slug = location.pathname.split('/').filter(Boolean)[1] || '';
 const $ = (id) => document.getElementById(id);
 
@@ -147,6 +149,7 @@ function render(data) {
     })
     .join('');
   first = false;
+  renderCommunity(data, slug);
   $('footer').textContent = `Updated ${new Date(data.updatedAt).toLocaleTimeString()} · refreshes every 15 seconds`;
   if (data.appeals) {
     const link = document.createElement('a');

@@ -1,3 +1,4 @@
+import { loadReasonTemplates, reasonPickerHtml, wireReasonPicker } from './staff-reasons.js';
 import { api } from '../core/api.js';
 import { setCrumbs } from '../core/router.js';
 import { $, esc, fmtTime, toast } from '../core/util.js';
@@ -17,9 +18,11 @@ export async function renderBans(view) {
     $('#bans-body').innerHTML = `<div class="card">${esc(err.message)}</div>`;
     return;
   }
+  templates = await loadReasonTemplates();
   draw(data);
 }
 
+let templates = [];
 const METHOD = { list: 'ban list', command: 'ban command, while running' };
 
 function draw(data) {
@@ -47,6 +50,7 @@ function draw(data) {
       <form class="ban-add mb-16" id="ban-add">
         <input id="ban-name" placeholder="Player name" maxlength="32" required />
         <input id="ban-reason" placeholder="Reason (shown to them)" maxlength="200" />
+        ${reasonPickerHtml(templates, 'ban-template')}
         <select id="ban-hours" style="width:auto">
           <option value="0">Permanent</option><option value="24">1 day</option><option value="72">3 days</option><option value="168">1 week</option><option value="720">30 days</option>
         </select>
@@ -116,6 +120,7 @@ function draw(data) {
     }
   };
 
+  wireReasonPicker(document, templates, { id: 'ban-template', reason: '#ban-reason', hours: '#ban-hours' });
   $('#ban-add').addEventListener('submit', (event) => {
     event.preventDefault();
     const name = $('#ban-name').value.trim();

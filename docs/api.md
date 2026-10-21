@@ -47,6 +47,17 @@ GET    /api/servers/:id/mods/updates     newer compatible releases
 POST   /api/servers/:id/mods/update      {"keys":[…]} or {"all":true}
 DELETE /api/servers/:id/mods/:key        remove (and dependencies nothing else needs)
 POST   /api/servers/:id/mods/:key/toggle enable or disable
+GET    /api/servers/:id/steam-branch     Steam branch of a SteamCMD server (never the password)
+GET    /api/servers/:id/steam-branch/branches  branches Steam lists for the game
+PUT    /api/servers/:id/steam-branch     {"branch","password?","clearPassword?"}
+GET    /api/servers/:id/tshock           tShock detected? plugin folder
+POST   /api/servers/:id/tshock/install-url  {"url"} https .dll/.zip into ServerPlugins (needs files.write)
+POST   /api/servers/:id/tshock/upload    raw body, ?name=Plugin.dll (needs files.write)
+GET    /api/servers/:id/sandbox          Zomboid sandbox options as a form (?file=)
+PUT    /api/servers/:id/sandbox          {"file","version","changes":{"A.B":value}} (server stopped)
+GET    /api/servers/:id/sevendays-map    generated world preview data (?world=)
+GET    /api/servers/:id/sevendays-map/image  biomes.png of a world (?world=&file=)
+GET    /api/servers/:id/nexus            Nexus Mods links for the game (?query=)
 GET    /api/servers/:id/schedules        scheduled tasks
 POST   /api/servers/:id/schedules        {"name","action","cron","command?"}
 GET    /api/servers/:id/backups          backups
@@ -70,6 +81,8 @@ PUT    /api/servers/:id/subdomain        {"name"} Cloudflare A (+ SRV) record (a
 POST   /api/players/ban-everywhere       {"name","reason","unban?"} every Minecraft server
 POST   /api/servers/broadcast        {"message"} say it in chat on every running server
 GET    /api/players/search?q=            players on any visible server (admins: also by address)
+GET    /api/me/prefs                     your saved UI preferences (pinned, folders, tags, widgets, recent)
+PUT    /api/me/prefs                     replace the sent keys (null resets one); validated, 32 KB max
 GET    /api/servers/:id/backups/:name/contents        files in a backup
 POST   /api/servers/:id/backups/:name/restore-files   {"paths"} put back single files or folders
 PUT    /api/servers/:id/announcements    {"enabled","every","messages","welcome?":{"enabled","message"}} rotating chat, first-join welcome
@@ -99,6 +112,15 @@ POST   /api/servers/:id/events           {"name","cron","hours","changes":{key:v
 POST   /api/servers/:id/events/:eid/start|end   run or end one now
 POST   /api/servers/:id/network/check    can the internet reach it? (mcsrvstat.us, portchecker.io)
 GET    /api/servers/:id/world-map        Rust, Valheim and Terraria map links
+GET    /api/servers/:id/rust-tools       Rust presets, day length and AFK kick settings
+POST   /api/servers/:id/rust-tools/plugin {"plugin":"loot|stack"} install BetterLoot / StackSizeController
+POST   /api/servers/:id/rust-tools/loot  {"preset":"2x"|"custom","multiplier"} BetterLoot loot multiplier
+POST   /api/servers/:id/rust-tools/stack {"preset":"5x"|"custom","all","categories"} StackSizeController
+PUT    /api/servers/:id/rust-tools/time  {"preset"|"day","night"} env.daylength / env.nightlength
+PUT    /api/servers/:id/rust-tools/afk   AFK and high-ping kick settings
+GET    /api/servers/:id/rust-teams       teams, members, bases, clans (console permission)
+GET    /api/servers/:id/rust-entities    entities per player, ranked (console permission)
+GET    /api/servers/:id/rust-info        public-safe server card and join link
 GET    /api/servers/:id/workshop-packs   saved Workshop packs for this game
 POST   /api/servers/:id/workshop-packs   {"name","input"} or {"name","fromServer":true}
 POST   /api/servers/:id/workshop-packs/:pid/apply   add a pack's items
@@ -127,6 +149,16 @@ GET    /api/bans                         shared ban list, appeals, servers (admi
 POST   /api/bans                         {"name","reason","hours?"} ban on every server
 DELETE /api/bans/:id                     lift it everywhere
 POST   /api/bans/appeals/:id             {"decision":"accept|deny","reply"}
+GET    /api/staff/activity               per-staff moderation counts per day/week, last active, recent actions (admins)
+GET    /api/staff/reasons                ban/kick reason templates (any signed-in user)
+POST   /api/staff/reasons                {"name","reason","hours","appeal"} (admins); PUT/DELETE …/:id
+                                         ban/kick routes (POST /api/bans, /api/players/ban-everywhere, /api/servers/:id/players/action, …/player-lists) also take {"template": id}
+GET    /api/staff/roles                  role templates and the permissions they can hold (admins)
+POST   /api/staff/roles                  {"name","description","permissions"} (admins); PUT/DELETE …/:id (delete resets a built-in)
+POST   /api/servers/:id/access/:userId/role   {"role": id} apply a role template to a sub-user (admins)
+GET    /api/servers/:id/access-grants    active time-limited grants (admins)
+POST   /api/servers/:id/access-grants    {"userId","role" or "permissions","hours" or "until"} (admins)
+DELETE /api/servers/:id/access-grants/:grantId   end one early
 POST   /api/public/appeals               {"name","message","contact"} (public; returns a code)
 GET    /api/public/appeals/:code         an appeal's status (public)
 GET    /api/servers/:id/discord-whitelist     whitelist from Discord roles
@@ -140,6 +172,12 @@ POST   /api/networks                     {"name","proxyId","servers":[{"serverId
 GET    /api/clusters                     ARK clusters (admins)
 POST   /api/clusters                     {"name","servers":[serverId],"options":{"uploadDinos","downloadDinos","survivorExpirySeconds",…}}
 PUT    /api/clusters/:id                 same body; DELETE removes the cluster
+GET    /api/clusters/:id/transfers       files in the cluster folder and transfer lines from member logs (admins)
+GET    /api/servers/:id/ark/mods         ARK mod load order; PUT {"mods":[id,…]} saves it
+GET    /api/servers/:id/ark/levels       level cap and engram overrides from Game.ini; PUT saves them; POST …/preview {"cap","firstXp","finalXp","curve"} (or {"kind":"points",…}) calculates
+GET    /api/servers/:id/ark/crates       supply crate overrides; PUT {"crates":[…]} saves them
+GET    /api/servers/:id/ark/items        ?q=&category=&limit= item catalog search
+POST   /api/servers/:id/ark/give         {"player","playerId","path","quantity","tier"|"quality","blueprint","style"} sends GiveItemToPlayer
 GET    /api/settings/https               HTTPS settings and certificate (admins)
 PUT    /api/settings/https               {"enabled","domain","email","method":"http|cloudflare","port","redirect","staging"}
 POST   /api/settings/https/issue         get or renew the certificate now
@@ -181,11 +219,115 @@ POST   /api/servers/:id/staging          {"name","withWorld"} make a staging cop
 GET    /api/servers/:id/staging/diff     what a push from this staging copy would change
 POST   /api/servers/:id/staging/push     {"entries":[folders],"properties","version"}
 PATCH  /api/servers/:id                  … {"wakeOnJoin":true} turns on wake on join (Minecraft Java)
+GET    /api/servers/:id/players/:name/inventory/edit   editable inventory + ender chest (version tag included)
+PUT    /api/servers/:id/players/:name/inventory/edit   {"version","inventory":[{slot,id,count,damage,name,enchants,from}],"ender":[…]} offline players only; old file kept
+GET    /api/servers/:id/players/:name/skin             skin PNG, fetched and cached by the panel (Java and Bedrock)
+POST   /api/servers/:id/worlds/inspect                 {"path"} what is inside an uploaded world zip / .mcworld
+POST   /api/servers/:id/worlds/convert                 {"path","name","layout":"split|single","use","replace"} import it (server stopped)
+GET    /api/servers/:id/luckperms                      is LuckPerms installed
+GET    /api/servers/:id/luckperms/data                 groups, users, tracks via `lp export` (server running)
+POST   /api/servers/:id/luckperms/action               {"action":"permission.set|group.create|weight.set|parent.add|prefix.set|meta.set|…",…}
+GET    /api/servers/:id/jvm                            JVM flag presets for this server's memory
+PUT    /api/servers/:id/jvm                            {"preset"|"custom"} sets JAVA_ARGS (admins)
+GET    /api/settings/oidc                OpenID Connect settings (admins; the secret is never returned)
+PUT    /api/settings/oidc                {"issuer","clientId","clientSecret","label","scopes","ssoOnly":[ids]} or {"clear":true}
+POST   /api/settings/oidc/test           check the provider's discovery document and keys
+GET    /api/settings/ip-allowlist        list, roles, "yourIp", accounts (admins)
+PUT    /api/settings/ip-allowlist        {"enabled","cidrs":[],"roles":["admin","user"]} (refused if it would lock you out)
+PUT    /api/settings/ip-allowlist/accounts/:id  {"allowedIps":[]} one account's own list
+GET    /api/security/flood               flood blocking state: servers, settings, blocked addresses (admins)
+PUT    /api/security/flood               {"maxConnections","maxPackets","blockMinutes","allow":[]}
+PUT    /api/security/flood/servers/:id   {"enabled":true} turn it on for one server
+POST   /api/security/flood/blocks        {"ip","serverId","minutes"} block by hand
+DELETE /api/security/flood/blocks/:id    unblock
+GET    /api/security/backup-tests        weekly switch and result history (admins)
+PUT    /api/security/backup-tests        {"weekly":true}
+POST   /api/security/backup-tests/run    {"serverId","backup"?} test-restore a backup now
+POST   /api/auth/passkeys/options        {"password","kind":"platform"|"security-key"|"any"} start adding a passkey
+GET    /api/servers/:id/gametools/<game> per-game tools, game = cs2, squad, garrysmod, satisfactory, palworld, space-engineers (see docs/guide/game-tools.md)
+       cs2: GET, POST preset, PUT maps, POST plugins/:id (admin), skins/* (admin, opt-in, needs {"acknowledge":true})
+       squad: GET, PUT ?file=   garrysmod: GET, PUT, POST workshop   palworld: GET players, POST reset|restore (admin)
+       satisfactory: GET, POST trust|login|logout (admin), GET sessions|download|file, POST load|save|new|upload|file, DELETE save|session|file
+       space-engineers: GET scan, POST remove (admin)
+GET    /api/infra/export                 all servers as YAML (no secret variables) (admins)
+POST   /api/infra/plan                   {"text"} YAML or JSON servers file: create/update/unchanged/delete plan
+POST   /api/infra/apply                  {"text","confirmPrune"} apply it (deletes only with prune: true and confirmPrune)
+GET    /api/config-sync                  git config sync state; PUT saves {"remote","branch","token","username","everyHours","enabled","files"}
+POST   /api/config-sync/run              snapshot, commit, push
+POST   /api/config-sync/restore/preview  fetch the repository and compare; …/restore/apply {"settings","servers","files"}
+GET    /api/hosting/playit               agent state, claim link, public address per server port (admins)
+POST   /api/hosting/playit/install|start|stop|reset      PUT {"autoStart"}
+GET    /api/hosting/vpn                  Tailscale and ZeroTier state and connect addresses
+POST   /api/hosting/vpn/install          {"which":"tailscale|zerotier"} official installer (Linux)
+POST   /api/hosting/vpn/join|leave       {"which","authKey","hostname","remember"} or {"which":"zerotier","networkId"}
+POST   /api/hosting/wizard               {"serverId","check"} recommended way to let players in
 GET    /api/system                       host metrics
 GET    /api/system/capacity              memory, CPU, disk per machine and per server (admins)
 GET    /api/system/runtime               Docker status
 GET    /api/system/update                pending panel updates
 POST   /api/system/update                update and restart
+GET    /api/system/update/history        applied updates and the rollback target (admins)
+POST   /api/system/update/rollback       go back to the version before the last update (admins)
+PUT    /api/system/update/auto-check     {"enabled"} six-hourly update check (admins)
+GET    /api/system/host-health           SMART, temperatures, OS updates, forecast, uptime (admins; ?refresh=1)
+GET    /api/system/host-power            status of a host restart/shutdown (admins)
+POST   /api/system/host-power/plan       {"action":"reboot|shutdown"} dry run (admins)
+POST   /api/system/host-power            {"action","seconds"} start the countdown (admins)
+DELETE /api/system/host-power            cancel it (admins)
+GET    /api/system/arch                  CPU architecture, box64/box86 (admins)
+POST   /api/system/arch/box64            {"confirm":true} install box64 with apt (admins)
+GET    /api/settings/log-rules           global log rules (admins); PUT saves; POST .../run {"dryRun"}
+GET    /api/servers/:id/storage          disk breakdown per folder, biggest files, bandwidth (files)
+GET    /api/servers/:id/log-rules        per-server rules; PUT saves; POST .../run {"dryRun"}
+POST   /api/servers/:id/backups/vault/check      {"deep"} check incremental backups
+POST   /api/servers/:id/backups/vault/compact    free unused pieces
+POST   /api/servers/:id/backups/vault/retention  {"keepLast","keepDays","dryRun"} remove old incremental backups
 ```
 
 `WS /ws` streams `servers`, `stats`, `system`, `server:status`, `notification` and `console:<id>`.
+
+## Community
+
+```
+GET    /api/leaderboards?game=&metric=          top players across your servers
+PUT    /api/servers/:id/community-messages      {"welcome":{enabled,message,mode},"motd":{enabled,messages,everyMinutes,order}}
+GET/PUT /api/community/settings                 {"showFeed","showBoards"} (admins)
+GET/PUT /api/portal/settings                    {"enabled"} (admins)
+GET    /api/public/status/:slug/leaderboards    public leaderboard (rate limited)
+GET    /api/portal/config                       public: portal state and sign-in buttons
+GET    /api/portal/auth/:provider/start         public: steam or discord sign-in for players
+POST   /api/portal/code                         public: {"name"} get a chat code (name sign-in), or none when signed in to add a name
+GET    /api/portal/code/:ticket                 public: waiting / verified / expired
+GET    /api/portal/me                           player session: own stats, bans, accounts
+DELETE /api/portal/names/:server/:name          player session: unlink a name
+POST   /api/portal/logout
+GET    /api/auth/oauth/steam/start|callback     Steam OpenID sign-in or link (like the other providers)
+```
+## Getting started checklist
+
+Per account: every signed-in user reads and changes only their own progress.
+
+- `GET /api/onboarding` returns `{ items: [{ id, label, hint, link, done, auto, skipped }], hidden, tourDone, newsId, newsSeen }`. Only steps the account can use are listed.
+- `PUT /api/onboarding` takes any of `{ id, done }` (tick or untick one step), `hidden`, `tourDone`, `seenNews`.
+- `POST /api/onboarding/reset` clears the account's progress.
+## Notifications, reports, extensions
+
+```
+GET    /api/notify-prefs?endpoint=       categories, servers and the muted lists (device list if the endpoint has one)
+PUT    /api/notify-prefs                 {"mutedCategories":[],"mutedServers":[],"endpoint"?,"reset"?}
+POST   /api/notify-actions/run           {"token"} one-time signed button token from a notification; rate limited, audited
+GET    /api/reports                      admin: saved reports, auto setting
+PUT    /api/reports/settings             admin: {"auto":true}
+POST   /api/reports/generate             admin: {"month":"2026-09"} saves data/reports/uptime-2026-09.pdf
+GET    /api/reports/uptime.pdf           admin: ?month=2026-09[&server=id] the PDF
+GET    /api/reports/file/:name           admin: a saved report
+GET    /api/extensions/active            themes, pages and widgets this account can use, and its selected theme
+PUT    /api/account/theme                {"theme":"theme-nord/nord"} ("" for none)
+GET    /api/extensions                   admin: installed extensions
+PUT    /api/extensions/:name             admin: {"enabled":true}
+DELETE /api/extensions/:name             admin: remove an installed one
+PUT    /api/extensions/settings          admin: {"allowCode":false}
+POST   /api/extensions/install-url       admin: {"url":"https://…zip"}
+POST   /api/extensions/install-zip       admin: raw .zip body
+GET    /ext/<name>/<file>                files of an enabled extension (sandboxed, public)
+```

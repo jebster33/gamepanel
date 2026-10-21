@@ -35,6 +35,8 @@ function clean(mod) {
   const out = { ...mod };
   for (const field of ['file', 'folder']) if (out[field] !== undefined && out[field] !== null && !plain(String(out[field]).replace(/\.disabled$/, ''))) delete out[field];
   if (out.paks !== undefined) out.paks = (Array.isArray(out.paks) ? out.paks : []).filter(relPath);
+  // Files a Thunderstore package unpacked (relative to the server): removal goes through containedPath, so only odd segments are refused.
+  if (out.files !== undefined) out.files = (Array.isArray(out.files) ? out.files : []).filter((f) => typeof f === 'string' && f.length < 400 && !f.includes('\0') && !f.includes('\\') && !f.startsWith('/') && f.split('/').every((p) => p && p !== '.' && p !== '..'));
   if (out.keys !== undefined) out.keys = (Array.isArray(out.keys) ? out.keys : []).filter(plain);
   return out;
 }

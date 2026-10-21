@@ -79,3 +79,7 @@ the `bridge-v<version>` release (version in `package.json` →
 `bridgeClientVersion`). Panels download the binary for that version once and
 append a small trailer per connection. An offline panel can use a copy placed in
 `<data>/bridge/bin/v<version>/`.
+
+## If the bridge does not work for you
+
+See [Letting people in without port forwarding](guide/hosting-without-port-forwarding.md): the connection wizard in Settings, a playit.gg tunnel, or Tailscale/ZeroTier.

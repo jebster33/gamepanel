@@ -2,8 +2,13 @@ import { api } from '../../core/api.js';
 import { state } from '../../core/state.js';
 import { $, esc, fmtBytes, fmtTime, icon, toast } from '../../core/util.js';
 import { confirmModal, openModal, promptModal } from '../../ui/modal.js';
-import { openConfigHistory, openConfigHistoryList } from './config-history.js';
+import { openConfigHistoryList } from './config-history.js';
 import { skeleton } from '../../ui/skeleton.js';
+import { offerReopen, openInEditor, registerTabViewer } from './editor.js';
+import { openCompare } from './compare.js';
+import { canPreview, opensPreview, openPreview, previewTabViewer } from '../../preview/preview.js';
+
+registerTabViewer(previewTabViewer);
 
 /* ----------------------------------------------------------------- files */
 
@@ -34,6 +39,7 @@ export async function renderFilesTab(host, server, dirPath) {
       <button class="btn btn-sm hidden" id="file-compress">${icon('archive',12)} Compress</button>
       <button class="btn btn-sm btn-danger hidden" id="file-delete-selected">${icon('trash',12)} Delete</button>
       <button class="btn btn-sm" id="file-search" title="Find a file, or a setting inside config files">Search</button>
+      <button class="btn btn-sm" id="file-compare" title="Compare two files, or a file with an earlier version">Compare</button>
       <button class="btn btn-sm" id="file-history" title="Earlier versions of files saved in the panel">History</button>
       <button class="btn btn-sm hidden" id="file-sftp" title="Connect with FileZilla, WinSCP or another SFTP app">SFTP</button>
       <button class="btn btn-sm" id="file-new-folder">New folder</button>
@@ -72,6 +78,7 @@ export async function renderFilesTab(host, server, dirPath) {
                     ? `<button class="btn btn-sm" data-extract="${esc(item.path)}" title="Unpack here">Unpack</button>`
                     : ''
                 }
+                ${!item.directory && canPreview(item.name) ? `<button class="btn btn-sm" data-preview="${esc(item.path)}" title="Preview here: images, 3D models, textures, GTA V files">Preview</button>` : ''}
                 <button class="btn btn-sm" data-rename="${esc(item.path)}" title="Rename or move">${icon('edit',12)}</button>
                 ${
                   item.directory
@@ -91,13 +98,15 @@ export async function renderFilesTab(host, server, dirPath) {
     </div>`;
 
   const refresh = () => renderFilesTab(host, server, dirPath);
+  offerReopen(server, host);
 
   host.querySelectorAll('[data-dir]').forEach((el) =>
     el.addEventListener('click', () => renderFilesTab(host, server, el.dataset.dir))
   );
   host.querySelectorAll('[data-file]').forEach((el) =>
-    el.addEventListener('click', () => openFileEditor(server, el.dataset.file, refresh))
+    el.addEventListener('click', () => (opensPreview(el.dataset.file) ? openPreview(server, el.dataset.file) : openFileEditor(server, el.dataset.file, refresh)))
   );
+  host.querySelectorAll('[data-preview]').forEach((el) => el.addEventListener('click', () => openPreview(server, el.dataset.preview)));
   $('#file-search').addEventListener('click', () => openFileSearch(server, host));
   // Shown when SFTP is on: how to reach these files from an SFTP app.
   api('/api/sftp')
@@ -125,6 +134,10 @@ export async function renderFilesTab(host, server, dirPath) {
     })
     .catch(() => {});
 
+  $('#file-compare').addEventListener('click', () => {
+    const one = selected();
+    openCompare(server, { left: one[0] ? { kind: 'file', path: one[0] } : undefined, right: one[1] ? { kind: 'file', path: one[1] } : undefined });
+  });
   $('#file-history').addEventListener('click', () => openConfigHistoryList(server));
 
   /* selection ------------------------------------------------------------ */
@@ -279,48 +292,9 @@ function joinPath(dir, name) {
   return dir ? `${dir}/${name}` : name;
 }
 
-async function openFileEditor(server, filePath, onClose) {
-  let data;
-  try {
-    data = await api(`/api/servers/${server.id}/files/content?path=${encodeURIComponent(filePath)}`);
-  } catch (err) {
-    toast(err.message, 'error');
-    return;
-  }
-  const modal = openModal({
-    title: esc(filePath),
-    width: 900,
-    body: `<textarea class="editor" id="file-editor" spellcheck="false">${esc(data.content)}</textarea>`,
-    actions: [
-      {
-        label: 'History',
-        onClick: () => {
-          modal.close();
-          openConfigHistory(server, filePath, onClose);
-        },
-      },
-      { label: 'Cancel', close: true },
-      {
-        label: 'Save',
-        primary: true,
-        onClick: async () => {
-          const problem = lintConfig(filePath, $('#file-editor').value);
-          if (problem && !(await confirmModal('This file has a mistake', `${problem} The server may refuse to load it, or reset it to defaults. Save anyway?`))) return;
-          try {
-            await api(`/api/servers/${server.id}/files/content?path=${encodeURIComponent(filePath)}`, {
-              method: 'PUT',
-              body: { content: $('#file-editor').value },
-            });
-            toast('Saved');
-            modal.close();
-            onClose?.();
-          } catch (err) {
-            toast(err.message, 'error');
-          }
-        },
-      },
-    ],
-  });
+/** Files open in the tabbed editor (pages/server/editor.js). */
+function openFileEditor(server, filePath, onClose) {
+  return openInEditor(server, filePath, onClose);
 }
 
 /**

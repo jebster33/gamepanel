@@ -15,6 +15,7 @@ export function openModal({ title, body, actions = [], width = 620 }) {
       <div class="modal-body">${body}</div>
       <div class="modal-foot"></div>
     </div>`;
+  const opener = document.activeElement;
   root.appendChild(backdrop);
 
   let closed = false;
@@ -23,6 +24,8 @@ export function openModal({ title, body, actions = [], width = 620 }) {
       if (closed) return;
       closed = true;
       document.removeEventListener('keydown', onKey);
+      // Keyboard users land back where they were, unless something else has taken focus meanwhile.
+      if (opener?.isConnected && opener.focus && (document.activeElement === document.body || backdrop.contains(document.activeElement))) opener.focus({ preventScroll: true });
       if (reducedMotion || !backdrop.animate) return backdrop.remove();
       // Fade out rather than vanish. Ids go first so a modal opened right
       // after this one never finds this one's fields.
@@ -50,8 +53,31 @@ export function openModal({ title, body, actions = [], width = 620 }) {
   backdrop.addEventListener('click', (event) => {
     if (event.target === backdrop) api.close();
   });
+  const modalBox = backdrop.querySelector('.modal');
+  modalBox.tabIndex = -1;
+  const isTop = () => [...root.children].filter((el) => !el.inert).pop() === backdrop;
   const onKey = (event) => {
-    if (event.key === 'Escape') api.close();
+    if (!isTop()) return;
+    if (event.key === 'Escape') {
+      event.stopPropagation();
+      api.close();
+    } else if (event.key === 'Tab') {
+      // Keep Tab inside the dialog.
+      const items = [...modalBox.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')].filter((el) => el.offsetParent !== null);
+      if (!items.length) return event.preventDefault();
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (!modalBox.contains(document.activeElement)) {
+        event.preventDefault();
+        first.focus();
+      } else if (event.shiftKey && (document.activeElement === first || document.activeElement === modalBox)) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
   };
   document.addEventListener('keydown', onKey);
 
@@ -59,6 +85,7 @@ export function openModal({ title, body, actions = [], width = 620 }) {
   const firstInput = backdrop.querySelector('input, textarea, select');
   const bodyBox = backdrop.querySelector('.modal-body').getBoundingClientRect();
   if (firstInput && firstInput.getBoundingClientRect().bottom <= bodyBox.bottom) firstInput.focus();
+  else modalBox.focus({ preventScroll: true });
   return api;
 }
 

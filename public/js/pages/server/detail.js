@@ -2,13 +2,16 @@ import { setCrumbs } from '../../core/router.js';
 import { state } from '../../core/state.js';
 import { $, can, esc, fmtBytes, fmtDuration, fmtRate, gameArt, icon, statusPill } from '../../core/util.js';
 import { renderAccessTab } from './access.js';
+import { renderArkTab } from './ark.js';
 import { renderBackupsTab } from './backups.js';
 import { renderConfigsTab } from './configs.js';
 import { patchDoctor, renderConsoleTab } from './console.js';
 import { renderFilesTab } from './files.js';
 import { renderGameTab } from './game.js';
+import { gameToolsLabel, renderGameTools } from './gametools.js';
 import { drawServerCharts, renderMetricsTab } from './metrics.js';
 import { renderLiveMapTab } from './livemap.js';
+import { renderRustTab } from './rust-tools.js';
 import { renderModpacksTab } from './modpacks.js';
 import { renderModsTab } from './mods.js';
 import { renderNotesTab } from './notes.js';
@@ -17,6 +20,8 @@ import { renderSchedulesTab } from './schedules.js';
 import { renderServerSettingsTab } from './settings.js';
 import { serverAddress } from '../servers.js';
 import { openPushModal, stagingBanner } from './staging.js';
+import { mountServerTips } from '../../ui/onboarding.js';
+import { renderStorageTab } from '../infra2.js';
 
 /* --------------------------------------------------------- server detail */
 
@@ -26,14 +31,18 @@ function serverTabs(server) {
     ['players', 'Players'],
     ['metrics', 'Metrics'],
     server.templateId === 'rust' && can('console') && ['livemap', 'Live map'],
+    server.templateId === 'rust' && ['rust', 'Rust'],
+    String(server.templateId).startsWith('ark-survival') && (can('mods') || can('settings') || can('command')) && ['ark', 'ARK'],
     can('files') && ['files', 'Files'],
+    can('files') && ['storage', 'Storage'],
     server.hasModpacks && can('mods') && ['modpacks', 'Modpack'],
-    server.hasMods && can('mods') && ['mods', 'Mods'],
+    (server.hasMods || server.nexusGame) && can('mods') && ['mods', 'Mods'],
     server.hasMods && can('files') && ['configs', 'Configs'],
     can('backups') && ['backups', 'Backups'],
     ['notes', 'Notes'],
     can('schedules') && ['schedules', 'Schedules'],
     can('settings') && ['game', 'Game settings'],
+    can('settings') && gameToolsLabel(server) && ['gametools', gameToolsLabel(server)],
     can('settings') && ['settings', 'Settings'],
     state.user.role === 'admin' && !server.node && ['access', 'Access'],
   ].filter(Boolean);
@@ -110,6 +119,7 @@ export function renderServerDetail(view) {
     <div id="tab-content"></div>`;
 
   $('#staging-push')?.addEventListener('click', () => openPushModal(server));
+  mountServerTips(server);
   renderServerTab(server, tab);
   if (state.route.params.tab === 'network') setTimeout(() => $('#network-card')?.scrollIntoView({ behavior: 'smooth' }), 300);
 }
@@ -176,8 +186,20 @@ function renderServerTab(server, tab) {
     case 'livemap':
       renderLiveMapTab(host, server);
       break;
+    case 'rust':
+      renderRustTab(host, server);
+      break;
+    case 'ark':
+      renderArkTab(host, server);
+      break;
     case 'game':
       renderGameTab(host, server);
+      break;
+    case 'storage':
+      renderStorageTab(host, server);
+      break;
+    case 'gametools':
+      renderGameTools(host, server);
       break;
     case 'files':
       renderFilesTab(host, server, '');
