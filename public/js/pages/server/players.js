@@ -3,6 +3,7 @@ import { api } from '../../core/api.js';
 import { can, esc, fmtDuration, fmtTime, toast, icon } from '../../core/util.js';
 import { confirmModal, openModal } from '../../ui/modal.js';
 import { skeleton } from '../../ui/skeleton.js';
+import { faceHtml, renderSkinPreview } from './mc-skin.js';
 
 /* --------------------------------------------------------------- players */
 
@@ -64,12 +65,12 @@ document.addEventListener(
   true
 );
 
-/** Minecraft heads where the game has them, a letter tile everywhere else. */
+/** Minecraft heads (fetched by the panel, never by the browser) where the game has them, a letter tile everywhere else. */
 export function avatar(server, name, size = 26) {
   const letter = esc(String(name).slice(0, 1).toUpperCase());
-  const java = String(server.templateId || '').startsWith('minecraft') && server.templateId !== 'minecraft-bedrock';
-  if (java && /^[A-Za-z0-9_]{3,16}$/.test(name)) {
-    return `<span class="player-avatar" style="width:${size}px;height:${size}px"><img src="https://mc-heads.net/avatar/${esc(name)}/${size * 2}" alt="" loading="lazy" data-fallback="${letter}" /></span>`;
+  const mc = String(server.templateId || '').startsWith('minecraft') && server.templateId !== 'minecraft-velocity' && server.id;
+  if (mc && /^\.?[A-Za-z0-9 _-]{1,32}$/.test(name)) {
+    return `<span class="player-avatar" style="width:${size}px;height:${size}px">${faceHtml(server.id, name, size, String(name).slice(0, 1).toUpperCase())}</span>`;
   }
   return `<span class="player-avatar" style="width:${size}px;height:${size}px">${letter}</span>`;
 }
@@ -346,6 +347,7 @@ export async function openProfile(serverId, name, ctx = current) {
         ${kpi('First seen', new Date(p.first).toLocaleDateString())}
       </div>
       ${p.stats ? statsHtml(p.stats) : ''}
+      ${String(ctx.templateId || '').startsWith('minecraft') && ctx.templateId !== 'minecraft-velocity' ? '<div id="pl-skin" class="mc-skin-box"></div>' : ''}
       ${/^minecraft-(?!bedrock|velocity)/.test(ctx.templateId || '') && can('files') ? '<h4 style="margin:18px 0 6px">Inventory</h4><div id="pl-inv"></div>' : ''}
       <h4 style="margin:18px 0 6px">Recent sessions</h4>
       <div class="pl-sessions">${
@@ -387,6 +389,8 @@ export async function openProfile(serverId, name, ctx = current) {
           ]
         : [],
   });
+  const skinBox = document.querySelector('.modal-backdrop:last-child #pl-skin');
+  if (skinBox) renderSkinPreview(skinBox, serverId, p.name);
   const invBox = document.querySelector('.modal-backdrop:last-child #pl-inv');
   if (invBox) import('./inventory.js').then((m) => m.renderInventory(invBox, serverId, p.name));
   document.querySelector('#pl-note-save')?.addEventListener('click', async (event) => {

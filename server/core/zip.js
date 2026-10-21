@@ -68,15 +68,20 @@ function open(source) {
     return {
       names: [...entries.keys()],
       has: (name) => entries.has(name),
-      read(name, limit = MAX_ENTRY) {
+      /** { size, compressed, dir } for an entry, so callers can enforce their own limits first. */
+      info(name) {
         const e = entries.get(name);
-        if (!e || e.size > limit || e.compressed > limit) return null;
+        return e ? { size: e.size, compressed: e.compressed, dir: name.endsWith('/') } : null;
+      },
+      read(name, max = MAX_ENTRY) {
+        const e = entries.get(name);
+        if (!e || e.size > max || e.compressed > max) return null;
         const header = r.read(e.offset, 30);
         if (header.length < 30 || header.readUInt32LE(0) !== 0x04034b50) return null;
         const start = e.offset + 30 + header.readUInt16LE(26) + header.readUInt16LE(28);
         const raw = r.read(start, e.compressed);
         if (e.method === 0) return Buffer.from(raw);
-        if (e.method === 8) return zlib.inflateRawSync(raw, { maxOutputLength: limit });
+        if (e.method === 8) return zlib.inflateRawSync(raw, { maxOutputLength: max });
         return null;
       },
       close: () => r.close(),

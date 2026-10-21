@@ -210,6 +210,16 @@ POST   /api/servers/:id/staging          {"name","withWorld"} make a staging cop
 GET    /api/servers/:id/staging/diff     what a push from this staging copy would change
 POST   /api/servers/:id/staging/push     {"entries":[folders],"properties","version"}
 PATCH  /api/servers/:id                  … {"wakeOnJoin":true} turns on wake on join (Minecraft Java)
+GET    /api/servers/:id/players/:name/inventory/edit   editable inventory + ender chest (version tag included)
+PUT    /api/servers/:id/players/:name/inventory/edit   {"version","inventory":[{slot,id,count,damage,name,enchants,from}],"ender":[…]} offline players only; old file kept
+GET    /api/servers/:id/players/:name/skin             skin PNG, fetched and cached by the panel (Java and Bedrock)
+POST   /api/servers/:id/worlds/inspect                 {"path"} what is inside an uploaded world zip / .mcworld
+POST   /api/servers/:id/worlds/convert                 {"path","name","layout":"split|single","use","replace"} import it (server stopped)
+GET    /api/servers/:id/luckperms                      is LuckPerms installed
+GET    /api/servers/:id/luckperms/data                 groups, users, tracks via `lp export` (server running)
+POST   /api/servers/:id/luckperms/action               {"action":"permission.set|group.create|weight.set|parent.add|prefix.set|meta.set|…",…}
+GET    /api/servers/:id/jvm                            JVM flag presets for this server's memory
+PUT    /api/servers/:id/jvm                            {"preset"|"custom"} sets JAVA_ARGS (admins)
 GET    /api/system                       host metrics
 GET    /api/system/capacity              memory, CPU, disk per machine and per server (admins)
 GET    /api/system/runtime               Docker status
