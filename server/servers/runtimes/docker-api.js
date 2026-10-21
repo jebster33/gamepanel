@@ -263,6 +263,12 @@ const docker = {
     return request('POST', `/containers/${id}/kill?signal=${signal}`);
   },
 
+  /** Run a command inside a running container without waiting for or reading its output. */
+  async exec(id, cmd) {
+    const created = await request('POST', `/containers/${id}/exec`, { body: { Cmd: cmd, AttachStdout: false, AttachStderr: false } });
+    await request('POST', `/exec/${created.Id}/start`, { body: { Detach: true } });
+  },
+
   async remove(id, force = true) {
     try {
       await request('DELETE', `/containers/${id}?force=${force ? 'true' : 'false'}&v=true`);
