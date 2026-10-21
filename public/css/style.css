@@ -776,11 +776,27 @@ a.bell-item[href]:hover {
 }
 
 .view {
+  position: relative;
   width: 100%;
   max-width: 1320px;
   margin: 0 auto;
   padding: 28px 28px 64px;
 }
+
+/* Dashboard hero: drifting squares that break up toward the content. */
+.dash-hero {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 240px;
+  pointer-events: none;
+  z-index: 0;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+}
+.dash-hero canvas { display: block; width: 100%; height: 100%; }
+.view > :not(.dash-hero) { position: relative; z-index: 1; }
 
 /* ------------------------------------------------------------ page parts */
 

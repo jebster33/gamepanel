@@ -9,6 +9,7 @@ import { renderServerCards } from './servers.js';
 import { countUp, flash, revealChildren } from '../ui/fx.js';
 import { decorateWidgets, pinnedWidgetShown } from '../ui/dash-widgets.js';
 import { renderExtWidgets } from '../ui/ext.js';
+import { mountHero } from '../ui/hero.js';
 
 /* ------------------------------------------------------------- dashboard */
 
@@ -20,6 +21,7 @@ export function renderDashboard(view) {
   const diskPct = host?.disk.total ? (host.disk.used / host.disk.total) * 100 : 0;
 
   view.innerHTML = `
+    <div class="dash-hero" aria-hidden="true"><canvas></canvas></div>
     <div class="page-head">
       <div>
         <h1>Overview</h1>
@@ -108,6 +110,7 @@ export function renderDashboard(view) {
     renderCapacity($('#capacity'), true);
     renderHostCard($('#host-health'), true);
   }
+  mountHero(view.querySelector('.dash-hero canvas'));
   revealChildren(view);
   view.querySelectorAll('[data-countup]').forEach((el) => countUp(el, el.dataset.countup));
 }
