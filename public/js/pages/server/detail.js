@@ -2,6 +2,7 @@ import { setCrumbs } from '../../core/router.js';
 import { state } from '../../core/state.js';
 import { $, can, esc, fmtBytes, fmtDuration, fmtRate, gameArt, icon, statusPill } from '../../core/util.js';
 import { renderAccessTab } from './access.js';
+import { renderArkTab } from './ark.js';
 import { renderBackupsTab } from './backups.js';
 import { renderConfigsTab } from './configs.js';
 import { patchDoctor, renderConsoleTab } from './console.js';
@@ -25,6 +26,7 @@ function serverTabs(server) {
     ['players', 'Players'],
     ['metrics', 'Metrics'],
     server.templateId === 'rust' && can('console') && ['livemap', 'Live map'],
+    String(server.templateId).startsWith('ark-survival') && (can('mods') || can('settings') || can('command')) && ['ark', 'ARK'],
     can('files') && ['files', 'Files'],
     server.hasModpacks && can('mods') && ['modpacks', 'Modpack'],
     server.hasMods && can('mods') && ['mods', 'Mods'],
@@ -173,6 +175,9 @@ function renderServerTab(server, tab) {
       break;
     case 'livemap':
       renderLiveMapTab(host, server);
+      break;
+    case 'ark':
+      renderArkTab(host, server);
       break;
     case 'game':
       renderGameTab(host, server);

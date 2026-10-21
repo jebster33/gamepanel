@@ -131,6 +131,12 @@ POST   /api/networks                     {"name","proxyId","servers":[{"serverId
 GET    /api/clusters                     ARK clusters (admins)
 POST   /api/clusters                     {"name","servers":[serverId],"options":{"uploadDinos","downloadDinos","survivorExpirySeconds",…}}
 PUT    /api/clusters/:id                 same body; DELETE removes the cluster
+GET    /api/clusters/:id/transfers       files in the cluster folder and transfer lines from member logs (admins)
+GET    /api/servers/:id/ark/mods         ARK mod load order; PUT {"mods":[id,…]} saves it
+GET    /api/servers/:id/ark/levels       level cap and engram overrides from Game.ini; PUT saves them; POST …/preview {"cap","firstXp","finalXp","curve"} (or {"kind":"points",…}) calculates
+GET    /api/servers/:id/ark/crates       supply crate overrides; PUT {"crates":[…]} saves them
+GET    /api/servers/:id/ark/items        ?q=&category=&limit= item catalog search
+POST   /api/servers/:id/ark/give         {"player","playerId","path","quantity","tier"|"quality","blueprint","style"} sends GiveItemToPlayer
 GET    /api/settings/https               HTTPS settings and certificate (admins)
 PUT    /api/settings/https               {"enabled","domain","email","method":"http|cloudflare","port","redirect","staging"}
 POST   /api/settings/https/issue         get or renew the certificate now
