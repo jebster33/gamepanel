@@ -17,6 +17,7 @@ Everything you can do with GamePanel, in the order you'll probably need it.
 - [ARK tools](ark.md): mod order, level cap, supply crates, give item, cluster transfers
 - [Players](players.md): who is on, history, whitelist and bans
 - [File editor, keyboard and getting started](editor-keyboard-onboarding.md): tabs, split view, compare, shortcuts, checklist
+- [Game tools](game-tools.md): CS2 presets and map vote, Squad layers, GMod gamemodes, Satisfactory saves, Palworld and Space Engineers cleanup
 - [Backups](backups.md): by hand, scheduled, in the cloud, restoring single files
 
 **Letting people in**

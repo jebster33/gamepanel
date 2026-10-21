@@ -235,6 +235,11 @@ GET    /api/security/backup-tests        weekly switch and result history (admin
 PUT    /api/security/backup-tests        {"weekly":true}
 POST   /api/security/backup-tests/run    {"serverId","backup"?} test-restore a backup now
 POST   /api/auth/passkeys/options        {"password","kind":"platform"|"security-key"|"any"} start adding a passkey
+GET    /api/servers/:id/gametools/<game> per-game tools, game = cs2, squad, garrysmod, satisfactory, palworld, space-engineers (see docs/guide/game-tools.md)
+       cs2: GET, POST preset, PUT maps, POST plugins/:id (admin), skins/* (admin, opt-in, needs {"acknowledge":true})
+       squad: GET, PUT ?file=   garrysmod: GET, PUT, POST workshop   palworld: GET players, POST reset|restore (admin)
+       satisfactory: GET, POST trust|login|logout (admin), GET sessions|download|file, POST load|save|new|upload|file, DELETE save|session|file
+       space-engineers: GET scan, POST remove (admin)
 GET    /api/system                       host metrics
 GET    /api/system/capacity              memory, CPU, disk per machine and per server (admins)
 GET    /api/system/runtime               Docker status

@@ -8,6 +8,7 @@ import { renderConfigsTab } from './configs.js';
 import { patchDoctor, renderConsoleTab } from './console.js';
 import { renderFilesTab } from './files.js';
 import { renderGameTab } from './game.js';
+import { gameToolsLabel, renderGameTools } from './gametools.js';
 import { drawServerCharts, renderMetricsTab } from './metrics.js';
 import { renderLiveMapTab } from './livemap.js';
 import { renderRustTab } from './rust-tools.js';
@@ -39,6 +40,7 @@ function serverTabs(server) {
     can('backups') && ['backups', 'Backups'],
     can('schedules') && ['schedules', 'Schedules'],
     can('settings') && ['game', 'Game settings'],
+    can('settings') && gameToolsLabel(server) && ['gametools', gameToolsLabel(server)],
     can('settings') && ['settings', 'Settings'],
     state.user.role === 'admin' && !server.node && ['access', 'Access'],
   ].filter(Boolean);
@@ -193,6 +195,9 @@ function renderServerTab(server, tab) {
       break;
     case 'storage':
       renderStorageTab(host, server);
+      break;
+    case 'gametools':
+      renderGameTools(host, server);
       break;
     case 'files':
       renderFilesTab(host, server, '');

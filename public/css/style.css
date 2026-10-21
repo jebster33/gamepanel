@@ -5079,3 +5079,23 @@ kbd {
 .sec2-block { padding: 16px 0; border-top: 1px solid var(--line, rgba(255,255,255,.08)); }
 .sec2-block h4 { margin: 0 0 6px; }
 .sec2-block textarea { width: 100%; font-family: var(--mono, monospace); }
+/* ---- gametools: per-game tools tab ---- */
+.gt-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; max-height: 420px; overflow: auto; }
+.gt-row { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border: 1px solid var(--line, rgba(255,255,255,0.1)); border-radius: 6px; background: var(--panel-2, rgba(255,255,255,0.03)); cursor: grab; }
+.gt-row:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.gt-row .gt-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.gt-grip { color: var(--muted); letter-spacing: -2px; user-select: none; }
+.gt-n { width: 2ch; text-align: right; color: var(--muted); font-size: 12px; }
+.gt-warn { padding: 10px 14px; border-radius: 6px; line-height: 1.55; background: var(--amber-soft); border: 1px solid rgba(255, 179, 64, 0.35); }
+.gt-warn-red { background: var(--red-soft); border: 2px solid var(--red); color: var(--red); }
+.gt-warn-red strong { text-transform: uppercase; letter-spacing: 0.04em; }
+.gt-presets { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+.gt-preset { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border: 1px solid var(--line, rgba(255,255,255,0.1)); border-radius: 8px; cursor: pointer; }
+.gt-preset.on { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.gt-preset input { position: absolute; opacity: 0; }
+.gt-preset:focus-within { outline: 2px solid var(--accent); }
+.gt-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; max-height: 460px; overflow: auto; }
+.gt-skin { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px; font-size: 11px; text-align: center; color: inherit; background: var(--panel-2, rgba(255,255,255,0.03)); border: 2px solid; border-radius: 8px; cursor: pointer; }
+.gt-skin:hover, .gt-skin:focus-visible { background: rgba(255,255,255,0.08); }
+.gt-skin img { width: 100%; height: 70px; object-fit: contain; }
+.gt-noimg { height: 70px; }
