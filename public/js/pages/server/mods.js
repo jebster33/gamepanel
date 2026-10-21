@@ -22,6 +22,8 @@ const modState = { provider: null, query: '', results: [] };
 const PROVIDER_NOTE = {
   workshop: 'Steam Workshop items are downloaded by SteamCMD and loaded by the game.',
   curseforge: 'CurseForge needs a free API key.',
+  thunderstore: 'Thunderstore mods need the BepInEx loader. It is installed for you the first time, as a requirement of the mod. Restart the server afterwards.',
+  tshock: 'Plugins are found on GitHub (repositories tagged tshock-plugin) and need tShock rather than the vanilla Terraria server. Restart the server afterwards.',
 };
 
 export async function renderModsTab(host, server) {

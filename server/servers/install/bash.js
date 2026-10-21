@@ -223,7 +223,7 @@ gp_steam_probe() {
 }
 
 gp_steam_app() {
-  local appid="$1" login="\${2:-anonymous}" branch="\${3:-}" prefetch="\${4:-}" platform="\${5:-}" n
+  local appid="$1" login="\${2:-anonymous}" branch="\${3:-}" prefetch="\${4:-}" platform="\${5:-}" betapw="\${6:-}" n
   gp_ensure_steamcmd
   local args=( +@ShutdownOnFailedCommand 1 +@NoPromptForPassword 1 )
   # Windows-only servers that run under Wine need SteamCMD to fetch the Windows build.
@@ -237,7 +237,10 @@ gp_steam_app() {
     gp_log "Fetching the $prefetch files of app $appid first (Steam needs them for this game)"
     args+=( +@sSteamCmdForcePlatformType "$prefetch" +app_update "$appid" validate +@sSteamCmdForcePlatformType linux )
   fi
-  if [ -n "$branch" ]; then args+=( +app_update "$appid" -beta "$branch" validate )
+  if [ -n "$branch" ]; then
+    args+=( +app_update "$appid" -beta "$branch" )
+    [ -n "$betapw" ] && args+=( -betapassword "$betapw" )
+    args+=( validate )
   else args+=( +app_update "$appid" validate ); fi
   args+=( +quit )
   # SteamCMD often stops early right after updating itself, so give it a few goes.
@@ -323,7 +326,7 @@ function stepToShell(step, vars) {
     case 'steamcmd':
       return `gp_steam_app ${shellQuote(val(step.appid))} ${loginArg(step.login)} ${shellQuote(
         val(step.branch || '')
-      )} ${shellQuote(val(step.prefetchPlatform || ''))} ${shellQuote(val(step.platform || ''))}`;
+      )} ${shellQuote(val(step.prefetchPlatform || ''))} ${shellQuote(val(step.platform || ''))} ${step.betaPassword ? loginArg(step.betaPassword) : "''"}`;
 
     case 'workshop':
       return `gp_workshop_item ${shellQuote(val(step.appid))} ${shellQuote(val(step.item))} ${shellQuote(val(step.dest))} ${loginArg(step.login)}`;

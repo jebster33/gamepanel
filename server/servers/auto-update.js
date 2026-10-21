@@ -47,7 +47,7 @@ module.exports = {
     const step = updateSteps(template).find((s) => s.type === 'steamcmd' && s.appid);
     if (!step) return null;
     const vars = this.vars(server);
-    return { appid: String(interpolate(String(step.appid), vars)), branch: String(interpolate(String(step.branch || ''), vars)).trim() || 'public' };
+    return { appid: String(interpolate(String(step.appid), vars)), branch: server.steamBranch || String(interpolate(String(step.branch || ''), vars)).trim() || 'public' };
   },
 
   /** Runs every minute; talks to Steam at most every half hour per server. */

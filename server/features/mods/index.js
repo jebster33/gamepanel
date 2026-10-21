@@ -31,6 +31,8 @@ const PROVIDERS = {
   spigot: require('./providers/spigot'),
   factorio: require('./providers/factorio'),
   workshop: require('./providers/workshop'),
+  thunderstore: require('./providers/thunderstore'),
+  tshock: require('./providers/tshock'),
 };
 
 /* ---------------------------------------------------------------- helpers -- */
@@ -142,6 +144,7 @@ async function versions(server, template, { provider: providerId, projectId, liv
  * and, recursively, every mod it requires that is not already there.
  */
 async function plan(provider, { projectId, versionId }, ctx, creds, mods) {
+  creds = { ...creds, ctx }; // providers that list per game (Thunderstore) need to know which
   const out = new Map();
   const notes = [];
   const queue = [{ projectId: String(projectId), versionId: versionId || null, requiredBy: null }];
@@ -256,9 +259,14 @@ async function install(server, template, { provider: providerId, projectId, vers
     for (const { step, filename, temp, size } of staged) {
       const { project, version } = step;
       const previous = manifest.find(mods, provider.id, project.id) || manifest.find(mods, provider.id, project.slug);
-      if (previous && previous.file !== filename) await removeFile(server, ctx, previous.file);
-      await fsp.rm(path.join(dir, `${filename}.disabled`), { force: true });
-      await fsp.rename(temp, path.join(dir, filename));
+      // Providers whose downloads are archives with their own layout (Thunderstore) unpack them themselves.
+      const placed = provider.place ? await provider.place({ server, ctx, temp, project, version, previous }) : null;
+      if (placed) await fsp.rm(temp, { force: true });
+      else {
+        if (previous && previous.file !== filename) await removeFile(server, ctx, previous.file);
+        await fsp.rm(path.join(dir, `${filename}.disabled`), { force: true });
+        await fsp.rename(temp, path.join(dir, filename));
+      }
 
       const entry = {
         key: manifest.keyOf(provider.id, project.id),
@@ -272,7 +280,8 @@ async function install(server, template, { provider: providerId, projectId, vers
         version: version.version,
         versionId: version.id,
         channel: version.channel,
-        file: filename,
+        file: placed ? placed.file : filename,
+        ...(placed ? { files: placed.files, loader: placed.loader } : {}),
         size,
         // An explicit install of something that was only a dependency makes it "yours".
         auto: previous ? previous.auto && step.auto : step.auto,
@@ -283,7 +292,7 @@ async function install(server, template, { provider: providerId, projectId, vers
       const index = mods.indexOf(previous);
       if (index >= 0) mods[index] = entry;
       else mods.push(entry);
-      installed.push({ name: entry.name, version: entry.version, file: filename, dependency: entry.auto, replaced: previous?.version || null });
+      installed.push({ name: entry.name, version: entry.version, file: entry.file || filename, dependency: entry.auto, replaced: previous?.version || null });
     }
     // requiredBy was recorded with bare project ids during planning; normalise to keys.
     for (const m of mods) m.requiredBy = (m.requiredBy || []).map((r) => (r.includes(':') ? r : manifest.keyOf(m.provider, r)));
@@ -366,7 +375,7 @@ async function listInstalled(server, template) {
     const full = path.join(dirOf(server, ctx), entry.name);
     const stat = await fsp.stat(full).catch(() => null);
     if (!stat) continue;
-    const disabled = entry.name.endsWith('.disabled');
+    const disabled = entry.name.endsWith('.disabled') || Boolean(meta?.disabled);
     const base = disabled ? entry.name.slice(0, -9) : entry.name;
     const meta = byFile.get(base) || byFile.get(entry.name) || null;
     // Minecraft mods and plugins are single .jar files; a folder next to them
@@ -375,7 +384,7 @@ async function listInstalled(server, template) {
     if (meta) seen.add(meta.key);
     items.push({
       name: entry.name,
-      title: meta?.name || base.replace(/\.(jar|zip|cs|gma)$/i, ''),
+      title: meta?.name || base.replace(/\.(jar|zip|cs|gma|dll)$/i, ''),
       size: stat.size,
       modified: stat.mtimeMs,
       directory: entry.isDirectory(),
@@ -407,7 +416,8 @@ async function listInstalled(server, template) {
       url: meta.url || null,
       dependency: Boolean(meta.auto),
       requiredBy: (meta.requiredBy || []).map((k) => mods.find((m) => m.key === k)?.name).filter(Boolean),
-      managedByGame: true,
+      managedByGame: meta.provider !== 'thunderstore',
+      loader: Boolean(meta.loader),
     });
   }
   items.sort((a, b) => Number(a.dependency) - Number(b.dependency) || a.title.localeCompare(b.title));
@@ -433,7 +443,8 @@ async function remove(server, template, nameOrKey, { keepDependencies = false } 
     const left = mods.filter((m) => m !== entry);
     const drop = [entry, ...(keepDependencies ? [] : manifest.orphans(left))];
     for (const mod of drop) {
-      if (mod.file) await removeFile(server, ctx, mod.file);
+      if (PROVIDERS[mod.provider]?.removeEntry) await PROVIDERS[mod.provider].removeEntry(server, ctx, mod);
+      else if (mod.file) await removeFile(server, ctx, mod.file);
       else {
         await require('./workshop').unlist(server, template, mod);
         await require('./workshop').purge(server, template, mod);
@@ -452,6 +463,12 @@ async function toggle(server, template, nameOrKey) {
     const mods = manifest.load(server);
     const plain = String(nameOrKey).replace(/\.disabled$/, '');
     const entry = mods.find((m) => m.key === nameOrKey || m.file === plain);
+
+    if (entry && PROVIDERS[entry.provider]?.toggleEntry) {
+      entry.disabled = await PROVIDERS[entry.provider].toggleEntry(server, ctx, entry);
+      manifest.save(server, mods);
+      return { name: entry.file || entry.key, disabled: entry.disabled };
+    }
 
     if (entry && !entry.file) {
       entry.disabled = !entry.disabled;
@@ -485,7 +502,7 @@ async function checkUpdates(server, template, integrations, { liveVersion } = {}
     await adoptUntracked(server, ctx, mods).catch((err) => logger.debug(`adopt: ${err.message}`));
     if (mods.length !== before) manifest.save(server, mods);
   }
-  const candidates = mods.filter((m) => m.file && !m.disabled && PROVIDERS[m.provider]?.best && m.provider !== 'umod');
+  const candidates = mods.filter((m) => (m.file || m.loader) && !m.disabled && PROVIDERS[m.provider]?.best && m.provider !== 'umod');
   const results = await mapLimit(candidates, 4, async (mod) => {
     try {
       const provider = PROVIDERS[mod.provider];

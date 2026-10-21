@@ -290,6 +290,7 @@ class ServerManager extends EventEmitter {
     const hidden = secrets.secretNames(tpl);
     return {
       ...server,
+      steamBetaPassword: undefined, // sealed Steam beta password: only the Steam branch card learns whether one is set
       // Secret variables never leave the panel: only whether one is set.
       vars: Object.fromEntries(Object.entries(server.vars || {}).map(([k, v]) => [k, hidden.has(k) || secrets.isSealed(v) ? '' : v])),
       secretVars: Object.fromEntries([...hidden].map((k) => [k, Boolean(server.vars?.[k])])),
