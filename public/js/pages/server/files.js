@@ -4,8 +4,11 @@ import { $, esc, fmtBytes, fmtTime, icon, toast } from '../../core/util.js';
 import { confirmModal, openModal, promptModal } from '../../ui/modal.js';
 import { openConfigHistoryList } from './config-history.js';
 import { skeleton } from '../../ui/skeleton.js';
-import { offerReopen, openInEditor } from './editor.js';
+import { offerReopen, openInEditor, registerTabViewer } from './editor.js';
 import { openCompare } from './compare.js';
+import { canPreview, opensPreview, openPreview, previewTabViewer } from '../../preview/preview.js';
+
+registerTabViewer(previewTabViewer);
 
 /* ----------------------------------------------------------------- files */
 
@@ -75,6 +78,7 @@ export async function renderFilesTab(host, server, dirPath) {
                     ? `<button class="btn btn-sm" data-extract="${esc(item.path)}" title="Unpack here">Unpack</button>`
                     : ''
                 }
+                ${!item.directory && canPreview(item.name) ? `<button class="btn btn-sm" data-preview="${esc(item.path)}" title="Preview here: images, 3D models, textures, GTA V files">Preview</button>` : ''}
                 <button class="btn btn-sm" data-rename="${esc(item.path)}" title="Rename or move">${icon('edit',12)}</button>
                 ${
                   item.directory
@@ -100,8 +104,9 @@ export async function renderFilesTab(host, server, dirPath) {
     el.addEventListener('click', () => renderFilesTab(host, server, el.dataset.dir))
   );
   host.querySelectorAll('[data-file]').forEach((el) =>
-    el.addEventListener('click', () => openFileEditor(server, el.dataset.file, refresh))
+    el.addEventListener('click', () => (opensPreview(el.dataset.file) ? openPreview(server, el.dataset.file) : openFileEditor(server, el.dataset.file, refresh)))
   );
+  host.querySelectorAll('[data-preview]').forEach((el) => el.addEventListener('click', () => openPreview(server, el.dataset.preview)));
   $('#file-search').addEventListener('click', () => openFileSearch(server, host));
   // Shown when SFTP is on: how to reach these files from an SFTP app.
   api('/api/sftp')

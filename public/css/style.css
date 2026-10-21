@@ -5099,3 +5099,40 @@ kbd {
 .gt-skin:hover, .gt-skin:focus-visible { background: rgba(255,255,255,0.08); }
 .gt-skin img { width: 100%; height: 70px; object-fit: contain; }
 .gt-noimg { height: 70px; }
+/* ------------------------------------------------------------ file previews (pv-) */
+.pv-host { min-height: 360px; }
+.pv-bar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 10px; }
+.pv-group { display: inline-flex; gap: 2px; }
+.pv-toggle.active { background: var(--lime-soft); color: var(--lime-text); border-color: var(--lime); }
+.pv-select { background: var(--inset); color: var(--text); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); padding: 4px 8px; font-size: 12.5px; max-width: 220px; }
+.pv-stage { position: relative; height: 62vh; min-height: 300px; overflow: hidden; border: 1px solid var(--border); border-radius: var(--radius); cursor: grab; touch-action: none; }
+.pv-stage.dragging { cursor: grabbing; }
+.pv-checker { background-color: #2a2b27; background-image: linear-gradient(45deg, #3a3b36 25%, transparent 25%, transparent 75%, #3a3b36 75%), linear-gradient(45deg, #3a3b36 25%, transparent 25%, transparent 75%, #3a3b36 75%); background-size: 16px 16px; background-position: 0 0, 8px 8px; }
+.pv-dark { background: #0c0d0b; }
+.pv-light { background: #f3f2ed; }
+.pv-img { position: absolute; left: 0; top: 0; transform-origin: 0 0; max-width: none; user-select: none; }
+.pv-meta { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 10px 0; font-size: 12.5px; color: var(--muted); }
+.pv-zoom { margin-left: auto; font-size: 12px; }
+.pv-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.pv-card { display: flex; flex-direction: column; gap: 4px; text-align: left; padding: 8px; background: var(--raised); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); cursor: pointer; }
+.pv-card:hover { border-color: var(--lime); }
+.pv-thumb { display: flex; align-items: center; justify-content: center; height: 120px; overflow: hidden; border-radius: var(--radius-sm); }
+.pv-thumb-canvas { max-width: 100%; max-height: 100%; object-fit: contain; }
+.pv-thumb-err { font-size: 11px; padding: 6px; color: var(--amber); text-align: center; background: var(--inset); }
+.pv-card-name { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pv-card-meta { font-size: 11px; }
+.pv-model { display: flex; gap: 12px; align-items: stretch; flex-wrap: wrap; }
+.pv-viewport { position: relative; flex: 1 1 520px; min-height: 420px; height: 62vh; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; background: var(--inset); }
+.pv-gl { width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
+.pv-hint { position: absolute; left: 10px; bottom: 8px; font-size: 11px; color: var(--faint); pointer-events: none; }
+.pv-side { flex: 0 1 300px; min-width: 240px; max-height: 62vh; overflow: auto; }
+.pv-uv { width: 100%; aspect-ratio: 1; border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.pv-meshes { display: flex; flex-direction: column; gap: 4px; }
+.pv-mesh { display: flex; flex-direction: column; text-align: left; gap: 1px; padding: 6px 8px; font-size: 12px; background: var(--raised); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); cursor: pointer; }
+.pv-mesh.active { border-color: var(--lime); }
+.pv-error { padding: 12px 14px; margin-bottom: 12px; background: var(--red-soft); border: 1px solid var(--red); border-radius: var(--radius); color: var(--text); line-height: 1.5; }
+.pv-loading { padding: 40px; text-align: center; }
+.pv-table { border-collapse: collapse; margin-bottom: 8px; }
+.pv-table th { text-align: left; padding: 4px 16px 4px 0; font: 11px var(--mono, monospace); text-transform: uppercase; letter-spacing: 0.06em; color: var(--faint); white-space: nowrap; vertical-align: top; }
+.pv-table td { padding: 4px 0; word-break: break-word; }
+.pv-hex { margin: 6px 0 0; padding: 10px; background: var(--inset); border-radius: var(--radius-sm); font-size: 11.5px; overflow: auto; }

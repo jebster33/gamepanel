@@ -13,6 +13,7 @@ Everything you can do with GamePanel, in the order you'll probably need it.
 **Running servers**
 
 - [Running a server](running-a-server.md): console, files, schedules, graphs, game settings, automatic updates
+- [File previews](file-previews.md): look at textures, 3D models and GTA V files without downloading them
 - [Mods and modpacks](mods-and-modpacks.md)
 - [Dashboard, search and organising servers](dashboard-and-search.md): Ctrl+K, pins, folders, tags, dashboard layout
 - [ARK tools](ark.md): mod order, level cap, supply crates, give item, cluster transfers
