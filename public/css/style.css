@@ -4585,3 +4585,11 @@ pre.code-block {
 .cap-legend { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 8px; font-size: 12px; color: var(--muted); }
 .cap-key { display: inline-block; width: 9px; height: 9px; margin-right: 6px; border-radius: 2px; background: var(--c); }
 .cap-key.hatch { background: repeating-linear-gradient(135deg, var(--c) 0 2px, transparent 2px 4px); }
+
+/* infra2: storage, host health */
+.infra2-bar { height: 8px; background: rgba(255,255,255,.06); border-radius: 4px; overflow: hidden; }
+.infra2-bar i { display: block; height: 100%; }
+.infra2-stack { display: flex; height: 14px; border-radius: 4px; overflow: hidden; background: rgba(255,255,255,.06); }
+.infra2-stack i { display: block; min-width: 2px; }
+.infra2-spark { display: flex; align-items: flex-end; gap: 2px; height: 60px; }
+.infra2-spark i { flex: 1; min-width: 2px; background: var(--accent); opacity: .8; border-radius: 1px; }

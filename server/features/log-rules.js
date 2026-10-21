@@ -152,7 +152,7 @@ async function execute(actions, { now = Date.now() } = {}) {
 }
 
 /** Plan (and unless dryRun, run) the rules for every server and the panel's own logs. */
-async function run({ manager, store, dryRun = true, serverId = null, now = Date.now() }) {
+async function run({ manager, store, dryRun = true, serverId = null, force = false, now = Date.now() }) {
   const settings = store.state.settings;
   const report = { dryRun, at: now, servers: [], panel: null, totals: { deleted: 0, gzipped: 0, freed: 0, planned: 0 } };
   const tally = async (label, id, p) => {
@@ -169,13 +169,13 @@ async function run({ manager, store, dryRun = true, serverId = null, now = Date.
   for (const server of manager.servers) {
     if (serverId && server.id !== serverId) continue;
     const rules = rulesFor(settings, server);
-    if (!rules.enabled && !serverId) continue;
+    if (!rules.enabled && !serverId && !force) continue;
     if (!rules.deleteDays && !rules.gzipDays && !rules.maxMb) continue;
     const p = await plan(server.dir, LOG_DIRS, rules, { running: manager.isActive(server.id), rootFiles: true, now });
     report.servers.push(await tally(server.name, server.id, p));
   }
   const global = clean(settings.logRules || DEFAULTS);
-  if (!serverId && global.enabled && (global.deleteDays || global.gzipDays || global.maxMb)) {
+  if (!serverId && (global.enabled || force) && (global.deleteDays || global.gzipDays || global.maxMb)) {
     const p = await plan(config.logsDir, ['.'], global, { running: true, now });
     // The rotated audit log (audit.log.1) is the only audit file that may go.
     const rotated = (await listDir(config.dataDir, '')).filter((f) => /^audit\.log\.\d+$/.test(f.name));

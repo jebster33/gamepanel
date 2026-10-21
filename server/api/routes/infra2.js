@@ -73,7 +73,7 @@ module.exports = (router, { store, manager }, { requireAdmin, requireCap, server
   router.post('/api/settings/log-rules/run', async ({ user, body }) => {
     requireAdmin(user);
     const dryRun = body?.dryRun !== false;
-    const report = await logRules.run({ manager, store, dryRun });
+    const report = await logRules.run({ manager, store, dryRun, force: dryRun });
     if (!dryRun) {
       store.state.settings.logRulesLast = { at: report.at, ...report.totals };
       store.save();

@@ -16,6 +16,7 @@ import { renderSchedulesTab } from './schedules.js';
 import { renderServerSettingsTab } from './settings.js';
 import { serverAddress } from '../servers.js';
 import { openPushModal, stagingBanner } from './staging.js';
+import { renderStorageTab } from '../infra2.js';
 
 /* --------------------------------------------------------- server detail */
 
@@ -26,6 +27,7 @@ function serverTabs(server) {
     ['metrics', 'Metrics'],
     server.templateId === 'rust' && can('console') && ['livemap', 'Live map'],
     can('files') && ['files', 'Files'],
+    can('files') && ['storage', 'Storage'],
     server.hasModpacks && can('mods') && ['modpacks', 'Modpack'],
     server.hasMods && can('mods') && ['mods', 'Mods'],
     server.hasMods && can('files') && ['configs', 'Configs'],
@@ -176,6 +178,9 @@ function renderServerTab(server, tab) {
       break;
     case 'game':
       renderGameTab(host, server);
+      break;
+    case 'storage':
+      renderStorageTab(host, server);
       break;
     case 'files':
       renderFilesTab(host, server, '');

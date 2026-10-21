@@ -36,7 +36,11 @@ Administrators see a **Capacity** card on the Overview, one per machine (each no
 
 ## Update channels
 
-Under Panel updates, pick **Stable** (tagged releases) or **Beta** (newer builds as they land).
+Under Panel updates, pick **Stable** (tagged releases) or **Beta** (newer builds as they land). The panel shows the release notes (or the list of new commits), and **Check for updates every 6 hours** raises an alert when a new version is out (it never installs by itself). After an update, **Roll back** returns to the version you were on before, and the last few updates are listed under it.
+
+## Log retention
+
+Settings, Log retention deletes or compresses old logs once a day, and can cap a log folder's size. It covers each server's `logs`, `crash-reports`, Oxide, Carbon and ARK log folders and `*.log` files, plus the panel's own logs. **Preview** lists what would change without touching anything. The log being written, files changed in the last hour and links are never touched. A server's **Storage** tab can have its own rules instead.
 
 ## Limits
 

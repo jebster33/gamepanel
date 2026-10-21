@@ -7,6 +7,7 @@ import { $, esc, fmtBytes, fmtDuration, fmtTime, icon, toast } from '../core/uti
 import { confirmModal } from '../ui/modal.js';
 import { setBridgeNav } from '../ui/sidebar.js';
 import { skeleton } from '../ui/skeleton.js';
+import { renderSettingsInfra2 } from './infra2.js';
 
 /* -------------------------------------------------------------- settings */
 
@@ -444,6 +445,7 @@ export async function renderSettings(view) {
     }
   });
 
+  renderSettingsInfra2($('#updates'));
   $('#update-check').addEventListener('click', () => checkForUpdates(true));
   $('#update-channel').addEventListener('change', async (event) => {
     try {

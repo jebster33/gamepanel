@@ -4,6 +4,7 @@ import { setCrumbs } from '../core/router.js';
 import { state } from '../core/state.js';
 import { $, esc, fmtBytes, fmtDuration, fmtRate, icon } from '../core/util.js';
 import { renderCapacity } from './capacity.js';
+import { renderHostCard } from './infra2.js';
 import { renderServerCards } from './servers.js';
 import { countUp, flash, revealChildren } from '../ui/fx.js';
 
@@ -74,6 +75,7 @@ export function renderDashboard(view) {
       </div>
     </div>
 
+    <div id="host-health"></div>
     <div id="capacity"></div>
 
     <div class="row" style="margin-bottom:10px">
@@ -87,6 +89,7 @@ export function renderDashboard(view) {
   if (state.user?.role === 'admin') {
     renderChecklist();
     renderCapacity($('#capacity'), true);
+    renderHostCard($('#host-health'), true);
   }
   revealChildren(view);
   view.querySelectorAll('[data-countup]').forEach((el) => countUp(el, el.dataset.countup));
