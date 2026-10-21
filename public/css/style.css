@@ -5071,3 +5071,7 @@ kbd {
 .mcjvm-opt.sel { border-color: var(--lime); }
 .mc-skin-box { display: flex; justify-content: center; margin: 14px 0 0; }
 .mc-skin-body { image-rendering: pixelated; width: 96px; height: 192px; }
+/* ---- extensions / notification preferences (ext-) ---- */
+.np-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 2px 18px; }
+.theme-opt:hover { border-color: var(--border-strong) !important; }
+.ext-frame { display: block; }

@@ -7,6 +7,7 @@
  */
 
 const { TITLES } = require('./notify');
+const prefs = require('./notify-prefs');
 
 // Shown as a pop-up as well as in the list.
 const LOUD = /\.(crashed|install_failed|failed|upload_failed|verify_failed|disk_low|lockout|hung|resource_alert|watched|ready|installed)$/;
@@ -34,8 +35,9 @@ function shape(event) {
 }
 
 function list(store, auth, user, limit = 40) {
+  const mine = prefs.userPrefs(store, user.id);
   return store.state.events
-    .filter((e) => visibleTo(auth, user, e))
+    .filter((e) => visibleTo(auth, user, e) && prefs.allows(mine, e))
     .slice(0, limit)
     .map(shape);
 }
@@ -48,7 +50,10 @@ function start({ store, auth, wss }) {
       if (!client.user || client.closed) continue;
       // The account may have changed since the socket opened (removed, demoted).
       const user = auth.users.find((u) => u.id === client.user.id);
-      if (visibleTo(auth, user, event)) client.send({ topic: 'notification', notification: note });
+      if (!visibleTo(auth, user, event) || !prefs.allows(prefs.userPrefs(store, user.id), event)) continue;
+      // Action buttons (Restart, Start…) come with one-time tokens for this account only.
+      const buttons = prefs.buttonsFor({ auth, user, event });
+      client.send({ topic: 'notification', notification: { ...note, actions: buttons.actions, tokens: buttons.tokens } });
     }
   });
 }

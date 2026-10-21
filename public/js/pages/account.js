@@ -10,6 +10,8 @@ import { startTour } from '../ui/tour.js';
 import { renderOnboardingCard } from '../ui/onboarding.js';
 import { LANGUAGES, lang, setLanguage } from '../core/i18n.js';
 import { addPasskey, passkeysSupported } from '../core/passkey.js';
+import { renderThemePicker } from '../ui/ext.js';
+import { renderNotifyPrefs } from './ext-settings.js';
 
 /* --------------------------------------------------------------- account */
 
@@ -61,6 +63,9 @@ export async function renderAccount(view) {
     <div id="onboarding-card"></div>
     <div id="linked-card"></div>
 
+    <div class="card mb-16" id="appearance"></div>
+    <div class="card mb-16" id="my-notifications"></div>
+
     <div class="card mb-16" id="prefs">
       <h4>This browser</h4>
       <div class="row mb-16" style="gap:12px;align-items:center">
@@ -95,6 +100,8 @@ export async function renderAccount(view) {
   renderTwoFactor(me);
   renderPasskeys(me);
   renderApiKeys();
+  renderThemePicker($('#appearance'));
+  renderNotifyPrefs($('#my-notifications'));
 
   $('#a-tour').addEventListener('click', () => startTour());
   renderOnboardingCard($('#onboarding-card'));

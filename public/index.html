@@ -15,6 +15,18 @@
       (function () {
         var theme = localStorage.getItem('gp-theme') || 'dark';
         document.documentElement.setAttribute('data-theme', theme);
+        // A theme picked in Account, cached from the last visit, so there is no flash of the wrong colours.
+        try {
+          var ext = JSON.parse(localStorage.getItem('gp-ext-theme') || 'null');
+          if (ext && ext.css) {
+            document.documentElement.setAttribute('data-theme', ext.mode === 'light' ? 'light' : 'dark');
+            document.documentElement.setAttribute('data-ext-theme', ext.id);
+            var style = document.createElement('style');
+            style.id = 'gp-ext-theme-style';
+            style.textContent = ext.css;
+            document.head.appendChild(style);
+          }
+        } catch (e) {}
       })();
     </script>
   </head>
@@ -149,6 +161,7 @@
             Settings
           </a>
         </nav>
+        <nav class="nav" id="nav-ext"></nav>
 
         <div class="sidebar-section">
           <div class="sidebar-heading"><span>Servers</span></div>

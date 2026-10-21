@@ -32,6 +32,7 @@ Everything you can do with GamePanel, in the order you'll probably need it.
 - [Panel settings, limits and the audit log](panel-settings.md)
 - [Host health, restarting the machine and storage](host-health.md)
 - [Raspberry Pi and ARM](raspberry-pi-arm.md)
+- [Extensions and themes](../extensions.md)
 - [Command line](cli.md): `gamepanel` for scripting starts, backups and updates
 - [Updating and uninstalling](uninstall.md)
 - [Troubleshooting](../troubleshooting.md)

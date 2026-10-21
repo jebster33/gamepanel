@@ -8,6 +8,7 @@ import { renderHostCard } from './infra2.js';
 import { renderServerCards } from './servers.js';
 import { countUp, flash, revealChildren } from '../ui/fx.js';
 import { decorateWidgets, pinnedWidgetShown } from '../ui/dash-widgets.js';
+import { renderExtWidgets } from '../ui/ext.js';
 
 /* ------------------------------------------------------------- dashboard */
 
@@ -26,6 +27,7 @@ export function renderDashboard(view) {
       </div>
     </div>
     <div id="checklist"></div>
+    <div id="ext-widgets"></div>
 
     <div id="ux-widgets">
     <section data-widget="host">
@@ -98,6 +100,7 @@ export function renderDashboard(view) {
   decorateWidgets(view);
 
   drawHostCharts();
+  renderExtWidgets($('#ext-widgets'));
   if (state.user?.role === 'admin') {
     renderChecklist();
     renderCapacity($('#capacity'), true);

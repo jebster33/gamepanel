@@ -19,6 +19,7 @@ import { renderClusters } from '../pages/clusters.js';
 import { renderCommunity } from '../pages/community.js';
 import { renderClusterTransfers } from '../pages/server/ark-transfers.js';
 import { renderUsers } from '../pages/users.js';
+import { renderExtPage } from '../ui/ext.js';
 import { closeSidebar, renderSidebarServers } from '../ui/sidebar.js';
 import { reducedMotion } from '../ui/fx.js';
 import { skeleton } from '../ui/skeleton.js';
@@ -47,6 +48,7 @@ const ROUTES = [
   { pattern: /^\/account$/, name: 'account', page: renderAccount },
   { pattern: /^\/users$/, name: 'users', page: renderUsers },
   { pattern: /^\/connections$/, name: 'connections', page: renderConnections },
+  { pattern: /^\/x\/([^/]+)\/([^/]+)$/, name: 'ext', keys: ['ext', 'page'], page: renderExtPage },
   { pattern: /^\/settings(?:\/([^/]+))?$/, name: 'settings', keys: ['section'], page: renderSettings },
 ];
 
