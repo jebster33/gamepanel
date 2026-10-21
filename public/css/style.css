@@ -4585,3 +4585,42 @@ pre.code-block {
 .cap-legend { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 8px; font-size: 12px; color: var(--muted); }
 .cap-key { display: inline-block; width: 9px; height: 9px; margin-right: 6px; border-radius: 2px; background: var(--c); }
 .cap-key.hatch { background: repeating-linear-gradient(135deg, var(--c) 0 2px, transparent 2px 4px); }
+
+/* ---- minecraft: item tiles, inventory editor, LuckPerms, JVM presets, skins ---- */
+.mc-item { position: absolute; inset: 3px; display: grid; place-items: center; border-radius: 4px; background: linear-gradient(145deg, color-mix(in srgb, var(--mc) 85%, #fff), color-mix(in srgb, var(--mc) 70%, #000)); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.35); overflow: hidden; }
+.mc-item b { font: 700 11px/1 var(--mono, ui-monospace, monospace); color: #fff; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8); }
+.mc-item em { position: absolute; right: 2px; bottom: 0; font: 700 11px/1.1 var(--mono, ui-monospace, monospace); font-style: normal; color: #fff; text-shadow: 0 1px 2px #000; }
+.mc-dur { position: absolute; left: 2px; right: 2px; bottom: 1px; height: 3px; background: #000; border-radius: 2px; }
+.mc-dur i { display: block; height: 100%; border-radius: 2px; }
+.mc-item.mc-ench::after { content: ""; position: absolute; inset: 0; background: linear-gradient(120deg, transparent 30%, rgba(190, 140, 255, 0.55) 50%, transparent 70%); background-size: 200% 100%; animation: mc-glint 2.8s linear infinite; mix-blend-mode: screen; pointer-events: none; }
+@keyframes mc-glint { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .mc-item.mc-ench::after { animation: none; opacity: 0.6; } }
+.mce-layout { display: grid; grid-template-columns: minmax(0, 1fr) 250px; gap: 16px; }
+@media (max-width: 720px) { .mce-layout { grid-template-columns: 1fr; } }
+.mce-label { margin: 10px 0 4px; font: 600 11px/1 var(--mono, ui-monospace, monospace); letter-spacing: 0.08em; text-transform: uppercase; color: var(--faint); }
+.mce-grid { display: grid; grid-template-columns: repeat(9, minmax(0, 44px)); gap: 3px; }
+.mce-hotbar { margin-top: 2px; }
+.mce-armor { display: flex; gap: 3px; align-items: center; max-width: 330px; }
+.mce-gap { width: 12px; flex: none; }
+.mce-slot { position: relative; aspect-ratio: 1; width: 100%; padding: 0; min-width: 0; background: var(--inset); border: 1px solid var(--border); border-radius: 5px; cursor: pointer; }
+.mce-slot:hover { border-color: var(--border-strong); }
+.mce-slot.sel, .mce-slot:focus-visible { outline: 2px solid var(--lime); outline-offset: 1px; }
+.mce-side { min-width: 0; }
+.mce-results { display: grid; gap: 4px; max-height: 260px; overflow: auto; }
+.mce-hit { display: flex; align-items: center; gap: 8px; padding: 2px 6px 2px 2px; text-align: left; background: var(--raised); border: 1px solid var(--border); border-radius: 6px; color: var(--text); cursor: pointer; }
+.mce-hit .mc-item { position: relative; inset: auto; width: 28px; height: 28px; flex: none; }
+.mclp-layout { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 16px; }
+@media (max-width: 720px) { .mclp-layout { grid-template-columns: 1fr; } }
+.mclp-item { display: flex; justify-content: space-between; gap: 8px; width: 100%; padding: 6px 10px; margin-bottom: 3px; color: var(--text); background: var(--raised); border: 1px solid var(--border); border-radius: 6px; cursor: pointer; text-align: left; }
+.mclp-item.sel { border-color: var(--lime); }
+.mclp-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.mclp-sec { margin: 14px 0 6px; font: 600 11px/1 var(--mono, ui-monospace, monospace); letter-spacing: 0.08em; text-transform: uppercase; color: var(--faint); }
+.mclp-line { gap: 6px; margin-top: 6px; align-items: center; }
+.mclp-row { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 4px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+.mclp-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.mclp-x { background: none; border: 0; color: var(--muted); cursor: pointer; }
+.mcjvm-list { display: grid; gap: 6px; }
+.mcjvm-opt { display: flex; gap: 10px; align-items: flex-start; padding: 8px 10px; background: var(--raised); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; }
+.mcjvm-opt.sel { border-color: var(--lime); }
+.mc-skin-box { display: flex; justify-content: center; margin: 14px 0 0; }
+.mc-skin-body { image-rendering: pixelated; width: 96px; height: 192px; }

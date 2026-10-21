@@ -24,6 +24,18 @@ profile:
   backup to see the inventory as it was then, and **Put this inventory back** restores only that
   player's file from the backup (they must be offline; the current file is kept in
   `.gamepanel/player-rollbacks`). Handy after a griefing or a lost-items bug, without rolling back the world.
+- **Edit items** opens a real-looking inventory editor (Minecraft Java): armour, off-hand, main slots,
+  hotbar and the ender chest as a grid of item tiles. Click a slot (or press Enter) to change the item,
+  count, damage, custom name and enchantments, drag a tile onto another slot to move or swap it, use the
+  arrow keys to walk between slots, Delete to empty one, and search the list to add items. **Save changes**
+  only works while the player is **offline** (the game writes a player's file when they leave, which would
+  undo your edit), so kick them first. Everything in the item you did not touch is kept as it was, the old
+  file is copied to `.gamepanel/player-rollbacks` first, and the new one is checked before it replaces the
+  old. You can edit the ender chest of any player who is offline. Needs the "write files" permission.
+- **Skin and head** pictures come from the panel, not your browser: for Java the panel asks Mojang's
+  session server, for Bedrock/Floodgate names the Geyser global API (api.geysermc.org), and caches the
+  result for hours, so nobody's address is shown to those services. Servers with `online-mode=false`
+  have no real accounts, so they show a letter tile instead.
 - **Staff note**, and **Alert me when they join any server** to put someone on a watchlist.
 - **Ban on all servers** / **Unban everywhere**.
 

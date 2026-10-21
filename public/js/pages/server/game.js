@@ -8,6 +8,8 @@ import { renderDatapacksCard } from './datapacks.js';
 import { renderResourcePackCard } from './resource-pack.js';
 import { renderCrossplayCard, renderGameruleCard, renderMapCard, renderPregenCard } from './crossplay.js';
 import { renderWorldMapCard } from './world-map.js';
+import { renderJvmCard } from './mc-jvm.js';
+import { renderLuckPermsCard } from './mc-luckperms.js';
 import { skeleton } from '../../ui/skeleton.js';
 
 /* ---------------------------------------------------- game settings tab */
@@ -19,7 +21,7 @@ import { skeleton } from '../../ui/skeleton.js';
  */
 
 export async function renderGameTab(root, server) {
-  root.innerHTML = '<div id="gv-card"></div><div id="gc-card"></div><div id="gm-card"></div><div id="gwm-card"></div><div id="gp-card"></div><div id="gr-card"></div><div id="gw-card"></div><div id="gt-card"></div><div id="gdw-card"></div><div id="gd-card"></div><div id="grp-card"></div><div id="gs-body"></div>';
+  root.innerHTML = '<div id="gv-card"></div><div id="gc-card"></div><div id="gm-card"></div><div id="gwm-card"></div><div id="gp-card"></div><div id="gr-card"></div><div id="gw-card"></div><div id="gt-card"></div><div id="gdw-card"></div><div id="gd-card"></div><div id="grp-card"></div><div id="gjvm-card"></div><div id="glp-card"></div><div id="gs-body"></div>';
   renderVersionCard(root.querySelector('#gv-card'), server);
   renderCrossplayCard(root.querySelector('#gc-card'), server);
   renderMapCard(root.querySelector('#gm-card'), server);
@@ -31,6 +33,8 @@ export async function renderGameTab(root, server) {
   renderDinoWipeCard(root.querySelector('#gdw-card'), server);
   renderDatapacksCard(root.querySelector('#gd-card'), server);
   renderResourcePackCard(root.querySelector('#grp-card'), server);
+  renderJvmCard(root.querySelector('#gjvm-card'), server);
+  renderLuckPermsCard(root.querySelector('#glp-card'), server);
   const host = root.querySelector('#gs-body');
   host.innerHTML = skeleton('card', 'Reading the game\'s settings…');
   let data;
