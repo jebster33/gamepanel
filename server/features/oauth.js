@@ -57,6 +57,9 @@ const PROVIDERS = {
   },
 };
 
+// Steam uses OpenID, not OAuth: no client id or secret, only the panel address (see steam-openid.js).
+PROVIDERS.steam = { label: 'Steam', openid: true, console: 'https://steamcommunity.com/' };
+
 const STATE_COOKIE = 'gp_oauth';
 const STATE_TTL_MS = 10 * 60_000;
 
@@ -75,6 +78,7 @@ function provider(id) {
 }
 
 function configured(store, id) {
+  if (PROVIDERS[id]?.openid) return Boolean(settings(store).steam?.enabled && settings(store).publicUrl);
   const c = settings(store)[id];
   return Boolean(c?.clientId && c?.clientSecret);
 }
@@ -105,11 +109,17 @@ function origin(req) {
  * The address to send the browser to, and the cookie that ties the answer to
  * this browser (so a link someone else started cannot sign you in as them).
  */
-function start(store, auth, req, id, { linkUserId = null } = {}) {
+function start(store, auth, req, id, { linkUserId = null, portal = false } = {}) {
   const p = provider(id);
   if (!configured(store, id)) fail(400, `Sign-in with ${p.label} is not set up. An administrator can add it under Settings.`);
   const nonce = crypto.randomBytes(16).toString('base64url');
-  const state = auth.sign({ purpose: 'oauth', p: id, n: nonce, link: linkUserId, exp: Date.now() + STATE_TTL_MS });
+  const state = auth.sign({ purpose: 'oauth', p: id, n: nonce, link: linkUserId, portal: portal || undefined, exp: Date.now() + STATE_TTL_MS });
+  const { isSecure } = require('../api/helpers');
+  const cookie = [`${STATE_COOKIE}=${nonce}`, 'Path=/api/auth/oauth', 'HttpOnly', 'SameSite=Lax', `Max-Age=${STATE_TTL_MS / 1000}`, ...(isSecure(req) ? ['Secure'] : [])].join('; ');
+  if (p.openid) {
+    const base = baseUrl(store, req);
+    return { url: require('./steam-openid').authUrl({ returnTo: `${redirectUri(store, req, id)}?state=${encodeURIComponent(state)}`, realm: base }), cookie };
+  }
   const params = new URLSearchParams({
     client_id: settings(store)[id].clientId,
     redirect_uri: redirectUri(store, req, id),
@@ -118,8 +128,6 @@ function start(store, auth, req, id, { linkUserId = null } = {}) {
     state,
     prompt: id === 'google' ? 'select_account' : 'consent',
   });
-  const { isSecure } = require('../api/helpers');
-  const cookie = [`${STATE_COOKIE}=${nonce}`, 'Path=/api/auth/oauth', 'HttpOnly', 'SameSite=Lax', `Max-Age=${STATE_TTL_MS / 1000}`, ...(isSecure(req) ? ['Secure'] : [])].join('; ');
   return { url: `${p.authorize}?${params}`, cookie };
 }
 
@@ -132,6 +140,12 @@ async function finish(store, auth, req, id, query) {
   if (!state || state.purpose !== 'oauth' || state.p !== id || !cookies[STATE_COOKIE] || cookies[STATE_COOKIE] !== state.n) {
     throw new Error('That sign-in link expired or was started in another browser. Try again.');
   }
+  if (p.openid) {
+    const steam = require('./steam-openid');
+    const steamId = await steam.verify(query, { returnTo: `${redirectUri(store, req, id)}?state=${encodeURIComponent(String(query.get('state')))}` });
+    const name = await steam.profileName(steamId);
+    return { identity: { id: steamId, name: name ? `${name} (${steamId})` : `Steam ${steamId}` }, linkUserId: state.link || null, portal: Boolean(state.portal) };
+  }
   const c = settings(store)[id] || {};
   const body = new URLSearchParams({
     client_id: c.clientId,
@@ -143,7 +157,7 @@ async function finish(store, auth, req, id, query) {
   const res = await fetch(p.token, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' }, body, signal: AbortSignal.timeout(15_000) });
   const data = await res.json().catch(() => ({}));
   if (!res.ok || !data.access_token) throw new Error(data.error_description || data.error || `${p.label} refused the sign-in`);
-  return { identity: await p.identity(data.access_token), linkUserId: state.link || null };
+  return { identity: await p.identity(data.access_token), linkUserId: state.link || null, portal: Boolean(state.portal) };
 }
 
 /** The account linked to this identity. */
@@ -173,7 +187,8 @@ function adminView(store, req) {
   const s = settings(store);
   return {
     publicUrl: s.publicUrl || '',
-    providers: Object.entries(PROVIDERS).map(([id, p]) => ({
+    steam: { enabled: Boolean(s.steam?.enabled), redirectUri: redirectUri(store, req, 'steam') },
+    providers: Object.entries(PROVIDERS).filter(([, p]) => !p.openid).map(([id, p]) => ({
       id,
       label: p.label,
       console: p.console,
@@ -191,7 +206,11 @@ function update(store, body) {
     if (url && !/^https?:\/\/[^\s/]+$/i.test(url)) fail(400, 'The panel address looks like https://panel.example.com (no path)');
     s.publicUrl = url;
   }
-  for (const id of Object.keys(PROVIDERS)) {
+  if (body.steam) {
+    if (body.steam.enabled && !s.publicUrl) fail(400, 'Set the panel address first: Steam needs it to send people back');
+    s.steam = { enabled: Boolean(body.steam.enabled) };
+  }
+  for (const id of Object.keys(PROVIDERS).filter((k) => !PROVIDERS[k].openid)) {
     const input = body[id];
     if (!input) continue;
     const current = s[id] || {};

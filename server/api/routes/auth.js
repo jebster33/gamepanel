@@ -208,10 +208,16 @@ module.exports = (router, app) => {
       try {
         result = await oauth.finish(store, auth, req, params.provider, url.searchParams);
       } catch (err) {
-        redirect(res, `/?oauth_error=${encodeURIComponent(err.message)}#/`, [clearState]);
+        const fromPortal = auth.verify(String(url.searchParams.get('state') || ''))?.portal;
+        redirect(res, fromPortal ? `/portal?error=${encodeURIComponent(err.message)}` : `/?oauth_error=${encodeURIComponent(err.message)}#/`, [clearState]);
         return undefined;
       }
       const { identity, linkUserId } = result;
+      // A player signing in to the player portal: a separate, read-only session, never a panel one.
+      if (result.portal) {
+        redirect(res, '/portal', [clearState, require('../../features/portal').loginCookie(store, auth, req, params.provider, identity)]);
+        return undefined;
+      }
       if (linkUserId) {
         try {
           const user = oauth.link(store, auth, linkUserId, params.provider, identity);

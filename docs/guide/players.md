@@ -61,3 +61,13 @@ On **Whitelist & bans**, *Whitelist from Discord roles* puts members with the ro
 ## Find a player anywhere
 
 **Activity** in the sidebar has **Find a player on any server**; administrators can also search by address.
+
+## Community: portal, Steam sign-in, welcomes, feed and leaderboards
+
+**Player portal.** Players are not panel accounts, but they can open `<your panel address>/portal` to see their own play time, stats, bans and appeals. Turn it on under **Community** in the sidebar (it covers the servers on your public status page). Players sign in with Steam or Discord, or prove their in-game name by saying a one-time code (like `GP-AB12CD`) in the game's chat. Steam and Discord only say who the person is; adding an in-game name by chat code is what links them to their stats. Chat codes need a game whose chat the panel can read (Minecraft Java and games with a chat pattern). The portal is read-only, uses its own cookie that never opens the panel, and is rate limited.
+
+**Sign in with Steam.** Settings, Sign-in providers: fill in the panel address, tick **Steam** and save. No keys are needed. People then link Steam on the Account page and get a Steam button on the sign-in screen, like Google or Discord. Accounts are never created this way.
+
+**Welcome and MOTD.** On a server's Schedules tab, welcome players only the first time or every time, and (Minecraft Java) rotate the server-list message every 15 minutes to 24 hours. Use `{player}`, `{server}` and `{online}`. Minecraft reads the MOTD at start, so a new line shows after the next restart (immediately while a wake-on-join server sleeps).
+
+**Join feed and leaderboards.** Under **Community** you can show recent joins and leaves (names, server, time; off by default) and a leaderboard on the public status page. The leaderboard covers every game: play time and visits everywhere, Minecraft statistics, and days active this wipe for wipe games. The same board, for all servers you can see, is on the Community page.

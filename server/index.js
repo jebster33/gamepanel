@@ -78,6 +78,8 @@ async function main() {
     if (/^\/mods\/[A-Za-z0-9_-]+\/?$/.test(rel)) rel = '/mods.html';
     // Ban appeals: /appeal
     if (rel === '/appeal' || rel === '/appeal/') rel = '/appeal.html';
+    // Player portal: /portal
+    if (rel === '/portal' || rel === '/portal/') rel = '/portal.html';
     // The iPhone app: /app, /app/
     if (rel === '/app' || rel === '/app/') rel = '/app.html';
     const file = path.join(config.publicDir, path.normalize(rel).replace(/^(\.\.[/\\])+/, ''));
