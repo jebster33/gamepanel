@@ -67,12 +67,17 @@ async function logFolders(root, dirs) {
   const realRoot = await fsp.realpath(root).catch(() => null);
   if (!realRoot) return [];
   const out = [];
+  const seen = new Set(); // 'logs' and 'Logs' are one folder on Windows and macOS
   for (const rel of dirs) {
     const full = path.join(root, rel);
     const st = await fsp.lstat(full).catch(() => null);
     if (!st?.isDirectory()) continue;
     const real = await fsp.realpath(full).catch(() => null);
-    if (real && (real === realRoot || real.startsWith(realRoot + path.sep))) out.push(rel);
+    const key = process.platform === 'linux' ? real : real?.toLowerCase();
+    if (real && !seen.has(key) && (real === realRoot || real.startsWith(realRoot + path.sep))) {
+      seen.add(key);
+      out.push(rel);
+    }
   }
   return out;
 }

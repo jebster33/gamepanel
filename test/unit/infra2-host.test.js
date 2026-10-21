@@ -82,7 +82,7 @@ test('host power: dry run, stop order, command, state for resume, cancel', async
   await new Promise((r) => setTimeout(r, 50));
   assert.deepStrictEqual(manager.calls, ['stop a', 'stop b', 'stop proxy']);
   assert.deepStrictEqual(saved.running.sort(), ['a', 'b', 'proxy']);
-  assert.ok(execs.some((e) => e.includes('reboot')));
+  assert.ok(execs.some((e) => e.includes('reboot') || e.includes('/r'))); // systemctl reboot, or shutdown.exe /r on Windows
   assert.strictEqual(hp.status().phase, 'rebooting');
 
   // After boot: exactly the servers that were running, not the autoStart one.
