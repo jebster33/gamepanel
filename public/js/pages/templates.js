@@ -55,7 +55,7 @@ export function renderTemplates(view) {
 
   view.innerHTML = `
     <div class="page-head">
-      <div><h1>Games</h1><div class="lede">Pick one and the panel installs it, gives it ports and starts it.</div></div>
+      <h1>Games</h1>
       <div class="spacer"></div>
       <input class="search-input" id="tpl-search" placeholder="Search games…" value="${esc(templateFilter.search)}" />
  ${state.user.role === 'admin' ? '<button class="btn" id="egg-import" title="Turn a Pterodactyl egg into a game">Import egg</button>' : ''}

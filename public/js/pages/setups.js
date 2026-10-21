@@ -15,7 +15,7 @@ export async function renderSetups(host) {
   const setups = data.setups.filter((s) => state.user.role === 'admin' || !s.adminOnly);
   if (!setups.length || !host.isConnected) return;
   host.innerHTML = `
-    <div class="section-head"><h2>Ready-made setups</h2><span class="faint">A game with its plugins, settings and schedules, in one click.</span></div>
+    <div class="section-head"><h2>Ready-made setups</h2></div>
     <div class="grid-cards setup-grid">${setups
       .map(
         (s) => `

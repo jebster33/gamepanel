@@ -65,7 +65,7 @@ export async function renderSettings(view) {
   const integrations = s.integrations || {};
   const limits = s.limits || {};
   view.innerHTML = `
-    <div class="page-head"><div><h1>Settings</h1><div class="lede">Panel-wide options. Per-server options live on each server's Settings tab.</div></div></div>
+    <div class="page-head"><h1>Settings</h1></div>
 
     <div id="ext-cards"></div>
 

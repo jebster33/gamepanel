@@ -104,7 +104,7 @@ export function renderExtPage(view) {
     view.innerHTML = '<div class="empty"><h3>Page not found</h3><p>That extension page is not installed or is turned off.</p></div>';
     return;
   }
-  view.innerHTML = `<div class="page-head"><div><h1>${esc(item.title)}</h1><div class="lede">Extension: <span class="mono">${esc(item.ext)}</span>. It runs in a sandbox and can only read what its manifest asked for.</div></div></div><div id="ext-host"></div>`;
+  view.innerHTML = `<div class="page-head"><h1>${esc(item.title)}</h1></div><div id="ext-host"></div>`;
   mountFrame($('#ext-host'), item);
 }
 
