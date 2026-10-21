@@ -69,7 +69,7 @@ export async function renderWorldsCard(host, server) {
     btn.addEventListener('click', () => {
       const world = data.worlds.find((w) => w.name === btn.dataset.reset);
       if (world.active) return openReset(server, world, redraw);
-      confirmModal('Delete world', `Delete ${esc(world.name)}? A backup of the whole server is made first.`, 'Delete').then(async (ok) => {
+      confirmModal('Delete world', `Delete ${esc(world.name)}? A backup of the whole server is made first.`, 'Delete', { type: 'delete' }).then(async (ok) => {
         if (!ok) return;
         try {
           await api(`/api/servers/${server.id}/worlds/delete`, { method: 'POST', body: { name: world.name } });

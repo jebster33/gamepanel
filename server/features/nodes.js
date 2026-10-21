@@ -191,6 +191,13 @@ class Nodes {
   request(node, method, path, body) {
     return new Promise((resolve, reject) => {
       const target = new URL(path, node.url);
+      // The request goes to the node, whatever the path says.
+      if (target.origin !== new URL(node.url).origin || !target.pathname.startsWith('/api/')) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'That path cannot be passed to a node' }));
+        resolve();
+        return;
+      }
       const lib = target.protocol === 'https:' ? https : http;
       const payload = body === undefined ? null : Buffer.from(JSON.stringify(body));
       const req = lib.request(
@@ -235,7 +242,9 @@ class Nodes {
       const lib = target.protocol === 'https:' ? https : http;
       const headers = { Authorization: `Bearer ${secrets.open(node.key)}`, Accept: req.headers.accept || '*/*' };
       for (const h of ['content-type', 'content-length', 'x-filename', 'range']) if (req.headers[h]) headers[h] = req.headers[h];
-      const upstream = lib.request(target, { method: req.method, headers, timeout: 60_000 }, (up) => {
+      // Host and port come from the saved node; only the path comes from the request.
+      const base = new URL(node.url);
+      const upstream = lib.request({ protocol: base.protocol, hostname: base.hostname, port: base.port, path: target.pathname + target.search, method: req.method, headers, timeout: 60_000 }, (up) => {
         const type = String(up.headers['content-type'] || '');
         const length = Number(up.headers['content-length'] || 0);
         // JSON answers are read whole so server ids can be rewritten, up to a limit; a longer one (or one that never said its length) is passed on as it is.

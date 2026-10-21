@@ -586,6 +586,7 @@ class ServerManager extends EventEmitter {
     this.deleteHistory(id);
     this.dropMetricHistory(id);
     require('../features/config-history').forget(id);
+    require('../features/notes').forget(id);
     // Free play.example.com so the name can be reused.
     if (server.subdomain) require('../features/dns').release(this.store, server).catch(() => {});
     this.forgetServerEverywhere(id);

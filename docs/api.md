@@ -6,6 +6,13 @@ Everything the UI does is a REST call. Authenticate with the session cookie (`PO
 
 Signed-in accounts (and their keys) get 1200 requests a minute; anything anonymous, like the sign-in and public status endpoints, gets 120 a minute per address. Past that the API answers `429` with a `Retry-After` header.
 
+## Destructive actions
+
+Deleting a server, backup, file or cluster, wipes, world resets and trims, restores, rollbacks and
+reinstalls answer `403 {"confirmRequired": true}` to a signed-in account that has two-factor sign-in
+until the request carries `X-Confirm-Code: <authenticator or recovery code>`. One good code covers that
+session for two minutes. API keys are never asked.
+
 ## API keys
 
 Create one on the Account page (or `POST /api/auth/api-keys {"name","readOnly"}`; the key is shown once). Send it as `Authorization: Bearer gp_…`. A key acts as your account, with two limits: read-only keys can only `GET`, and no key can change accounts (passwords, two-factor, keys, users). Keys are stored hashed.
@@ -25,6 +32,8 @@ POST   /api/servers/:id/power            {"action":"start|stop|restart|kill"}
 POST   /api/servers/:id/command          {"command":"say hello"}
 GET    /api/servers/:id/console          scrollback
 GET    /api/servers/:id/history          metrics history
+GET    /api/servers/:id/notes            staff notes: {text, updatedAt, updatedBy, canEdit}
+PUT    /api/servers/:id/notes            {"notes", "basedOn": updatedAt} (settings permission; 409 if changed meanwhile)
 GET    /api/servers/:id/files?path=      file explorer
 GET    /api/servers/:id/files/search?q=  file names and text in config files
 POST   /api/servers/:id/files/extract    unpack an archive

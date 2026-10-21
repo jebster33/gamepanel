@@ -75,6 +75,14 @@ Configs forms and reverts. Pick a file to see each earlier version compared with
 **Put this version back** to undo a change (the current content stays in the history too). The first save
 of a file also keeps what was there before, and the last 50 versions of each file are kept.
 
+## Notes
+
+The **Notes** tab is a page for the people who run the server: rules, wipe plans, things to remember.
+Write it in markdown (`# headings`, `**bold**`, `- lists`, `- [ ] tasks`, links). Everyone with access to
+the server can read it; changing it needs the *Edit server settings* permission. If two people edit at
+once, the second save is refused rather than overwriting the first. Don't keep real passwords there,
+since every sub-user of the server can read them.
+
 ## Schedules
 
 <img src="../screenshots/schedules.png" alt="Schedules" width="800" />

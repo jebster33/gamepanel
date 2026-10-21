@@ -5,7 +5,7 @@ const { rconCommand } = require('../../games/rcon');
 const { query } = require('../../games/query');
 const quotas = require('../../features/quotas');
 
-module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin, requireCap, serverFor, visibleServers, serverView }) => {
+module.exports = (router, { store, auth, manager, scheduler, bridge }, { requireAdmin, requireCap, serverFor, visibleServers, serverView }) => {
   router.get('/api/servers', ({ user }) => ({ servers: visibleServers(user) }));
 
   /**
@@ -180,6 +180,14 @@ module.exports = (router, { store, manager, scheduler, bridge }, { requireAdmin,
     const server = serverFor(user, params.id, 'power');
     manager.updateGame(server.id).catch((err) => manager.pushConsole(server, `Update failed: ${err.message}`, 'system'));
     return { ok: true, started: true };
+  });
+
+  /** Staff notes (markdown). Everyone with access to the server reads; the settings permission edits. */
+  const notes = require('../../features/notes');
+  router.get('/api/servers/:id/notes', ({ user, params }) => ({ ...notes.get(serverFor(user, params.id).id), canEdit: auth.can(user, 'settings', params.id) }));
+  router.put('/api/servers/:id/notes', ({ user, params, body }) => {
+    const server = serverFor(user, params.id, 'settings');
+    return notes.set(server.id, body?.notes, user.username, body?.basedOn);
   });
 
   /** Wipes (games whose template has a "wipe" spec, like Rust). */

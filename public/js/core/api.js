@@ -5,6 +5,7 @@ import { $ } from './util.js';
 
 export async function api(path, options = {}) {
   const init = { method: options.method || 'GET', headers: {}, credentials: 'same-origin' };
+  if (options.confirmCode) init.headers['X-Confirm-Code'] = options.confirmCode;
   if (options.body !== undefined) {
     init.headers['Content-Type'] = 'application/json';
     init.body = JSON.stringify(options.body);
@@ -29,6 +30,13 @@ export async function api(path, options = {}) {
   }
   // The panel requires two-factor for admins and this one has none yet: send them to set it up.
   if (res.status === 403 && /Two-factor sign-in is required/.test(data?.error || '') && location.hash !== '#/account') location.hash = '#/account';
+  // Wipes, deletes and rollbacks ask accounts with two-factor sign-in for an authenticator code, then try again.
+  if (res.status === 403 && data?.confirmRequired) {
+    const { codeModal } = await import('../ui/modal.js');
+    const code = await codeModal(data.error);
+    if (code) return api(path, { ...options, confirmCode: code });
+    throw new Error('Cancelled');
+  }
   if (!res.ok) throw new Error(data?.error || `Request failed (${res.status})`);
   return data;
 }

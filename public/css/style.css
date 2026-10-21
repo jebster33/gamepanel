@@ -4574,6 +4574,17 @@ pre.code-block {
   color: var(--warning, #f5a524);
 }
 
+/* Server notes (rendered markdown) */
+.md { line-height: 1.6; overflow-wrap: anywhere; }
+.md h2, .md h3, .md h4, .md h5 { margin: 1.2em 0 0.4em; }
+.md p { margin: 0.5em 0; }
+.md ul, .md ol { margin: 0.4em 0; padding-left: 1.4em; }
+.md ul.md-tasks { list-style: none; padding-left: 0; }
+.md code { font-family: var(--mono, monospace); background: var(--surface-2, rgba(255, 255, 255, 0.06)); padding: 1px 5px; border-radius: 4px; }
+.md pre { background: var(--surface-2, rgba(255, 255, 255, 0.06)); padding: 10px 12px; border-radius: 6px; overflow-x: auto; }
+.md pre code { background: none; padding: 0; }
+.md blockquote { margin: 0.5em 0; padding-left: 12px; border-left: 3px solid var(--border, #333); opacity: 0.85; }
+
 /* Console quick commands and autocomplete */
 .quick-bar {
   display: flex;

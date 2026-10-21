@@ -291,7 +291,7 @@ export function renderServerSettingsTab(host, server) {
   });
 
   $('#set-delete-own')?.addEventListener('click', async () => {
-    if (!(await confirmModal('Delete server', `Permanently delete “${server.name}” and all of its files?`, 'Delete'))) return;
+    if (!(await confirmModal('Delete server', `Permanently delete “${server.name}” and all of its files?`, 'Delete', { type: server.name }))) return;
     try {
       await api(`/api/servers/${server.id}`, { method: 'DELETE' });
       await loadServers();
@@ -415,7 +415,7 @@ export function renderServerSettingsTab(host, server) {
   });
 
   $('#set-delete').addEventListener('click', async () => {
-    if (!(await confirmModal('Delete server', `Permanently delete “${server.name}” and all of its files?`, 'Delete'))) return;
+    if (!(await confirmModal('Delete server', `Permanently delete “${server.name}” and all of its files?`, 'Delete', { type: server.name }))) return;
     try {
       await api(`/api/servers/${server.id}`, { method: 'DELETE' });
       await loadServers();

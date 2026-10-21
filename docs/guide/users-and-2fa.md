@@ -53,6 +53,18 @@ Locked out? Another administrator can press **Reset 2FA** for you, or see
 [Locked out by two-factor sign-in](../troubleshooting.md#locked-out-by-two-factor-sign-in) to turn it off
 from the machine.
 
+### Confirming wipes and deletes
+
+With two-factor sign-in on, anything that destroys data asks for a fresh code (an authenticator code, or a
+recovery code) before it runs: deleting a server, backup, file or cluster, wipes, world resets and
+deletes, world trims, restoring a backup, rolling back a snapshot and reinstalling. One code covers the
+next two minutes on that browser, so deleting several files is one prompt. The panel checks it on the
+server, so the API asks too (send it as an `X-Confirm-Code` header).
+
+Without two-factor sign-in the buttons ask you to type the server name (or a word like `wipe`) instead.
+**API keys and scheduled tasks are not asked**: a key is something you made on purpose and a script can't
+type a code, so keep keys safe and read-only where you can.
+
 ## Passkeys
 
 A passkey lets you sign in with the lock you already use on your device: Windows Hello (face, fingerprint or PIN), Touch ID or Face ID on a Mac or iPhone, Android fingerprint or screen lock, or a USB/NFC security key. No password is typed and the secret never leaves the device.

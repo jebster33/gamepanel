@@ -21,6 +21,7 @@ const { Router } = require('./router');
 const { createHelpers, clientIp, sameOrigin } = require('./helpers');
 const { RateLimiter } = require('../core/ratelimit');
 const audit = require('../features/audit');
+const { isDangerous } = require('../core/danger');
 
 const VERSION = require('../../package.json').version;
 const safeDecode = (v) => {
@@ -110,6 +111,14 @@ function createApi(app) {
       json(res, 403, { error: 'Account changes need a person signed in, not an API key' });
       return true;
     }
+    // The node only sees its own admin key, so the code check has to happen here.
+    if (isDangerous(req.method, path.split('?')[0])) {
+      const need = app.auth.requireDanger(user, req);
+      if (need) {
+        json(res, 403, { error: need, confirmRequired: true });
+        return true;
+      }
+    }
     if (req.method !== 'GET') {
       audit.record({ user: user.username, ip: clientIp(req), action: `${req.method.toLowerCase()} ${path.replace(/^\/api\//, '')} on node ${node.name}`, path, status: 200 });
     }
@@ -150,6 +159,14 @@ function createApi(app) {
 
     // Sign-in and other public routes take small bodies only: anyone on the internet can send one.
     const body = !route.rawBody && writes ? await readJson(req, route.public ? 64 * 1024 : undefined) : {};
+    // Wipes, deletes and rollbacks: a fresh authenticator code when the account has 2FA.
+    if (user && writes && isDangerous(req.method, url.pathname, body)) {
+      const need = app.auth.requireDanger(user, req);
+      if (need) {
+        json(res, 403, { error: need, confirmRequired: true });
+        return;
+      }
+    }
     // Every change goes in the audit log, including refused ones.
     const note = (status, error) => {
       if (!writes) return;

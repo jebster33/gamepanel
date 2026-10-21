@@ -14,6 +14,7 @@ import { renderLiveMapTab } from './livemap.js';
 import { renderRustTab } from './rust-tools.js';
 import { renderModpacksTab } from './modpacks.js';
 import { renderModsTab } from './mods.js';
+import { renderNotesTab } from './notes.js';
 import { patchPlayersTab, renderPlayersTab } from './players.js';
 import { renderSchedulesTab } from './schedules.js';
 import { renderServerSettingsTab } from './settings.js';
@@ -38,6 +39,7 @@ function serverTabs(server) {
     (server.hasMods || server.nexusGame) && can('mods') && ['mods', 'Mods'],
     server.hasMods && can('files') && ['configs', 'Configs'],
     can('backups') && ['backups', 'Backups'],
+    ['notes', 'Notes'],
     can('schedules') && ['schedules', 'Schedules'],
     can('settings') && ['game', 'Game settings'],
     can('settings') && gameToolsLabel(server) && ['gametools', gameToolsLabel(server)],
@@ -213,6 +215,9 @@ function renderServerTab(server, tab) {
       break;
     case 'backups':
       renderBackupsTab(host, server);
+      break;
+    case 'notes':
+      renderNotesTab(host, server);
       break;
     case 'schedules':
       renderSchedulesTab(host, server);
