@@ -161,6 +161,19 @@ function generate(manager, store, server, input = {}) {
   return job;
 }
 
+/** A picture of the generated map for a size and seed, if the key is set and RustMaps has it; else null. */
+async function thumbnail(store, size, seed) {
+  if (!keyOf(store)) return null;
+  const { data } = await call(store, 'GET', `/maps/${Number(size)}/${Number(seed)}?staging=false`).catch(() => ({}));
+  const image = data?.thumbnailUrl || data?.imageUrl || '';
+  try {
+    const url = new URL(image);
+    return url.protocol === 'https:' && /(^|\.)rustmaps\.com$/.test(url.hostname) ? url.href : null;
+  } catch {
+    return null;
+  }
+}
+
 /** A fresh random seed for the server; the preview link follows it. */
 function randomSeed(manager, server) {
   const seed = crypto.randomInt(1, 2_147_483_647);
@@ -168,4 +181,4 @@ function randomSeed(manager, server) {
   return seed;
 }
 
-module.exports = { describe, monuments, generate, randomSeed, previewUrl };
+module.exports = { describe, monuments, generate, randomSeed, previewUrl, thumbnail };
